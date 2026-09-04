@@ -5,7 +5,7 @@ import { ThemeToggle } from "@/components/theme-toggle"
 const navLinks = [
   { label: "Panel", href: "/" },
   { label: "Modelos", href: "/#modelos" },
-  { label: "Documentación", href: "/#docs" },
+  { label: "Inundaciones", href: "/inundaciones" },
 ]
 
 export function SiteHeader() {

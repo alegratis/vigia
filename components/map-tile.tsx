@@ -6,7 +6,7 @@ import type { MapModel } from "@/lib/maps"
 export function MapTile({ model }: { model: MapModel }) {
   return (
     <Link
-      href={`/maps/${model.slug}`}
+      href={model.href ?? `/maps/${model.slug}`}
       className="group flex flex-col overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
       <div className="relative aspect-[4/3] overflow-hidden">
@@ -24,7 +24,18 @@ export function MapTile({ model }: { model: MapModel }) {
 
       <div className="flex flex-1 flex-col gap-2 p-5">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="text-lg font-semibold tracking-tight">{model.title}</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-lg font-semibold tracking-tight">{model.title}</h3>
+            {model.ready && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                <span
+                  className="size-1.5 rounded-full bg-[var(--chart-2)]"
+                  aria-hidden="true"
+                />
+                En vivo
+              </span>
+            )}
+          </div>
           <ArrowUpRight
             className="size-5 shrink-0 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-foreground"
             aria-hidden="true"

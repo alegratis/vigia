@@ -5,6 +5,10 @@ export type MapModel = {
   image: string
   imageAlt: string
   tag: string
+  /** Optional destination override; defaults to /maps/<slug>. */
+  href?: string
+  /** Whether the model's interface is live (vs. a placeholder). */
+  ready?: boolean
 }
 
 export const mapModels: MapModel[] = [
@@ -12,10 +16,12 @@ export const mapModels: MapModel[] = [
     slug: "amenazas",
     title: "Amenazas",
     description:
-      "Modelos de peligrosidad por inundación, deslizamiento y otros fenómenos, con niveles de intensidad y periodos de retorno.",
+      "Pronóstico de inundaciones fluviales en tiempo casi real con datos GEOGLOWS y umbrales de periodo de retorno. Otros fenómenos en desarrollo.",
     image: "/images/amenazas-map.png",
     imageAlt: "Mapa de amenazas con zonas de peligrosidad graduadas sobre el terreno",
     tag: "Peligrosidad",
+    href: "/inundaciones",
+    ready: true,
   },
   {
     slug: "vulnerabilidad",
