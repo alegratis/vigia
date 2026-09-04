@@ -1,10 +1,11 @@
 import Link from "next/link"
-import { Globe2 } from "lucide-react"
+import { Radar } from "lucide-react"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 const navLinks = [
-  { label: "Overview", href: "/" },
-  { label: "Models", href: "/#models" },
-  { label: "Docs", href: "/#docs" },
+  { label: "Panel", href: "/" },
+  { label: "Modelos", href: "/#modelos" },
+  { label: "Documentación", href: "/#docs" },
 ]
 
 export function SiteHeader() {
@@ -13,22 +14,27 @@ export function SiteHeader() {
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
         <Link href="/" className="flex items-center gap-2">
           <span className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <Globe2 className="size-5" aria-hidden="true" />
+            <Radar className="size-5" aria-hidden="true" />
           </span>
-          <span className="text-lg font-semibold tracking-tight">Cartograph</span>
+          <span className="text-lg font-semibold tracking-tight">Vigía</span>
         </Link>
 
-        <nav aria-label="Primary" className="flex items-center gap-1">
-          {navLinks.map((link) => (
-            <Link
-              key={link.label}
-              href={link.href}
-              className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
+        <div className="flex items-center gap-1">
+          <nav aria-label="Navegación principal" className="flex items-center gap-1">
+            {navLinks.map((link) => (
+              <Link
+                key={link.label}
+                href={link.href}
+                className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+          <div className="ml-2">
+            <ThemeToggle />
+          </div>
+        </div>
       </div>
     </header>
   )

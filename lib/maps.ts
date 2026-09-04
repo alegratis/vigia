@@ -9,31 +9,31 @@ export type MapModel = {
 
 export const mapModels: MapModel[] = [
   {
-    slug: "terrain",
-    title: "Terrain Explorer",
+    slug: "amenazas",
+    title: "Amenazas",
     description:
-      "Contour-based elevation model with slope, ridgeline, and watershed analysis interfaces.",
-    image: "/images/terrain-map.png",
-    imageAlt: "Topographic terrain map with contour lines and elevation shading",
-    tag: "Elevation",
+      "Modelos de peligrosidad por inundación, deslizamiento y otros fenómenos, con niveles de intensidad y periodos de retorno.",
+    image: "/images/amenazas-map.png",
+    imageAlt: "Mapa de amenazas con zonas de peligrosidad graduadas sobre el terreno",
+    tag: "Peligrosidad",
   },
   {
-    slug: "satellite",
-    title: "Satellite View",
+    slug: "vulnerabilidad",
+    title: "Vulnerabilidad",
     description:
-      "High-resolution orbital imagery with land-use classification and change-detection tools.",
-    image: "/images/satellite-map.png",
-    imageAlt: "Satellite imagery of a coastline and dense urban area from above",
-    tag: "Imagery",
+      "Índices de vulnerabilidad social, física y económica por unidad territorial, con exposición de población e infraestructura.",
+    image: "/images/vulnerabilidad-map.png",
+    imageAlt: "Mapa coroplético de vulnerabilidad por distritos urbanos",
+    tag: "Exposición",
   },
   {
-    slug: "routing",
-    title: "Route Planner",
+    slug: "riesgo",
+    title: "Riesgo",
     description:
-      "Live road network graph with pathfinding, waypoint editing, and travel-time overlays.",
-    image: "/images/routing-map.png",
-    imageAlt: "Dark navigation map with glowing route lines and waypoints",
-    tag: "Navigation",
+      "Evaluación compuesta de riesgo que combina amenaza y vulnerabilidad, con puntos críticos y escenarios de gestión.",
+    image: "/images/riesgo-map.png",
+    imageAlt: "Mapa compuesto de riesgo con puntos críticos resaltados sobre la ciudad",
+    tag: "Riesgo compuesto",
   },
 ]
 

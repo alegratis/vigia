@@ -9,14 +9,15 @@ export default function Page() {
       <SiteHeader />
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-12">
-        <section id="models" className="flex flex-col gap-8">
+        <section id="modelos" className="flex flex-col gap-8">
           <div className="flex flex-col gap-2">
             <h1 className="text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
-              Map Models
+              Modelos de riesgo
             </h1>
             <p className="max-w-2xl text-pretty leading-relaxed text-muted-foreground">
-              Choose a model to open its interactive interface. Each model exposes its
-              own set of analysis and editing tools.
+              Seleccione un modelo para abrir su interfaz interactiva. Cada modelo se
+              alimenta del backend QGIS mediante los servicios de ArcGIS y expone sus
+              propias herramientas de análisis y gestión.
             </p>
           </div>
 

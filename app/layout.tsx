@@ -1,10 +1,12 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
+import { ThemeProvider } from '@/components/theme-provider'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Cartograph — Map Models Dashboard',
-  description: 'Explore interactive terrain, satellite, and routing map models.',
+  title: 'Vigía — Evaluación y gestión de riesgos',
+  description:
+    'Plataforma de código abierto para la evaluación y gestión de riesgos, conectada a un backend QGIS.',
   generator: 'v0.app',
   icons: {
     icon: [
@@ -39,10 +41,17 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className="bg-background">
+    <html lang="es" className="bg-background" suppressHydrationWarning>
       <body className="antialiased">
-        {children}
-        {process.env.NODE_ENV === 'production' && <Analytics />}
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+          {process.env.NODE_ENV === 'production' && <Analytics />}
+        </ThemeProvider>
       </body>
     </html>
   )

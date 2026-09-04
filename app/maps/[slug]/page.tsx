@@ -32,7 +32,7 @@ export default async function MapPage({
           className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="size-4" aria-hidden="true" />
-          Back to models
+          Volver a los modelos
         </Link>
 
         <div className="flex flex-col gap-6">
@@ -58,7 +58,7 @@ export default async function MapPage({
           </div>
 
           <p className="text-sm text-muted-foreground">
-            Interface controls for this model will appear here.
+            Aquí aparecerán los controles de la interfaz de este modelo.
           </p>
         </div>
       </main>
