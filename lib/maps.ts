@@ -9,37 +9,45 @@ export type MapModel = {
   href?: string
   /** Whether the model's interface is live (vs. a placeholder). */
   ready?: boolean
+  /** Whether the model has no destination yet and should render as a preview. */
+  comingSoon?: boolean
 }
 
 export const mapModels: MapModel[] = [
   {
-    slug: "amenazas",
-    title: "Amenazas",
+    slug: "inundaciones",
+    title: "Inundaciones",
     description:
-      "Pronóstico de inundaciones fluviales en tiempo casi real con datos GEOGLOWS y umbrales de periodo de retorno. Otros fenómenos en desarrollo.",
-    image: "/images/amenazas-map.png",
-    imageAlt: "Mapa de amenazas con zonas de peligrosidad graduadas sobre el terreno",
-    tag: "Peligrosidad",
+      "Pronóstico de inundaciones fluviales en tiempo casi real con datos GEOGLOWS y umbrales de periodo de retorno para los ríos del Valle del Cauca.",
+    image: "/images/inundaciones-map.png",
+    imageAlt:
+      "Mapa de inundación con manchas de agua a lo largo de un río sobre el terreno",
+    tag: "Amenaza hídrica",
     href: "/inundaciones",
     ready: true,
   },
   {
-    slug: "vulnerabilidad",
-    title: "Vulnerabilidad",
+    slug: "incendios",
+    title: "Incendios",
     description:
-      "Índices de vulnerabilidad social, física y económica por unidad territorial, con exposición de población e infraestructura.",
-    image: "/images/vulnerabilidad-map.png",
-    imageAlt: "Mapa coroplético de vulnerabilidad por distritos urbanos",
-    tag: "Exposición",
+      "Detección de focos de calor activos con sensores satelitales VIIRS de NASA FIRMS alrededor de Sevilla, Caicedonia y Zarzal.",
+    image: "/images/incendios-map.png",
+    imageAlt:
+      "Mapa de detección de incendios con focos de calor sobre terreno montañoso boscoso",
+    tag: "Amenaza térmica",
+    href: "/incendios",
+    ready: true,
   },
   {
-    slug: "riesgo",
-    title: "Riesgo",
+    slug: "deslizamientos",
+    title: "Deslizamientos",
     description:
-      "Evaluación compuesta de riesgo que combina amenaza y vulnerabilidad, con puntos críticos y escenarios de gestión.",
-    image: "/images/riesgo-map.png",
-    imageAlt: "Mapa compuesto de riesgo con puntos críticos resaltados sobre la ciudad",
-    tag: "Riesgo compuesto",
+      "Susceptibilidad a movimientos en masa en las laderas de la cordillera. Fuente de datos en definición; módulo próximamente.",
+    image: "/images/deslizamientos-map.png",
+    imageAlt:
+      "Mapa de susceptibilidad a deslizamientos con zonas de riesgo en terreno de pendiente",
+    tag: "Amenaza geológica",
+    comingSoon: true,
   },
 ]
 

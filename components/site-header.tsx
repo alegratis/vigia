@@ -4,8 +4,8 @@ import { ThemeToggle } from "@/components/theme-toggle"
 
 const navLinks = [
   { label: "Panel", href: "/" },
-  { label: "Modelos", href: "/#modelos" },
   { label: "Inundaciones", href: "/inundaciones" },
+  { label: "Incendios", href: "/incendios" },
 ]
 
 export function SiteHeader() {
