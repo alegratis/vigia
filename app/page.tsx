@@ -56,8 +56,8 @@ export default function Page() {
               </h2>
               <p className="text-pretty leading-relaxed text-muted-foreground">
                 Una plataforma de gestión del riesgo construida sobre datos y
-                herramientas abiertas. Vigía prioriza el Valle del Cauca —Sevilla,
-                Caicedonia y Zarzal— y monitorea tres amenazas principales.
+                herramientas abiertas. Vigía prioriza el Valle del Cauca (Sevilla,
+                Caicedonia y Zarzal) y monitorea tres amenazas principales.
               </p>
               <ul className="flex flex-col gap-3">
                 {pillars.map(({ icon: Icon, label }) => (
