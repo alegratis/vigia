@@ -2,6 +2,14 @@
 
 import type { FloodLevelKey } from "@/lib/geoglows/flood"
 
+export interface YearPopulationView {
+  urbano: number
+  rural: number
+  hombres: number
+  mujeres: number
+  total: number
+}
+
 export interface MunicipioPopulationView {
   municipio: string
   codigoMunicipio: string
@@ -11,6 +19,7 @@ export interface MunicipioPopulationView {
   hombres: number
   mujeres: number
   total: number
+  years: Record<number, YearPopulationView>
 }
 
 export interface MunicipioExposureView {
