@@ -49,9 +49,18 @@ export function MapTile({ model }: { model: MapModel }) {
             />
           )}
         </div>
+        <p className="text-pretty text-sm font-medium leading-relaxed text-foreground">
+          {model.hook}
+        </p>
         <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
           {model.description}
         </p>
+        {!model.comingSoon && (
+          <span className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-primary">
+            Explorar
+            <ArrowUpRight className="size-4" aria-hidden="true" />
+          </span>
+        )}
       </div>
     </>
   )
