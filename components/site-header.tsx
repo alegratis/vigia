@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Radar } from "lucide-react"
+import Image from "next/image"
 import { ThemeToggle } from "@/components/theme-toggle"
 
 const navLinks = [
@@ -14,8 +14,23 @@ export function SiteHeader() {
     <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
         <Link href="/" className="flex items-center gap-2">
-          <span className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <Radar className="size-5" aria-hidden="true" />
+          <span className="relative flex size-9 items-center justify-center">
+            <Image
+              src="/images/vigia-mark-light.png"
+              alt=""
+              width={64}
+              height={49}
+              className="block dark:hidden"
+              priority
+            />
+            <Image
+              src="/images/vigia-mark-dark.png"
+              alt=""
+              width={64}
+              height={49}
+              className="hidden dark:block"
+              priority
+            />
           </span>
           <span className="text-lg font-semibold tracking-tight">Vigía</span>
         </Link>
