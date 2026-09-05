@@ -36,6 +36,14 @@
   --color-card: var(--card);
   --color-foreground: var(--foreground);
   --color-background: var(--background);
+  --color-demografia-urbano: var(--demografia-urbano);
+  --color-demografia-urbano-foreground: var(--demografia-urbano-foreground);
+  --color-demografia-rural: var(--demografia-rural);
+  --color-demografia-rural-foreground: var(--demografia-rural-foreground);
+  --color-demografia-hombres: var(--demografia-hombres);
+  --color-demografia-hombres-foreground: var(--demografia-hombres-foreground);
+  --color-demografia-mujeres: var(--demografia-mujeres);
+  --color-demografia-mujeres-foreground: var(--demografia-mujeres-foreground);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -79,6 +87,16 @@
   --sidebar-accent-foreground: oklch(0.28 0.006 240);
   --sidebar-border: oklch(0.87 0.004 240);
   --sidebar-ring: oklch(0.52 0.09 215);
+
+  /* Demografia category identity colors: urbano/rural/hombres/mujeres. */
+  --demografia-urbano: oklch(0.82 0.1 145);
+  --demografia-urbano-foreground: oklch(0.25 0.05 145);
+  --demografia-rural: oklch(0.68 0.17 22);
+  --demografia-rural-foreground: oklch(0.99 0 0);
+  --demografia-hombres: oklch(0.62 0.1 190);
+  --demografia-hombres-foreground: oklch(0.99 0 0);
+  --demografia-mujeres: oklch(0.86 0.07 55);
+  --demografia-mujeres-foreground: oklch(0.3 0.06 55);
 }
 
 .dark {
@@ -114,6 +132,16 @@
   --sidebar-accent-foreground: oklch(0.95 0.003 240);
   --sidebar-border: oklch(1 0 0 / 12%);
   --sidebar-ring: oklch(0.68 0.11 210);
+
+  /* Demografia category identity colors: kept vivid and legible on dark surfaces. */
+  --demografia-urbano: oklch(0.72 0.11 145);
+  --demografia-urbano-foreground: oklch(0.15 0.03 145);
+  --demografia-rural: oklch(0.62 0.17 22);
+  --demografia-rural-foreground: oklch(0.98 0 0);
+  --demografia-hombres: oklch(0.56 0.1 190);
+  --demografia-hombres-foreground: oklch(0.98 0 0);
+  --demografia-mujeres: oklch(0.76 0.08 55);
+  --demografia-mujeres-foreground: oklch(0.18 0.04 55);
 }
 
 @layer base {
