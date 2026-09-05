@@ -3,6 +3,7 @@ import { ArrowLeft } from "lucide-react"
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { FloodOverview } from "@/components/flood/flood-overview"
+import { HazardMapSection } from "@/components/maps/hazard-map-section"
 import { DEPARTMENT } from "@/lib/geoglows/stations"
 
 export const metadata = {
@@ -40,6 +41,13 @@ export default function FloodPage() {
               sobre el registro histórico.
             </p>
           </div>
+
+          <HazardMapSection
+            slug="inundaciones"
+            title="Mapa de inundaciones"
+            basis="urbano"
+            basisLabel="Población urbana"
+          />
 
           <FloodOverview />
         </section>

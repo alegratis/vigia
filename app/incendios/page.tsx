@@ -3,6 +3,7 @@ import { ArrowLeft } from "lucide-react"
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { FireOverview } from "@/components/fires/fire-overview"
+import { HazardMapSection } from "@/components/maps/hazard-map-section"
 import { DEPARTMENT } from "@/lib/firms/area"
 
 export const metadata = {
@@ -40,6 +41,13 @@ export default function FirePage() {
               tiempo casi real.
             </p>
           </div>
+
+          <HazardMapSection
+            slug="incendios"
+            title="Mapa de incendios"
+            basis="rural"
+            basisLabel="Población rural"
+          />
 
           <FireOverview />
         </section>
