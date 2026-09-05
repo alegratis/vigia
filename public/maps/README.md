@@ -1,12 +1,18 @@
 # qgis2web map exports
 
-Each hazard section embeds a static Leaflet map exported from QGIS with the
-**qgis2web** plugin. Export with the Leaflet engine, then copy the entire
-output folder's contents (including `index.html`, `main.js`, `data/`,
-`legend/`, etc.) into the matching subfolder here — **do not rename any of
-the exported files**, only place them inside the right folder:
+**Inundaciones does not use this folder.** GEOGLOWS already publishes its own
+live, open, CORS-enabled map layer (Esri Living Atlas'
+`GlobalWaterModel_Medium` feed), so the flood page renders that directly —
+see `components/maps/geoglows-live-map.tsx`. There's no reason to re-publish
+a static copy of a map that already exists and updates on its own.
 
-- `public/maps/inundaciones/` → `public/maps/inundaciones/index.html`
+For hazards where no equivalent open live map service exists, each section
+embeds a static Leaflet map exported from QGIS with the **qgis2web** plugin.
+Export with the Leaflet engine, then copy the entire output folder's contents
+(including `index.html`, `main.js`, `data/`, `legend/`, etc.) into the
+matching subfolder here — **do not rename any of the exported files**, only
+place them inside the right folder:
+
 - `public/maps/incendios/` → `public/maps/incendios/index.html`
 - `public/maps/deslizamientos/` → `public/maps/deslizamientos/index.html`
 

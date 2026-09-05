@@ -47,6 +47,7 @@ export default function FloodPage() {
             title="Mapa de inundaciones"
             basis="urbano"
             basisLabel="Población urbana"
+            source="geoglows"
           />
 
           <FloodOverview />
