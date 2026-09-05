@@ -35,7 +35,7 @@ export default function Page() {
               </p>
               <div className="flex flex-wrap items-center gap-3">
                 <Link
-                  href="#amenazas"
+                  href="/demografia"
                   className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 >
                   Conoce tu nivel de exposición

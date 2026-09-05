@@ -6,6 +6,7 @@ const navLinks = [
   { label: "Panel", href: "/" },
   { label: "Inundaciones", href: "/inundaciones" },
   { label: "Incendios", href: "/incendios" },
+  { label: "Demografía", href: "/demografia" },
 ]
 
 export function SiteHeader() {
