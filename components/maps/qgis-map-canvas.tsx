@@ -53,7 +53,7 @@ export function QgisMapCanvas({ slug, title, onBoundsChange, className }: QgisMa
   if (status === "missing") {
     return (
       <Card className={className}>
-        <CardContent className="flex h-[480px] flex-col items-center justify-center gap-3 text-center">
+        <CardContent className="flex h-[320px] flex-col items-center justify-center gap-3 text-center sm:h-[480px]">
           <span className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
             <MapIcon className="size-6" aria-hidden="true" />
           </span>
@@ -71,13 +71,13 @@ export function QgisMapCanvas({ slug, title, onBoundsChange, className }: QgisMa
   return (
     <Card className={`overflow-hidden ${className ?? ""}`}>
       {status === "checking" ? (
-        <Skeleton className="h-[480px] w-full rounded-none" />
+        <Skeleton className="h-[320px] w-full rounded-none sm:h-[480px]" />
       ) : (
         <iframe
           key={slug}
           src={src}
           title={title}
-          className="h-[480px] w-full border-0"
+          className="h-[320px] w-full border-0 sm:h-[480px]"
           loading="lazy"
         />
       )}

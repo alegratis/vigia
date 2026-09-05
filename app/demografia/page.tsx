@@ -12,9 +12,9 @@ export default function DemografiaPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <SiteHeader />
-      <main className="flex-1">
+      <main id="main-content" tabIndex={-1} className="flex-1 focus-visible:outline-none">
         <section className="border-b border-border">
-          <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-6 py-12">
+          <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-4 py-10 sm:px-6 sm:py-12">
             <h1 className="text-balance text-3xl font-semibold tracking-tight">
               Conoce tu nivel de exposición
             </h1>
@@ -26,8 +26,10 @@ export default function DemografiaPage() {
           </div>
         </section>
 
-        <section className="mx-auto w-full max-w-6xl px-6 py-10">
-          <DemografiaOverview />
+        <section className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
+          <div aria-live="polite">
+            <DemografiaOverview />
+          </div>
         </section>
       </main>
       <SiteFooter />

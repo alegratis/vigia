@@ -16,9 +16,9 @@ export default function Page() {
     <div className="flex min-h-screen flex-col">
       <SiteHeader />
 
-      <main className="flex-1">
+      <main id="main-content" tabIndex={-1} className="flex-1 focus-visible:outline-none">
         <section className="border-b border-border">
-          <div className="mx-auto grid w-full max-w-6xl gap-10 px-6 py-16 lg:grid-cols-[1.1fr_0.9fr] lg:py-20">
+          <div className="mx-auto grid w-full max-w-6xl gap-10 px-4 py-12 sm:px-6 sm:py-16 lg:grid-cols-[1.1fr_0.9fr] lg:py-20">
             <div className="flex flex-col gap-6">
               <span className="inline-flex w-fit items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
                 <span className="size-1.5 rounded-full bg-primary" aria-hidden="true" />
@@ -73,7 +73,7 @@ export default function Page() {
           </div>
         </section>
 
-        <section id="amenazas" className="mx-auto w-full max-w-6xl px-6 py-16">
+        <section id="amenazas" className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
           <div className="mb-8 flex flex-col gap-2">
             <h2 className="text-balance text-3xl font-semibold tracking-tight">
               Amenazas monitoreadas

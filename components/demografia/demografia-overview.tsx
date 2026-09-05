@@ -184,7 +184,13 @@ export function DemografiaOverview() {
               </p>
             ) : (
               <ChartContainer config={chartConfig} className="aspect-auto h-64 w-full">
-                <BarChart data={chartData} barGap={8}>
+                <BarChart
+                  data={chartData}
+                  barGap={8}
+                  accessibilityLayer
+                  role="img"
+                  aria-label={`Distribución de población por municipio, año ${year}`}
+                >
                   <CartesianGrid vertical={false} strokeDasharray="3 3" />
                   <XAxis
                     dataKey="municipio"

@@ -136,7 +136,7 @@ function DeslizamientosLiveMapImpl({
   )
 
   return (
-    <div className="relative h-full min-h-[420px] w-full overflow-hidden rounded-xl border border-border">
+    <div className="relative h-full min-h-[320px] w-full overflow-hidden rounded-xl border border-border sm:min-h-[420px]">
       <MapContainer center={AOI_CENTER} zoom={12} minZoom={9} maxZoom={16} className="h-full w-full">
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'

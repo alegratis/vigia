@@ -29,12 +29,12 @@ export function LevelFilters({ selectedLevels, onSelectedLevelsChange, className
       <legend className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         Nivel de susceptibilidad
       </legend>
-      <div className="mt-3 grid grid-cols-2 gap-3">
+      <div className="mt-3 grid grid-cols-2 gap-1">
         {SUSCEPTIBILITY_LEVELS.map((level) => {
           const checked = selectedLevels.includes(level)
           const style = SUSCEPTIBILITY_LEVEL_STYLES[level]
           return (
-            <div key={level} className="flex items-center gap-2">
+            <div key={level} className="flex min-h-10 items-center gap-2">
               <Checkbox
                 id={`deslizamientos-level-${level}`}
                 checked={checked}
@@ -42,7 +42,7 @@ export function LevelFilters({ selectedLevels, onSelectedLevelsChange, className
               />
               <Label
                 htmlFor={`deslizamientos-level-${level}`}
-                className="flex items-center gap-1.5 text-sm font-normal"
+                className="flex min-h-10 flex-1 items-center gap-1.5 text-sm font-normal"
               >
                 <span className={`size-2.5 rounded-full ${style.swatchClass}`} aria-hidden="true" />
                 {level}

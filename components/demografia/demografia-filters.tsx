@@ -66,11 +66,11 @@ export function DemografiaFilters({
         <legend className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Categoría de población
         </legend>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-1">
           {DEMOGRAFIA_CATEGORIES.map((category) => {
             const checked = selectedCategories.includes(category.key)
             return (
-              <div key={category.key} className="flex items-center gap-2">
+              <div key={category.key} className="flex min-h-10 items-center gap-2">
                 <Checkbox
                   id={`demografia-cat-${category.key}`}
                   checked={checked}
@@ -78,7 +78,7 @@ export function DemografiaFilters({
                 />
                 <Label
                   htmlFor={`demografia-cat-${category.key}`}
-                  className="flex items-center gap-1.5 text-sm font-normal"
+                  className="flex min-h-10 flex-1 items-center gap-1.5 text-sm font-normal"
                 >
                   <span
                     className={`size-2.5 rounded-full ${category.swatchClass}`}
