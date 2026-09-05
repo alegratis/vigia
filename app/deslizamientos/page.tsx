@@ -1,9 +1,8 @@
 import Link from "next/link"
-import { ArrowLeft, Mountain } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
-import { Card, CardContent } from "@/components/ui/card"
-import { HazardMapSection } from "@/components/maps/hazard-map-section"
+import { DeslizamientosMapSection } from "@/components/maps/deslizamientos-map-section"
 import { DEPARTMENT } from "@/lib/geoglows/stations"
 
 export const metadata = {
@@ -35,35 +34,16 @@ export default function LandslidesPage() {
               Deslizamientos
             </h1>
             <p className="max-w-2xl text-pretty leading-relaxed text-muted-foreground">
-              Anticipamos dónde es más probable que ocurra un deslizamiento en el
-              corredor de Sevilla, Caicedonia y Zarzal. El modelo de susceptibilidad
-              que combinará pendiente, geología y precipitación en tiempo real está
-              en definición; mientras tanto, esta sección muestra el mapa del
-              territorio y la población expuesta en el área visible.
+              Zonificación de la susceptibilidad a deslizamiento en el corredor de
+              Sevilla y Caicedonia (Zarzal, sobre el piso plano del valle, no
+              presenta zonas en la capa fuente). Los cinco niveles de amenaza —de
+              muy bajo a muy alto— provienen de una capa pública publicada en
+              ArcGIS Online y se cruzan aquí con la grilla de densidad poblacional
+              para estimar cuántas personas están expuestas en cada nivel.
             </p>
           </div>
 
-          <HazardMapSection
-            slug="deslizamientos"
-            title="Mapa de deslizamientos"
-            basis="rural"
-            basisLabel="Población rural"
-          />
-
-          <Card className="border-[var(--chart-3)]/50">
-            <CardContent className="flex flex-col items-start gap-3 py-6">
-              <div className="flex items-center gap-2 text-foreground">
-                <Mountain className="size-5 text-[var(--chart-3)]" aria-hidden="true" />
-                <p className="font-medium">Modelo de susceptibilidad próximamente</p>
-              </div>
-              <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-                Aún no hay una fuente satelital o hidrológica en vivo para clasificar
-                el riesgo de deslizamiento como sí ocurre con las inundaciones
-                (GEOGLOWS) y los incendios (NASA FIRMS). Cuando esté disponible,
-                aparecerá aquí con la misma estructura de monitoreo en vivo.
-              </p>
-            </CardContent>
-          </Card>
+          <DeslizamientosMapSection />
         </section>
       </main>
 

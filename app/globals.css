@@ -44,6 +44,11 @@
   --color-demografia-hombres-foreground: var(--demografia-hombres-foreground);
   --color-demografia-mujeres: var(--demografia-mujeres);
   --color-demografia-mujeres-foreground: var(--demografia-mujeres-foreground);
+  --color-deslizamientos-muy-bajo: var(--deslizamientos-muy-bajo);
+  --color-deslizamientos-bajo: var(--deslizamientos-bajo);
+  --color-deslizamientos-medio: var(--deslizamientos-medio);
+  --color-deslizamientos-alto: var(--deslizamientos-alto);
+  --color-deslizamientos-muy-alto: var(--deslizamientos-muy-alto);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -97,6 +102,13 @@
   --demografia-hombres-foreground: oklch(0.99 0 0);
   --demografia-mujeres: oklch(0.86 0.07 55);
   --demografia-mujeres-foreground: oklch(0.3 0.06 55);
+
+  /* Deslizamientos susceptibility ramp: yellow-green (muy bajo) to deep red (muy alto). */
+  --deslizamientos-muy-bajo: oklch(0.85 0.14 115);
+  --deslizamientos-bajo: oklch(0.82 0.15 95);
+  --deslizamientos-medio: oklch(0.75 0.15 65);
+  --deslizamientos-alto: oklch(0.68 0.18 40);
+  --deslizamientos-muy-alto: oklch(0.55 0.19 25);
 }
 
 .dark {
@@ -142,6 +154,13 @@
   --demografia-hombres-foreground: oklch(0.98 0 0);
   --demografia-mujeres: oklch(0.76 0.08 55);
   --demografia-mujeres-foreground: oklch(0.18 0.04 55);
+
+  /* Deslizamientos susceptibility ramp: kept vivid and legible on dark surfaces. */
+  --deslizamientos-muy-bajo: oklch(0.78 0.13 115);
+  --deslizamientos-bajo: oklch(0.76 0.15 95);
+  --deslizamientos-medio: oklch(0.72 0.16 65);
+  --deslizamientos-alto: oklch(0.66 0.18 40);
+  --deslizamientos-muy-alto: oklch(0.6 0.2 25);
 }
 
 @layer base {
