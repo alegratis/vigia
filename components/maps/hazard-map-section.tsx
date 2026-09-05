@@ -34,12 +34,21 @@ export function HazardMapSection({
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        {source === "geoglows" ? (
-          <GeoglowsLiveMapLoader onBoundsChange={setBounds} />
-        ) : (
-          <QgisMapCanvas slug={slug} title={title} onBoundsChange={setBounds} />
-        )}
-        <LiveAreaPopulation bounds={bounds} basis={basis} basisLabel={basisLabel} />
+        <div role="region" aria-label={title}>
+          <p className="sr-only">
+            Mapa interactivo de {title.toLowerCase()}. La tabla de población en el
+            encuadre actual, a la derecha, resume el mismo contenido en formato de
+            texto.
+          </p>
+          {source === "geoglows" ? (
+            <GeoglowsLiveMapLoader onBoundsChange={setBounds} />
+          ) : (
+            <QgisMapCanvas slug={slug} title={title} onBoundsChange={setBounds} />
+          )}
+        </div>
+        <div aria-live="polite">
+          <LiveAreaPopulation bounds={bounds} basis={basis} basisLabel={basisLabel} />
+        </div>
       </div>
       {source === "qgis2web" && <QgisExportGuide slug={slug} />}
       {source === "geoglows" && (

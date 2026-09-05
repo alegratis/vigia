@@ -17,7 +17,11 @@ export default function FirePage() {
     <div className="flex min-h-screen flex-col">
       <SiteHeader />
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-12">
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 focus-visible:outline-none sm:px-6 sm:py-12"
+      >
         <Link
           href="/"
           className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
@@ -49,7 +53,9 @@ export default function FirePage() {
             basisLabel="Población rural"
           />
 
-          <FireOverview />
+          <div aria-live="polite">
+            <FireOverview />
+          </div>
         </section>
       </main>
 

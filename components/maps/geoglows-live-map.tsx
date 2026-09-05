@@ -200,7 +200,10 @@ function GeoglowsLiveMapImpl({ onBoundsChange }: { onBoundsChange?: (bounds: Map
   }, [overlay])
 
   return (
-    <div ref={containerRef} className="relative h-full min-h-[420px] w-full overflow-hidden rounded-xl border border-border">
+    <div
+      ref={containerRef}
+      className="relative h-full min-h-[320px] w-full overflow-hidden rounded-xl border border-border sm:min-h-[420px]"
+    >
       <MapContainer
         center={AOI_CENTER}
         zoom={11}
