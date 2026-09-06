@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
+  AttributionControl,
   MapContainer,
   TileLayer,
   ImageOverlay,
@@ -319,8 +320,10 @@ function GeoglowsLiveMapImpl({ onBoundsChange }: { onBoundsChange?: (bounds: Map
         className="h-full w-full"
         bounds={toLatLngBounds(AOI_BOUNDS)}
         zoomControl={false}
+        attributionControl={false}
       >
         <ZoomControl position="topright" />
+        <AttributionControl position="bottomright" prefix="Leaflet" />
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import {
+  AttributionControl,
   CircleMarker,
   MapContainer,
   TileLayer,
@@ -231,9 +232,11 @@ function IncendiosLiveMapImpl({
         maxZoom={16}
         bounds={AOI_BOUNDS}
         zoomControl={false}
+        attributionControl={false}
         className="h-full w-full"
       >
         <ZoomControl position="topright" />
+        <AttributionControl position="bottomright" prefix="Leaflet" />
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

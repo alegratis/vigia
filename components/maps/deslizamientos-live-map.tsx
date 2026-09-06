@@ -1,7 +1,16 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { MapContainer, TileLayer, GeoJSON, Popup, ZoomControl, useMap, useMapEvents } from "react-leaflet"
+import {
+  AttributionControl,
+  MapContainer,
+  TileLayer,
+  GeoJSON,
+  Popup,
+  ZoomControl,
+  useMap,
+  useMapEvents,
+} from "react-leaflet"
 import type { Layer, LatLngBoundsExpression, LeafletMouseEvent, PathOptions } from "leaflet"
 import "leaflet/dist/leaflet.css"
 import { Loader2 } from "lucide-react"
@@ -158,9 +167,11 @@ function DeslizamientosLiveMapImpl({
         maxZoom={16}
         bounds={AOI_BOUNDS}
         zoomControl={false}
+        attributionControl={false}
         className="h-full w-full"
       >
         <ZoomControl position="topright" />
+        <AttributionControl position="bottomright" prefix="Leaflet" />
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
