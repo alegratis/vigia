@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { MapContainer, TileLayer, GeoJSON, Popup, useMap, useMapEvents } from "react-leaflet"
-import type { Layer, LeafletMouseEvent, PathOptions } from "leaflet"
+import type { Layer, LatLngBoundsExpression, LeafletMouseEvent, PathOptions } from "leaflet"
 import "leaflet/dist/leaflet.css"
 import { Loader2 } from "lucide-react"
 import useSWR from "swr"
@@ -15,7 +15,21 @@ import { resolveCssColor } from "@/lib/resolve-css-color"
 import type { DeslizamientosResponse } from "@/lib/deslizamientos/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
 
-const AOI_CENTER: [number, number] = [4.42, -75.86]
+// Fallback center if bounds-fitting is unavailable — the midpoint of AOI_BOUNDS below.
+const AOI_CENTER: [number, number] = [4.16, -75.89]
+
+/**
+ * Frames Sevilla and Caicedonia's full susceptibility extent (queried live
+ * from the ArcGIS layer's envelope, west/south/east/north = -76.04/3.90/
+ * -75.74/4.42, with a small margin). The map previously used a fixed center
+ * pinned to the extent's northern edge, which showed only the northern
+ * sliver of Sevilla and cropped out the rural, mountainous south where most
+ * of the susceptibility zones sit.
+ */
+const AOI_BOUNDS: LatLngBoundsExpression = [
+  [3.88, -76.06],
+  [4.44, -75.72],
+]
 
 const fetcher = async (url: string): Promise<DeslizamientosResponse> => {
   const res = await fetch(url)
@@ -137,7 +151,14 @@ function DeslizamientosLiveMapImpl({
 
   return (
     <div className="relative h-full min-h-[320px] w-full overflow-hidden rounded-xl border border-border sm:min-h-[420px]">
-      <MapContainer center={AOI_CENTER} zoom={12} minZoom={9} maxZoom={16} className="h-full w-full">
+      <MapContainer
+        center={AOI_CENTER}
+        zoom={11}
+        minZoom={9}
+        maxZoom={16}
+        bounds={AOI_BOUNDS}
+        className="h-full w-full"
+      >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
