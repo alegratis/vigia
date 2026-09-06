@@ -20,15 +20,21 @@ export interface LatLngBounds {
   west: number
 }
 
-/** Default area of interest: Sevilla / Caicedonia / Zarzal corridor, Valle del Cauca. */
+/**
+ * Default area of interest: Sevilla / Caicedonia / Zarzal corridor, Valle del
+ * Cauca. The southern edge extends to 3.88°N so Sevilla's full extent is
+ * framed on load — its rural, mountainous south (down to ~3.90°N per the
+ * landslide-susceptibility layer) was previously cropped out, leaving only
+ * the municipality's northern edge visible.
+ */
 export const AOI_BOUNDS: LatLngBounds = {
   north: 4.62,
-  south: 4.08,
+  south: 3.88,
   east: -75.72,
   west: -76.22,
 }
 
-export const AOI_CENTER: [number, number] = [4.35, -75.97]
+export const AOI_CENTER: [number, number] = [4.25, -75.97]
 
 /** Builds the export-image URL for the current viewport (lat/lon in, lat/lon out — no reprojection needed). */
 export function buildExportUrl(bounds: LatLngBounds, width: number, height: number): string {
