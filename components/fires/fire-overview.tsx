@@ -45,7 +45,7 @@ const fetcher = async (url: string): Promise<FiresResponse> => {
   return res.json()
 }
 
-const DAY_OPTIONS = [1, 2, 3, 5, 7] as const
+const DAY_OPTIONS = [1, 2, 3, 5] as const
 
 export function FireOverview() {
   const [days, setDays] = useState<number>(2)

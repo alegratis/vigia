@@ -1,7 +1,16 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { MapContainer, TileLayer, WMSTileLayer, GeoJSON, Popup, useMap, useMapEvents } from "react-leaflet"
+import {
+  CircleMarker,
+  MapContainer,
+  TileLayer,
+  WMSTileLayer,
+  GeoJSON,
+  Popup,
+  useMap,
+  useMapEvents,
+} from "react-leaflet"
 import type { Layer, LatLngBoundsExpression, LeafletMouseEvent, PathOptions, WMSParams } from "leaflet"
 import "leaflet/dist/leaflet.css"
 import { Loader2 } from "lucide-react"
@@ -13,8 +22,23 @@ import {
 } from "@/lib/incendios/levels"
 import { forecastDayOptions, GWIS_FWI_LAYER, GWIS_LEGEND_URL, GWIS_WMS_URL } from "@/lib/incendios/gwis"
 import { resolveCssColor } from "@/lib/resolve-css-color"
+import { CONFIDENCE_STYLES, formatDateTime, formatDistance, formatFrp } from "@/lib/firms/ui"
 import type { IncendiosAmenazaResponse } from "@/lib/incendios/api-types"
+import type { FireDetection, FiresResponse } from "@/lib/firms/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
+
+const FIRE_DAY_OPTIONS = [1, 2, 3, 5] as const
+
+const firesFetcher = async (url: string): Promise<FiresResponse> => {
+  const res = await fetch(url)
+  if (!res.ok) throw new Error("No se pudo cargar los focos activos de NASA FIRMS")
+  return res.json()
+}
+
+/** Scale a marker's radius (px) by its Fire Radiative Power so hotter fires stand out. */
+function fireRadius(frp: number): number {
+  return Math.min(11, Math.max(4, 4 + Math.sqrt(frp) / 2))
+}
 
 // Fallback center if bounds-fitting is unavailable — the midpoint of AOI_BOUNDS below.
 const AOI_CENTER: [number, number] = [4.28, -75.9]
@@ -92,6 +116,26 @@ function FwiLegend() {
   )
 }
 
+function FireLegend({ colors }: { colors: Record<FireDetection["confidence"], string> | null }) {
+  return (
+    <div className="pointer-events-none absolute right-3 top-3 z-[400] rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
+      <p className="mb-1.5 font-medium text-foreground">Focos activos (NASA FIRMS)</p>
+      <ul className="flex flex-col gap-1">
+        {(Object.keys(CONFIDENCE_STYLES) as FireDetection["confidence"][]).map((key) => (
+          <li key={key} className="flex items-center gap-2 text-muted-foreground">
+            <span
+              className="size-2.5 shrink-0 rounded-full border border-white/60"
+              style={{ backgroundColor: colors?.[key] ?? "transparent" }}
+              aria-hidden="true"
+            />
+            {CONFIDENCE_STYLES[key].label}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 /**
  * Live forest-fire threat map: renders the public `AmenazaIncendios`
  * polygons published on ArcGIS Online (by vereda), with an optional overlay
@@ -113,11 +157,29 @@ function IncendiosLiveMapImpl({
   const dayOptions = useMemo(() => forecastDayOptions(), [])
   const [selectedDay, setSelectedDay] = useState(dayOptions[0].value)
 
+  const [showFires, setShowFires] = useState(true)
+  const [fireDays, setFireDays] = useState<number>(2)
+  const { data: firesData } = useSWR<FiresResponse>(
+    showFires ? `/api/incendios?days=${fireDays}` : null,
+    firesFetcher,
+    { revalidateOnFocus: false },
+  )
+  const [fireColors, setFireColors] = useState<Record<FireDetection["confidence"], string> | null>(
+    null,
+  )
+
   useEffect(() => {
     const entries = FIRE_THREAT_LEVELS.map(
       (level) => [level, resolveCssColor(fireLevelColorToken(level))] as const,
     )
     setResolvedColors(Object.fromEntries(entries))
+  }, [])
+
+  useEffect(() => {
+    const entries = (Object.keys(CONFIDENCE_STYLES) as FireDetection["confidence"][]).map(
+      (key) => [key, resolveCssColor(CONFIDENCE_STYLES[key].color)] as const,
+    )
+    setFireColors(Object.fromEntries(entries) as Record<FireDetection["confidence"], string>)
   }, [])
 
   const style = useCallback(
@@ -198,6 +260,33 @@ function IncendiosLiveMapImpl({
             onEachFeature={onEachFeature}
           />
         )}
+        {showFires &&
+          fireColors &&
+          firesData?.detections.map((d) => (
+            <CircleMarker
+              key={d.id}
+              center={[d.lat, d.lon]}
+              radius={fireRadius(d.frp)}
+              pathOptions={{
+                color: "#fff",
+                weight: 1,
+                fillColor: fireColors[d.confidence],
+                fillOpacity: 0.85,
+              }}
+            >
+              <Popup>
+                <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
+                  <strong>{formatDateTime(d.acquiredAt)}</strong>
+                  <span>
+                    Cerca de {d.nearest.name} · {formatDistance(d.nearest.distanceKm)}
+                  </span>
+                  <span>Confianza: {CONFIDENCE_STYLES[d.confidence].label}</span>
+                  <span>FRP: {formatFrp(d.frp)}</span>
+                  <span>Satélite: {d.satellite}</span>
+                </div>
+              </Popup>
+            </CircleMarker>
+          ))}
         {onBoundsChange && <BoundsSync onBoundsChange={onBoundsChange} />}
       </MapContainer>
 
@@ -224,6 +313,29 @@ function IncendiosLiveMapImpl({
             ))}
           </select>
         )}
+        <span className="h-4 w-px bg-border" aria-hidden="true" />
+        <label className="flex items-center gap-1.5 font-medium text-foreground">
+          <input
+            type="checkbox"
+            checked={showFires}
+            onChange={(e) => setShowFires(e.target.checked)}
+            className="size-3.5 accent-[var(--primary)]"
+          />
+          Focos activos (FIRMS)
+        </label>
+        {showFires && (
+          <select
+            value={fireDays}
+            onChange={(e) => setFireDays(Number(e.target.value))}
+            className="rounded border border-border bg-background px-1.5 py-0.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {FIRE_DAY_OPTIONS.map((d) => (
+              <option key={d} value={d}>
+                {d} {d === 1 ? "día" : "días"}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
 
       {!data && !error && (
@@ -238,6 +350,7 @@ function IncendiosLiveMapImpl({
       )}
       <ThreatLegend />
       {showForecast && <FwiLegend />}
+      {showFires && <FireLegend colors={fireColors} />}
     </div>
   )
 }
