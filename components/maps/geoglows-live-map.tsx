@@ -1,11 +1,12 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { MapContainer, TileLayer, ImageOverlay, Marker, Popup, useMap, useMapEvents } from "react-leaflet"
-import type { LatLngBoundsExpression } from "leaflet"
+import { MapContainer, TileLayer, ImageOverlay, GeoJSON, Marker, Popup, useMap, useMapEvents } from "react-leaflet"
+import type { Layer, LatLngBoundsExpression, LeafletMouseEvent, PathOptions } from "leaflet"
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
 import { Loader2 } from "lucide-react"
+import useSWR from "swr"
 import {
   AOI_BOUNDS,
   AOI_CENTER,
@@ -17,15 +18,23 @@ import {
   type ReachInfo,
 } from "@/lib/geoglows/live-map"
 import { STATIONS } from "@/lib/geoglows/stations"
+import { FLOOD_SUSCEPTIBILITY_LEVELS, floodSusceptibilityColorToken } from "@/lib/inundaciones/levels"
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import { formatFlow } from "@/lib/flood-ui"
 import type { MapBounds } from "@/lib/map-bounds"
+import type { InundacionesSusceptibilidadResponse } from "@/lib/inundaciones/api-types"
 
 function toLatLngBounds(b: LatLngBounds): LatLngBoundsExpression {
   return [
     [b.south, b.west],
     [b.north, b.east],
   ]
+}
+
+const susceptibilityFetcher = async (url: string): Promise<InundacionesSusceptibilidadResponse> => {
+  const res = await fetch(url)
+  if (!res.ok) throw new Error("No se pudo cargar la capa de susceptibilidad a inundaciones")
+  return res.json()
 }
 
 const stationIcon = L.divIcon({
@@ -145,7 +154,7 @@ function ReachClickLayer() {
   )
 }
 
-function Legend() {
+function ReturnPeriodLegend() {
   const [colors, setColors] = useState<string[] | null>(null)
   const legend = [
     { value: 0, label: "Normal", token: "var(--chart-2)" },
@@ -162,7 +171,7 @@ function Legend() {
 
   return (
     <div className="pointer-events-none absolute bottom-3 left-3 z-[400] rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
-      <p className="mb-1.5 font-medium text-foreground">Periodo de retorno</p>
+      <p className="mb-1.5 font-medium text-foreground">Periodo de retorno (río, en vivo)</p>
       <ul className="flex flex-col gap-1">
         {legend.map((l, i) => (
           <li key={l.value} className="flex items-center gap-2 text-muted-foreground">
@@ -179,16 +188,104 @@ function Legend() {
   )
 }
 
+function SusceptibilityLegend() {
+  const [colors, setColors] = useState<string[] | null>(null)
+
+  useEffect(() => {
+    setColors(
+      FLOOD_SUSCEPTIBILITY_LEVELS.map((level) => resolveCssColor(floodSusceptibilityColorToken(level))),
+    )
+  }, [])
+
+  return (
+    <div className="pointer-events-none absolute bottom-3 right-3 z-[400] rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
+      <p className="mb-1.5 font-medium text-foreground">Susceptibilidad a inundación</p>
+      <ul className="flex flex-col gap-1">
+        {FLOOD_SUSCEPTIBILITY_LEVELS.map((level, i) => (
+          <li key={level} className="flex items-center gap-2 text-muted-foreground">
+            <span
+              className="size-2.5 shrink-0 rounded-full"
+              style={{ backgroundColor: colors?.[i] ?? "transparent" }}
+              aria-hidden="true"
+            />
+            {level}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 /**
  * Live GEOGLOWS flood map: renders their published ArcGIS Living Atlas
  * "GlobalWaterModel_Medium" layer directly over OpenStreetMap, centered on
- * the study area. Click any reach for its live forecast attributes.
+ * the study area, plus the static flood-susceptibility zoning
+ * (`susceptibilidad_inundaciones`, see lib/inundaciones/client.ts) as a
+ * toggleable layer underneath. Click any reach for its live forecast
+ * attributes, or any susceptibility zone for its threat level.
  */
 function GeoglowsLiveMapImpl({ onBoundsChange }: { onBoundsChange?: (bounds: MapBounds) => void }) {
   const [overlay, setOverlay] = useState<{ bounds: LatLngBounds; width: number; height: number } | null>(
     null,
   )
   const containerRef = useRef<HTMLDivElement>(null)
+  const [showSusceptibility, setShowSusceptibility] = useState(true)
+
+  const { data: susceptibility, error: susceptibilityError } = useSWR<InundacionesSusceptibilidadResponse>(
+    "/api/inundaciones/susceptibilidad",
+    susceptibilityFetcher,
+    { revalidateOnFocus: false },
+  )
+
+  const [resolvedColors, setResolvedColors] = useState<Record<string, string> | null>(null)
+  useEffect(() => {
+    const entries = FLOOD_SUSCEPTIBILITY_LEVELS.map(
+      (level) => [level, resolveCssColor(floodSusceptibilityColorToken(level))] as const,
+    )
+    setResolvedColors(Object.fromEntries(entries))
+  }, [])
+
+  const susceptibilityStyle = useCallback(
+    (feature?: GeoJSON.Feature): PathOptions => {
+      const level = feature?.properties?.descripcio as string | undefined
+      const color = (level && resolvedColors?.[level]) || "var(--muted-foreground)"
+      return {
+        color,
+        weight: 1,
+        fillColor: color,
+        fillOpacity: 0.45,
+      }
+    },
+    [resolvedColors],
+  )
+
+  const onEachSusceptibilityFeature = useCallback((feature: GeoJSON.Feature, layer: Layer) => {
+    const nivel = feature.properties?.descripcio as string | undefined
+    layer.bindPopup(
+      `<div style="font-size:13px;display:flex;flex-direction:column;gap:2px">
+        <strong>Susceptibilidad a inundación</strong>
+        <span>${nivel ?? "—"}</span>
+      </div>`,
+    )
+    layer.on("mouseover", (e: LeafletMouseEvent) => {
+      ;(e.target as Layer & { setStyle: (s: PathOptions) => void }).setStyle({ fillOpacity: 0.7 })
+    })
+    layer.on("mouseout", (e: LeafletMouseEvent) => {
+      ;(e.target as Layer & { setStyle: (s: PathOptions) => void }).setStyle({ fillOpacity: 0.45 })
+    })
+    // Stop the click from bubbling to the map's own click handler (ReachClickLayer),
+    // which would otherwise fire its GEOGLOWS reach lookup on every zone click and
+    // steal the popup — Leaflet only keeps one open per map.
+    layer.on("click", (e: LeafletMouseEvent) => {
+      L.DomEvent.stopPropagation(e)
+    })
+  }, [])
+
+  // Re-key the GeoJSON layer once colors resolve so Leaflet re-applies `style` per feature.
+  const susceptibilityGeoJsonKey = useMemo(
+    () => (resolvedColors ? "resolved" : "pending"),
+    [resolvedColors],
+  )
 
   const handleOverlayChange = useCallback((bounds: LatLngBounds, width: number, height: number) => {
     setOverlay({ bounds, width, height })
@@ -216,6 +313,14 @@ function GeoglowsLiveMapImpl({ onBoundsChange }: { onBoundsChange?: (bounds: Map
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+        {showSusceptibility && susceptibility?.polygons && resolvedColors && (
+          <GeoJSON
+            key={susceptibilityGeoJsonKey}
+            data={susceptibility.polygons as unknown as GeoJSON.GeoJsonObject}
+            style={susceptibilityStyle}
+            onEachFeature={onEachSusceptibilityFeature}
+          />
+        )}
         {overlayUrl && overlay && (
           <ImageOverlay url={overlayUrl} bounds={toLatLngBounds(overlay.bounds)} opacity={0.9} />
         )}
@@ -240,7 +345,26 @@ function GeoglowsLiveMapImpl({ onBoundsChange }: { onBoundsChange?: (bounds: Map
           <OverlaySync onBoundsChange={onBoundsChange} onOverlayChange={handleOverlayChange} />
         )}
       </MapContainer>
-      <Legend />
+
+      <div className="absolute left-3 top-3 z-[400] flex items-center gap-2 rounded-md border border-border bg-card/95 px-2.5 py-1.5 text-xs shadow-sm backdrop-blur">
+        <label className="flex items-center gap-1.5 font-medium text-foreground">
+          <input
+            type="checkbox"
+            checked={showSusceptibility}
+            onChange={(e) => setShowSusceptibility(e.target.checked)}
+            className="size-3.5 accent-[var(--primary)]"
+          />
+          Susceptibilidad a inundación
+        </label>
+      </div>
+      {showSusceptibility && !susceptibility && !susceptibilityError && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-background/40">
+          <Loader2 className="size-6 animate-spin text-muted-foreground" aria-hidden="true" />
+        </div>
+      )}
+
+      <ReturnPeriodLegend />
+      {showSusceptibility && <SusceptibilityLegend />}
     </div>
   )
 }
