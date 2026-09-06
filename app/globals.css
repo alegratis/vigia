@@ -53,6 +53,11 @@
   --color-incendios-bajo: var(--incendios-bajo);
   --color-incendios-medio: var(--incendios-medio);
   --color-incendios-alto: var(--incendios-alto);
+  --color-inundaciones-muy-baja: var(--inundaciones-muy-baja);
+  --color-inundaciones-baja: var(--inundaciones-baja);
+  --color-inundaciones-moderada: var(--inundaciones-moderada);
+  --color-inundaciones-alta: var(--inundaciones-alta);
+  --color-inundaciones-muy-alta: var(--inundaciones-muy-alta);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -119,6 +124,18 @@
   --incendios-bajo: oklch(0.8 0.16 75);
   --incendios-medio: oklch(0.7 0.19 50);
   --incendios-alto: oklch(0.56 0.2 28);
+
+  /*
+   * Inundaciones susceptibility ramp: pale sky-blue (muy baja) to deep
+   * indigo (muy alta). Kept in the blue family, distinct from the
+   * green-to-red return-period scale used for the live GEOGLOWS forecast
+   * on the same map, so the two layers read as separate signals.
+   */
+  --inundaciones-muy-baja: oklch(0.9 0.05 235);
+  --inundaciones-baja: oklch(0.8 0.09 240);
+  --inundaciones-moderada: oklch(0.68 0.13 250);
+  --inundaciones-alta: oklch(0.55 0.16 262);
+  --inundaciones-muy-alta: oklch(0.4 0.17 270);
 }
 
 .dark {
@@ -177,6 +194,13 @@
   --incendios-bajo: oklch(0.75 0.16 75);
   --incendios-medio: oklch(0.68 0.19 50);
   --incendios-alto: oklch(0.6 0.21 28);
+
+  /* Inundaciones susceptibility ramp: kept vivid and legible on dark surfaces. */
+  --inundaciones-muy-baja: oklch(0.84 0.05 235);
+  --inundaciones-baja: oklch(0.74 0.09 240);
+  --inundaciones-moderada: oklch(0.64 0.13 250);
+  --inundaciones-alta: oklch(0.56 0.16 262);
+  --inundaciones-muy-alta: oklch(0.48 0.18 270);
 }
 
 @layer base {
