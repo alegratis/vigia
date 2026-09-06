@@ -18,6 +18,8 @@ import { assessReach } from "@/lib/geoglows/service"
 import type { FloodLevelKey } from "@/lib/geoglows/flood"
 import { getAreaFires, FirmsConfigError } from "@/lib/firms/client"
 import { summarize } from "@/lib/firms/summary"
+import { getWorstLevelByMunicipio } from "@/lib/deslizamientos/client"
+import type { SusceptibilityLevel } from "@/lib/deslizamientos/levels"
 import { getMunicipioPopulations, type MunicipioPopulation } from "./dane"
 
 const SEVERITY_RANK: Record<FloodLevelKey, number> = {
@@ -34,6 +36,7 @@ export interface MunicipioExposure {
   population: MunicipioPopulation
   flood: { worstLevel: FloodLevelKey; stationCount: number } | null
   fire: { count: number; highConfidence: number } | null
+  landslide: { worstLevel: SusceptibilityLevel } | null
 }
 
 export interface ExposureResult {
@@ -41,10 +44,11 @@ export interface ExposureResult {
   floodError: string | null
   fireError: string | null
   fireNeedsConfig: boolean
+  landslideError: string | null
 }
 
 export async function getExposureOverview(): Promise<ExposureResult> {
-  const [populations, floodSettled, fireOutcome] = await Promise.all([
+  const [populations, floodSettled, fireOutcome, landslideOutcome] = await Promise.all([
     getMunicipioPopulations(),
     Promise.allSettled(STATIONS.map((s) => assessReach(s.reachId))),
     (async () => {
@@ -56,6 +60,16 @@ export async function getExposureOverview(): Promise<ExposureResult> {
           ok: false as const,
           needsConfig: err instanceof FirmsConfigError,
           error: err instanceof Error ? err.message : "Error al consultar NASA FIRMS",
+        }
+      }
+    })(),
+    (async () => {
+      try {
+        return { ok: true as const, worstByMunicipio: await getWorstLevelByMunicipio() }
+      } catch (err) {
+        return {
+          ok: false as const,
+          error: err instanceof Error ? err.message : "Error al consultar la capa de deslizamientos",
         }
       }
     })(),
@@ -104,8 +118,15 @@ export async function getExposureOverview(): Promise<ExposureResult> {
       ? fireByMun.get(population.municipio) ?? { count: 0, highConfidence: 0 }
       : null
 
-    return { municipio: population.municipio, population, flood, fire }
+    const worstLandslideLevel = landslideOutcome.ok
+      ? landslideOutcome.worstByMunicipio.get(population.municipio)
+      : undefined
+    const landslide = worstLandslideLevel ? { worstLevel: worstLandslideLevel } : null
+
+    return { municipio: population.municipio, population, flood, fire, landslide }
   })
 
-  return { municipios, floodError, fireError, fireNeedsConfig }
+  const landslideError = landslideOutcome.ok ? null : landslideOutcome.error
+
+  return { municipios, floodError, fireError, fireNeedsConfig, landslideError }
 }

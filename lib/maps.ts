@@ -21,12 +21,13 @@ export const mapModels: MapModel[] = [
     title: "Deslizamientos",
     hook: "Anticipamos dónde es más probable que ocurra un deslizamiento antes de que se convierta en una emergencia.",
     description:
-      "Integramos modelos satelitales de la NASA, información ambiental del territorio y precipitación en tiempo real para identificar las zonas con mayor probabilidad de ocurrencia. El modelo de susceptibilidad está en definición; ya puedes explorar el mapa base y la demografía del área.",
+      "Zonificación de la susceptibilidad a deslizamiento en Sevilla y Caicedonia, cruzada con la grilla de densidad poblacional para estimar cuántas personas están expuestas en cada uno de los cinco niveles de amenaza.",
     image: "/images/deslizamientos-map.png",
     imageAlt:
       "Mapa de susceptibilidad a deslizamientos con zonas de riesgo en terreno de pendiente",
     tag: "Amenaza geológica",
     href: "/deslizamientos",
+    ready: true,
   },
   {
     slug: "inundaciones",

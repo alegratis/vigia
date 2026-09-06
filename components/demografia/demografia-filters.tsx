@@ -5,7 +5,8 @@ import { Label } from "@/components/ui/label"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import {
   AVAILABLE_YEARS,
-  DEMOGRAFIA_CATEGORIES,
+  DEMOGRAFIA_CATEGORY_GROUPS,
+  categoriesInGroup,
   type AvailableYear,
   type DemografiaCategoryKey,
 } from "@/lib/demografia/categories"
@@ -62,35 +63,53 @@ export function DemografiaFilters({
         </ToggleGroup>
       </fieldset>
 
-      <fieldset className="mt-5 flex flex-col gap-3">
-        <legend className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Categoría de población
-        </legend>
-        <div className="grid grid-cols-2 gap-1">
-          {DEMOGRAFIA_CATEGORIES.map((category) => {
-            const checked = selectedCategories.includes(category.key)
-            return (
-              <div key={category.key} className="flex min-h-10 items-center gap-2">
-                <Checkbox
-                  id={`demografia-cat-${category.key}`}
-                  checked={checked}
-                  onCheckedChange={(value) => toggleCategory(category.key, value === true)}
-                />
-                <Label
-                  htmlFor={`demografia-cat-${category.key}`}
-                  className="flex min-h-10 flex-1 items-center gap-1.5 text-sm font-normal"
-                >
-                  <span
-                    className={`size-2.5 rounded-full ${category.swatchClass}`}
-                    aria-hidden="true"
-                  />
-                  {category.label}
-                </Label>
-              </div>
-            )
-          })}
-        </div>
-      </fieldset>
+      <div className="mt-5 flex flex-col gap-5">
+        {DEMOGRAFIA_CATEGORY_GROUPS.map((group) => (
+          <fieldset key={group.key} className="flex flex-col gap-2">
+            <legend className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {group.label}
+            </legend>
+            <div className="grid grid-cols-2 gap-2">
+              {categoriesInGroup(group.key).map((category) => {
+                const checked = selectedCategories.includes(category.key)
+                return (
+                  <div
+                    key={category.key}
+                    className="flex min-h-10 items-center gap-2 rounded-md border px-2.5 transition-colors"
+                    style={
+                      checked
+                        ? {
+                            borderColor: category.colorToken,
+                            backgroundColor: `color-mix(in oklab, ${category.colorToken} 18%, transparent)`,
+                          }
+                        : { borderColor: "var(--border)" }
+                    }
+                  >
+                    <Checkbox
+                      id={`demografia-cat-${category.key}`}
+                      checked={checked}
+                      onCheckedChange={(value) => toggleCategory(category.key, value === true)}
+                    />
+                    <Label
+                      htmlFor={`demografia-cat-${category.key}`}
+                      className="flex flex-1 items-center gap-1.5 text-sm font-medium"
+                      style={{ color: checked ? "var(--foreground)" : "var(--muted-foreground)" }}
+                    >
+                      <span
+                        className="size-2.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: category.colorToken }}
+                        aria-hidden="true"
+                      />
+                      {category.label}
+                    </Label>
+                  </div>
+                )
+              })}
+            </div>
+            <p className="text-xs text-muted-foreground">{group.hint}</p>
+          </fieldset>
+        ))}
+      </div>
     </div>
   )
 }
