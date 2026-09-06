@@ -176,7 +176,9 @@ export async function getAreaFires(dayRange = 2): Promise<FireResult> {
     throw new FirmsConfigError("FIRMS_MAP_KEY is not configured")
   }
 
-  const range = Math.min(Math.max(Math.trunc(dayRange), 1), 10)
+  // FIRMS' area/csv endpoint rejects this map key's requests above 5 days
+  // ("Invalid day range. Expects [1..5]."), even though other tiers allow up to 10.
+  const range = Math.min(Math.max(Math.trunc(dayRange), 1), 5)
 
   const settled = await Promise.allSettled(
     FIRMS_SOURCES.map((s) => fetchSource(mapKey, s, range)),
