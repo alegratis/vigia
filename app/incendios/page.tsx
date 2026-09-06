@@ -3,7 +3,7 @@ import { ArrowLeft } from "lucide-react"
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { FireOverview } from "@/components/fires/fire-overview"
-import { HazardMapSection } from "@/components/maps/hazard-map-section"
+import { IncendiosMapSection } from "@/components/maps/incendios-map-section"
 import { DEPARTMENT } from "@/lib/firms/area"
 
 export const metadata = {
@@ -39,19 +39,16 @@ export default function FirePage() {
               Monitoreo de incendios
             </h1>
             <p className="max-w-2xl text-pretty leading-relaxed text-muted-foreground">
-              Detección de focos de calor activos alrededor de Sevilla, Caicedonia y
-              Zarzal. Los datos provienen de los sensores VIIRS de 375 m a bordo de los
-              satélites Suomi NPP y NOAA-20/21, servidos por el sistema NASA FIRMS en
-              tiempo casi real.
+              Zonificación de la amenaza por incendios forestales en las veredas de
+              Sevilla y Caicedonia, con el pronóstico del Índice Meteorológico de
+              Incendio (FWI) de GWIS/Copernicus EFFIS superpuesto. Debajo, los focos de
+              calor activos detectados por los sensores VIIRS de 375 m a bordo de los
+              satélites Suomi NPP y NOAA-20/21, servidos por NASA FIRMS en tiempo casi
+              real.
             </p>
           </div>
 
-          <HazardMapSection
-            slug="incendios"
-            title="Mapa de incendios"
-            basis="rural"
-            basisLabel="Población rural"
-          />
+          <IncendiosMapSection />
 
           <div aria-live="polite">
             <FireOverview />
