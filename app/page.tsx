@@ -43,7 +43,7 @@ export default function Page() {
               />
             </span>
             <div className="flex flex-col items-center gap-3">
-              <h1 className="text-balance text-3xl font-semibold tracking-tight">Vigía</h1>
+              <h1 className="sr-only">Vigía</h1>
               <p className="text-pretty leading-relaxed text-muted-foreground">
                 Observación satelital e inteligencia geoespacial para anticipar
                 amenazas y fortalecer la respuesta ante emergencias en Sevilla,
