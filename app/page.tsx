@@ -22,28 +22,28 @@ export default function Page() {
         tabIndex={-1}
         className="flex flex-1 flex-col focus-visible:outline-none lg:min-h-[calc(100vh-4rem)] lg:flex-row"
       >
-        <div className="flex flex-col gap-8 border-b border-border bg-card p-6 sm:p-10 lg:w-80 lg:shrink-0 lg:justify-between lg:border-b-0 lg:border-r xl:w-96">
-          <div className="flex flex-col gap-6">
-            <span className="relative flex size-12 items-center justify-center">
+        <div className="flex flex-col items-center gap-8 border-b border-border bg-card p-6 text-center sm:p-10 lg:w-80 lg:shrink-0 lg:justify-between lg:border-b-0 lg:border-r xl:w-96">
+          <div className="flex flex-col items-center gap-6">
+            <span className="relative flex size-20 items-center justify-center">
               <Image
                 src="/images/vigia-mark-light.png"
                 alt=""
-                width={64}
-                height={49}
+                width={104}
+                height={80}
                 className="block dark:hidden"
                 priority
               />
               <Image
                 src="/images/vigia-mark-dark.png"
                 alt=""
-                width={64}
-                height={49}
+                width={104}
+                height={80}
                 className="hidden dark:block"
                 priority
               />
             </span>
-            <div className="flex flex-col gap-3">
-              <h1 className="text-balance text-3xl font-semibold tracking-tight">Vigía</h1>
+            <div className="flex flex-col items-center gap-3">
+              <h1 className="sr-only">Vigía</h1>
               <p className="text-pretty leading-relaxed text-muted-foreground">
                 Observación satelital e inteligencia geoespacial para anticipar
                 amenazas y fortalecer la respuesta ante emergencias en Sevilla,
