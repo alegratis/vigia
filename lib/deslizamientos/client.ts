@@ -16,7 +16,7 @@ import type {
   PopulationByLevel,
   SusceptibilityFeatureCollection,
 } from "./api-types"
-import { isSusceptibilityLevel } from "./levels"
+import { isSusceptibilityLevel, SUSCEPTIBILITY_LEVELS, type SusceptibilityLevel } from "./levels"
 
 const SERVICE_ROOT = "https://services8.arcgis.com/UYEK9SUzH1am9mbk/arcgis/rest/services"
 const SUSCEPTIBILITY_LAYER = `${SERVICE_ROOT}/amenaza_por_deslizamiento/FeatureServer/0`
@@ -38,6 +38,52 @@ export async function getSusceptibilityPolygons(): Promise<SusceptibilityFeature
     throw new Error("No se pudo consultar la capa de susceptibilidad a deslizamientos")
   }
   return res.json()
+}
+
+/**
+ * Fetches the worst (highest) susceptibility level present per municipality,
+ * for the demografía exposure summary. This reuses the same layer as
+ * `getSusceptibilityPolygons` but skips geometry and asks the server to
+ * distinct the municipio/IS_nivel pairs instead of downloading all 10
+ * polygons — the same "let the server aggregate" approach as
+ * `getPopulationByLevel`. Municipalities absent from the layer (Zarzal,
+ * which sits on the flat valley floor) simply don't appear in the result.
+ */
+export async function getWorstLevelByMunicipio(): Promise<Map<string, SusceptibilityLevel>> {
+  const params = new URLSearchParams({
+    where: "1=1",
+    outFields: "municipio,IS_nivel",
+    returnGeometry: "false",
+    returnDistinctValues: "true",
+    f: "json",
+  })
+  const res = await fetch(`${SUSCEPTIBILITY_LAYER}/query?${params.toString()}`, {
+    next: { revalidate: 3600 },
+  })
+  if (!res.ok) {
+    throw new Error("No se pudo consultar la capa de susceptibilidad a deslizamientos")
+  }
+  const json = await res.json()
+  const features = (json.features ?? []) as Array<{
+    attributes: { municipio?: string; IS_nivel?: string }
+  }>
+
+  const worstByMunicipio = new Map<string, SusceptibilityLevel>()
+  for (const f of features) {
+    const rawMunicipio = f.attributes.municipio
+    const level = f.attributes.IS_nivel
+    if (!rawMunicipio || !level || !isSusceptibilityLevel(level)) continue
+    // The layer stores municipio names upper-cased (e.g. "SEVILLA"); the
+    // DANE population data this gets cross-referenced against uses title
+    // case ("Sevilla"), so normalize here rather than in every caller.
+    const municipio =
+      rawMunicipio.charAt(0) + rawMunicipio.slice(1).toLowerCase()
+    const current = worstByMunicipio.get(municipio)
+    if (!current || SUSCEPTIBILITY_LEVELS.indexOf(level) > SUSCEPTIBILITY_LEVELS.indexOf(current)) {
+      worstByMunicipio.set(municipio, level)
+    }
+  }
+  return worstByMunicipio
 }
 
 /**

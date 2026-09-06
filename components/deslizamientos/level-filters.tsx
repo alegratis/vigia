@@ -29,12 +29,23 @@ export function LevelFilters({ selectedLevels, onSelectedLevelsChange, className
       <legend className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         Nivel de susceptibilidad
       </legend>
-      <div className="mt-3 grid grid-cols-2 gap-1">
+      <div className="mt-3 grid grid-cols-2 gap-2">
         {SUSCEPTIBILITY_LEVELS.map((level) => {
           const checked = selectedLevels.includes(level)
           const style = SUSCEPTIBILITY_LEVEL_STYLES[level]
           return (
-            <div key={level} className="flex min-h-10 items-center gap-2">
+            <div
+              key={level}
+              className="flex min-h-10 items-center gap-2 rounded-md border px-2.5 transition-colors"
+              style={
+                checked
+                  ? {
+                      borderColor: style.colorToken,
+                      backgroundColor: `color-mix(in oklab, ${style.colorToken} 18%, transparent)`,
+                    }
+                  : { borderColor: "var(--border)" }
+              }
+            >
               <Checkbox
                 id={`deslizamientos-level-${level}`}
                 checked={checked}
@@ -42,9 +53,14 @@ export function LevelFilters({ selectedLevels, onSelectedLevelsChange, className
               />
               <Label
                 htmlFor={`deslizamientos-level-${level}`}
-                className="flex min-h-10 flex-1 items-center gap-1.5 text-sm font-normal"
+                className="flex flex-1 items-center gap-1.5 text-sm font-medium"
+                style={{ color: checked ? "var(--foreground)" : "var(--muted-foreground)" }}
               >
-                <span className={`size-2.5 rounded-full ${style.swatchClass}`} aria-hidden="true" />
+                <span
+                  className="size-2.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: style.colorToken }}
+                  aria-hidden="true"
+                />
                 {level}
               </Label>
             </div>

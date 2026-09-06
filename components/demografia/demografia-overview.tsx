@@ -17,11 +17,13 @@ import { DemografiaFilters } from "@/components/demografia/demografia-filters"
 import { formatNumber, formatShare } from "@/lib/demografia/ui"
 import {
   AVAILABLE_YEARS,
-  DEMOGRAFIA_CATEGORIES,
+  DEMOGRAFIA_CATEGORY_GROUPS,
+  categoriesInGroup,
   getCategoryValue,
   type AvailableYear,
   type DemografiaCategoryKey,
 } from "@/lib/demografia/categories"
+import { SUSCEPTIBILITY_LEVEL_STYLES } from "@/lib/deslizamientos/levels"
 import type {
   DemografiaResponse,
   DemografiaErrorResponse,
@@ -67,9 +69,17 @@ export function DemografiaOverview() {
   const [selectedCategories, setSelectedCategories] =
     useState<DemografiaCategoryKey[]>(DEFAULT_CATEGORIES)
 
-  const activeCategories = useMemo(
-    () => DEMOGRAFIA_CATEGORIES.filter((c) => selectedCategories.includes(c.key)),
+  const activeGroups = useMemo(
+    () =>
+      DEMOGRAFIA_CATEGORY_GROUPS.map((group) => ({
+        ...group,
+        categories: categoriesInGroup(group.key).filter((c) => selectedCategories.includes(c.key)),
+      })).filter((group) => group.categories.length > 0),
     [selectedCategories],
+  )
+  const activeCategories = useMemo(
+    () => activeGroups.flatMap((g) => g.categories),
+    [activeGroups],
   )
 
   if (isLoading) {
@@ -143,28 +153,37 @@ export function DemografiaOverview() {
       </Card>
 
       <div className="flex flex-1 flex-col gap-8">
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          {activeCategories.length === 0 ? (
-            <p className="col-span-full text-sm text-muted-foreground">
-              Selecciona al menos una categoría en el panel de consulta.
-            </p>
-          ) : (
-            activeCategories.map((category) => {
-              const value = municipios.reduce(
-                (s, m) => s + getCategoryValue(m.population, category.key, year),
-                0,
-              )
-              return (
-                <MetricCard
-                  key={category.key}
-                  label={category.label}
-                  value={`${formatNumber(value)} (${formatShare(value, totalPoblacion)})`}
-                  swatchClass={category.swatchClass}
-                />
-              )
-            })
-          )}
-        </div>
+        {activeGroups.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Selecciona al menos una categoría en el panel de consulta.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {activeGroups.map((group) => (
+              <div key={group.key} className="flex flex-col gap-2">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {group.label}
+                </h3>
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-2">
+                  {group.categories.map((category) => {
+                    const value = municipios.reduce(
+                      (s, m) => s + getCategoryValue(m.population, category.key, year),
+                      0,
+                    )
+                    return (
+                      <MetricCard
+                        key={category.key}
+                        label={category.label}
+                        value={`${formatNumber(value)} (${formatShare(value, totalPoblacion)})`}
+                        colorToken={category.colorToken}
+                      />
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         <Card>
           <CardHeader className="border-b border-border">
@@ -174,48 +193,59 @@ export function DemografiaOverview() {
             <p className="text-sm text-muted-foreground">
               Proyección DANE {year} · población rural es la más expuesta a
               deslizamientos e incendios forestales; la urbana concentra el
-              riesgo de inundación en cascos urbanos.
+              riesgo de inundación en cascos urbanos. Residencia y sexo son dos
+              particiones independientes de la misma población, por eso se
+              grafican por separado.
             </p>
           </CardHeader>
           <CardContent className="pt-6">
-            {activeCategories.length === 0 ? (
+            {activeGroups.length === 0 ? (
               <p className="py-12 text-center text-sm text-muted-foreground">
                 Selecciona al menos una categoría para ver el gráfico.
               </p>
             ) : (
-              <ChartContainer config={chartConfig} className="aspect-auto h-64 w-full">
-                <BarChart
-                  data={chartData}
-                  barGap={8}
-                  accessibilityLayer
-                  role="img"
-                  aria-label={`Distribución de población por municipio, año ${year}`}
-                >
-                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="municipio"
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                  />
-                  <YAxis
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                    tickFormatter={(v: number) => formatNumber(v)}
-                    width={56}
-                  />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  {activeCategories.map((category) => (
-                    <Bar
-                      key={category.key}
-                      dataKey={category.key}
-                      fill={`var(--color-${category.key})`}
-                      radius={4}
-                    />
-                  ))}
-                </BarChart>
-              </ChartContainer>
+              <div
+                className={`grid gap-6 ${activeGroups.length > 1 ? "sm:grid-cols-2" : "grid-cols-1"}`}
+              >
+                {activeGroups.map((group) => (
+                  <div key={group.key} className="flex flex-col gap-2">
+                    <p className="text-xs font-medium text-muted-foreground">{group.label}</p>
+                    <ChartContainer config={chartConfig} className="aspect-auto h-56 w-full">
+                      <BarChart
+                        data={chartData}
+                        barGap={8}
+                        accessibilityLayer
+                        role="img"
+                        aria-label={`Distribución por ${group.label.toLowerCase()} y municipio, año ${year}`}
+                      >
+                        <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                        <XAxis
+                          dataKey="municipio"
+                          tickLine={false}
+                          axisLine={false}
+                          tickMargin={8}
+                        />
+                        <YAxis
+                          tickLine={false}
+                          axisLine={false}
+                          tickMargin={8}
+                          tickFormatter={(v: number) => formatNumber(v)}
+                          width={56}
+                        />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        {group.categories.map((category) => (
+                          <Bar
+                            key={category.key}
+                            dataKey={category.key}
+                            fill={`var(--color-${category.key})`}
+                            radius={4}
+                          />
+                        ))}
+                      </BarChart>
+                    </ChartContainer>
+                  </div>
+                ))}
+              </div>
             )}
           </CardContent>
         </Card>
@@ -227,6 +257,7 @@ export function DemografiaOverview() {
               municipio={m}
               year={year}
               fireNeedsConfig={data.fireNeedsConfig}
+              landslideError={data.landslideError}
             />
           ))}
         </div>
@@ -248,12 +279,14 @@ function MunicipioCard({
   municipio,
   year,
   fireNeedsConfig,
+  landslideError,
 }: {
   municipio: MunicipioExposureView
   year: AvailableYear
   fireNeedsConfig: boolean
+  landslideError: string | null
 }) {
-  const { population, flood, fire } = municipio
+  const { population, flood, fire, landslide } = municipio
   const yearData = population.years[year]
 
   return (
@@ -306,7 +339,22 @@ function MunicipioCard({
           label="Deslizamientos"
           reference={`${formatNumber(yearData.rural)} hab. en zona rural`}
         >
-          <span className="text-xs text-muted-foreground">Próximamente</span>
+          {landslideError ? (
+            <span className="text-xs text-muted-foreground">Sin datos</span>
+          ) : landslide ? (
+            <span className="inline-flex items-center gap-2 rounded-full border border-border bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground">
+              <span
+                className="size-2 shrink-0 rounded-full"
+                style={{
+                  backgroundColor: SUSCEPTIBILITY_LEVEL_STYLES[landslide.worstLevel].colorToken,
+                }}
+                aria-hidden="true"
+              />
+              {landslide.worstLevel}
+            </span>
+          ) : (
+            <span className="text-xs text-muted-foreground">Sin zonas mapeadas</span>
+          )}
         </HazardRow>
       </CardContent>
     </Card>
@@ -341,17 +389,24 @@ function HazardRow({
 function MetricCard({
   label,
   value,
-  swatchClass,
+  colorToken,
 }: {
   label: string
   value: string
-  swatchClass: string
+  colorToken: string
 }) {
   return (
-    <Card>
+    <Card
+      className="border-t-4"
+      style={{ borderTopColor: colorToken }}
+    >
       <CardContent className="flex flex-col gap-1 py-4">
-        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <span className={`size-2.5 rounded-full ${swatchClass}`} aria-hidden="true" />
+        <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+          <span
+            className="size-2.5 shrink-0 rounded-full"
+            style={{ backgroundColor: colorToken }}
+            aria-hidden="true"
+          />
           {label}
         </span>
         <span className="text-xl font-semibold tabular-nums">{value}</span>
