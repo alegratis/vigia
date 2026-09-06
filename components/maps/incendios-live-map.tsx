@@ -8,6 +8,7 @@ import {
   WMSTileLayer,
   GeoJSON,
   Popup,
+  ZoomControl,
   useMap,
   useMapEvents,
 } from "react-leaflet"
@@ -109,7 +110,7 @@ function ThreatLegend() {
 
 function FwiLegend() {
   return (
-    <div className="pointer-events-none absolute bottom-3 right-3 z-[400] rounded-md border border-border bg-white p-1.5 shadow-sm">
+    <div className="pointer-events-none rounded-md border border-border bg-white p-1.5 shadow-sm">
       {/* GWIS/EFFIS legend image, rendered on its own white chip since it's not theme-aware. */}
       <img src={GWIS_LEGEND_URL || "/placeholder.svg"} alt="Escala del Índice Meteorológico de Incendio (FWI)" className="block" />
     </div>
@@ -118,7 +119,7 @@ function FwiLegend() {
 
 function FireLegend({ colors }: { colors: Record<FireDetection["confidence"], string> | null }) {
   return (
-    <div className="pointer-events-none absolute right-3 top-3 z-[400] rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
+    <div className="pointer-events-none rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
       <p className="mb-1.5 font-medium text-foreground">Focos activos (NASA FIRMS)</p>
       <ul className="flex flex-col gap-1">
         {(Object.keys(CONFIDENCE_STYLES) as FireDetection["confidence"][]).map((key) => (
@@ -229,8 +230,10 @@ function IncendiosLiveMapImpl({
         minZoom={9}
         maxZoom={16}
         bounds={AOI_BOUNDS}
+        zoomControl={false}
         className="h-full w-full"
       >
+        <ZoomControl position="topright" />
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -349,8 +352,12 @@ function IncendiosLiveMapImpl({
         </Popup>
       )}
       <ThreatLegend />
-      {showForecast && <FwiLegend />}
-      {showFires && <FireLegend colors={fireColors} />}
+      {(showForecast || showFires) && (
+        <div className="absolute bottom-3 right-3 z-[400] flex flex-col items-end gap-2">
+          {showForecast && <FwiLegend />}
+          {showFires && <FireLegend colors={fireColors} />}
+        </div>
+      )}
     </div>
   )
 }

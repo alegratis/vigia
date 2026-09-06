@@ -1,7 +1,17 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { MapContainer, TileLayer, ImageOverlay, GeoJSON, Marker, Popup, useMap, useMapEvents } from "react-leaflet"
+import {
+  MapContainer,
+  TileLayer,
+  ImageOverlay,
+  GeoJSON,
+  Marker,
+  Popup,
+  ZoomControl,
+  useMap,
+  useMapEvents,
+} from "react-leaflet"
 import type { Layer, LatLngBoundsExpression, LeafletMouseEvent, PathOptions } from "leaflet"
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
@@ -308,7 +318,9 @@ function GeoglowsLiveMapImpl({ onBoundsChange }: { onBoundsChange?: (bounds: Map
         maxZoom={16}
         className="h-full w-full"
         bounds={toLatLngBounds(AOI_BOUNDS)}
+        zoomControl={false}
       >
+        <ZoomControl position="topright" />
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
