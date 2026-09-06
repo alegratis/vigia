@@ -1,0 +1,221 @@
+{
+  "source": "DANE - Proyecciones y retroproyecciones de poblacion municipal por area, sexo y edad 2018-2042 (actualizado 30 de julio de 2025)",
+  "sourceUrl": "https://www.dane.gov.co/index.php/estadisticas-por-tema/demografia-y-poblacion/proyecciones-de-poblacion",
+  "extractedYears": [
+    "2018",
+    "2019",
+    "2020",
+    "2021",
+    "2022",
+    "2023",
+    "2024",
+    "2025",
+    "2026"
+  ],
+  "municipios": {
+    "Caicedonia": {
+      "codigoMunicipio": "76122",
+      "years": {
+        "2018": {
+          "urbano": 23843,
+          "rural": 4982,
+          "hombres": 14364,
+          "mujeres": 14461,
+          "total": 28825
+        },
+        "2019": {
+          "urbano": 24185,
+          "rural": 4972,
+          "hombres": 14522,
+          "mujeres": 14635,
+          "total": 29157
+        },
+        "2020": {
+          "urbano": 24547,
+          "rural": 4979,
+          "hombres": 14703,
+          "mujeres": 14823,
+          "total": 29526
+        },
+        "2021": {
+          "urbano": 24764,
+          "rural": 4974,
+          "hombres": 14810,
+          "mujeres": 14928,
+          "total": 29738
+        },
+        "2022": {
+          "urbano": 24924,
+          "rural": 4949,
+          "hombres": 14867,
+          "mujeres": 15006,
+          "total": 29873
+        },
+        "2023": {
+          "urbano": 25039,
+          "rural": 4917,
+          "hombres": 14900,
+          "mujeres": 15056,
+          "total": 29956
+        },
+        "2024": {
+          "urbano": 25212,
+          "rural": 4903,
+          "hombres": 14983,
+          "mujeres": 15132,
+          "total": 30115
+        },
+        "2025": {
+          "urbano": 25326,
+          "rural": 4867,
+          "hombres": 15022,
+          "mujeres": 15171,
+          "total": 30193
+        },
+        "2026": {
+          "urbano": 25425,
+          "rural": 4823,
+          "hombres": 15051,
+          "mujeres": 15197,
+          "total": 30248
+        }
+      }
+    },
+    "Sevilla": {
+      "codigoMunicipio": "76736",
+      "years": {
+        "2018": {
+          "urbano": 31818,
+          "rural": 10323,
+          "hombres": 20914,
+          "mujeres": 21227,
+          "total": 42141
+        },
+        "2019": {
+          "urbano": 32362,
+          "rural": 10221,
+          "hombres": 21117,
+          "mujeres": 21466,
+          "total": 42583
+        },
+        "2020": {
+          "urbano": 32918,
+          "rural": 10141,
+          "hombres": 21349,
+          "mujeres": 21710,
+          "total": 43059
+        },
+        "2021": {
+          "urbano": 33254,
+          "rural": 10135,
+          "hombres": 21499,
+          "mujeres": 21890,
+          "total": 43389
+        },
+        "2022": {
+          "urbano": 33513,
+          "rural": 10095,
+          "hombres": 21598,
+          "mujeres": 22010,
+          "total": 43608
+        },
+        "2023": {
+          "urbano": 33703,
+          "rural": 10018,
+          "hombres": 21634,
+          "mujeres": 22087,
+          "total": 43721
+        },
+        "2024": {
+          "urbano": 33944,
+          "rural": 9979,
+          "hombres": 21728,
+          "mujeres": 22195,
+          "total": 43923
+        },
+        "2025": {
+          "urbano": 34152,
+          "rural": 9916,
+          "hombres": 21792,
+          "mujeres": 22276,
+          "total": 44068
+        },
+        "2026": {
+          "urbano": 34327,
+          "rural": 9845,
+          "hombres": 21838,
+          "mujeres": 22334,
+          "total": 44172
+        }
+      }
+    },
+    "Zarzal": {
+      "codigoMunicipio": "76895",
+      "years": {
+        "2018": {
+          "urbano": 31814,
+          "rural": 10109,
+          "hombres": 19793,
+          "mujeres": 22130,
+          "total": 41923
+        },
+        "2019": {
+          "urbano": 32286,
+          "rural": 10116,
+          "hombres": 20011,
+          "mujeres": 22391,
+          "total": 42402
+        },
+        "2020": {
+          "urbano": 32775,
+          "rural": 10113,
+          "hombres": 20244,
+          "mujeres": 22644,
+          "total": 42888
+        },
+        "2021": {
+          "urbano": 33108,
+          "rural": 10099,
+          "hombres": 20391,
+          "mujeres": 22816,
+          "total": 43207
+        },
+        "2022": {
+          "urbano": 33358,
+          "rural": 10075,
+          "hombres": 20488,
+          "mujeres": 22945,
+          "total": 43433
+        },
+        "2023": {
+          "urbano": 33557,
+          "rural": 10021,
+          "hombres": 20543,
+          "mujeres": 23035,
+          "total": 43578
+        },
+        "2024": {
+          "urbano": 33791,
+          "rural": 9969,
+          "hombres": 20630,
+          "mujeres": 23130,
+          "total": 43760
+        },
+        "2025": {
+          "urbano": 34007,
+          "rural": 9926,
+          "hombres": 20713,
+          "mujeres": 23220,
+          "total": 43933
+        },
+        "2026": {
+          "urbano": 34159,
+          "rural": 9834,
+          "hombres": 20740,
+          "mujeres": 23253,
+          "total": 43993
+        }
+      }
+    }
+  }
+}

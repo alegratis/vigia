@@ -53,7 +53,7 @@ export function DemografiaFilters({
             if (next) onYearChange(Number(next) as AvailableYear)
           }}
           variant="outline"
-          className="justify-start"
+          className="flex-wrap justify-start"
         >
           {AVAILABLE_YEARS.map((y) => (
             <ToggleGroupItem key={y} value={String(y)} aria-label={`Año ${y}`}>

@@ -263,12 +263,19 @@ export function DemografiaOverview() {
         </div>
 
         <p className="text-xs text-muted-foreground">
-          Fuente: DANE, &ldquo;Distribución Poblacional del Valle del Cauca&rdquo;
-          (datos.gov.co, recurso 4wbc-urmu), proyecciones 2018-2020. La
-          exposición por amenaza cruza esta población de referencia con la
-          señal de monitoreo en vivo de cada módulo (GEOGLOWS e NASA FIRMS); no
-          sustituye un censo puerta a puerta ni un modelo de extensión de
-          inundación o susceptibilidad a deslizamientos.
+          Fuente:{" "}
+          <a
+            href={data.populationSourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline-offset-2 hover:underline"
+          >
+            {data.populationSource}
+          </a>
+          . La exposición por amenaza cruza esta población de referencia con
+          la señal de monitoreo en vivo de cada módulo (GEOGLOWS e NASA
+          FIRMS); no sustituye un censo puerta a puerta ni un modelo de
+          extensión de inundación o susceptibilidad a deslizamientos.
         </p>
       </div>
     </div>

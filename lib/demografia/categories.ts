@@ -1,13 +1,18 @@
 /**
  * Shared, client-safe constants for the demographics filters: the three
- * study-area municipalities, the years DANE publishes, and the four
- * urbano/rural/hombres/mujeres categories with their fixed identity colors
- * (each maps to a token defined in globals.css).
+ * study-area municipalities, the years extracted from DANE's municipal
+ * population projections, and the four urbano/rural/hombres/mujeres
+ * categories with their fixed identity colors (each maps to a token defined
+ * in globals.css).
+ *
+ * This list must stay in sync with lib/demografia/data/dane-projections-2018-2026.json
+ * (the source of truth, read server-side in lib/demografia/dane.ts) since this
+ * file has to stay import-safe for client components.
  */
 
 export const MUNICIPIOS = ["Sevilla", "Caicedonia", "Zarzal"] as const
 
-export const AVAILABLE_YEARS = [2018, 2019, 2020] as const
+export const AVAILABLE_YEARS = [2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026] as const
 export type AvailableYear = (typeof AVAILABLE_YEARS)[number]
 
 export type DemografiaCategoryKey = "urbano" | "rural" | "hombres" | "mujeres"

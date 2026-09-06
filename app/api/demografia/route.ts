@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { getExposureOverview } from "@/lib/demografia/exposure"
+import { DANE_SOURCE, DANE_SOURCE_URL } from "@/lib/demografia/dane"
 import { DEPARTMENT } from "@/lib/geoglows/stations"
 import type {
   DemografiaResponse,
@@ -12,6 +13,8 @@ export async function GET() {
     const body: DemografiaResponse = {
       department: DEPARTMENT,
       generatedAt: new Date().toISOString(),
+      populationSource: DANE_SOURCE,
+      populationSourceUrl: DANE_SOURCE_URL,
       ...result,
     }
     return NextResponse.json(body)
