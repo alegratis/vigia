@@ -39,6 +39,8 @@ export interface DemografiaResponse {
   fireError: string | null
   fireNeedsConfig: boolean
   landslideError: string | null
+  populationSource: string
+  populationSourceUrl: string
 }
 
 export interface DemografiaErrorResponse {

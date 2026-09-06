@@ -1,18 +1,34 @@
 import "server-only"
 
-/**
- * DANE municipal population, sourced live from the open dataset
- * "Distribución Poblacional Del Valle Del Cauca" on datos.gov.co
- * (Socrata resource 4wbc-urmu). It carries urban/rural and sex splits by
- * municipality for 2018-2020; 2020 is the most recent year published.
- */
+import daneProjections from "./data/dane-projections-2018-2026.json"
 
-const RESOURCE_URL = "https://www.datos.gov.co/resource/4wbc-urmu.json"
+/**
+ * DANE municipal population for the three study-area municipalities.
+ *
+ * Previously this fetched the open dataset "Distribución Poblacional Del
+ * Valle Del Cauca" on datos.gov.co (Socrata resource 4wbc-urmu) live. That
+ * resource's rows were last updated in December 2021 and only ever
+ * published urbano/rural/hombres/mujeres columns for 2018-2020 — refetching
+ * it daily could never surface anything newer, it was simply frozen.
+ *
+ * DANE's own municipal population series is far more current (its
+ * "Proyecciones y retroproyecciones de poblacion municipal" workbook, last
+ * republished 2025-07-30, covers 2018-2042 using the post-2018-census
+ * cohort-component model), but it is only published as a single ~930 MB
+ * national Excel workbook with no per-municipality API. So this file was
+ * downloaded once, and the Sevilla/Caicedonia/Zarzal rows through 2026 were
+ * extracted into ./data/dane-projections-2018-2026.json, checked in below.
+ * That JSON is what this module reads — no network call, no staleness risk
+ * from an abandoned live endpoint.
+ */
 
 export const MUNICIPIOS = ["Sevilla", "Caicedonia", "Zarzal"] as const
 
-/** Years the dataset publishes urbano/rural/hombres/mujeres splits for. */
-export const AVAILABLE_YEARS = [2018, 2019, 2020] as const
+export const DANE_SOURCE = daneProjections.source
+export const DANE_SOURCE_URL = daneProjections.sourceUrl
+
+/** Years extracted from the DANE projections workbook. */
+export const AVAILABLE_YEARS = daneProjections.extractedYears.map((y) => Number(y)) as readonly number[]
 export type AvailableYear = (typeof AVAILABLE_YEARS)[number]
 
 export interface YearPopulation {
@@ -33,94 +49,27 @@ export interface MunicipioPopulation {
   hombres: number
   mujeres: number
   total: number
-  /** Full urbano/rural/hombres/mujeres breakdown for every published year. */
+  /** Full urbano/rural/hombres/mujeres breakdown for every extracted year. */
   years: Record<AvailableYear, YearPopulation>
 }
 
-export class DaneRequestError extends Error {
-  constructor(message: string) {
-    super(message)
-    this.name = "DaneRequestError"
-  }
-}
-
-function toNumber(value: unknown): number {
-  const n = typeof value === "string" ? Number.parseInt(value, 10) : Number(value)
-  return Number.isFinite(n) ? n : 0
-}
-
-function emptyYearPopulation(): YearPopulation {
-  return { urbano: 0, rural: 0, hombres: 0, mujeres: 0, total: 0 }
-}
-
-function emptyPopulation(municipio: string): MunicipioPopulation {
-  const years = Object.fromEntries(
-    AVAILABLE_YEARS.map((y) => [y, emptyYearPopulation()]),
-  ) as Record<AvailableYear, YearPopulation>
-  return {
-    municipio,
-    codigoMunicipio: "",
-    year: AVAILABLE_YEARS[AVAILABLE_YEARS.length - 1],
-    urbano: 0,
-    rural: 0,
-    hombres: 0,
-    mujeres: 0,
-    total: 0,
-    years,
-  }
-}
-
-/**
- * The Socrata resource names its columns inconsistently across years
- * (`urbano_2018` / `urbano_2019` vs `_2020_urbano`), so each year maps its
- * own field names explicitly rather than templating a single pattern.
- */
-function readYear(row: Record<string, string>, year: AvailableYear): YearPopulation {
-  const fieldsByYear: Record<AvailableYear, [string, string, string, string]> = {
-    2018: ["urbano_2018", "rural_2018", "hombre_2018", "mujer_2018"],
-    2019: ["urbano_2019", "rural_2019", "hombre_2019", "mujer_2019"],
-    2020: ["_2020_urbano", "_2020_rural", "hombre_2020", "mujer_2020"],
-  }
-  const [urbanoField, ruralField, hombresField, mujeresField] = fieldsByYear[year]
-  const urbano = toNumber(row[urbanoField])
-  const rural = toNumber(row[ruralField])
-  const hombres = toNumber(row[hombresField])
-  const mujeres = toNumber(row[mujeresField])
-  return { urbano, rural, hombres, mujeres, total: urbano + rural }
-}
-
-/** Fetch and normalize population for the three study-area municipalities. */
+/** Reads and normalizes population for the three study-area municipalities from the static dataset. */
 export async function getMunicipioPopulations(): Promise<MunicipioPopulation[]> {
-  const url = new URL(RESOURCE_URL)
-  url.searchParams.set(
-    "$where",
-    `municipio in (${MUNICIPIOS.map((m) => `'${m}'`).join(",")})`,
-  )
-
-  const res = await fetch(url, {
-    // DANE's Socrata dataset changes rarely; refresh once a day.
-    next: { revalidate: 60 * 60 * 24 },
-    headers: { Accept: "application/json" },
-  })
-  if (!res.ok) {
-    throw new DaneRequestError(`datos.gov.co respondió ${res.status}`)
-  }
-
-  const rows = (await res.json()) as Record<string, string>[]
+  const latestYear = AVAILABLE_YEARS[AVAILABLE_YEARS.length - 1]
 
   return MUNICIPIOS.map((name) => {
-    const row = rows.find((r) => r.municipio?.toLowerCase() === name.toLowerCase())
-    if (!row) return emptyPopulation(name)
+    const entry = (daneProjections.municipios as Record<string, { codigoMunicipio: string; years: Record<string, YearPopulation> }>)[
+      name
+    ]
 
     const years = Object.fromEntries(
-      AVAILABLE_YEARS.map((y) => [y, readYear(row, y)]),
+      AVAILABLE_YEARS.map((y) => [y, entry.years[String(y)]]),
     ) as Record<AvailableYear, YearPopulation>
-    const latestYear = AVAILABLE_YEARS[AVAILABLE_YEARS.length - 1]
     const latest = years[latestYear]
 
     return {
       municipio: name,
-      codigoMunicipio: row.codigo_municipio ?? "",
+      codigoMunicipio: entry.codigoMunicipio,
       year: latestYear,
       urbano: latest.urbano,
       rural: latest.rural,
