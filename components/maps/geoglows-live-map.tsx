@@ -16,7 +16,7 @@ import {
 import type { Layer, LatLngBoundsExpression, LeafletMouseEvent, PathOptions } from "leaflet"
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
-import { Loader2 } from "lucide-react"
+import { ExternalLink, Loader2 } from "lucide-react"
 import useSWR from "swr"
 import {
   AOI_BOUNDS,
@@ -30,6 +30,7 @@ import {
 } from "@/lib/geoglows/live-map"
 import { STATIONS } from "@/lib/geoglows/stations"
 import { FLOOD_SUSCEPTIBILITY_LEVELS, floodSusceptibilityColorToken } from "@/lib/inundaciones/levels"
+import { IMERG_TILE_URL, IMERG_WORLDVIEW_URL } from "@/lib/inundaciones/imerg"
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import { formatFlow } from "@/lib/flood-ui"
 import type { MapBounds } from "@/lib/map-bounds"
@@ -241,6 +242,7 @@ function GeoglowsLiveMapImpl({ onBoundsChange }: { onBoundsChange?: (bounds: Map
   )
   const containerRef = useRef<HTMLDivElement>(null)
   const [showSusceptibility, setShowSusceptibility] = useState(true)
+  const [showPrecipitation, setShowPrecipitation] = useState(false)
 
   const { data: susceptibility, error: susceptibilityError } = useSWR<InundacionesSusceptibilidadResponse>(
     "/api/inundaciones/susceptibilidad",
@@ -336,6 +338,9 @@ function GeoglowsLiveMapImpl({ onBoundsChange }: { onBoundsChange?: (bounds: Map
             onEachFeature={onEachSusceptibilityFeature}
           />
         )}
+        {showPrecipitation && (
+          <TileLayer attribution="NASA GIBS / IMERG" url={IMERG_TILE_URL} opacity={0.6} maxNativeZoom={6} />
+        )}
         {overlayUrl && overlay && (
           <ImageOverlay url={overlayUrl} bounds={toLatLngBounds(overlay.bounds)} opacity={0.9} />
         )}
@@ -361,7 +366,7 @@ function GeoglowsLiveMapImpl({ onBoundsChange }: { onBoundsChange?: (bounds: Map
         )}
       </MapContainer>
 
-      <div className="absolute left-3 top-3 z-[400] flex items-center gap-2 rounded-md border border-border bg-card/95 px-2.5 py-1.5 text-xs shadow-sm backdrop-blur">
+      <div className="absolute left-3 top-3 z-[400] flex flex-col gap-1.5 rounded-md border border-border bg-card/95 px-2.5 py-1.5 text-xs shadow-sm backdrop-blur">
         <label className="flex items-center gap-1.5 font-medium text-foreground">
           <input
             type="checkbox"
@@ -371,6 +376,26 @@ function GeoglowsLiveMapImpl({ onBoundsChange }: { onBoundsChange?: (bounds: Map
           />
           Susceptibilidad a inundación
         </label>
+        <label className="flex items-center gap-1.5 font-medium text-foreground">
+          <input
+            type="checkbox"
+            checked={showPrecipitation}
+            onChange={(e) => setShowPrecipitation(e.target.checked)}
+            className="size-3.5 accent-[var(--primary)]"
+          />
+          Precipitación (IMERG)
+        </label>
+        {showPrecipitation && (
+          <a
+            href={IMERG_WORLDVIEW_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+          >
+            Ver escala en Worldview
+            <ExternalLink className="size-3" aria-hidden="true" />
+          </a>
+        )}
       </div>
       {showSusceptibility && !susceptibility && !susceptibilityError && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-background/40">

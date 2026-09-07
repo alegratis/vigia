@@ -2,15 +2,17 @@
 
 export interface SusceptibilityFeatureProperties {
   municipio: string
+  /** Already normalized to the title-case SusceptibilityLevel scheme. */
   IS_nivel: string
 }
 
+/** Point geometry — see lib/deslizamientos/client.ts for why polygons aren't used for the map visual. */
 export interface SusceptibilityFeatureCollection {
   type: "FeatureCollection"
   features: Array<{
     type: "Feature"
     properties: SusceptibilityFeatureProperties
-    geometry: GeoJSON.Geometry
+    geometry: GeoJSON.Point
   }>
 }
 
@@ -21,10 +23,20 @@ export interface PopulationByLevel {
   elderly: number
 }
 
+/** Critical-infrastructure exposure counts summed by threat level, from the polygon layer's attributes. */
+export interface ExposureByLevel {
+  level: string
+  schools: number
+  hospitals: number
+  pharmacies: number
+  criticalInfra: number
+}
+
 export interface DeslizamientosResponse {
   generatedAt: string
-  polygons: SusceptibilityFeatureCollection
+  points: SusceptibilityFeatureCollection
   populationByLevel: PopulationByLevel[]
+  exposureByLevel: ExposureByLevel[]
 }
 
 export interface DeslizamientosErrorResponse {

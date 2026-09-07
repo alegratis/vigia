@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { getPopulationByLevel, getSusceptibilityPolygons } from "@/lib/deslizamientos/client"
+import { getExposureByLevel, getPopulationByLevel, getSusceptibilityPoints } from "@/lib/deslizamientos/client"
 import type {
   DeslizamientosErrorResponse,
   DeslizamientosResponse,
@@ -7,14 +7,16 @@ import type {
 
 export async function GET() {
   try {
-    const [polygons, populationByLevel] = await Promise.all([
-      getSusceptibilityPolygons(),
+    const [points, populationByLevel, exposureByLevel] = await Promise.all([
+      getSusceptibilityPoints(),
       getPopulationByLevel(),
+      getExposureByLevel(),
     ])
     const body: DeslizamientosResponse = {
       generatedAt: new Date().toISOString(),
-      polygons,
+      points,
       populationByLevel,
+      exposureByLevel,
     }
     return NextResponse.json(body)
   } catch (err) {

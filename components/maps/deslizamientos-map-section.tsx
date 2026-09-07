@@ -25,8 +25,10 @@ export function DeslizamientosMapSection() {
         </div>
       </div>
       <p className="text-xs text-muted-foreground">
-        Capa pública <code className="text-foreground">amenaza_por_deslizamiento</code>, publicada en
-        ArcGIS Online. Haz clic sobre cualquier zona para ver su municipio y nivel de susceptibilidad.
+        Índice de susceptibilidad <code className="text-foreground">VIGIA_Amenaza_IS</code> (RED
+        LabOT), publicado en ArcGIS Online. Haz clic sobre cualquier punto para ver su municipio y
+        nivel de susceptibilidad. Activa la capa de humedad del suelo (NASA SMAP) para ver la señal
+        de disparo antecedente.
       </p>
     </div>
   )

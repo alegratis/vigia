@@ -40,10 +40,13 @@ export default function LandslidesPage() {
             <p className="max-w-2xl text-pretty leading-relaxed text-muted-foreground">
               Zonificación de la susceptibilidad a deslizamiento en el corredor de
               Sevilla y Caicedonia (Zarzal, sobre el piso plano del valle, no
-              presenta zonas en la capa fuente). Los cinco niveles de amenaza —de
-              muy bajo a muy alto— provienen de una capa pública publicada en
-              ArcGIS Online y se cruzan aquí con la grilla de densidad poblacional
-              para estimar cuántas personas están expuestas en cada nivel.
+              presenta zonas en la capa fuente), a partir del índice de
+              susceptibilidad de RED LabOT (11.721 puntos de evaluación). Los
+              cinco niveles de amenaza —de muy bajo a muy alto— ya incorporan
+              población, escuelas, hospitales, farmacias y otra infraestructura
+              crítica expuesta en cada punto. El mapa se puede combinar con la
+              humedad del suelo (NASA SMAP), la señal de disparo antecedente del
+              deslizamiento.
             </p>
           </div>
 

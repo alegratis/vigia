@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import useSWR from "swr"
 import { Mountain } from "lucide-react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
@@ -18,11 +18,9 @@ const fetcher = async (url: string): Promise<DeslizamientosResponse> => {
 }
 
 /**
- * Population exposed to landslide susceptibility, by threat level. The
- * source grid is a density interpolation rather than a census count, so
- * figures are rounded to whole people for display but will not be exact
- * multiples — consistent with how the map presents estimated, not counted,
- * exposure.
+ * Population and critical-infrastructure exposure to landslide
+ * susceptibility, by threat level, from RED LabOT's `VIGIA_Amenaza_IS_*`
+ * index. Figures are rounded to whole units for display.
  */
 export function LiveThreatPopulation({ className }: { className?: string }) {
   const { data, isLoading } = useSWR<DeslizamientosResponse>("/api/deslizamientos", fetcher, {
@@ -36,16 +34,25 @@ export function LiveThreatPopulation({ className }: { className?: string }) {
   }
 
   const rows = data.populationByLevel
+  const exposureByLevel = new Map(data.exposureByLevel.map((r) => [r.level, r]))
   const visible =
     selectedLevels.length === 0 ? rows : rows.filter((r) => selectedLevels.includes(r.level as SusceptibilityLevel))
+  const visibleLevels = new Set(visible.map((r) => r.level))
 
   const totals = visible.reduce(
-    (acc, r) => ({
-      total: acc.total + r.total,
-      children: acc.children + r.children,
-      elderly: acc.elderly + r.elderly,
-    }),
-    { total: 0, children: 0, elderly: 0 },
+    (acc, r) => {
+      const exposure = exposureByLevel.get(r.level)
+      return {
+        total: acc.total + r.total,
+        children: acc.children + r.children,
+        elderly: acc.elderly + r.elderly,
+        schools: acc.schools + (exposure?.schools ?? 0),
+        hospitals: acc.hospitals + (exposure?.hospitals ?? 0),
+        pharmacies: acc.pharmacies + (exposure?.pharmacies ?? 0),
+        criticalInfra: acc.criticalInfra + (exposure?.criticalInfra ?? 0),
+      }
+    },
+    { total: 0, children: 0, elderly: 0, schools: 0, hospitals: 0, pharmacies: 0, criticalInfra: 0 },
   )
 
   return (
@@ -53,11 +60,11 @@ export function LiveThreatPopulation({ className }: { className?: string }) {
       <CardHeader className="gap-1 border-b border-border">
         <h3 className="flex items-center gap-2 font-semibold tracking-tight">
           <Mountain className="size-4" aria-hidden="true" />
-          Población en zona de susceptibilidad
+          Exposición en zona de susceptibilidad
         </h3>
         <p className="text-xs leading-relaxed text-muted-foreground">
-          Estimada a partir de la grilla de densidad poblacional cruzada con la capa de
-          susceptibilidad. Sin filtro, se suman los cinco niveles.
+          Población e infraestructura crítica del índice de susceptibilidad, por nivel de
+          amenaza. Sin filtro, se suman los cinco niveles.
         </p>
       </CardHeader>
       <CardContent className="flex flex-col gap-4 py-4">
@@ -84,10 +91,32 @@ export function LiveThreatPopulation({ className }: { className?: string }) {
           </div>
         </div>
 
+        <Separator />
+
+        <div className="flex flex-col gap-3">
+          <p className="text-sm text-muted-foreground">Infraestructura crítica</p>
+          <div className="flex items-baseline justify-between">
+            <span className="text-sm text-muted-foreground">Escuelas</span>
+            <span className="font-medium tabular-nums">{formatNumber(Math.round(totals.schools))}</span>
+          </div>
+          <div className="flex items-baseline justify-between">
+            <span className="text-sm text-muted-foreground">Hospitales</span>
+            <span className="font-medium tabular-nums">{formatNumber(Math.round(totals.hospitals))}</span>
+          </div>
+          <div className="flex items-baseline justify-between">
+            <span className="text-sm text-muted-foreground">Farmacias</span>
+            <span className="font-medium tabular-nums">{formatNumber(Math.round(totals.pharmacies))}</span>
+          </div>
+          <div className="flex items-baseline justify-between">
+            <span className="text-sm text-muted-foreground">Otra infraestructura crítica</span>
+            <span className="font-medium tabular-nums">{formatNumber(Math.round(totals.criticalInfra))}</span>
+          </div>
+        </div>
+
         <ul className="flex flex-col gap-1.5 border-t border-border pt-3">
           {rows.map((r) => {
             const style = SUSCEPTIBILITY_LEVEL_STYLES[r.level as SusceptibilityLevel]
-            const dimmed = selectedLevels.length > 0 && !selectedLevels.includes(r.level as SusceptibilityLevel)
+            const dimmed = selectedLevels.length > 0 && !visibleLevels.has(r.level)
             return (
               <li
                 key={r.level}
