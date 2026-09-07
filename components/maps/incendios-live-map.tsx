@@ -25,6 +25,7 @@ import {
 import { forecastDayOptions, GWIS_FWI_LAYER, GWIS_LEGEND_URL, GWIS_WMS_URL } from "@/lib/incendios/gwis"
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import { CONFIDENCE_STYLES, formatDateTime, formatDistance, formatFrp } from "@/lib/firms/ui"
+import { normalizeMunicipioName } from "@/lib/demografia/categories"
 import type { IncendiosAmenazaResponse } from "@/lib/incendios/api-types"
 import type { FireDetection, FiresResponse } from "@/lib/firms/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
@@ -147,8 +148,10 @@ function FireLegend({ colors }: { colors: Record<FireDetection["confidence"], st
  */
 function IncendiosLiveMapImpl({
   onBoundsChange,
+  onZoneSelect,
 }: {
   onBoundsChange?: (bounds: MapBounds) => void
+  onZoneSelect?: (municipio: string) => void
 }) {
   const { data, error } = useSWR<IncendiosAmenazaResponse>("/api/incendios/amenaza", fetcher, {
     revalidateOnFocus: false,
@@ -198,24 +201,30 @@ function IncendiosLiveMapImpl({
     [resolvedColors],
   )
 
-  const onEachFeature = useCallback((feature: GeoJSON.Feature, layer: Layer) => {
-    const municipio = feature.properties?.NOMB_MPIO as string | undefined
-    const vereda = feature.properties?.NOMBRE_VER as string | undefined
-    const nivel = feature.properties?.Amenaza_Label as string | undefined
-    layer.bindPopup(
-      `<div style="font-size:13px;display:flex;flex-direction:column;gap:2px">
+  const onEachFeature = useCallback(
+    (feature: GeoJSON.Feature, layer: Layer) => {
+      const municipio = feature.properties?.NOMB_MPIO as string | undefined
+      const vereda = feature.properties?.NOMBRE_VER as string | undefined
+      const nivel = feature.properties?.Amenaza_Label as string | undefined
+      layer.bindPopup(
+        `<div style="font-size:13px;display:flex;flex-direction:column;gap:2px">
         <strong>${vereda ?? municipio ?? "—"}</strong>
         ${vereda ? `<span>${municipio ?? ""}</span>` : ""}
         <span>Amenaza: ${nivel ?? "—"}</span>
       </div>`,
-    )
-    layer.on("mouseover", (e: LeafletMouseEvent) => {
-      ;(e.target as Layer & { setStyle: (s: PathOptions) => void }).setStyle({ fillOpacity: 0.75 })
-    })
-    layer.on("mouseout", (e: LeafletMouseEvent) => {
-      ;(e.target as Layer & { setStyle: (s: PathOptions) => void }).setStyle({ fillOpacity: 0.5 })
-    })
-  }, [])
+      )
+      layer.on("mouseover", (e: LeafletMouseEvent) => {
+        ;(e.target as Layer & { setStyle: (s: PathOptions) => void }).setStyle({ fillOpacity: 0.75 })
+      })
+      layer.on("mouseout", (e: LeafletMouseEvent) => {
+        ;(e.target as Layer & { setStyle: (s: PathOptions) => void }).setStyle({ fillOpacity: 0.5 })
+      })
+      layer.on("click", () => {
+        if (municipio) onZoneSelect?.(normalizeMunicipioName(municipio))
+      })
+    },
+    [onZoneSelect],
+  )
 
   // Re-key the GeoJSON layer once colors resolve so Leaflet re-applies `style` per feature.
   const geoJsonKey = useMemo(

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import useSWR from "swr"
 import { Mountain } from "lucide-react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
@@ -17,17 +17,34 @@ const fetcher = async (url: string): Promise<DeslizamientosResponse> => {
   return res.json()
 }
 
+interface LiveThreatPopulationProps {
+  className?: string
+  /** Set when a point was just clicked on the map — narrows the filter to that level. */
+  selectedLevel?: SusceptibilityLevel | null
+  onClearSelection?: () => void
+}
+
 /**
  * Population and critical-infrastructure exposure to landslide
  * susceptibility, by threat level, from RED LabOT's `VIGIA_Amenaza_IS_*`
  * index. Figures are rounded to whole units for display.
  */
-export function LiveThreatPopulation({ className }: { className?: string }) {
+export function LiveThreatPopulation({
+  className,
+  selectedLevel,
+  onClearSelection,
+}: LiveThreatPopulationProps) {
   const { data, isLoading } = useSWR<DeslizamientosResponse>("/api/deslizamientos", fetcher, {
     revalidateOnFocus: false,
   })
 
   const [selectedLevels, setSelectedLevels] = useState<SusceptibilityLevel[]>([])
+
+  useEffect(() => {
+    if (selectedLevel) {
+      setSelectedLevels([selectedLevel])
+    }
+  }, [selectedLevel])
 
   if (isLoading || !data) {
     return <Skeleton className={`h-64 rounded-xl ${className ?? ""}`} />
@@ -68,6 +85,23 @@ export function LiveThreatPopulation({ className }: { className?: string }) {
         </p>
       </CardHeader>
       <CardContent className="flex flex-col gap-4 py-4">
+        {selectedLevel && (
+          <div className="flex items-center justify-between rounded-md bg-muted px-2.5 py-1.5 text-xs">
+            <span className="text-foreground">
+              Selección: <span className="font-medium">{selectedLevel}</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedLevels([])
+                onClearSelection?.()
+              }}
+              className="font-medium text-primary underline-offset-2 hover:underline"
+            >
+              Ver todo
+            </button>
+          </div>
+        )}
         <LevelFilters selectedLevels={selectedLevels} onSelectedLevelsChange={setSelectedLevels} />
 
         <Separator />

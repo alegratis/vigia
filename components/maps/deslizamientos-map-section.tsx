@@ -1,27 +1,40 @@
 "use client"
 
+import { useState } from "react"
 import { DeslizamientosLiveMapLoader } from "@/components/maps/deslizamientos-live-map-loader"
 import { LiveThreatPopulation } from "@/components/deslizamientos/live-threat-population"
+import { LiveInfrastructureCategories } from "@/components/maps/live-infrastructure-categories"
+import type { SusceptibilityLevel } from "@/lib/deslizamientos/levels"
+import type { MapBounds } from "@/lib/map-bounds"
 
 /**
- * Map canvas + live population-by-threat-level panel for the deslizamientos
- * page. Mirrors HazardMapSection's layout, but wired to the susceptibility
- * layer's own threat levels instead of DANE-by-viewport.
+ * Live population-by-threat-level panel + map canvas for the deslizamientos
+ * page. Demographics come first as the primary, left-hand column so the
+ * map's clicks and pans always have somewhere to report to; mirrors
+ * HazardMapSection's layout, but wired to the susceptibility layer's own
+ * threat levels instead of DANE-by-viewport.
  */
 export function DeslizamientosMapSection() {
+  const [bounds, setBounds] = useState<MapBounds | null>(null)
+  const [selectedLevel, setSelectedLevel] = useState<SusceptibilityLevel | null>(null)
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <div aria-live="polite" className="flex flex-col gap-4">
+          <LiveThreatPopulation
+            selectedLevel={selectedLevel}
+            onClearSelection={() => setSelectedLevel(null)}
+          />
+          <LiveInfrastructureCategories bounds={bounds} />
+        </div>
         <div role="region" aria-label="Mapa de susceptibilidad a deslizamiento">
           <p className="sr-only">
             Mapa interactivo de susceptibilidad a deslizamiento. El panel de
-            población por nivel de amenaza, a la derecha, resume el mismo
+            población por nivel de amenaza, a la izquierda, resume el mismo
             contenido en formato de texto.
           </p>
-          <DeslizamientosLiveMapLoader />
-        </div>
-        <div aria-live="polite">
-          <LiveThreatPopulation />
+          <DeslizamientosLiveMapLoader onBoundsChange={setBounds} onPointSelect={setSelectedLevel} />
         </div>
       </div>
       <p className="text-xs text-muted-foreground">

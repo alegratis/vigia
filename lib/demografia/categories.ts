@@ -12,6 +12,17 @@
 
 export const MUNICIPIOS = ["Sevilla", "Caicedonia", "Zarzal"] as const
 
+/**
+ * Case-insensitively matches a raw municipio name (e.g. ArcGIS-cased
+ * "SEVILLA") to its canonical, title-case form used by the DANE population
+ * data. Falls back to the raw string if it doesn't match one of the three
+ * study-area municipalities.
+ */
+export function normalizeMunicipioName(raw: string): string {
+  const match = MUNICIPIOS.find((m) => m.toLowerCase() === raw.toLowerCase())
+  return match ?? raw
+}
+
 export const AVAILABLE_YEARS = [2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026] as const
 export type AvailableYear = (typeof AVAILABLE_YEARS)[number]
 

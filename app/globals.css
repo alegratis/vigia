@@ -58,6 +58,11 @@
   --color-inundaciones-moderada: var(--inundaciones-moderada);
   --color-inundaciones-alta: var(--inundaciones-alta);
   --color-inundaciones-muy-alta: var(--inundaciones-muy-alta);
+  --color-osm-business: var(--osm-business);
+  --color-osm-health: var(--osm-health);
+  --color-osm-financial: var(--osm-financial);
+  --color-osm-government: var(--osm-government);
+  --color-osm-social: var(--osm-social);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -136,6 +141,17 @@
   --inundaciones-moderada: oklch(0.68 0.13 250);
   --inundaciones-alta: oklch(0.55 0.16 262);
   --inundaciones-muy-alta: oklch(0.4 0.17 270);
+
+  /*
+   * OSM infrastructure categories (Overpass): five identity colors distinct
+   * from every hazard ramp above, since these render alongside a hazard's
+   * own legend in the same card stack.
+   */
+  --osm-business: oklch(0.72 0.14 55);
+  --osm-health: oklch(0.62 0.19 15);
+  --osm-financial: oklch(0.62 0.13 145);
+  --osm-government: oklch(0.55 0.1 245);
+  --osm-social: oklch(0.65 0.11 195);
 }
 
 .dark {
@@ -201,6 +217,13 @@
   --inundaciones-moderada: oklch(0.64 0.13 250);
   --inundaciones-alta: oklch(0.56 0.16 262);
   --inundaciones-muy-alta: oklch(0.48 0.18 270);
+
+  /* OSM infrastructure categories: kept vivid and legible on dark surfaces. */
+  --osm-business: oklch(0.76 0.14 55);
+  --osm-health: oklch(0.68 0.19 15);
+  --osm-financial: oklch(0.68 0.14 145);
+  --osm-government: oklch(0.66 0.11 245);
+  --osm-social: oklch(0.7 0.11 195);
 }
 
 @layer base {
