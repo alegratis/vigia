@@ -149,8 +149,10 @@ function SoilMoistureControl({ checked, onCheckedChange }: SoilMoistureControlPr
  */
 function DeslizamientosLiveMapImpl({
   onBoundsChange,
+  onPointSelect,
 }: {
   onBoundsChange?: (bounds: MapBounds) => void
+  onPointSelect?: (level: SusceptibilityLevel) => void
 }) {
   const { data, error } = useSWR<DeslizamientosResponse>("/api/deslizamientos", fetcher, {
     revalidateOnFocus: false,
@@ -211,6 +213,9 @@ function DeslizamientosLiveMapImpl({
                 center={[lat, lon]}
                 radius={3}
                 pathOptions={{ color, weight: 0, fillColor: color, fillOpacity: 0.75 }}
+                eventHandlers={
+                  onPointSelect && nivel ? { click: () => onPointSelect(nivel) } : undefined
+                }
               >
                 <Popup>
                   <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>

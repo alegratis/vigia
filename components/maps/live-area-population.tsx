@@ -30,6 +30,9 @@ interface LiveAreaPopulationProps {
   /** Which population category to preselect for this hazard's map card. */
   basis: "urbano" | "rural"
   basisLabel: string
+  /** Set when a zone was just clicked on the map — narrows the panel to that municipio. */
+  selectedMunicipio?: string | null
+  onClearSelection?: () => void
   className?: string
 }
 
@@ -46,6 +49,8 @@ export function LiveAreaPopulation({
   bounds,
   basis,
   basisLabel,
+  selectedMunicipio,
+  onClearSelection,
   className,
 }: LiveAreaPopulationProps) {
   const { data, isLoading } = useSWR<DemografiaResponse>("/api/demografia", fetcher, {
@@ -67,8 +72,11 @@ export function LiveAreaPopulation({
   }
 
   const inView = bounds ? pointsInBounds(REFERENCE_POINTS, bounds) : null
-  const namesInView: string[] | null =
-    inView && inView.length > 0 ? inView.map((p) => p.name) : null
+  const namesInView: string[] | null = selectedMunicipio
+    ? [selectedMunicipio]
+    : inView && inView.length > 0
+      ? inView.map((p) => p.name)
+      : null
   const visible = namesInView
     ? data.municipios.filter((m) => namesInView.includes(m.municipio))
     : data.municipios
@@ -83,17 +91,33 @@ export function LiveAreaPopulation({
       <CardHeader className="gap-1 border-b border-border">
         <h3 className="flex items-center gap-2 font-semibold tracking-tight">
           <Users className="size-4" aria-hidden="true" />
-          Población en el encuadre actual
+          {selectedMunicipio ? `Selección: ${selectedMunicipio}` : "Población en el encuadre actual"}
         </h3>
         <p className="text-xs leading-relaxed text-muted-foreground">
-          {namesInView
-            ? `Municipios visibles: ${namesInView.join(", ")}.`
-            : bounds
-              ? "Ningún centroide municipal cae dentro del encuadre actual; se muestran los tres municipios de referencia."
-              : "Mueve el mapa publicado para filtrar por el área visible. Por ahora se muestran los tres municipios de referencia."}
+          {selectedMunicipio
+            ? "Zona seleccionada en el mapa. Haz clic en \u201cVer todo\u201d para volver al encuadre."
+            : namesInView
+              ? `Municipios visibles: ${namesInView.join(", ")}.`
+              : bounds
+                ? "Ningún centroide municipal cae dentro del encuadre actual; se muestran los tres municipios de referencia."
+                : "Mueve el mapa publicado para filtrar por el área visible. Por ahora se muestran los tres municipios de referencia."}
         </p>
       </CardHeader>
       <CardContent className="flex flex-col gap-4 py-4">
+        {selectedMunicipio && (
+          <div className="flex items-center justify-between rounded-md bg-muted px-2.5 py-1.5 text-xs">
+            <span className="text-foreground">
+              Selección: <span className="font-medium">{selectedMunicipio}</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => onClearSelection?.()}
+              className="font-medium text-primary underline-offset-2 hover:underline"
+            >
+              Ver todo
+            </button>
+          </div>
+        )}
         <DemografiaFilters
           year={year}
           onYearChange={setYear}

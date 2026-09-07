@@ -33,7 +33,8 @@ import { FLOOD_SUSCEPTIBILITY_LEVELS, floodSusceptibilityColorToken } from "@/li
 import { IMERG_TILE_URL, IMERG_WORLDVIEW_URL } from "@/lib/inundaciones/imerg"
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import { formatFlow } from "@/lib/flood-ui"
-import type { MapBounds } from "@/lib/map-bounds"
+import { nearestPoint, type MapBounds } from "@/lib/map-bounds"
+import { REFERENCE_POINTS } from "@/lib/firms/area"
 import type { InundacionesSusceptibilidadResponse } from "@/lib/inundaciones/api-types"
 
 function toLatLngBounds(b: LatLngBounds): LatLngBoundsExpression {
@@ -236,7 +237,13 @@ function SusceptibilityLegend() {
  * toggleable layer underneath. Click any reach for its live forecast
  * attributes, or any susceptibility zone for its threat level.
  */
-function GeoglowsLiveMapImpl({ onBoundsChange }: { onBoundsChange?: (bounds: MapBounds) => void }) {
+function GeoglowsLiveMapImpl({
+  onBoundsChange,
+  onZoneSelect,
+}: {
+  onBoundsChange?: (bounds: MapBounds) => void
+  onZoneSelect?: (municipio: string) => void
+}) {
   const [overlay, setOverlay] = useState<{ bounds: LatLngBounds; width: number; height: number } | null>(
     null,
   )
@@ -272,27 +279,35 @@ function GeoglowsLiveMapImpl({ onBoundsChange }: { onBoundsChange?: (bounds: Map
     [resolvedColors],
   )
 
-  const onEachSusceptibilityFeature = useCallback((feature: GeoJSON.Feature, layer: Layer) => {
-    const nivel = feature.properties?.descripcio as string | undefined
-    layer.bindPopup(
-      `<div style="font-size:13px;display:flex;flex-direction:column;gap:2px">
+  const onEachSusceptibilityFeature = useCallback(
+    (feature: GeoJSON.Feature, layer: Layer) => {
+      const nivel = feature.properties?.descripcio as string | undefined
+      layer.bindPopup(
+        `<div style="font-size:13px;display:flex;flex-direction:column;gap:2px">
         <strong>Susceptibilidad a inundación</strong>
         <span>${nivel ?? "—"}</span>
       </div>`,
-    )
-    layer.on("mouseover", (e: LeafletMouseEvent) => {
-      ;(e.target as Layer & { setStyle: (s: PathOptions) => void }).setStyle({ fillOpacity: 0.7 })
-    })
-    layer.on("mouseout", (e: LeafletMouseEvent) => {
-      ;(e.target as Layer & { setStyle: (s: PathOptions) => void }).setStyle({ fillOpacity: 0.45 })
-    })
-    // Stop the click from bubbling to the map's own click handler (ReachClickLayer),
-    // which would otherwise fire its GEOGLOWS reach lookup on every zone click and
-    // steal the popup — Leaflet only keeps one open per map.
-    layer.on("click", (e: LeafletMouseEvent) => {
-      L.DomEvent.stopPropagation(e)
-    })
-  }, [])
+      )
+      layer.on("mouseover", (e: LeafletMouseEvent) => {
+        ;(e.target as Layer & { setStyle: (s: PathOptions) => void }).setStyle({ fillOpacity: 0.7 })
+      })
+      layer.on("mouseout", (e: LeafletMouseEvent) => {
+        ;(e.target as Layer & { setStyle: (s: PathOptions) => void }).setStyle({ fillOpacity: 0.45 })
+      })
+      // Stop the click from bubbling to the map's own click handler (ReachClickLayer),
+      // which would otherwise fire its GEOGLOWS reach lookup on every zone click and
+      // steal the popup — Leaflet only keeps one open per map.
+      layer.on("click", (e: LeafletMouseEvent) => {
+        L.DomEvent.stopPropagation(e)
+        // The zone itself carries no municipio field, only a threat level —
+        // resolve the closest of the three reference points to the click
+        // instead, same approach as the nearby-fire tagging in FIRMS.
+        const nearest = nearestPoint(e.latlng.lat, e.latlng.lng, REFERENCE_POINTS)
+        if (nearest) onZoneSelect?.(nearest.name)
+      })
+    },
+    [onZoneSelect],
+  )
 
   // Re-key the GeoJSON layer once colors resolve so Leaflet re-applies `style` per feature.
   const susceptibilityGeoJsonKey = useMemo(

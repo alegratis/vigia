@@ -1,0 +1,160 @@
+import "server-only"
+
+/**
+ * Client for OpenStreetMap's public Overpass API — an open, no-auth data
+ * source for the commercial/institutional buildings shown as the
+ * "Infraestructura por categoría" breakdown alongside each hazard's
+ * demographics panel, same open-data pattern as the ArcGIS/GWIS/GIBS
+ * sources already in use elsewhere in the app.
+ *
+ * The whole study-area AOI is queried once here and cached for 6 hours —
+ * never re-queried per map pan/zoom, since Overpass's public instance is
+ * shared and rate-limited. Viewport filtering happens client-side instead
+ * (lib/map-bounds.ts's `pointsInBounds`, against this same cached list).
+ *
+ * Docs: https://wiki.openstreetmap.org/wiki/Overpass_API
+ */
+
+import { classifyOsmTags, type OsmCategoryKey } from "./categories"
+import type { OsmPoint } from "./api-types"
+
+/**
+ * Overpass's main instance occasionally resets the TLS connection under
+ * load (a known flakiness with that public endpoint, unrelated to query
+ * correctness). Fall through to its two most common community mirrors —
+ * same public, no-auth API — before giving up.
+ */
+const OVERPASS_URLS = [
+  "https://overpass-api.de/api/interpreter",
+  "https://overpass.kumi.systems/api/interpreter",
+  "https://overpass.openstreetmap.ru/api/interpreter",
+]
+
+/** Same AOI bounding box the live hazard maps fit to: south,west,north,east. */
+const AOI_BBOX = "3.88,-76.06,4.44,-75.72"
+
+const HEALTH_AMENITIES = [
+  "hospital",
+  "clinic",
+  "doctors",
+  "dentist",
+  "pharmacy",
+  "veterinary",
+]
+const FINANCIAL_AMENITIES = ["bank", "bureau_de_change", "atm"]
+const GOVERNMENT_AMENITIES = [
+  "townhall",
+  "courthouse",
+  "police",
+  "fire_station",
+  "post_office",
+  "embassy",
+]
+const SOCIAL_AMENITIES = ["social_facility", "community_centre", "place_of_worship", "library"]
+const BUSINESS_AMENITIES = [
+  "restaurant",
+  "cafe",
+  "fast_food",
+  "bar",
+  "pub",
+  "fuel",
+  "marketplace",
+  "cinema",
+  "theatre",
+  "nightclub",
+  "car_wash",
+  "car_rental",
+  "driving_school",
+]
+
+const AMENITY_VALUES = [
+  ...HEALTH_AMENITIES,
+  ...FINANCIAL_AMENITIES,
+  ...GOVERNMENT_AMENITIES,
+  ...SOCIAL_AMENITIES,
+  ...BUSINESS_AMENITIES,
+].join("|")
+
+function buildQuery(): string {
+  return `
+    [out:json][timeout:25];
+    (
+      nwr["shop"](${AOI_BBOX});
+      nwr["office"](${AOI_BBOX});
+      nwr["craft"](${AOI_BBOX});
+      nwr["amenity"~"^(${AMENITY_VALUES})$"](${AOI_BBOX});
+      nwr["healthcare"](${AOI_BBOX});
+    );
+    out center tags;
+  `.trim()
+}
+
+interface OverpassElement {
+  type: "node" | "way" | "relation"
+  id: number
+  lat?: number
+  lon?: number
+  center?: { lat: number; lon: number }
+  tags?: Record<string, string>
+}
+
+interface OverpassResponse {
+  elements: OverpassElement[]
+}
+
+async function queryOverpass(query: string): Promise<OverpassResponse> {
+  let lastError: unknown
+  for (const url of OVERPASS_URLS) {
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: `data=${encodeURIComponent(query)}`,
+        next: { revalidate: 21600 },
+      })
+      if (!res.ok) {
+        lastError = new Error(`Overpass respondió ${res.status} desde ${url}`)
+        continue
+      }
+      return (await res.json()) as OverpassResponse
+    } catch (err) {
+      // Transient TLS/connection resets happen occasionally against
+      // Overpass's public instances — try the next mirror instead of
+      // failing the whole request.
+      lastError = err
+    }
+  }
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("No se pudo consultar la API de Overpass (OpenStreetMap)")
+}
+
+/**
+ * Fetches and classifies every business/health/financial/government/social
+ * point of interest in the study area. Ways and relations resolve to a
+ * single centroid via Overpass's `out center` (no polygon geometry needed
+ * for a point count). Elements matching none of the five categories are
+ * dropped.
+ */
+export async function getInfrastructurePoints(): Promise<OsmPoint[]> {
+  const json = await queryOverpass(buildQuery())
+
+  const points: OsmPoint[] = []
+  for (const el of json.elements) {
+    const tags = el.tags
+    if (!tags) continue
+    const category: OsmCategoryKey | null = classifyOsmTags(tags)
+    if (!category) continue
+    const lat = el.lat ?? el.center?.lat
+    const lon = el.lon ?? el.center?.lon
+    if (lat == null || lon == null) continue
+    points.push({
+      id: `${el.type}/${el.id}`,
+      lat,
+      lon,
+      category,
+      name: tags.name ?? null,
+    })
+  }
+  return points
+}
