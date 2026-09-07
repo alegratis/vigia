@@ -3,24 +3,26 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import {
   AttributionControl,
+  CircleMarker,
   MapContainer,
   TileLayer,
-  GeoJSON,
   Popup,
   ZoomControl,
   useMap,
   useMapEvents,
 } from "react-leaflet"
-import type { Layer, LatLngBoundsExpression, LeafletMouseEvent, PathOptions } from "leaflet"
+import type { LatLngBoundsExpression } from "leaflet"
 import "leaflet/dist/leaflet.css"
-import { Loader2 } from "lucide-react"
+import { ExternalLink, Loader2 } from "lucide-react"
 import useSWR from "swr"
 import {
   SUSCEPTIBILITY_LEVELS,
   SUSCEPTIBILITY_LEVEL_STYLES,
   levelColorToken,
+  type SusceptibilityLevel,
 } from "@/lib/deslizamientos/levels"
 import { resolveCssColor } from "@/lib/resolve-css-color"
+import { SMAP_TILE_URL, SMAP_WORLDVIEW_URL } from "@/lib/deslizamientos/smap"
 import type { DeslizamientosResponse } from "@/lib/deslizamientos/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
 
@@ -98,10 +100,52 @@ function Legend() {
   )
 }
 
+interface SoilMoistureControlProps {
+  checked: boolean
+  onCheckedChange: (checked: boolean) => void
+}
+
 /**
- * Live landslide susceptibility map: renders the public
- * `amenaza_por_deslizamiento` polygons published on ArcGIS Online directly
- * over OpenStreetMap. Click a zone for its municipality and threat level.
+ * Toggle + link-out for the SMAP root-zone soil moisture overlay, the
+ * landslide trigger signal (antecedent soil moisture) that complements the
+ * static susceptibility index. No legend is fabricated here — GIBS doesn't
+ * publish one for this layer, so the caption links to NASA Worldview's own
+ * color scale instead.
+ */
+function SoilMoistureControl({ checked, onCheckedChange }: SoilMoistureControlProps) {
+  return (
+    <div className="absolute right-3 top-3 z-[400] flex flex-col gap-1.5 rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
+      <label className="flex items-center gap-2 font-medium text-foreground">
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={(e) => onCheckedChange(e.target.checked)}
+          className="size-3.5 accent-primary"
+        />
+        Humedad del suelo (SMAP)
+      </label>
+      {checked && (
+        <a
+          href={SMAP_WORLDVIEW_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1 text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+        >
+          Ver escala en Worldview
+          <ExternalLink className="size-3" aria-hidden="true" />
+        </a>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Live landslide susceptibility map: renders RED LabOT's
+ * `VIGIA_Amenaza_IS_Puntos` index — 11,721 points across Sevilla and
+ * Caicedonia — as canvas-rendered dots over OpenStreetMap, optionally
+ * overlaid with NASA GIBS's SMAP root-zone soil moisture (the antecedent
+ * moisture trigger signal). Click a point for its municipality and threat
+ * level.
  */
 function DeslizamientosLiveMapImpl({
   onBoundsChange,
@@ -113,6 +157,7 @@ function DeslizamientosLiveMapImpl({
   })
 
   const [resolvedColors, setResolvedColors] = useState<Record<string, string> | null>(null)
+  const [showSoilMoisture, setShowSoilMoisture] = useState(false)
 
   useEffect(() => {
     const entries = SUSCEPTIBILITY_LEVELS.map(
@@ -121,42 +166,12 @@ function DeslizamientosLiveMapImpl({
     setResolvedColors(Object.fromEntries(entries))
   }, [])
 
-  const style = useCallback(
-    (feature?: GeoJSON.Feature): PathOptions => {
-      const level = feature?.properties?.IS_nivel as string | undefined
-      const color = (level && resolvedColors?.[level]) || "var(--muted-foreground)"
-      return {
-        color,
-        weight: 1.5,
-        fillColor: color,
-        fillOpacity: 0.55,
-      }
-    },
+  const colorForLevel = useCallback(
+    (level: string | undefined) => (level && resolvedColors?.[level]) || "var(--muted-foreground)",
     [resolvedColors],
   )
 
-  const onEachFeature = useCallback((feature: GeoJSON.Feature, layer: Layer) => {
-    const municipio = feature.properties?.municipio as string | undefined
-    const nivel = feature.properties?.IS_nivel as string | undefined
-    layer.bindPopup(
-      `<div style="font-size:13px;display:flex;flex-direction:column;gap:2px">
-        <strong>${municipio ?? "—"}</strong>
-        <span>Susceptibilidad: ${nivel ?? "—"}</span>
-      </div>`,
-    )
-    layer.on("mouseover", (e: LeafletMouseEvent) => {
-      ;(e.target as Layer & { setStyle: (s: PathOptions) => void }).setStyle({ fillOpacity: 0.75 })
-    })
-    layer.on("mouseout", (e: LeafletMouseEvent) => {
-      ;(e.target as Layer & { setStyle: (s: PathOptions) => void }).setStyle({ fillOpacity: 0.55 })
-    })
-  }, [])
-
-  // Re-key the GeoJSON layer once colors resolve so Leaflet re-applies `style` per feature.
-  const geoJsonKey = useMemo(
-    () => (resolvedColors ? "resolved" : "pending"),
-    [resolvedColors],
-  )
+  const points = useMemo(() => data?.points.features ?? [], [data])
 
   return (
     <div className="relative h-full min-h-[320px] w-full overflow-hidden rounded-xl border border-border sm:min-h-[420px]">
@@ -168,6 +183,7 @@ function DeslizamientosLiveMapImpl({
         bounds={AOI_BOUNDS}
         zoomControl={false}
         attributionControl={false}
+        preferCanvas
         className="h-full w-full"
       >
         <ZoomControl position="topright" />
@@ -176,14 +192,35 @@ function DeslizamientosLiveMapImpl({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        {data?.polygons && resolvedColors && (
-          <GeoJSON
-            key={geoJsonKey}
-            data={data.polygons as unknown as GeoJSON.GeoJsonObject}
-            style={style}
-            onEachFeature={onEachFeature}
+        {showSoilMoisture && (
+          <TileLayer
+            attribution="NASA GIBS / SMAP"
+            url={SMAP_TILE_URL}
+            opacity={0.6}
+            maxNativeZoom={6}
           />
         )}
+        {resolvedColors &&
+          points.map((feature, i) => {
+            const [lon, lat] = feature.geometry.coordinates
+            const nivel = feature.properties.IS_nivel as SusceptibilityLevel | undefined
+            const color = colorForLevel(nivel)
+            return (
+              <CircleMarker
+                key={i}
+                center={[lat, lon]}
+                radius={3}
+                pathOptions={{ color, weight: 0, fillColor: color, fillOpacity: 0.75 }}
+              >
+                <Popup>
+                  <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
+                    <strong>{feature.properties.municipio ?? "—"}</strong>
+                    <span>Susceptibilidad: {nivel ?? "—"}</span>
+                  </div>
+                </Popup>
+              </CircleMarker>
+            )
+          })}
         {onBoundsChange && <BoundsSync onBoundsChange={onBoundsChange} />}
       </MapContainer>
       {!data && !error && (
@@ -192,10 +229,11 @@ function DeslizamientosLiveMapImpl({
         </div>
       )}
       {error && (
-        <Popup position={AOI_CENTER}>
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-background/60">
           <span className="text-sm text-destructive">No se pudo cargar la capa.</span>
-        </Popup>
+        </div>
       )}
+      <SoilMoistureControl checked={showSoilMoisture} onCheckedChange={setShowSoilMoisture} />
       <Legend />
     </div>
   )

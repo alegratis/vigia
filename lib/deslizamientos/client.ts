@@ -1,51 +1,96 @@
 import "server-only"
 
 /**
- * Client for the public landslide-susceptibility layer published on ArcGIS
- * Online (`amenaza_por_deslizamiento`, covering Sevilla and Caicedonia — the
+ * Client for RED LabOT's landslide susceptibility index, published on
+ * ArcGIS Online as two parallel layers covering Sevilla and Caicedonia — the
  * study area's hillside municipalities; Zarzal sits on the flat valley floor
- * and has no zones in the source layer) and the companion population-density
- * grid used to estimate exposure by threat level. Both are open,
- * CORS-enabled FeatureServer layers — no auth needed, same publishing
- * pattern GEOGLOWS uses for the flood layer (lib/geoglows/live-map.ts).
+ * and has no zones in the source layer. Both open, CORS-enabled FeatureServer
+ * layers, no auth needed, same publishing pattern GEOGLOWS uses for the flood
+ * layer (lib/geoglows/live-map.ts):
  *
- * Docs: https://services8.arcgis.com/UYEK9SUzH1am9mbk/arcgis/rest/services/amenaza_por_deslizamiento/FeatureServer
+ * - `VIGIA_Amenaza_IS_Puntos`: 11,721 points, same attributes as the polygon
+ *   layer below but without geometry rings — used for the map visual
+ *   (rendered as canvas dots) since the full polygon geometry is too heavy
+ *   for Leaflet to render as individual SVG paths at this feature count.
+ * - `VIGIA_Amenaza_IS_Poligonos`: same 11,721 records with polygon geometry —
+ *   used only for server-side aggregate stats (population + exposure sums by
+ *   level), never downloaded whole.
+ *
+ * Both replace the older, coarser `amenaza_por_deslizamiento` (10 polygons)
+ * and `DensityMaps_In` (population-density grid) layers: this index already
+ * carries real population, school, hospital, pharmacy and critical
+ * infrastructure counts per feature, so a separate population grid is no
+ * longer needed.
+ *
+ * `IS_nivel` here is upper snake case (`MUY_ALTO`, `ALTO`, ...) — every
+ * function below normalizes to the app's title-case SusceptibilityLevel
+ * scheme via `normalizeSusceptibilityLevel` before returning.
+ *
+ * Docs: https://services8.arcgis.com/UYEK9SUzH1am9mbk/arcgis/rest/services/VIGIA_Amenaza_IS_Puntos/FeatureServer
  */
 
 import type {
+  ExposureByLevel,
   PopulationByLevel,
   SusceptibilityFeatureCollection,
 } from "./api-types"
-import { isSusceptibilityLevel, SUSCEPTIBILITY_LEVELS, type SusceptibilityLevel } from "./levels"
+import { normalizeSusceptibilityLevel, SUSCEPTIBILITY_LEVELS, type SusceptibilityLevel } from "./levels"
 
 const SERVICE_ROOT = "https://services8.arcgis.com/UYEK9SUzH1am9mbk/arcgis/rest/services"
-const SUSCEPTIBILITY_LAYER = `${SERVICE_ROOT}/amenaza_por_deslizamiento/FeatureServer/0`
-const POPULATION_LAYER = `${SERVICE_ROOT}/DensityMaps_In/FeatureServer/0`
+const POINTS_LAYER = `${SERVICE_ROOT}/VIGIA_Amenaza_IS_Puntos/FeatureServer/0`
+const POLYGONS_LAYER = `${SERVICE_ROOT}/VIGIA_Amenaza_IS_Poligonos/FeatureServer/0`
 
-/** Fetches the 10 landslide susceptibility polygons as ready-to-render GeoJSON in WGS84. */
-export async function getSusceptibilityPolygons(): Promise<SusceptibilityFeatureCollection> {
-  const params = new URLSearchParams({
-    where: "1=1",
-    outFields: "municipio,IS_nivel",
-    outSR: "4326",
-    geometryPrecision: "5",
-    f: "geojson",
-  })
-  const res = await fetch(`${SUSCEPTIBILITY_LAYER}/query?${params.toString()}`, {
-    next: { revalidate: 3600 },
-  })
-  if (!res.ok) {
-    throw new Error("No se pudo consultar la capa de susceptibilidad a deslizamientos")
+/** ArcGIS Online caps `resultRecordCount` at 2000 per query; the layer has ~11,721 records. */
+const PAGE_SIZE = 2000
+
+/**
+ * Fetches every susceptibility point (~11,721) as ready-to-render GeoJSON in
+ * WGS84, paginating past ArcGIS's 2000-record cap. Only `municipio` and
+ * `IS_nivel` are requested — the exposure attributes are surfaced through
+ * `getExposureByLevel` instead, aggregated server-side.
+ */
+export async function getSusceptibilityPoints(): Promise<SusceptibilityFeatureCollection> {
+  const features: SusceptibilityFeatureCollection["features"] = []
+  let offset = 0
+
+  // The layer's exact count isn't known ahead of time, so page until a
+  // response comes back with fewer than a full page.
+  while (true) {
+    const params = new URLSearchParams({
+      where: "1=1",
+      outFields: "municipio,IS_nivel",
+      outSR: "4326",
+      resultOffset: String(offset),
+      resultRecordCount: String(PAGE_SIZE),
+      f: "geojson",
+    })
+    const res = await fetch(`${POINTS_LAYER}/query?${params.toString()}`, {
+      next: { revalidate: 3600 },
+    })
+    if (!res.ok) {
+      throw new Error("No se pudo consultar la capa de susceptibilidad a deslizamientos")
+    }
+    const page = (await res.json()) as SusceptibilityFeatureCollection
+    for (const feature of page.features) {
+      const level = normalizeSusceptibilityLevel(feature.properties.IS_nivel)
+      if (!level) continue
+      features.push({
+        ...feature,
+        properties: { ...feature.properties, IS_nivel: level },
+      })
+    }
+    if (page.features.length < PAGE_SIZE) break
+    offset += PAGE_SIZE
   }
-  return res.json()
+
+  return { type: "FeatureCollection", features }
 }
 
 /**
  * Fetches the worst (highest) susceptibility level present per municipality,
- * for the demografía exposure summary. This reuses the same layer as
- * `getSusceptibilityPolygons` but skips geometry and asks the server to
- * distinct the municipio/IS_nivel pairs instead of downloading all 10
- * polygons — the same "let the server aggregate" approach as
+ * for the demografía exposure summary. Skips geometry and asks the server to
+ * distinct the municipio/IS_nivel pairs instead of paginating all ~11,721
+ * records — the same "let the server aggregate" approach as
  * `getPopulationByLevel`. Municipalities absent from the layer (Zarzal,
  * which sits on the flat valley floor) simply don't appear in the result.
  */
@@ -57,22 +102,22 @@ export async function getWorstLevelByMunicipio(): Promise<Map<string, Susceptibi
     returnDistinctValues: "true",
     f: "json",
   })
-  const res = await fetch(`${SUSCEPTIBILITY_LAYER}/query?${params.toString()}`, {
+  const res = await fetch(`${POLYGONS_LAYER}/query?${params.toString()}`, {
     next: { revalidate: 3600 },
   })
   if (!res.ok) {
     throw new Error("No se pudo consultar la capa de susceptibilidad a deslizamientos")
   }
   const json = await res.json()
-  const features = (json.features ?? []) as Array<{
+  const rawFeatures = (json.features ?? []) as Array<{
     attributes: { municipio?: string; IS_nivel?: string }
   }>
 
   const worstByMunicipio = new Map<string, SusceptibilityLevel>()
-  for (const f of features) {
+  for (const f of rawFeatures) {
     const rawMunicipio = f.attributes.municipio
-    const level = f.attributes.IS_nivel
-    if (!rawMunicipio || !level || !isSusceptibilityLevel(level)) continue
+    const level = normalizeSusceptibilityLevel(f.attributes.IS_nivel)
+    if (!rawMunicipio || !level) continue
     // The layer stores municipio names upper-cased (e.g. "SEVILLA"); the
     // DANE population data this gets cross-referenced against uses title
     // case ("Sevilla"), so normalize here rather than in every caller.
@@ -87,21 +132,15 @@ export async function getWorstLevelByMunicipio(): Promise<Map<string, Susceptibi
 }
 
 /**
- * Sums the population-density grid grouped by landslide threat level via a
- * server-side statistics query, avoiding a client download of all ~8,800
- * grid points.
- *
- * The grid also carries `col_men_20`/`col_women_` fields, but those are
- * always exactly half of the total in every group — a synthetic 50/50
- * split, not real sex-disaggregated data. This intentionally omits that
- * split and only surfaces totals and age brackets that are traceable to a
- * real reading, consistent with lib/demografia/exposure.ts.
+ * Sums population fields (`pob_gen`, `pob_men5`, `pob_may60`) grouped by
+ * landslide threat level via a server-side statistics query against the
+ * polygon layer, avoiding a client download of all ~11,721 records.
  */
 export async function getPopulationByLevel(): Promise<PopulationByLevel[]> {
   const outStatistics = [
-    { statisticType: "sum", onStatisticField: "col_genera", outStatisticFieldName: "total_sum" },
-    { statisticType: "sum", onStatisticField: "col_childr", outStatisticFieldName: "children_sum" },
-    { statisticType: "sum", onStatisticField: "col_elderl", outStatisticFieldName: "elderly_sum" },
+    { statisticType: "sum", onStatisticField: "pob_gen", outStatisticFieldName: "total_sum" },
+    { statisticType: "sum", onStatisticField: "pob_men5", outStatisticFieldName: "children_sum" },
+    { statisticType: "sum", onStatisticField: "pob_may60", outStatisticFieldName: "elderly_sum" },
   ]
   const params = new URLSearchParams({
     where: "IS_nivel IS NOT NULL",
@@ -109,7 +148,7 @@ export async function getPopulationByLevel(): Promise<PopulationByLevel[]> {
     groupByFieldsForStatistics: "IS_nivel",
     f: "json",
   })
-  const res = await fetch(`${POPULATION_LAYER}/query?${params.toString()}`, {
+  const res = await fetch(`${POLYGONS_LAYER}/query?${params.toString()}`, {
     next: { revalidate: 3600 },
   })
   if (!res.ok) {
@@ -118,12 +157,59 @@ export async function getPopulationByLevel(): Promise<PopulationByLevel[]> {
   const json = await res.json()
   const features = (json.features ?? []) as Array<{ attributes: Record<string, number | string> }>
 
-  return features
-    .map((f) => ({
-      level: String(f.attributes.IS_nivel),
+  const rows: PopulationByLevel[] = []
+  for (const f of features) {
+    const level = normalizeSusceptibilityLevel(String(f.attributes.IS_nivel))
+    if (!level) continue
+    rows.push({
+      level,
       total: Number(f.attributes.total_sum) || 0,
       children: Number(f.attributes.children_sum) || 0,
       elderly: Number(f.attributes.elderly_sum) || 0,
-    }))
-    .filter((r) => isSusceptibilityLevel(r.level))
+    })
+  }
+  return rows
+}
+
+/**
+ * Sums critical-infrastructure exposure fields (schools, hospitals,
+ * pharmacies, other critical infrastructure) grouped by landslide threat
+ * level, via the same server-side statistics approach as
+ * `getPopulationByLevel`.
+ */
+export async function getExposureByLevel(): Promise<ExposureByLevel[]> {
+  const outStatistics = [
+    { statisticType: "sum", onStatisticField: "n_escuelas", outStatisticFieldName: "schools_sum" },
+    { statisticType: "sum", onStatisticField: "n_hospit", outStatisticFieldName: "hospitals_sum" },
+    { statisticType: "sum", onStatisticField: "n_farmaci", outStatisticFieldName: "pharmacies_sum" },
+    { statisticType: "sum", onStatisticField: "infra_crit", outStatisticFieldName: "critical_infra_sum" },
+  ]
+  const params = new URLSearchParams({
+    where: "IS_nivel IS NOT NULL",
+    outStatistics: JSON.stringify(outStatistics),
+    groupByFieldsForStatistics: "IS_nivel",
+    f: "json",
+  })
+  const res = await fetch(`${POLYGONS_LAYER}/query?${params.toString()}`, {
+    next: { revalidate: 3600 },
+  })
+  if (!res.ok) {
+    throw new Error("No se pudo consultar la infraestructura expuesta por nivel de amenaza")
+  }
+  const json = await res.json()
+  const features = (json.features ?? []) as Array<{ attributes: Record<string, number | string> }>
+
+  const rows: ExposureByLevel[] = []
+  for (const f of features) {
+    const level = normalizeSusceptibilityLevel(String(f.attributes.IS_nivel))
+    if (!level) continue
+    rows.push({
+      level,
+      schools: Number(f.attributes.schools_sum) || 0,
+      hospitals: Number(f.attributes.hospitals_sum) || 0,
+      pharmacies: Number(f.attributes.pharmacies_sum) || 0,
+      criticalInfra: Number(f.attributes.critical_infra_sum) || 0,
+    })
+  }
+  return rows
 }

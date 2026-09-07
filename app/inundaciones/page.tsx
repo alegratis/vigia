@@ -42,7 +42,9 @@ export default function FloodPage() {
               Monitoreo de caudales para los tramos prioritarios alrededor de Sevilla,
               Caicedonia y Zarzal. Los pronósticos provienen del modelo hidrológico
               GEOGLOWS y se clasifican con umbrales de periodo de retorno calculados
-              sobre el registro histórico.
+              sobre el registro histórico. El mapa se puede combinar con la tasa de
+              precipitación en vivo (NASA GPM IMERG), la señal de disparo principal de
+              una creciente.
             </p>
           </div>
 

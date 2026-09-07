@@ -1,7 +1,8 @@
 /**
  * Shared, client-safe metadata for the landslide susceptibility levels
- * (`IS_nivel`) published in the `amenaza_por_deslizamiento` ArcGIS Online
- * layer (see lib/deslizamientos/client.ts). No server imports.
+ * (`IS_nivel`) published in the `VIGIA_Amenaza_IS_Puntos`/`IS_Poligonos`
+ * ArcGIS Online layers (see lib/deslizamientos/client.ts). No server
+ * imports.
  */
 
 export const SUSCEPTIBILITY_LEVELS = ["Muy bajo", "Bajo", "Medio", "Alto", "Muy alto"] as const
@@ -45,6 +46,29 @@ export const SUSCEPTIBILITY_LEVEL_STYLES: Record<SusceptibilityLevel, Susceptibi
 
 export function isSusceptibilityLevel(value: string): value is SusceptibilityLevel {
   return (SUSCEPTIBILITY_LEVELS as readonly string[]).includes(value)
+}
+
+/**
+ * The `VIGIA_Amenaza_IS_*` layers store `IS_nivel` as upper snake case
+ * (`MUY_ALTO`, `ALTO`, `MEDIO`, `BAJO`, `MUY_BAJO`) rather than the title
+ * case used throughout this app's UI and the older
+ * `amenaza_por_deslizamiento` layer. Normalizing here keeps every
+ * downstream consumer (map styling, legends, exposure panel) unaware of
+ * the source layer's raw casing.
+ */
+const RAW_IS_NIVEL_TO_LEVEL: Record<string, SusceptibilityLevel> = {
+  MUY_BAJO: "Muy bajo",
+  BAJO: "Bajo",
+  MEDIO: "Medio",
+  ALTO: "Alto",
+  MUY_ALTO: "Muy alto",
+}
+
+/** Normalizes a raw `IS_nivel` value from the source layer, or `null` if unrecognized. */
+export function normalizeSusceptibilityLevel(value: string | null | undefined): SusceptibilityLevel | null {
+  if (!value) return null
+  if (isSusceptibilityLevel(value)) return value
+  return RAW_IS_NIVEL_TO_LEVEL[value.trim().toUpperCase()] ?? null
 }
 
 /** Raw CSS color token for a level, falling back to a neutral tone for unrecognized values. */
