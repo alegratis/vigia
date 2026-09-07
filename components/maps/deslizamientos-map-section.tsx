@@ -11,7 +11,7 @@ import { LiveThreatPopulation } from "@/components/deslizamientos/live-threat-po
 export function DeslizamientosMapSection() {
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <div role="region" aria-label="Mapa de susceptibilidad a deslizamiento">
           <p className="sr-only">
             Mapa interactivo de susceptibilidad a deslizamiento. El panel de
