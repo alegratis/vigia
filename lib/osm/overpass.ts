@@ -102,26 +102,48 @@ interface OverpassResponse {
   elements: OverpassElement[]
 }
 
+/** Per-attempt timeout: a stalled TLS handshake shouldn't eat the whole
+ * request budget before failing over to the next mirror. */
+const MIRROR_TIMEOUT_MS = 8000
+
+async function queryOverpassMirror(url: string, query: string): Promise<OverpassResponse> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), MIRROR_TIMEOUT_MS)
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: `data=${encodeURIComponent(query)}`,
+      next: { revalidate: 21600 },
+      signal: controller.signal,
+    })
+    if (!res.ok) {
+      throw new Error(`Overpass respondió ${res.status} desde ${url}`)
+    }
+    return (await res.json()) as OverpassResponse
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
+/**
+ * Overpass's public instances occasionally reset the TLS connection or
+ * stall under load — transient flakiness, not a query problem. Tries every
+ * mirror with a short per-attempt timeout, then makes one more full pass
+ * across all mirrors before giving up, since a bad network window on one
+ * pass often clears by the second.
+ */
 async function queryOverpass(query: string): Promise<OverpassResponse> {
   let lastError: unknown
-  for (const url of OVERPASS_URLS) {
-    try {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: `data=${encodeURIComponent(query)}`,
-        next: { revalidate: 21600 },
-      })
-      if (!res.ok) {
-        lastError = new Error(`Overpass respondió ${res.status} desde ${url}`)
-        continue
+  for (let pass = 0; pass < 2; pass++) {
+    for (const url of OVERPASS_URLS) {
+      try {
+        return await queryOverpassMirror(url, query)
+      } catch (err) {
+        // Try the next mirror (or, on the final mirror of a pass, the next
+        // pass) instead of failing the whole request on one bad attempt.
+        lastError = err
       }
-      return (await res.json()) as OverpassResponse
-    } catch (err) {
-      // Transient TLS/connection resets happen occasionally against
-      // Overpass's public instances — try the next mirror instead of
-      // failing the whole request.
-      lastError = err
     }
   }
   throw lastError instanceof Error
