@@ -224,7 +224,7 @@ function IncendiosLiveMapImpl({
   )
 
   return (
-    <div className="relative h-full min-h-[320px] w-full overflow-hidden rounded-xl border border-border sm:min-h-[420px]">
+    <div className="relative aspect-[9/10] min-h-[420px] w-full overflow-hidden rounded-xl border border-border">
       <MapContainer
         center={AOI_CENTER}
         zoom={11}

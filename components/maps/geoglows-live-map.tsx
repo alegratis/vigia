@@ -312,7 +312,7 @@ function GeoglowsLiveMapImpl({ onBoundsChange }: { onBoundsChange?: (bounds: Map
   return (
     <div
       ref={containerRef}
-      className="relative h-full min-h-[320px] w-full overflow-hidden rounded-xl border border-border sm:min-h-[420px]"
+      className="relative aspect-[9/10] min-h-[420px] w-full overflow-hidden rounded-xl border border-border"
     >
       <MapContainer
         center={AOI_CENTER}
