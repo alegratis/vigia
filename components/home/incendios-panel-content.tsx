@@ -2,26 +2,27 @@
 
 import { useCallback, useMemo, useState } from "react"
 import { IncendiosLiveMapLoader } from "@/components/maps/incendios-live-map-loader"
-import { LiveAreaPopulation } from "@/components/maps/live-area-population"
 import { LiveInfrastructureCategories } from "@/components/maps/live-infrastructure-categories"
 import { LiveInfrastructureBuildings } from "@/components/maps/live-infrastructure-buildings"
 import { useOsmInfrastructure } from "@/lib/osm/use-infrastructure"
 import type { OsmCategoryKey } from "@/lib/osm/categories"
 import type { MapBounds } from "@/lib/map-bounds"
 
+interface IncendiosPanelContentProps {
+  /** Bubbles the map's viewport up to the workspace's shared sidebar card. */
+  onBoundsChange?: (bounds: MapBounds) => void
+  /** Bubbles a clicked zone's municipio up to the shared sidebar card. */
+  onZoneSelect?: (municipio: string) => void
+}
+
 /**
- * Live, viewport-scoped demographics + map canvas for the incendios page.
- * Demographics come first as the primary, left-hand column, mirroring
- * DeslizamientosMapSection/HazardMapSection's layout: the map drives
- * `bounds` via BoundsSync, same as the GEOGLOWS flood map, so the
- * demographics panel stays the same component used across every hazard —
- * no new exposure computation yet, per plan. Below that row, the OSM
- * infrastructure breakdown and its building-name list sit side by side,
- * sharing the same toggled categories that also drive the map's markers.
+ * Expanded incendios panel for the homepage workspace: the fire-threat map
+ * plus the shared OSM infrastructure row. Demographics now live in the
+ * workspace's shared, viewport-based sidebar card, fed by
+ * onBoundsChange/onZoneSelect instead of a local LiveAreaPopulation.
  */
-export function IncendiosMapSection() {
+export function IncendiosPanelContent({ onBoundsChange, onZoneSelect }: IncendiosPanelContentProps) {
   const [bounds, setBounds] = useState<MapBounds | null>(null)
-  const [selectedMunicipio, setSelectedMunicipio] = useState<string | null>(null)
   const { points: osmPoints, isLoading: osmLoading, error: osmError } = useOsmInfrastructure()
   const [activeOsmCategories, setActiveOsmCategories] = useState<Set<OsmCategoryKey>>(new Set())
 
@@ -39,30 +40,27 @@ export function IncendiosMapSection() {
     [osmPoints, activeOsmCategories],
   )
 
+  const handleBoundsChange = useCallback(
+    (b: MapBounds) => {
+      setBounds(b)
+      onBoundsChange?.(b)
+    },
+    [onBoundsChange],
+  )
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-        <div aria-live="polite" className="flex flex-col gap-4">
-          <LiveAreaPopulation
-            bounds={bounds}
-            basis="rural"
-            basisLabel="Población rural"
-            selectedMunicipio={selectedMunicipio}
-            onClearSelection={() => setSelectedMunicipio(null)}
-          />
-        </div>
-        <div role="region" aria-label="Mapa de amenaza por incendios forestales">
-          <p className="sr-only">
-            Mapa interactivo de amenaza por incendios forestales, con pronóstico del
-            Índice Meteorológico de Incendio. El panel de población en el encuadre
-            actual, a la izquierda, resume el mismo contenido en formato de texto.
-          </p>
-          <IncendiosLiveMapLoader
-            onBoundsChange={setBounds}
-            onZoneSelect={setSelectedMunicipio}
-            osmPoints={activeOsmPoints}
-          />
-        </div>
+      <div role="region" aria-label="Mapa de amenaza por incendios forestales">
+        <p className="sr-only">
+          Mapa interactivo de amenaza por incendios forestales, con pronóstico del
+          Índice Meteorológico de Incendio. El panel de población en el encuadre
+          actual, en la barra lateral, resume el mismo contenido en formato de texto.
+        </p>
+        <IncendiosLiveMapLoader
+          onBoundsChange={handleBoundsChange}
+          onZoneSelect={onZoneSelect}
+          osmPoints={activeOsmPoints}
+        />
       </div>
       <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <LiveInfrastructureCategories

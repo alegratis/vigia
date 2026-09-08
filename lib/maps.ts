@@ -26,7 +26,7 @@ export const mapModels: MapModel[] = [
     imageAlt:
       "Mapa de susceptibilidad a deslizamientos con zonas de riesgo en terreno de pendiente",
     tag: "Amenaza geológica",
-    href: "/deslizamientos",
+    href: "/?categoria=deslizamientos",
     ready: true,
   },
   {
@@ -39,7 +39,7 @@ export const mapModels: MapModel[] = [
     imageAlt:
       "Mapa de inundación con manchas de agua a lo largo de un río sobre el terreno",
     tag: "Amenaza hídrica",
-    href: "/inundaciones",
+    href: "/?categoria=inundaciones",
     ready: true,
   },
   {
@@ -52,7 +52,7 @@ export const mapModels: MapModel[] = [
     imageAlt:
       "Mapa de detección de incendios con focos de calor sobre terreno montañoso boscoso",
     tag: "Amenaza térmica",
-    href: "/incendios",
+    href: "/?categoria=incendios",
     ready: true,
   },
 ]

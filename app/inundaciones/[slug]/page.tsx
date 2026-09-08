@@ -42,7 +42,7 @@ export default async function StationPage({
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-12">
         <Link
-          href="/inundaciones"
+          href="/?categoria=inundaciones"
           className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="size-4" aria-hidden="true" />

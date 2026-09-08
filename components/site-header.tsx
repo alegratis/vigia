@@ -9,9 +9,9 @@ import { ThemeToggle } from "@/components/theme-toggle"
 
 const navLinks = [
   { label: "Panel", href: "/" },
-  { label: "Deslizamientos", href: "/deslizamientos" },
-  { label: "Inundaciones", href: "/inundaciones" },
-  { label: "Incendios", href: "/incendios" },
+  { label: "Deslizamientos", href: "/?categoria=deslizamientos" },
+  { label: "Inundaciones", href: "/?categoria=inundaciones" },
+  { label: "Incendios", href: "/?categoria=incendios" },
   { label: "Demografía", href: "/demografia" },
 ]
 
