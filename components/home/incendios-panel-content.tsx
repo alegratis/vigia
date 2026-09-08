@@ -1,6 +1,8 @@
 "use client"
 
+import { useRef } from "react"
 import { IncendiosLiveMapLoader } from "@/components/maps/incendios-live-map-loader"
+import { ScrollHintButton } from "@/components/home/scroll-hint-button"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
 
@@ -24,12 +26,14 @@ export function IncendiosPanelContent({
   onZoneSelect,
   activeOsmPoints,
 }: IncendiosPanelContentProps) {
+  const captionRef = useRef<HTMLDivElement>(null)
+
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
       <div
         role="region"
         aria-label="Mapa de amenaza por incendios forestales"
-        className="h-[70vh] min-h-[420px] shrink-0 lg:h-full"
+        className="relative h-[70vh] min-h-[420px] shrink-0 lg:h-full"
       >
         <p className="sr-only">
           Mapa interactivo de amenaza por incendios forestales, con pronóstico del
@@ -42,8 +46,9 @@ export function IncendiosPanelContent({
           onZoneSelect={onZoneSelect}
           osmPoints={activeOsmPoints}
         />
+        <ScrollHintButton targetRef={captionRef} label="Ver fuente de datos" />
       </div>
-      <div className="p-4 sm:p-6">
+      <div ref={captionRef} className="p-4 sm:p-6">
         <p className="text-xs text-muted-foreground">
           Amenaza por vereda: capa pública <code className="text-foreground">AmenazaIncendios</code>,
           publicada en ArcGIS Online. Pronóstico FWI: servicio abierto{" "}

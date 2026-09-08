@@ -1,8 +1,9 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { DeslizamientosLiveMapLoader } from "@/components/maps/deslizamientos-live-map-loader"
 import { LiveThreatPopulation } from "@/components/deslizamientos/live-threat-population"
+import { ScrollHintButton } from "@/components/home/scroll-hint-button"
 import type { OsmCategoryKey } from "@/lib/osm/categories"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { SusceptibilityLevel } from "@/lib/deslizamientos/levels"
@@ -24,10 +25,15 @@ interface DeslizamientosPanelContentProps {
  */
 export function DeslizamientosPanelContent({ onBoundsChange, activeOsmPoints }: DeslizamientosPanelContentProps) {
   const [selectedLevel, setSelectedLevel] = useState<SusceptibilityLevel | null>(null)
+  const statsRef = useRef<HTMLDivElement>(null)
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-      <div role="region" aria-label="Mapa de susceptibilidad a deslizamiento" className="h-[70vh] min-h-[420px] shrink-0 lg:h-full">
+      <div
+        role="region"
+        aria-label="Mapa de susceptibilidad a deslizamiento"
+        className="relative h-[70vh] min-h-[420px] shrink-0 lg:h-full"
+      >
         <p className="sr-only">
           Mapa interactivo de susceptibilidad a deslizamiento. El panel de
           población por nivel de amenaza, debajo, resume el mismo contenido
@@ -39,8 +45,9 @@ export function DeslizamientosPanelContent({ onBoundsChange, activeOsmPoints }: 
           onPointSelect={setSelectedLevel}
           osmPoints={activeOsmPoints}
         />
+        <ScrollHintButton targetRef={statsRef} label="Ver población por amenaza" />
       </div>
-      <div className="flex flex-col gap-4 p-4 sm:p-6">
+      <div ref={statsRef} className="flex flex-col gap-4 p-4 sm:p-6">
         <div aria-live="polite">
           <LiveThreatPopulation
             selectedLevel={selectedLevel}

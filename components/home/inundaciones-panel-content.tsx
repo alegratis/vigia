@@ -1,6 +1,8 @@
 "use client"
 
+import { useRef } from "react"
 import { GeoglowsLiveMapLoader } from "@/components/maps/geoglows-live-map-loader"
+import { ScrollHintButton } from "@/components/home/scroll-hint-button"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
 
@@ -24,9 +26,11 @@ export function InundacionesPanelContent({
   onZoneSelect,
   activeOsmPoints,
 }: InundacionesPanelContentProps) {
+  const captionRef = useRef<HTMLDivElement>(null)
+
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-      <div role="region" aria-label="Mapa de inundaciones" className="h-[70vh] min-h-[420px] shrink-0 lg:h-full">
+      <div role="region" aria-label="Mapa de inundaciones" className="relative h-[70vh] min-h-[420px] shrink-0 lg:h-full">
         <p className="sr-only">
           Mapa interactivo de inundaciones. El panel de población en el encuadre
           actual, en la barra lateral, resume el mismo contenido en formato de texto.
@@ -37,8 +41,9 @@ export function InundacionesPanelContent({
           onZoneSelect={onZoneSelect}
           osmPoints={activeOsmPoints}
         />
+        <ScrollHintButton targetRef={captionRef} label="Ver fuente de datos" />
       </div>
-      <div className="p-4 sm:p-6">
+      <div ref={captionRef} className="p-4 sm:p-6">
         <p className="text-xs text-muted-foreground">
           Pronóstico de río servido en vivo por GEOGLOWS / Esri Living Atlas (capa pública
           GlobalWaterModel_Medium). Susceptibilidad a inundación: capa pública{" "}
