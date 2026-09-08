@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
-import { Menu, X } from "lucide-react"
+import { ArrowUpRight, Menu, X } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { openInfoPopup } from "@/lib/open-info-popup"
 
@@ -76,6 +76,15 @@ export function SiteHeader() {
             >
               Demografía
             </button>
+            <Link
+              href="/documentacion"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
+              Documentación
+              <ArrowUpRight className="size-3.5" aria-hidden="true" />
+            </Link>
           </nav>
           <div className="ml-1">
             <ThemeToggle />
@@ -130,6 +139,17 @@ export function SiteHeader() {
               >
                 Demografía
               </button>
+            </li>
+            <li>
+              <Link
+                href="/documentacion"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 rounded-md px-3 py-2.5 text-base font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              >
+                Documentación
+                <ArrowUpRight className="size-4" aria-hidden="true" />
+              </Link>
             </li>
           </ul>
         </nav>
