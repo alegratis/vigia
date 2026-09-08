@@ -47,7 +47,7 @@ export function LiveInfrastructureBuildings({
   }, [points, bounds, activeCategories])
 
   return (
-    <Card className={cn("flex h-[420px] flex-col", className)}>
+    <Card className={cn("flex h-[420px] max-h-[50vh] flex-col", className)}>
       <CardHeader className="gap-1 border-b border-border">
         <h3 className="flex items-center gap-2 font-semibold tracking-tight">
           <Building className="size-4" aria-hidden="true" />

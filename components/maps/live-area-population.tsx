@@ -69,7 +69,7 @@ export function LiveAreaPopulation({
   )
 
   if (isLoading || !data) {
-    return <Skeleton className={cn("h-[560px] rounded-xl", className)} />
+    return <Skeleton className={cn("h-[420px] max-h-[60vh] rounded-xl", className)} />
   }
 
   const inView = bounds ? pointsInBounds(REFERENCE_POINTS, bounds) : null
@@ -88,7 +88,7 @@ export function LiveAreaPopulation({
   )
 
   return (
-    <Card className={cn("flex h-[560px] flex-col", className)}>
+    <Card className={cn("flex h-[420px] max-h-[60vh] flex-col", className)}>
       <CardHeader className="gap-1 border-b border-border">
         <h3 className="flex items-center gap-2 font-semibold tracking-tight">
           <Users className="size-4" aria-hidden="true" />
