@@ -77,24 +77,45 @@ export function HazardWorkspace({ initialCategory }: { initialCategory: string }
     >
       <div className="flex flex-col gap-6 border-b border-border bg-card p-6 sm:p-8 lg:w-80 lg:shrink-0 lg:overflow-y-auto lg:border-b-0 lg:border-r xl:w-96">
         <div className="flex flex-col items-center gap-6 text-center">
-          <span className="relative flex size-16 items-center justify-center">
-            <Image
-              src="/images/vigia-mark-light.png"
-              alt=""
-              width={84}
-              height={65}
-              className="block dark:hidden"
-              priority
-            />
-            <Image
-              src="/images/vigia-mark-dark.png"
-              alt=""
-              width={84}
-              height={65}
-              className="hidden dark:block"
-              priority
-            />
-          </span>
+          <div className="flex items-center gap-4">
+            <span className="relative flex h-12 items-center justify-center">
+              <Image
+                src="/images/redlabot-mark-light.png"
+                alt="RED LabOT"
+                width={100}
+                height={45}
+                className="block h-9 w-auto dark:hidden"
+                priority
+              />
+              <Image
+                src="/images/redlabot-mark-dark.png"
+                alt="RED LabOT"
+                width={100}
+                height={45}
+                className="hidden h-9 w-auto dark:block"
+                priority
+              />
+            </span>
+            <span aria-hidden="true" className="h-10 w-px bg-border" />
+            <span className="relative flex size-16 items-center justify-center">
+              <Image
+                src="/images/vigia-mark-light.png"
+                alt=""
+                width={84}
+                height={65}
+                className="block dark:hidden"
+                priority
+              />
+              <Image
+                src="/images/vigia-mark-dark.png"
+                alt=""
+                width={84}
+                height={65}
+                className="hidden dark:block"
+                priority
+              />
+            </span>
+          </div>
           <div className="flex flex-col items-center gap-3">
             <h1 className="sr-only">Vigía</h1>
             <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
