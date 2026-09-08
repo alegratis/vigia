@@ -3,11 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 const GUIDE_CARDS = [
   {
     title: "Panel principal (/)",
-    body: "La página de inicio es un flujo de un solo vistazo: un acordeón cambia entre las tres amenazas (deslizamientos, inundaciones, incendios) sin salir de la pantalla. Cada amenaza trae su propio mapa Leaflet con capas activables, una leyenda y tarjetas de estadísticas de población e infraestructura expuesta.",
+    body: "La página de inicio es un flujo de un solo vistazo: un acordeón cambia entre las cuatro amenazas (deslizamientos, inundaciones, incendios, precipitación) sin salir de la pantalla. Cada amenaza trae su propio mapa Leaflet con capas activables, una leyenda y tarjetas de estadísticas de población e infraestructura expuesta.",
   },
   {
     title: "Vistas completas por amenaza",
-    body: "Los enlaces del menú superior (Deslizamientos, Inundaciones, Incendios) abren la versión de página completa de cada mapa, con el mismo contenido que el panel de inicio pero con más espacio en pantalla — útil para monitoreo prolongado o pantallas grandes.",
+    body: "Los enlaces del menú superior (Deslizamientos, Inundaciones, Incendios, Precipitación) abren la versión de página completa de cada mapa, con el mismo contenido que el panel de inicio pero con más espacio en pantalla — útil para monitoreo prolongado o pantallas grandes.",
   },
   {
     title: "Demografía",

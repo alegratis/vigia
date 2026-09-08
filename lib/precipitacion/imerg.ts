@@ -15,6 +15,14 @@
  *
  * No server import here — the map renders the WMTS tiles directly in the
  * browser via react-leaflet's TileLayer, same as the OSM basemap.
+ *
+ * Shared by the inundaciones map (components/maps/geoglows-live-map.tsx,
+ * as visual rainfall context alongside the flood forecast) and the
+ * precipitación map (components/maps/precipitacion-live-map.tsx, its
+ * primary raster layer) — this is the real satellite-derived precipitation
+ * source, distinct from the vereda-level numeric aggregate in
+ * lib/precipitacion/power-client.ts (NASA POWER, reanalysis-based, not
+ * IMERG — see that file's header comment).
  */
 
 export const IMERG_TILE_URL =

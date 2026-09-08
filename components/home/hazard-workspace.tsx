@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Image from "next/image"
-import { ArrowRight, Droplets, Flame, Mountain, type LucideIcon } from "lucide-react"
+import { ArrowRight, CloudRain, Droplets, Flame, Mountain, type LucideIcon } from "lucide-react"
 import { CategoryPanel } from "@/components/home/category-panel"
 import { DeslizamientosPanelContent } from "@/components/home/deslizamientos-panel-content"
 import { InundacionesPanelContent } from "@/components/home/inundaciones-panel-content"
 import { IncendiosPanelContent } from "@/components/home/incendios-panel-content"
+import { PrecipitacionPanelContent } from "@/components/home/precipitacion-panel-content"
 import { LiveAreaPopulation } from "@/components/maps/live-area-population"
 import { LiveInfrastructureCategories } from "@/components/maps/live-infrastructure-categories"
 import { LiveInfrastructureBuildings } from "@/components/maps/live-infrastructure-buildings"
@@ -20,6 +21,7 @@ const hazardIcons: Record<string, LucideIcon> = {
   deslizamientos: Mountain,
   inundaciones: Droplets,
   incendios: Flame,
+  precipitacion: CloudRain,
 }
 
 /** Which DANE population category the shared sidebar card preselects for each hazard. */
@@ -27,6 +29,7 @@ const CATEGORY_BASIS: Record<string, { basis: "urbano" | "rural"; basisLabel: st
   deslizamientos: { basis: "rural", basisLabel: "Población rural" },
   inundaciones: { basis: "urbano", basisLabel: "Población urbana" },
   incendios: { basis: "rural", basisLabel: "Población rural" },
+  precipitacion: { basis: "rural", basisLabel: "Población rural" },
 }
 
 /**
@@ -186,6 +189,13 @@ export function HazardWorkspace({ initialCategory }: { initialCategory: string }
               )}
               {model.slug === "incendios" && (
                 <IncendiosPanelContent
+                  onBoundsChange={setBounds}
+                  onZoneSelect={setSelectedMunicipio}
+                  activeOsmPoints={activeOsmPoints}
+                />
+              )}
+              {model.slug === "precipitacion" && (
+                <PrecipitacionPanelContent
                   onBoundsChange={setBounds}
                   onZoneSelect={setSelectedMunicipio}
                   activeOsmPoints={activeOsmPoints}

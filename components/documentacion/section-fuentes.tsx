@@ -94,12 +94,23 @@ const GROUPS: SourceGroup[] = [
       {
         nombre: "Tasa de precipitación (GPM IMERG)",
         publicador: "NASA GIBS (EOSDIS)",
-        descripcion: "Mosaico de teselas WMTS de precipitación de 2 km, usado como pronóstico complementario en el mapa de inundaciones.",
+        descripcion: "Mosaico de teselas WMTS de precipitación de 2 km, usado como capa satelital en los mapas de inundaciones y precipitación.",
         url: "https://worldview.earthdata.nasa.gov/",
         acceso: "WMTS (teselas de imagen)",
         licencia: "Datos públicos de la NASA",
         cobertura: "Global",
         actualizacion: "Cada ~30 minutos",
+      },
+      {
+        nombre: "Lluvia acumulada por punto (PRECTOTCORR)",
+        publicador: "NASA POWER (LARC)",
+        descripcion:
+          "Precipitación diaria puntual por reanálisis MERRA-2 (datos asentados) o GEOS-IT (últimos días, casi en tiempo real) — no es GPM/satelital directo. Consultada una vez por centroide de vereda para el acumulado de 7 días del mapa de precipitación.",
+        url: "https://power.larc.nasa.gov/",
+        acceso: "API REST (JSON)",
+        licencia: "Datos públicos de la NASA",
+        cobertura: "Global (recortada al área de estudio)",
+        actualizacion: "Diaria; la app cachea 3 horas",
       },
       {
         nombre: "Índice de riesgo de incendio (FWI)",

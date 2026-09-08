@@ -17,7 +17,7 @@ import {
 import type { Layer, LatLngBoundsExpression, LatLngExpression, PathOptions, WMSParams } from "leaflet"
 import "leaflet/dist/leaflet.css"
 import useSWR from "swr"
-import { Download, Loader2, Mountain, Droplets, Flame } from "lucide-react"
+import { Download, Loader2, Mountain, Droplets, Flame, CloudRain } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   SUSCEPTIBILITY_LEVELS,
@@ -26,8 +26,10 @@ import {
 } from "@/lib/deslizamientos/levels"
 import { FLOOD_SUSCEPTIBILITY_LEVELS, floodSusceptibilityColorToken } from "@/lib/inundaciones/levels"
 import { FIRE_THREAT_LEVELS, fireLevelColorToken } from "@/lib/incendios/levels"
+import { PRECIPITATION_LEVELS, precipitationLevelColorToken } from "@/lib/precipitacion/levels"
 import { SMAP_TILE_URL } from "@/lib/deslizamientos/smap"
 import { GWIS_FWI_LAYER, GWIS_WMS_URL } from "@/lib/incendios/gwis"
+import { IMERG_TILE_URL } from "@/lib/precipitacion/imerg"
 import { buildProxyExportUrl, type LatLngBounds as GeoglowsBounds } from "@/lib/geoglows/live-map"
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import { CONFIDENCE_STYLES, formatDateTime, formatDistance, formatFrp } from "@/lib/firms/ui"
@@ -35,14 +37,16 @@ import type { VeredaListEntry } from "@/lib/veredas/list-api-types"
 import type { DeslizamientosResponse } from "@/lib/deslizamientos/api-types"
 import type { InundacionesSusceptibilidadResponse } from "@/lib/inundaciones/api-types"
 import type { IncendiosAmenazaResponse } from "@/lib/incendios/api-types"
+import type { PrecipitacionAmenazaResponse } from "@/lib/precipitacion/api-types"
 import type { FiresResponse } from "@/lib/firms/api-types"
 
-type HazardKey = "deslizamientos" | "inundaciones" | "incendios"
+type HazardKey = "deslizamientos" | "inundaciones" | "incendios" | "precipitacion"
 
 const HAZARD_META: Record<HazardKey, { label: string; icon: typeof Mountain }> = {
   deslizamientos: { label: "Deslizamientos", icon: Mountain },
   inundaciones: { label: "Inundaciones", icon: Droplets },
   incendios: { label: "Incendios", icon: Flame },
+  precipitacion: { label: "Precipitación", icon: CloudRain },
 }
 
 const deslizamientosFetcher = async (url: string): Promise<DeslizamientosResponse> => {
@@ -58,6 +62,11 @@ const inundacionesFetcher = async (url: string): Promise<InundacionesSusceptibil
 const incendiosFetcher = async (url: string): Promise<IncendiosAmenazaResponse> => {
   const res = await fetch(url)
   if (!res.ok) throw new Error("No se pudo cargar la capa de incendios")
+  return res.json()
+}
+const precipitacionFetcher = async (url: string): Promise<PrecipitacionAmenazaResponse> => {
+  const res = await fetch(url)
+  if (!res.ok) throw new Error("No se pudo cargar la capa de precipitación")
   return res.json()
 }
 const firesFetcher = async (url: string): Promise<FiresResponse> => {
@@ -138,6 +147,7 @@ function HazardLegend({ hazardKeys }: { hazardKeys: HazardKey[] }) {
       deslizamientos: SUSCEPTIBILITY_LEVELS.map((l) => resolveCssColor(levelColorToken(l))),
       inundaciones: FLOOD_SUSCEPTIBILITY_LEVELS.map((l) => resolveCssColor(floodSusceptibilityColorToken(l))),
       incendios: FIRE_THREAT_LEVELS.map((l) => resolveCssColor(fireLevelColorToken(l))),
+      precipitacion: PRECIPITATION_LEVELS.map((l) => resolveCssColor(precipitationLevelColorToken(l))),
     })
   }, [])
 
@@ -147,11 +157,13 @@ function HazardLegend({ hazardKeys }: { hazardKeys: HazardKey[] }) {
     deslizamientos: SUSCEPTIBILITY_LEVELS,
     inundaciones: FLOOD_SUSCEPTIBILITY_LEVELS,
     incendios: FIRE_THREAT_LEVELS,
+    precipitacion: PRECIPITATION_LEVELS,
   }
   const TITLES: Record<HazardKey, string> = {
     deslizamientos: "Susceptibilidad a deslizamiento",
     inundaciones: "Susceptibilidad a inundación",
     incendios: "Amenaza por incendios",
+    precipitacion: "Lluvia acumulada (7 días)",
   }
 
   return (
@@ -211,15 +223,19 @@ function HazardToggleControl({ active, onToggle }: HazardToggleControlProps) {
 /**
  * Focused hazard map for the "Conoce tu nivel de exposición" popup
  * (see components/exposicion/exposicion-panel.tsx). Fits and outlines a
- * single vereda, then overlays whichever of the three hazards are toggled
+ * single vereda, then overlays whichever of the four hazards are toggled
  * on — each toggle bundling that hazard's threat/susceptibility layer with
- * its live forecast, mirroring the three full hazard maps
- * (components/maps/{deslizamientos,geoglows,incendios}-live-map.tsx) this
- * reuses styling and data sources from, but built fresh rather than
- * merging those three components together.
+ * its live forecast, mirroring the four full hazard maps
+ * (components/maps/{deslizamientos,geoglows,incendios,precipitacion}-live-map.tsx)
+ * this reuses styling and data sources from, but built fresh rather than
+ * merging those components together. Precipitación is the only one of the
+ * four with coverage for Zarzal — see lib/precipitacion/server.ts — so it's
+ * on by default alongside the others rather than left for the user to find.
  */
 function ExposicionMapImpl({ vereda }: { vereda: VeredaListEntry }) {
-  const [active, setActive] = useState<Set<HazardKey>>(new Set(["deslizamientos", "inundaciones", "incendios"]))
+  const [active, setActive] = useState<Set<HazardKey>>(
+    new Set(["deslizamientos", "inundaciones", "incendios", "precipitacion"]),
+  )
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
   const captureRef = useRef<HTMLDivElement>(null)
@@ -236,6 +252,7 @@ function ExposicionMapImpl({ vereda }: { vereda: VeredaListEntry }) {
   const showDeslizamientos = active.has("deslizamientos")
   const showInundaciones = active.has("inundaciones")
   const showIncendios = active.has("incendios")
+  const showPrecipitacion = active.has("precipitacion")
 
   const { data: deslizamientos } = useSWR<DeslizamientosResponse>(
     showDeslizamientos ? "/api/deslizamientos" : null,
@@ -257,11 +274,17 @@ function ExposicionMapImpl({ vereda }: { vereda: VeredaListEntry }) {
     firesFetcher,
     { revalidateOnFocus: false },
   )
+  const { data: precipitacion } = useSWR<PrecipitacionAmenazaResponse>(
+    showPrecipitacion ? "/api/precipitacion/amenaza" : null,
+    precipitacionFetcher,
+    { revalidateOnFocus: false },
+  )
 
   const [resolvedColors, setResolvedColors] = useState<{
     deslizamientos: Record<string, string>
     inundaciones: Record<string, string>
     incendios: Record<string, string>
+    precipitacion: Record<string, string>
     fires: Record<string, string>
   } | null>(null)
 
@@ -275,6 +298,9 @@ function ExposicionMapImpl({ vereda }: { vereda: VeredaListEntry }) {
       ),
       incendios: Object.fromEntries(
         FIRE_THREAT_LEVELS.map((l) => [l, resolveCssColor(fireLevelColorToken(l))] as const),
+      ),
+      precipitacion: Object.fromEntries(
+        PRECIPITATION_LEVELS.map((l) => [l, resolveCssColor(precipitationLevelColorToken(l))] as const),
       ),
       fires: Object.fromEntries(
         (Object.keys(CONFIDENCE_STYLES) as Array<keyof typeof CONFIDENCE_STYLES>).map(
@@ -313,6 +339,24 @@ function ExposicionMapImpl({ vereda }: { vereda: VeredaListEntry }) {
     const nivel = feature.properties?.Amenaza_Label as string | undefined
     layer.bindPopup(
       `<div style="font-size:13px"><strong>${vereda_ ?? municipio ?? "—"}</strong><br/>Amenaza: ${nivel ?? "—"}</div>`,
+    )
+  }, [])
+
+  const precipitacionStyle = useCallback(
+    (feature?: GeoJSON.Feature): PathOptions => {
+      const level = feature?.properties?.nivel as string | undefined
+      const color = (level && resolvedColors?.precipitacion[level]) || "var(--muted-foreground)"
+      return { color, weight: 1, fillColor: color, fillOpacity: 0.45 }
+    },
+    [resolvedColors],
+  )
+  const onEachPrecipitacionFeature = useCallback((feature: GeoJSON.Feature, layer: Layer) => {
+    const nivel = feature.properties?.nivel as string | undefined
+    const acumulado = feature.properties?.acumuladoMm as number | undefined
+    layer.bindPopup(
+      `<div style="font-size:13px"><strong>Lluvia acumulada (7 días)</strong><br/>Nivel: ${nivel ?? "—"}<br/>${
+        acumulado != null ? `${acumulado} mm` : "sin dato"
+      }</div>`,
     )
   }, [])
 
@@ -508,6 +552,20 @@ function ExposicionMapImpl({ vereda }: { vereda: VeredaListEntry }) {
                     </Popup>
                   </CircleMarker>
                 ))}
+            </>
+          )}
+
+          {showPrecipitacion && (
+            <>
+              <TileLayer attribution="NASA GIBS / IMERG" url={IMERG_TILE_URL} opacity={0.5} maxNativeZoom={6} crossOrigin="anonymous" />
+              {precipitacion?.veredas && resolvedColors && (
+                <GeoJSON
+                  key="precipitacion"
+                  data={precipitacion.veredas as unknown as GeoJSON.GeoJsonObject}
+                  style={precipitacionStyle}
+                  onEachFeature={onEachPrecipitacionFeature}
+                />
+              )}
             </>
           )}
         </MapContainer>
