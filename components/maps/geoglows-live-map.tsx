@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   AttributionControl,
+  CircleMarker,
   MapContainer,
   TileLayer,
   ImageOverlay,
@@ -35,7 +36,10 @@ import { resolveCssColor } from "@/lib/resolve-css-color"
 import { formatFlow } from "@/lib/flood-ui"
 import { nearestPoint, type MapBounds } from "@/lib/map-bounds"
 import { REFERENCE_POINTS } from "@/lib/firms/area"
+import { getOsmCategory } from "@/lib/osm/categories"
+import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
 import type { InundacionesSusceptibilidadResponse } from "@/lib/inundaciones/api-types"
+import type { OsmPoint } from "@/lib/osm/api-types"
 
 function toLatLngBounds(b: LatLngBounds): LatLngBoundsExpression {
   return [
@@ -240,9 +244,12 @@ function SusceptibilityLegend() {
 function GeoglowsLiveMapImpl({
   onBoundsChange,
   onZoneSelect,
+  osmPoints,
 }: {
   onBoundsChange?: (bounds: MapBounds) => void
   onZoneSelect?: (municipio: string) => void
+  /** OSM infrastructure points for the categories currently toggled on. */
+  osmPoints?: OsmPoint[]
 }) {
   const [overlay, setOverlay] = useState<{ bounds: LatLngBounds; width: number; height: number } | null>(
     null,
@@ -250,6 +257,7 @@ function GeoglowsLiveMapImpl({
   const containerRef = useRef<HTMLDivElement>(null)
   const [showSusceptibility, setShowSusceptibility] = useState(true)
   const [showPrecipitation, setShowPrecipitation] = useState(false)
+  const osmColors = useOsmCategoryColors()
 
   const { data: susceptibility, error: susceptibilityError } = useSWR<InundacionesSusceptibilidadResponse>(
     "/api/inundaciones/susceptibilidad",
@@ -327,7 +335,7 @@ function GeoglowsLiveMapImpl({
   return (
     <div
       ref={containerRef}
-      className="relative aspect-[9/10] min-h-[420px] w-full overflow-hidden rounded-xl border border-border"
+      className="relative h-[560px] w-full overflow-hidden rounded-xl border border-border"
     >
       <MapContainer
         center={AOI_CENTER}
@@ -375,6 +383,33 @@ function GeoglowsLiveMapImpl({
             </Popup>
           </Marker>
         ))}
+        {osmColors &&
+          osmPoints?.map((p) => (
+            <CircleMarker
+              key={p.id}
+              center={[p.lat, p.lon]}
+              radius={5}
+              pathOptions={{
+                color: "#fff",
+                weight: 1,
+                fillColor: osmColors[p.category],
+                fillOpacity: 0.9,
+              }}
+              eventHandlers={{
+                // Stop the click from bubbling to the map's own click handler
+                // (ReachClickLayer), which would otherwise also fire its
+                // GEOGLOWS reach lookup underneath this marker's popup.
+                click: (e) => L.DomEvent.stopPropagation(e),
+              }}
+            >
+              <Popup>
+                <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
+                  <strong>{p.name ?? getOsmCategory(p.category).label}</strong>
+                  <span>{getOsmCategory(p.category).label}</span>
+                </div>
+              </Popup>
+            </CircleMarker>
+          ))}
         <ReachClickLayer />
         {onBoundsChange && (
           <OverlaySync onBoundsChange={onBoundsChange} onOverlayChange={handleOverlayChange} />

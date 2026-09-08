@@ -23,7 +23,10 @@ import {
 } from "@/lib/deslizamientos/levels"
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import { SMAP_TILE_URL, SMAP_WORLDVIEW_URL } from "@/lib/deslizamientos/smap"
+import { getOsmCategory } from "@/lib/osm/categories"
+import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
 import type { DeslizamientosResponse } from "@/lib/deslizamientos/api-types"
+import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
 
 // Fallback center if bounds-fitting is unavailable — the midpoint of AOI_BOUNDS below.
@@ -150,13 +153,17 @@ function SoilMoistureControl({ checked, onCheckedChange }: SoilMoistureControlPr
 function DeslizamientosLiveMapImpl({
   onBoundsChange,
   onPointSelect,
+  osmPoints,
 }: {
   onBoundsChange?: (bounds: MapBounds) => void
   onPointSelect?: (level: SusceptibilityLevel) => void
+  /** OSM infrastructure points for the categories currently toggled on. */
+  osmPoints?: OsmPoint[]
 }) {
   const { data, error } = useSWR<DeslizamientosResponse>("/api/deslizamientos", fetcher, {
     revalidateOnFocus: false,
   })
+  const osmColors = useOsmCategoryColors()
 
   const [resolvedColors, setResolvedColors] = useState<Record<string, string> | null>(null)
   const [showSoilMoisture, setShowSoilMoisture] = useState(false)
@@ -176,7 +183,7 @@ function DeslizamientosLiveMapImpl({
   const points = useMemo(() => data?.points.features ?? [], [data])
 
   return (
-    <div className="relative aspect-[9/10] min-h-[420px] w-full overflow-hidden rounded-xl border border-border">
+    <div className="relative h-[560px] w-full overflow-hidden rounded-xl border border-border">
       <MapContainer
         center={AOI_CENTER}
         zoom={11}
@@ -226,6 +233,27 @@ function DeslizamientosLiveMapImpl({
               </CircleMarker>
             )
           })}
+        {osmColors &&
+          osmPoints?.map((p) => (
+            <CircleMarker
+              key={p.id}
+              center={[p.lat, p.lon]}
+              radius={5}
+              pathOptions={{
+                color: "#fff",
+                weight: 1,
+                fillColor: osmColors[p.category],
+                fillOpacity: 0.9,
+              }}
+            >
+              <Popup>
+                <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
+                  <strong>{p.name ?? getOsmCategory(p.category).label}</strong>
+                  <span>{getOsmCategory(p.category).label}</span>
+                </div>
+              </Popup>
+            </CircleMarker>
+          ))}
         {onBoundsChange && <BoundsSync onBoundsChange={onBoundsChange} />}
       </MapContainer>
       {!data && !error && (

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import useSWR from "swr"
 import { Mountain } from "lucide-react"
+import { cn } from "cn"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Separator } from "@/components/ui/separator"
@@ -47,7 +48,7 @@ export function LiveThreatPopulation({
   }, [selectedLevel])
 
   if (isLoading || !data) {
-    return <Skeleton className={`h-64 rounded-xl ${className ?? ""}`} />
+    return <Skeleton className={cn("h-[560px] rounded-xl", className)} />
   }
 
   const rows = data.populationByLevel
@@ -73,7 +74,7 @@ export function LiveThreatPopulation({
   )
 
   return (
-    <Card className={className}>
+    <Card className={cn("flex h-[560px] flex-col", className)}>
       <CardHeader className="gap-1 border-b border-border">
         <h3 className="flex items-center gap-2 font-semibold tracking-tight">
           <Mountain className="size-4" aria-hidden="true" />
@@ -84,7 +85,7 @@ export function LiveThreatPopulation({
           amenaza. Sin filtro, se suman los cinco niveles.
         </p>
       </CardHeader>
-      <CardContent className="flex flex-col gap-4 py-4">
+      <CardContent className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto py-4">
         {selectedLevel && (
           <div className="flex items-center justify-between rounded-md bg-muted px-2.5 py-1.5 text-xs">
             <span className="text-foreground">

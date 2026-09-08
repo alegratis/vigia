@@ -10,5 +10,5 @@ import { Skeleton } from "@/components/ui/skeleton"
  */
 export const GeoglowsLiveMapLoader = dynamic(() => import("@/components/maps/geoglows-live-map"), {
   ssr: false,
-  loading: () => <Skeleton className="aspect-[9/10] min-h-[420px] w-full rounded-xl" />,
+    loading: () => <Skeleton className="h-[560px] w-full rounded-xl" />,
 })

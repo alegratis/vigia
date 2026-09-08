@@ -26,8 +26,11 @@ import { forecastDayOptions, GWIS_FWI_LAYER, GWIS_LEGEND_URL, GWIS_WMS_URL } fro
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import { CONFIDENCE_STYLES, formatDateTime, formatDistance, formatFrp } from "@/lib/firms/ui"
 import { normalizeMunicipioName } from "@/lib/demografia/categories"
+import { getOsmCategory } from "@/lib/osm/categories"
+import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
 import type { IncendiosAmenazaResponse } from "@/lib/incendios/api-types"
 import type { FireDetection, FiresResponse } from "@/lib/firms/api-types"
+import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
 
 const FIRE_DAY_OPTIONS = [1, 2, 3, 5] as const
@@ -149,13 +152,17 @@ function FireLegend({ colors }: { colors: Record<FireDetection["confidence"], st
 function IncendiosLiveMapImpl({
   onBoundsChange,
   onZoneSelect,
+  osmPoints,
 }: {
   onBoundsChange?: (bounds: MapBounds) => void
   onZoneSelect?: (municipio: string) => void
+  /** OSM infrastructure points for the categories currently toggled on. */
+  osmPoints?: OsmPoint[]
 }) {
   const { data, error } = useSWR<IncendiosAmenazaResponse>("/api/incendios/amenaza", fetcher, {
     revalidateOnFocus: false,
   })
+  const osmColors = useOsmCategoryColors()
 
   const [resolvedColors, setResolvedColors] = useState<Record<string, string> | null>(null)
   const [showForecast, setShowForecast] = useState(true)
@@ -233,7 +240,7 @@ function IncendiosLiveMapImpl({
   )
 
   return (
-    <div className="relative aspect-[9/10] min-h-[420px] w-full overflow-hidden rounded-xl border border-border">
+    <div className="relative h-[560px] w-full overflow-hidden rounded-xl border border-border">
       <MapContainer
         center={AOI_CENTER}
         zoom={11}
@@ -298,6 +305,27 @@ function IncendiosLiveMapImpl({
                   <span>Confianza: {CONFIDENCE_STYLES[d.confidence].label}</span>
                   <span>FRP: {formatFrp(d.frp)}</span>
                   <span>Satélite: {d.satellite}</span>
+                </div>
+              </Popup>
+            </CircleMarker>
+          ))}
+        {osmColors &&
+          osmPoints?.map((p) => (
+            <CircleMarker
+              key={p.id}
+              center={[p.lat, p.lon]}
+              radius={5}
+              pathOptions={{
+                color: "#fff",
+                weight: 1,
+                fillColor: osmColors[p.category],
+                fillOpacity: 0.9,
+              }}
+            >
+              <Popup>
+                <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
+                  <strong>{p.name ?? getOsmCategory(p.category).label}</strong>
+                  <span>{getOsmCategory(p.category).label}</span>
                 </div>
               </Popup>
             </CircleMarker>
