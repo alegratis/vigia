@@ -41,6 +41,15 @@ export const OSM_CATEGORIES: readonly OsmCategory[] = [
   },
 ]
 
+const OSM_CATEGORY_BY_KEY = new Map(OSM_CATEGORIES.map((c) => [c.key, c] as const))
+
+/** Looks up a category's display metadata (label, swatch, color token) by key. */
+export function getOsmCategory(key: OsmCategoryKey): OsmCategory {
+  const category = OSM_CATEGORY_BY_KEY.get(key)
+  if (!category) throw new Error(`Unknown OSM category key: ${key}`)
+  return category
+}
+
 const HEALTH_AMENITIES = new Set([
   "hospital",
   "clinic",

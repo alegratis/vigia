@@ -1,9 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import { IncendiosLiveMapLoader } from "@/components/maps/incendios-live-map-loader"
 import { LiveAreaPopulation } from "@/components/maps/live-area-population"
 import { LiveInfrastructureCategories } from "@/components/maps/live-infrastructure-categories"
+import { LiveInfrastructureBuildings } from "@/components/maps/live-infrastructure-buildings"
+import { useOsmInfrastructure } from "@/lib/osm/use-infrastructure"
+import type { OsmCategoryKey } from "@/lib/osm/categories"
 import type { MapBounds } from "@/lib/map-bounds"
 
 /**
@@ -12,15 +15,33 @@ import type { MapBounds } from "@/lib/map-bounds"
  * DeslizamientosMapSection/HazardMapSection's layout: the map drives
  * `bounds` via BoundsSync, same as the GEOGLOWS flood map, so the
  * demographics panel stays the same component used across every hazard —
- * no new exposure computation yet, per plan.
+ * no new exposure computation yet, per plan. Below that row, the OSM
+ * infrastructure breakdown and its building-name list sit side by side,
+ * sharing the same toggled categories that also drive the map's markers.
  */
 export function IncendiosMapSection() {
   const [bounds, setBounds] = useState<MapBounds | null>(null)
   const [selectedMunicipio, setSelectedMunicipio] = useState<string | null>(null)
+  const { points: osmPoints, isLoading: osmLoading, error: osmError } = useOsmInfrastructure()
+  const [activeOsmCategories, setActiveOsmCategories] = useState<Set<OsmCategoryKey>>(new Set())
+
+  const toggleOsmCategory = useCallback((key: OsmCategoryKey) => {
+    setActiveOsmCategories((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }, [])
+
+  const activeOsmPoints = useMemo(
+    () => osmPoints?.filter((p) => activeOsmCategories.has(p.category)) ?? [],
+    [osmPoints, activeOsmCategories],
+  )
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div aria-live="polite" className="flex flex-col gap-4">
           <LiveAreaPopulation
             bounds={bounds}
@@ -29,7 +50,6 @@ export function IncendiosMapSection() {
             selectedMunicipio={selectedMunicipio}
             onClearSelection={() => setSelectedMunicipio(null)}
           />
-          <LiveInfrastructureCategories bounds={bounds} />
         </div>
         <div role="region" aria-label="Mapa de amenaza por incendios forestales">
           <p className="sr-only">
@@ -37,8 +57,27 @@ export function IncendiosMapSection() {
             Índice Meteorológico de Incendio. El panel de población en el encuadre
             actual, a la izquierda, resume el mismo contenido en formato de texto.
           </p>
-          <IncendiosLiveMapLoader onBoundsChange={setBounds} onZoneSelect={setSelectedMunicipio} />
+          <IncendiosLiveMapLoader
+            onBoundsChange={setBounds}
+            onZoneSelect={setSelectedMunicipio}
+            osmPoints={activeOsmPoints}
+          />
         </div>
+      </div>
+      <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <LiveInfrastructureCategories
+          bounds={bounds}
+          points={osmPoints}
+          isLoading={osmLoading}
+          error={osmError}
+          activeCategories={activeOsmCategories}
+          onToggleCategory={toggleOsmCategory}
+        />
+        <LiveInfrastructureBuildings
+          bounds={bounds}
+          points={osmPoints}
+          activeCategories={activeOsmCategories}
+        />
       </div>
       <p className="text-xs text-muted-foreground">
         Amenaza por vereda: capa pública <code className="text-foreground">AmenazaIncendios</code>,

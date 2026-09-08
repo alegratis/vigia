@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react"
 import useSWR from "swr"
 import { MapPin, Users } from "lucide-react"
+import { cn } from "cn"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Separator } from "@/components/ui/separator"
@@ -68,7 +69,7 @@ export function LiveAreaPopulation({
   )
 
   if (isLoading || !data) {
-    return <Skeleton className={`h-64 rounded-xl ${className ?? ""}`} />
+    return <Skeleton className={cn("h-[560px] rounded-xl", className)} />
   }
 
   const inView = bounds ? pointsInBounds(REFERENCE_POINTS, bounds) : null
@@ -87,7 +88,7 @@ export function LiveAreaPopulation({
   )
 
   return (
-    <Card className={className}>
+    <Card className={cn("flex h-[560px] flex-col", className)}>
       <CardHeader className="gap-1 border-b border-border">
         <h3 className="flex items-center gap-2 font-semibold tracking-tight">
           <Users className="size-4" aria-hidden="true" />
@@ -103,7 +104,7 @@ export function LiveAreaPopulation({
                 : "Mueve el mapa publicado para filtrar por el área visible. Por ahora se muestran los tres municipios de referencia."}
         </p>
       </CardHeader>
-      <CardContent className="flex flex-col gap-4 py-4">
+      <CardContent className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto py-4">
         {selectedMunicipio && (
           <div className="flex items-center justify-between rounded-md bg-muted px-2.5 py-1.5 text-xs">
             <span className="text-foreground">
