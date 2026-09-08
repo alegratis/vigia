@@ -2,8 +2,8 @@ import { NextResponse } from "next/server"
 import { getVeredaList } from "@/lib/veredas/list"
 import type { VeredaListErrorResponse, VeredaListResponse } from "@/lib/veredas/list-api-types"
 
-// Boundary decode is cached a week (see lib/veredas/tiles.ts), but a cold
-// cache still means fetching and parsing 35 vector tiles.
+// Boundary fetch is cached a week (see lib/veredas/boundaries.ts), but a
+// cold cache still means two upstream ArcGIS queries.
 export const maxDuration = 30
 
 export async function GET() {

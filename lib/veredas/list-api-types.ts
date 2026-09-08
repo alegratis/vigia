@@ -11,6 +11,8 @@ export interface VeredaListEntry {
   codigoVereda: string
   nombre: string
   municipio: string
+  /** True for the municipio's cabecera municipal ("Casco Urbano") pseudo-vereda rather than a rural vereda. */
+  esCascoUrbano?: boolean
   /** [south, west, north, east] in WGS84 degrees, used to fit the focused map to this vereda. */
   bbox: [number, number, number, number]
   /** [lat, lon] centroid of the bbox, for a fallback marker/center point. */

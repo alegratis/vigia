@@ -221,6 +221,7 @@ function HazardToggleControl({ active, onToggle }: HazardToggleControlProps) {
 function ExposicionMapImpl({ vereda }: { vereda: VeredaListEntry }) {
   const [active, setActive] = useState<Set<HazardKey>>(new Set(["deslizamientos", "inundaciones", "incendios"]))
   const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
   const captureRef = useRef<HTMLDivElement>(null)
 
   const toggle = useCallback((key: HazardKey) => {
@@ -327,9 +328,14 @@ function ExposicionMapImpl({ vereda }: { vereda: VeredaListEntry }) {
   async function handleExportPdf() {
     if (!captureRef.current) return
     setExporting(true)
+    setExportError(null)
     try {
+      // The original html2canvas can't parse modern CSS color functions
+      // (lab()/oklch()) our Tailwind v4 design tokens resolve to, and throws
+      // instead of rendering — html2canvas-pro is a maintained fork that
+      // adds support for them.
       const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
-        import("html2canvas"),
+        import("html2canvas-pro"),
         import("jspdf"),
       ])
       const canvas = await html2canvas(captureRef.current, {
@@ -364,6 +370,9 @@ function ExposicionMapImpl({ vereda }: { vereda: VeredaListEntry }) {
 
       pdf.addImage(imgData, "PNG", margin, imgTop, imgWidth, imgHeight)
       pdf.save(`exposicion-${vereda.municipio.toLowerCase()}-${vereda.nombre.toLowerCase()}.pdf`)
+    } catch (err) {
+      console.error("[v0] Export a PDF falló:", err)
+      setExportError("No se pudo generar el PDF. Intenta de nuevo.")
     } finally {
       setExporting(false)
     }
@@ -371,7 +380,11 @@ function ExposicionMapImpl({ vereda }: { vereda: VeredaListEntry }) {
 
   return (
     <div className="relative flex h-full flex-col">
-      <div className="flex items-center justify-end border-b border-border bg-card px-4 py-2 print:hidden" data-html2canvas-ignore="true">
+      <div
+        className="flex items-center justify-end gap-3 border-b border-border bg-card px-4 py-2 print:hidden"
+        data-html2canvas-ignore="true"
+      >
+        {exportError && <p className="text-xs text-destructive">{exportError}</p>}
         <Button size="sm" onClick={handleExportPdf} disabled={exporting}>
           {exporting ? (
             <Loader2 className="size-4 animate-spin" data-icon="inline-start" aria-hidden="true" />
@@ -452,6 +465,7 @@ function ExposicionMapImpl({ vereda }: { vereda: VeredaListEntry }) {
               <WMSTileLayer
                 url={GWIS_WMS_URL}
                 opacity={0.55}
+                crossOrigin="anonymous"
                 params={
                   {
                     layers: GWIS_FWI_LAYER,

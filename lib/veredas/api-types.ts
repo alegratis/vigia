@@ -1,17 +1,21 @@
 /**
  * Client-safe types for /api/veredas — vereda (sub-municipal) administrative
- * boundaries for Sevilla, Caicedonia and Zarzal, sourced from DANE's
- * "Nivel de referencia veredas" geovisor (geoportal.dane.gov.co), with a
- * per-vereda hazard summary spatially aggregated server-side from data this
- * app already fetches at the point/municipio level. See
- * lib/veredas/server.ts for the full pipeline. No server imports here.
+ * boundaries for Sevilla, Caicedonia and Zarzal, sourced from Esri
+ * Colombia's "Veredas de Colombia" layer plus a per-municipio "Casco
+ * Urbano" boundary from DANE's zona urbana layer (see
+ * lib/veredas/boundaries.ts), with a per-vereda hazard summary spatially
+ * aggregated server-side from data this app already fetches at the
+ * point/municipio level. See lib/veredas/server.ts for the full pipeline.
+ * No server imports here.
  */
 
 export interface VeredaProperties {
-  /** DANE's vereda code (DIVIPOLA departamento+municipio+vereda), e.g. "76895002". */
+  /** DIVIPOLA vereda code (departamento+municipio+vereda), e.g. "76895002" — or a synthetic "<mpio-code>-urbano" id for the Casco Urbano pseudo-vereda. */
   codigoVereda: string
   nombre: string
   municipio: string
+  /** True for the municipio's cabecera municipal ("Casco Urbano") pseudo-vereda rather than a rural vereda. */
+  esCascoUrbano?: boolean
 
   /**
    * Average `IS_score` across `VIGIA_Amenaza_IS_Puntos` grid points whose

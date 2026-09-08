@@ -2,8 +2,8 @@ import "server-only"
 
 /**
  * Spatially aggregates data this app already fetches at the point or
- * municipio level onto the finer-grained vereda boundaries decoded in
- * lib/veredas/tiles.ts, via point-in-polygon tests (turf).
+ * municipio level onto the finer-grained vereda boundaries fetched in
+ * lib/veredas/boundaries.ts, via point-in-polygon tests (turf).
  *
  * Two independent sources, both restricted to their own municipio before
  * testing (cheap prefilter, and the honest thing to do — a Sevilla grid
@@ -30,7 +30,7 @@ import { multiPolygon, point } from "@turf/helpers"
 import { getSusceptibilityPointsForAggregation } from "@/lib/deslizamientos/client"
 import { getCriticalSites } from "@/lib/deslizamientos/critical-sites"
 import { SUSCEPTIBILITY_LEVELS, type SusceptibilityLevel } from "@/lib/deslizamientos/levels"
-import type { VeredaBoundary } from "./tiles"
+import type { VeredaBoundary } from "./boundaries"
 
 export interface VeredaAggregate {
   isScoreAvg: number | null
