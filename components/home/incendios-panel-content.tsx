@@ -3,6 +3,7 @@
 import { useRef } from "react"
 import { IncendiosLiveMapLoader } from "@/components/maps/incendios-live-map-loader"
 import { ScrollHintButton } from "@/components/home/scroll-hint-button"
+import { FireOverview } from "@/components/fires/fire-overview"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
 
@@ -46,9 +47,12 @@ export function IncendiosPanelContent({
           onZoneSelect={onZoneSelect}
           osmPoints={activeOsmPoints}
         />
-        <ScrollHintButton targetRef={captionRef} label="Ver fuente de datos" />
+        <ScrollHintButton targetRef={captionRef} label="Ver focos activos NASA FIRMS" />
       </div>
-      <div ref={captionRef} className="p-4 sm:p-6">
+      <div ref={captionRef} className="flex flex-col gap-6 p-4 sm:p-6">
+        <div aria-live="polite">
+          <FireOverview />
+        </div>
         <p className="text-xs text-muted-foreground">
           Amenaza por vereda: capa pública <code className="text-foreground">AmenazaIncendios</code>,
           publicada en ArcGIS Online. Pronóstico FWI: servicio abierto{" "}

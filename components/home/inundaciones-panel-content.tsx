@@ -3,6 +3,7 @@
 import { useRef } from "react"
 import { GeoglowsLiveMapLoader } from "@/components/maps/geoglows-live-map-loader"
 import { ScrollHintButton } from "@/components/home/scroll-hint-button"
+import { FloodOverview } from "@/components/flood/flood-overview"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
 
@@ -41,9 +42,12 @@ export function InundacionesPanelContent({
           onZoneSelect={onZoneSelect}
           osmPoints={activeOsmPoints}
         />
-        <ScrollHintButton targetRef={captionRef} label="Ver fuente de datos" />
+        <ScrollHintButton targetRef={captionRef} label="Ver pronóstico por estación" />
       </div>
-      <div ref={captionRef} className="p-4 sm:p-6">
+      <div ref={captionRef} className="flex flex-col gap-6 p-4 sm:p-6">
+        <div aria-live="polite">
+          <FloodOverview />
+        </div>
         <p className="text-xs text-muted-foreground">
           Pronóstico de río servido en vivo por GEOGLOWS / Esri Living Atlas (capa pública
           GlobalWaterModel_Medium). Susceptibilidad a inundación: capa pública{" "}
