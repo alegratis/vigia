@@ -58,7 +58,10 @@ export function DeslizamientosPanelContent({ onBoundsChange, activeOsmPoints }: 
           Índice de susceptibilidad <code className="text-foreground">VIGIA_Amenaza_IS</code> (RED
           LabOT), publicado en ArcGIS Online. Haz clic sobre cualquier punto para ver su municipio y
           nivel de susceptibilidad. Activa la capa de humedad del suelo (NASA SMAP) para ver la señal
-          de disparo antecedente.
+          de disparo antecedente, o la capa de sitios críticos para ver puntos de daño vial
+          verificados en campo (hundimientos, derrumbes, erosión, grietas de tracción) del
+          levantamiento de 2019 de la Secretaría de Infraestructura del Valle del Cauca — un
+          complemento puntual e histórico al índice modelado, no una capa en vivo.
         </p>
       </div>
     </div>

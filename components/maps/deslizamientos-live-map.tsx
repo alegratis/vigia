@@ -26,6 +26,12 @@ import { SMAP_TILE_URL, SMAP_WORLDVIEW_URL } from "@/lib/deslizamientos/smap"
 import { getOsmCategory } from "@/lib/osm/categories"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
 import { OsmLegend } from "@/components/maps/osm-legend"
+import { useCriticalSites } from "@/lib/deslizamientos/use-critical-sites"
+import {
+  CRITICAL_SITE_SEVERITY_STYLES,
+  severityColorToken,
+  tipoLabel,
+} from "@/lib/deslizamientos/critical-sites-types"
 import type { DeslizamientosResponse } from "@/lib/deslizamientos/api-types"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
@@ -104,41 +110,86 @@ function Legend() {
   )
 }
 
-interface SoilMoistureControlProps {
-  checked: boolean
-  onCheckedChange: (checked: boolean) => void
+interface MapLayersControlProps {
+  showSoilMoisture: boolean
+  onSoilMoistureChange: (checked: boolean) => void
+  showCriticalSites: boolean
+  onCriticalSitesChange: (checked: boolean) => void
 }
 
 /**
- * Toggle + link-out for the SMAP root-zone soil moisture overlay, the
- * landslide trigger signal (antecedent soil moisture) that complements the
- * static susceptibility index. No legend is fabricated here — GIBS doesn't
- * publish one for this layer, so the caption links to NASA Worldview's own
- * color scale instead.
+ * Combined toggle panel for the two optional overlays on this map: SMAP
+ * root-zone soil moisture (the landslide trigger signal that complements
+ * the static susceptibility index) and "Sitios críticos" (field-surveyed
+ * road-damage points from the Valle del Cauca infrastructure secretariat —
+ * see lib/deslizamientos/critical-sites.ts). No legend is fabricated for
+ * soil moisture — GIBS doesn't publish one for this layer, so its caption
+ * links to NASA Worldview's own color scale instead.
  */
-function SoilMoistureControl({ checked, onCheckedChange }: SoilMoistureControlProps) {
+function MapLayersControl({
+  showSoilMoisture,
+  onSoilMoistureChange,
+  showCriticalSites,
+  onCriticalSitesChange,
+}: MapLayersControlProps) {
   return (
-    <div className="absolute left-3 top-3 z-[400] flex flex-col gap-1.5 rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
-      <label className="flex items-center gap-2 font-medium text-foreground">
-        <input
-          type="checkbox"
-          checked={checked}
-          onChange={(e) => onCheckedChange(e.target.checked)}
-          className="size-3.5 accent-primary"
-        />
-        Humedad del suelo (SMAP)
-      </label>
-      {checked && (
-        <a
-          href={SMAP_WORLDVIEW_URL}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-1 text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-        >
-          Ver escala en Worldview
-          <ExternalLink className="size-3" aria-hidden="true" />
-        </a>
-      )}
+    <div className="absolute left-3 top-3 z-[400] flex flex-col gap-2 rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
+      <div className="flex flex-col gap-1.5">
+        <label className="flex items-center gap-2 font-medium text-foreground">
+          <input
+            type="checkbox"
+            checked={showSoilMoisture}
+            onChange={(e) => onSoilMoistureChange(e.target.checked)}
+            className="size-3.5 accent-primary"
+          />
+          Humedad del suelo (SMAP)
+        </label>
+        {showSoilMoisture && (
+          <a
+            href={SMAP_WORLDVIEW_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 pl-5 text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+          >
+            Ver escala en Worldview
+            <ExternalLink className="size-3" aria-hidden="true" />
+          </a>
+        )}
+      </div>
+      <div className="border-t border-border pt-1.5">
+        <label className="flex items-center gap-2 font-medium text-foreground">
+          <input
+            type="checkbox"
+            checked={showCriticalSites}
+            onChange={(e) => onCriticalSitesChange(e.target.checked)}
+            className="size-3.5 accent-primary"
+          />
+          Sitios críticos (2019)
+        </label>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Legend for the "Sitios críticos" overlay's severity scale
+ * (`SEVERIDAD`, 1–4), shown only while the layer is toggled on.
+ */
+function CriticalSitesLegend() {
+  return (
+    <div className="pointer-events-none absolute bottom-3 right-3 z-[400] rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
+      <p className="mb-1.5 font-medium text-foreground">Sitios críticos — severidad</p>
+      <ul className="flex flex-col gap-1">
+        {Object.values(CRITICAL_SITE_SEVERITY_STYLES).map((style) => (
+          <li key={style.code} className="flex items-center gap-2 text-muted-foreground">
+            <span
+              className={`size-2.5 shrink-0 rounded-full ${style.swatchClass}`}
+              aria-hidden="true"
+            />
+            {style.label}
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }
@@ -170,6 +221,8 @@ function DeslizamientosLiveMapImpl({
 
   const [resolvedColors, setResolvedColors] = useState<Record<string, string> | null>(null)
   const [showSoilMoisture, setShowSoilMoisture] = useState(false)
+  const [showCriticalSites, setShowCriticalSites] = useState(false)
+  const { points: criticalSites } = useCriticalSites(showCriticalSites)
 
   useEffect(() => {
     const entries = SUSCEPTIBILITY_LEVELS.map(
@@ -236,6 +289,30 @@ function DeslizamientosLiveMapImpl({
               </CircleMarker>
             )
           })}
+        {showCriticalSites &&
+          criticalSites?.map((site) => (
+            <CircleMarker
+              key={site.id}
+              center={[site.lat, site.lon]}
+              radius={5}
+              pathOptions={{
+                color: "#fff",
+                weight: 1,
+                fillColor: severityColorToken(site.severidad),
+                fillOpacity: 0.9,
+              }}
+            >
+              <Popup>
+                <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
+                  <strong>{tipoLabel(site.tipo)}</strong>
+                  <span>{site.municipio}</span>
+                  <span>{CRITICAL_SITE_SEVERITY_STYLES[site.severidad as 1 | 2 | 3 | 4]?.label ?? "—"}</span>
+                  {site.observaciones && <span>{site.observaciones}</span>}
+                  {site.fecha && <span style={{ color: "#888" }}>Registrado: {site.fecha}</span>}
+                </div>
+              </Popup>
+            </CircleMarker>
+          ))}
         {osmColors &&
           osmPoints?.map((p) => (
             <CircleMarker
@@ -269,11 +346,17 @@ function DeslizamientosLiveMapImpl({
           <span className="text-sm text-destructive">No se pudo cargar la capa.</span>
         </div>
       )}
-      <SoilMoistureControl checked={showSoilMoisture} onCheckedChange={setShowSoilMoisture} />
+      <MapLayersControl
+        showSoilMoisture={showSoilMoisture}
+        onSoilMoistureChange={setShowSoilMoisture}
+        showCriticalSites={showCriticalSites}
+        onCriticalSitesChange={setShowCriticalSites}
+      />
       <div className="absolute right-3 top-16 z-[400] max-w-[200px]">
         <OsmLegend points={osmPoints ?? []} />
       </div>
       <Legend />
+      {showCriticalSites && <CriticalSitesLegend />}
     </div>
   )
 }
