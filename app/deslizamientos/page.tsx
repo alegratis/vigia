@@ -42,7 +42,7 @@ export default function LandslidesPage() {
               Sevilla y Caicedonia (Zarzal, sobre el piso plano del valle, no
               presenta zonas en la capa fuente), a partir del índice de
               susceptibilidad de RED LabOT (11.721 puntos de evaluación). Los
-              cinco niveles de amenaza —de muy bajo a muy alto— ya incorporan
+              cinco niveles de amenaza (de muy bajo a muy alto) ya incorporan
               población, escuelas, hospitales, farmacias y otra infraestructura
               crítica expuesta en cada punto. El mapa se puede combinar con la
               humedad del suelo (NASA SMAP), la señal de disparo antecedente del
