@@ -12,6 +12,6 @@ export const DeslizamientosLiveMapLoader = dynamic(
   () => import("@/components/maps/deslizamientos-live-map"),
   {
     ssr: false,
-    loading: () => <Skeleton className="h-[560px] w-full rounded-xl" />,
+    loading: () => <Skeleton className="h-full min-h-[420px] w-full rounded-xl" />,
   },
 )

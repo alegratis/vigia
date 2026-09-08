@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { ArrowRight, Droplets, Flame, Mountain, type LucideIcon } from "lucide-react"
@@ -9,6 +9,10 @@ import { DeslizamientosPanelContent } from "@/components/home/deslizamientos-pan
 import { InundacionesPanelContent } from "@/components/home/inundaciones-panel-content"
 import { IncendiosPanelContent } from "@/components/home/incendios-panel-content"
 import { LiveAreaPopulation } from "@/components/maps/live-area-population"
+import { LiveInfrastructureCategories } from "@/components/maps/live-infrastructure-categories"
+import { LiveInfrastructureBuildings } from "@/components/maps/live-infrastructure-buildings"
+import { useOsmInfrastructure } from "@/lib/osm/use-infrastructure"
+import type { OsmCategoryKey } from "@/lib/osm/categories"
 import { mapModels, type MapModel } from "@/lib/maps"
 import type { MapBounds } from "@/lib/map-bounds"
 
@@ -27,18 +31,36 @@ const CATEGORY_BASIS: Record<string, { basis: "urbano" | "rural"; basisLabel: st
 
 /**
  * Single-viewport homepage workspace: a static sidebar (mission statement +
- * one shared, viewport-based demographics card) next to an accordion of the
- * three hazard categories. Only the active category mounts its map and OSM
- * panels; the other two collapse into clickable photo strips. Whichever
- * category is active drives the sidebar's demographics card via
- * onBoundsChange/onZoneSelect.
+ * one shared, viewport-based demographics card + OSM infrastructure
+ * toggles) next to an accordion of the three hazard categories. Only the
+ * active category mounts its map; the other two collapse into clickable
+ * photo strips. The sidebar's infrastructure toggles drive every map's
+ * markers directly, so switching hazards keeps whatever categories were
+ * already turned on. Whichever category is active also drives the
+ * sidebar's demographics card via onBoundsChange/onZoneSelect.
  */
 export function HazardWorkspace({ initialCategory }: { initialCategory: string }) {
   const [activeSlug, setActiveSlug] = useState(initialCategory)
   const [bounds, setBounds] = useState<MapBounds | null>(null)
   const [selectedMunicipio, setSelectedMunicipio] = useState<string | null>(null)
+  const { points: osmPoints, isLoading: osmLoading, error: osmError } = useOsmInfrastructure()
+  const [activeOsmCategories, setActiveOsmCategories] = useState<Set<OsmCategoryKey>>(new Set())
 
   const activeConfig = CATEGORY_BASIS[activeSlug] ?? CATEGORY_BASIS[mapModels[0].slug]
+
+  const toggleOsmCategory = useCallback((key: OsmCategoryKey) => {
+    setActiveOsmCategories((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }, [])
+
+  const activeOsmPoints = useMemo(
+    () => osmPoints?.filter((p) => activeOsmCategories.has(p.category)) ?? [],
+    [osmPoints, activeOsmCategories],
+  )
 
   function activate(slug: string) {
     if (slug === activeSlug) return
@@ -53,8 +75,8 @@ export function HazardWorkspace({ initialCategory }: { initialCategory: string }
       tabIndex={-1}
       className="flex flex-1 flex-col focus-visible:outline-none lg:min-h-0 lg:flex-row"
     >
-      <div className="flex flex-col items-center gap-6 border-b border-border bg-card p-6 text-center sm:p-8 lg:w-80 lg:shrink-0 lg:justify-between lg:overflow-y-auto lg:border-b-0 lg:border-r xl:w-96">
-        <div className="flex w-full flex-col items-center gap-6">
+      <div className="flex flex-col gap-6 border-b border-border bg-card p-6 sm:p-8 lg:w-80 lg:shrink-0 lg:overflow-y-auto lg:border-b-0 lg:border-r xl:w-96">
+        <div className="flex flex-col items-center gap-6 text-center">
           <span className="relative flex size-16 items-center justify-center">
             <Image
               src="/images/vigia-mark-light.png"
@@ -81,16 +103,34 @@ export function HazardWorkspace({ initialCategory }: { initialCategory: string }
               Caicedonia y Zarzal.
             </p>
           </div>
-          <div className="w-full" aria-live="polite">
-            <LiveAreaPopulation
-              bounds={bounds}
-              basis={activeConfig.basis}
-              basisLabel={activeConfig.basisLabel}
-              selectedMunicipio={selectedMunicipio}
-              onClearSelection={() => setSelectedMunicipio(null)}
-            />
-          </div>
         </div>
+
+        <div aria-live="polite" className="shrink-0">
+          <LiveAreaPopulation
+            bounds={bounds}
+            basis={activeConfig.basis}
+            basisLabel={activeConfig.basisLabel}
+            selectedMunicipio={selectedMunicipio}
+            onClearSelection={() => setSelectedMunicipio(null)}
+          />
+        </div>
+
+        <LiveInfrastructureCategories
+          className="shrink-0"
+          bounds={bounds}
+          points={osmPoints}
+          isLoading={osmLoading}
+          error={osmError}
+          activeCategories={activeOsmCategories}
+          onToggleCategory={toggleOsmCategory}
+        />
+
+        <LiveInfrastructureBuildings
+          className="shrink-0"
+          bounds={bounds}
+          points={osmPoints}
+          activeCategories={activeOsmCategories}
+        />
 
         <Link
           href="/demografia"
@@ -113,13 +153,21 @@ export function HazardWorkspace({ initialCategory }: { initialCategory: string }
               onActivate={() => activate(model.slug)}
             >
               {model.slug === "deslizamientos" && (
-                <DeslizamientosPanelContent onBoundsChange={setBounds} />
+                <DeslizamientosPanelContent onBoundsChange={setBounds} activeOsmPoints={activeOsmPoints} />
               )}
               {model.slug === "inundaciones" && (
-                <InundacionesPanelContent onBoundsChange={setBounds} onZoneSelect={setSelectedMunicipio} />
+                <InundacionesPanelContent
+                  onBoundsChange={setBounds}
+                  onZoneSelect={setSelectedMunicipio}
+                  activeOsmPoints={activeOsmPoints}
+                />
               )}
               {model.slug === "incendios" && (
-                <IncendiosPanelContent onBoundsChange={setBounds} onZoneSelect={setSelectedMunicipio} />
+                <IncendiosPanelContent
+                  onBoundsChange={setBounds}
+                  onZoneSelect={setSelectedMunicipio}
+                  activeOsmPoints={activeOsmPoints}
+                />
               )}
             </CategoryPanel>
           )

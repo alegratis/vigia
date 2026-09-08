@@ -28,6 +28,7 @@ import { CONFIDENCE_STYLES, formatDateTime, formatDistance, formatFrp } from "@/
 import { normalizeMunicipioName } from "@/lib/demografia/categories"
 import { getOsmCategory } from "@/lib/osm/categories"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
+import { OsmLegend } from "@/components/maps/osm-legend"
 import type { IncendiosAmenazaResponse } from "@/lib/incendios/api-types"
 import type { FireDetection, FiresResponse } from "@/lib/firms/api-types"
 import type { OsmPoint } from "@/lib/osm/api-types"
@@ -153,11 +154,13 @@ function IncendiosLiveMapImpl({
   onBoundsChange,
   onZoneSelect,
   osmPoints,
+  className,
 }: {
   onBoundsChange?: (bounds: MapBounds) => void
   onZoneSelect?: (municipio: string) => void
   /** OSM infrastructure points for the categories currently toggled on. */
   osmPoints?: OsmPoint[]
+  className?: string
 }) {
   const { data, error } = useSWR<IncendiosAmenazaResponse>("/api/incendios/amenaza", fetcher, {
     revalidateOnFocus: false,
@@ -240,7 +243,7 @@ function IncendiosLiveMapImpl({
   )
 
   return (
-    <div className="relative h-[560px] w-full overflow-hidden rounded-xl border border-border">
+    <div className={className ?? "relative h-full min-h-[420px] w-full overflow-hidden rounded-xl border border-border"}>
       <MapContainer
         center={AOI_CENTER}
         zoom={11}
@@ -392,6 +395,9 @@ function IncendiosLiveMapImpl({
         </Popup>
       )}
       <ThreatLegend />
+      <div className="absolute right-3 top-16 z-[400] max-w-[200px]">
+        <OsmLegend points={osmPoints ?? []} />
+      </div>
       {(showForecast || showFires) && (
         <div className="absolute bottom-3 right-3 z-[400] flex flex-col items-end gap-2">
           {showForecast && <FwiLegend />}

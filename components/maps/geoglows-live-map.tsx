@@ -38,6 +38,7 @@ import { nearestPoint, type MapBounds } from "@/lib/map-bounds"
 import { REFERENCE_POINTS } from "@/lib/firms/area"
 import { getOsmCategory } from "@/lib/osm/categories"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
+import { OsmLegend } from "@/components/maps/osm-legend"
 import type { InundacionesSusceptibilidadResponse } from "@/lib/inundaciones/api-types"
 import type { OsmPoint } from "@/lib/osm/api-types"
 
@@ -245,11 +246,13 @@ function GeoglowsLiveMapImpl({
   onBoundsChange,
   onZoneSelect,
   osmPoints,
+  className,
 }: {
   onBoundsChange?: (bounds: MapBounds) => void
   onZoneSelect?: (municipio: string) => void
   /** OSM infrastructure points for the categories currently toggled on. */
   osmPoints?: OsmPoint[]
+  className?: string
 }) {
   const [overlay, setOverlay] = useState<{ bounds: LatLngBounds; width: number; height: number } | null>(
     null,
@@ -335,7 +338,7 @@ function GeoglowsLiveMapImpl({
   return (
     <div
       ref={containerRef}
-      className="relative h-[560px] w-full overflow-hidden rounded-xl border border-border"
+      className={className ?? "relative h-full min-h-[420px] w-full overflow-hidden rounded-xl border border-border"}
     >
       <MapContainer
         center={AOI_CENTER}
@@ -454,6 +457,9 @@ function GeoglowsLiveMapImpl({
       )}
 
       <ReturnPeriodLegend />
+      <div className="absolute right-3 top-16 z-[400] max-w-[200px]">
+        <OsmLegend points={osmPoints ?? []} />
+      </div>
       {showSusceptibility && <SusceptibilityLegend />}
     </div>
   )

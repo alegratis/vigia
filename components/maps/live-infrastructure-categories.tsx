@@ -55,12 +55,12 @@ export function LiveInfrastructureCategories({
   }, [points, bounds])
 
   if (isLoading) {
-    return <Skeleton className={cn("h-[420px] rounded-xl", className)} />
+    return <Skeleton className={cn("h-[420px] max-h-[50vh] rounded-xl", className)} />
   }
 
   if (error || !counts) {
     return (
-      <Card className={cn("flex h-[420px] flex-col", className)}>
+      <Card className={cn("flex h-[420px] max-h-[50vh] flex-col", className)}>
         <CardHeader className="gap-1 border-b border-border">
           <h3 className="flex items-center gap-2 font-semibold tracking-tight">
             <Building2 className="size-4" aria-hidden="true" />
@@ -77,7 +77,7 @@ export function LiveInfrastructureCategories({
   const total = counts.visible.length
 
   return (
-    <Card className={cn("flex h-[420px] flex-col", className)}>
+    <Card className={cn("flex h-[420px] max-h-[50vh] flex-col", className)}>
       <CardHeader className="gap-1 border-b border-border">
         <h3 className="flex items-center gap-2 font-semibold tracking-tight">
           <Building2 className="size-4" aria-hidden="true" />

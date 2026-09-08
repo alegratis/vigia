@@ -25,6 +25,7 @@ import { resolveCssColor } from "@/lib/resolve-css-color"
 import { SMAP_TILE_URL, SMAP_WORLDVIEW_URL } from "@/lib/deslizamientos/smap"
 import { getOsmCategory } from "@/lib/osm/categories"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
+import { OsmLegend } from "@/components/maps/osm-legend"
 import type { DeslizamientosResponse } from "@/lib/deslizamientos/api-types"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
@@ -154,11 +155,13 @@ function DeslizamientosLiveMapImpl({
   onBoundsChange,
   onPointSelect,
   osmPoints,
+  className,
 }: {
   onBoundsChange?: (bounds: MapBounds) => void
   onPointSelect?: (level: SusceptibilityLevel) => void
   /** OSM infrastructure points for the categories currently toggled on. */
   osmPoints?: OsmPoint[]
+  className?: string
 }) {
   const { data, error } = useSWR<DeslizamientosResponse>("/api/deslizamientos", fetcher, {
     revalidateOnFocus: false,
@@ -183,7 +186,7 @@ function DeslizamientosLiveMapImpl({
   const points = useMemo(() => data?.points.features ?? [], [data])
 
   return (
-    <div className="relative h-[560px] w-full overflow-hidden rounded-xl border border-border">
+    <div className={className ?? "relative h-full min-h-[420px] w-full overflow-hidden rounded-xl border border-border"}>
       <MapContainer
         center={AOI_CENTER}
         zoom={11}
@@ -267,6 +270,9 @@ function DeslizamientosLiveMapImpl({
         </div>
       )}
       <SoilMoistureControl checked={showSoilMoisture} onCheckedChange={setShowSoilMoisture} />
+      <div className="absolute right-3 top-16 z-[400] max-w-[200px]">
+        <OsmLegend points={osmPoints ?? []} />
+      </div>
       <Legend />
     </div>
   )

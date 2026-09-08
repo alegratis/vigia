@@ -17,7 +17,10 @@ interface CategoryPanelProps {
  * clickable photo strip — a horizontal bar on mobile, a narrow vertical
  * column on desktop — with just an icon and rotated label. Expanded, it
  * fills the remaining width with a small header (icon, title, live badge)
- * above whatever hazard-specific content is passed as children.
+ * above whatever hazard-specific content is passed as children; the header
+ * doesn't scroll but the content below it does, so the map can claim the
+ * full first fold and everything else (infrastructure lists, captions)
+ * scrolls beneath it.
  */
 export function CategoryPanel({ model, icon: Icon, isActive, onActivate, children }: CategoryPanelProps) {
   if (!isActive) {
@@ -50,8 +53,8 @@ export function CategoryPanel({ model, icon: Icon, isActive, onActivate, childre
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 sm:p-6">
-      <div className="flex items-center gap-2">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-3 sm:px-6">
         <Icon className="size-5 text-primary" aria-hidden="true" />
         <h2 className="text-lg font-semibold tracking-tight">{model.title}</h2>
         {model.ready && (
@@ -61,7 +64,7 @@ export function CategoryPanel({ model, icon: Icon, isActive, onActivate, childre
           </span>
         )}
       </div>
-      {children}
+      <div className="flex min-h-0 flex-1 flex-col">{children}</div>
     </div>
   )
 }
