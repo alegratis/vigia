@@ -18,6 +18,7 @@ import type { Layer, LatLngBoundsExpression, LeafletMouseEvent, PathOptions } fr
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
 import { ExternalLink, Loader2 } from "lucide-react"
+import { BasemapTileLayer } from "@/components/maps/basemap-tile-layer"
 import useSWR from "swr"
 import {
   AOI_BOUNDS,
@@ -356,10 +357,7 @@ function GeoglowsLiveMapImpl({
       >
         <ZoomControl position="topright" />
         <AttributionControl position="bottomright" prefix="Leaflet" />
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
+        <BasemapTileLayer />
         {showSusceptibility && susceptibility?.polygons && resolvedColors && (
           <GeoJSON
             key={susceptibilityGeoJsonKey}

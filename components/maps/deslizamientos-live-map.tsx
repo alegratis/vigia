@@ -23,6 +23,7 @@ import {
 } from "@/lib/deslizamientos/levels"
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import { SMAP_TILE_URL, SMAP_WORLDVIEW_URL } from "@/lib/deslizamientos/smap"
+import { BasemapTileLayer } from "@/components/maps/basemap-tile-layer"
 import { getOsmCategory } from "@/lib/osm/categories"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
 import { OsmLegend } from "@/components/maps/osm-legend"
@@ -288,10 +289,7 @@ function DeslizamientosLiveMapImpl({
       >
         <ZoomControl position="topright" />
         <AttributionControl position="bottomright" prefix="Leaflet" />
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
+        <BasemapTileLayer />
         {showSoilMoisture && (
           <TileLayer
             attribution="NASA GIBS / SMAP"

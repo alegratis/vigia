@@ -12,6 +12,7 @@ import {
   useMap,
   useMapEvents,
 } from "react-leaflet"
+import { BasemapTileLayer } from "./basemap-tile-layer"
 import type { Layer, LatLngBoundsExpression, LeafletMouseEvent, PathOptions } from "leaflet"
 import "leaflet/dist/leaflet.css"
 import { ExternalLink, Loader2 } from "lucide-react"
@@ -233,10 +234,7 @@ function PrecipitacionLiveMapImpl({
       >
         <ZoomControl position="topright" />
         <AttributionControl position="bottomright" prefix="Leaflet" />
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
+        <BasemapTileLayer />
         {showImerg && (
           <TileLayer attribution="NASA GIBS / IMERG" url={IMERG_TILE_URL} opacity={0.6} maxNativeZoom={6} />
         )}
