@@ -86,6 +86,90 @@ export async function getSusceptibilityPoints(): Promise<SusceptibilityFeatureCo
   return { type: "FeatureCollection", features }
 }
 
+export interface SusceptibilityPointFull {
+  lat: number
+  lon: number
+  /** Title-cased municipio name ("Sevilla", "Caicedonia") — see the normalization note in `getWorstLevelByMunicipio`. */
+  municipio: string
+  level: SusceptibilityLevel
+  isScore: number | null
+  pobGen: number
+  pobMen5: number
+  pobMay60: number
+  nEscuelas: number
+  nHospit: number
+  nFarmaci: number
+  infraCrit: number
+}
+
+function titleCaseMunicipio(raw: string): string {
+  return raw.charAt(0) + raw.slice(1).toLowerCase()
+}
+
+/**
+ * Fetches every susceptibility point (~11,721) with its full attribute set
+ * (score, population, and critical-infrastructure counts, plus its own
+ * `lon`/`lat` attribute fields — already WGS84, so no geometry parsing is
+ * needed) for server-side spatial aggregation onto vereda boundaries. See
+ * lib/veredas/aggregate.ts, the only caller: it point-in-polygon tests each
+ * point against a vereda's boundary and sums these same population/infra
+ * fields that `getPopulationByLevel`/`getExposureByLevel` already sum by
+ * threat level, just grouped by vereda instead.
+ *
+ * Only covers Sevilla and Caicedonia — Zarzal has no records in this layer
+ * (see the module doc comment), so its veredas simply get no aggregate.
+ */
+export async function getSusceptibilityPointsForAggregation(): Promise<SusceptibilityPointFull[]> {
+  const points: SusceptibilityPointFull[] = []
+  let offset = 0
+
+  while (true) {
+    const params = new URLSearchParams({
+      where: "1=1",
+      outFields:
+        "municipio,IS_nivel,IS_score,pob_gen,pob_men5,pob_may60,n_escuelas,n_hospit,n_farmaci,infra_crit,lon,lat",
+      returnGeometry: "false",
+      resultOffset: String(offset),
+      resultRecordCount: String(PAGE_SIZE),
+      f: "json",
+    })
+    const res = await fetch(`${POINTS_LAYER}/query?${params.toString()}`, {
+      next: { revalidate: 3600 },
+    })
+    if (!res.ok) {
+      throw new Error("No se pudo consultar la capa de susceptibilidad a deslizamientos")
+    }
+    const json = await res.json()
+    const rawFeatures = (json.features ?? []) as Array<{ attributes: Record<string, number | string | null> }>
+
+    for (const f of rawFeatures) {
+      const a = f.attributes
+      const level = normalizeSusceptibilityLevel(a.IS_nivel != null ? String(a.IS_nivel) : null)
+      if (!level || typeof a.lat !== "number" || typeof a.lon !== "number" || typeof a.municipio !== "string") {
+        continue
+      }
+      points.push({
+        lat: a.lat,
+        lon: a.lon,
+        municipio: titleCaseMunicipio(a.municipio),
+        level,
+        isScore: typeof a.IS_score === "number" ? a.IS_score : null,
+        pobGen: Number(a.pob_gen) || 0,
+        pobMen5: Number(a.pob_men5) || 0,
+        pobMay60: Number(a.pob_may60) || 0,
+        nEscuelas: Number(a.n_escuelas) || 0,
+        nHospit: Number(a.n_hospit) || 0,
+        nFarmaci: Number(a.n_farmaci) || 0,
+        infraCrit: Number(a.infra_crit) || 0,
+      })
+    }
+    if (rawFeatures.length < PAGE_SIZE) break
+    offset += PAGE_SIZE
+  }
+
+  return points
+}
+
 /**
  * Fetches the worst (highest) susceptibility level present per municipality,
  * for the demografía exposure summary. Skips geometry and asks the server to
@@ -121,8 +205,7 @@ export async function getWorstLevelByMunicipio(): Promise<Map<string, Susceptibi
     // The layer stores municipio names upper-cased (e.g. "SEVILLA"); the
     // DANE population data this gets cross-referenced against uses title
     // case ("Sevilla"), so normalize here rather than in every caller.
-    const municipio =
-      rawMunicipio.charAt(0) + rawMunicipio.slice(1).toLowerCase()
+    const municipio = titleCaseMunicipio(rawMunicipio)
     const current = worstByMunicipio.get(municipio)
     if (!current || SUSCEPTIBILITY_LEVELS.indexOf(level) > SUSCEPTIBILITY_LEVELS.indexOf(current)) {
       worstByMunicipio.set(municipio, level)
