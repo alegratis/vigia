@@ -63,6 +63,10 @@
   --color-osm-financial: var(--osm-financial);
   --color-osm-government: var(--osm-government);
   --color-osm-social: var(--osm-social);
+  --color-critical-site-1: var(--critical-site-1);
+  --color-critical-site-2: var(--critical-site-2);
+  --color-critical-site-3: var(--critical-site-3);
+  --color-critical-site-4: var(--critical-site-4);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -152,6 +156,17 @@
   --osm-financial: oklch(0.62 0.13 145);
   --osm-government: oklch(0.55 0.1 245);
   --osm-social: oklch(0.65 0.11 195);
+
+  /*
+   * "Sitios críticos" field-survey severity ramp (WS4_SEVERIDAD, 1–4): a
+   * violet/magenta family, distinct from every hazard ramp above, since
+   * this overlay renders on top of the deslizamientos susceptibility map
+   * (yellow-green-to-red) and needs to read as its own signal.
+   */
+  --critical-site-1: oklch(0.82 0.06 320);
+  --critical-site-2: oklch(0.72 0.11 320);
+  --critical-site-3: oklch(0.6 0.17 325);
+  --critical-site-4: oklch(0.46 0.2 330);
 }
 
 .dark {
@@ -224,6 +239,12 @@
   --osm-financial: oklch(0.68 0.14 145);
   --osm-government: oklch(0.66 0.11 245);
   --osm-social: oklch(0.7 0.11 195);
+
+  /* "Sitios críticos" severity ramp: kept vivid and legible on dark surfaces. */
+  --critical-site-1: oklch(0.8 0.06 320);
+  --critical-site-2: oklch(0.74 0.12 320);
+  --critical-site-3: oklch(0.66 0.18 325);
+  --critical-site-4: oklch(0.58 0.22 330);
 }
 
 @layer base {
