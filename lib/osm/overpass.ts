@@ -104,15 +104,31 @@ interface OverpassResponse {
 
 /** Per-attempt timeout: a stalled TLS handshake shouldn't eat the whole
  * request budget before failing over to the next mirror. */
-const MIRROR_TIMEOUT_MS = 8000
+const MIRROR_TIMEOUT_MS = 7000
 
-async function queryOverpassMirror(url: string, query: string): Promise<OverpassResponse> {
-  const controller = new AbortController()
+/**
+ * Overpass's usage policy (and Apache-level content negotiation on some
+ * mirrors) expects a descriptive `User-Agent` and an explicit `Accept` —
+ * requests without them have been observed getting a blanket `406 Not
+ * Acceptable` before the query is even evaluated, which otherwise looks
+ * identical to a rate-limit or outage from the caller's side.
+ */
+const REQUEST_HEADERS = {
+  "Content-Type": "application/x-www-form-urlencoded",
+  Accept: "application/json",
+  "User-Agent": "VIGIA-RiskDashboard/1.0 (+https://vigia.vercel.app)",
+}
+
+async function queryOverpassMirror(
+  url: string,
+  query: string,
+  controller: AbortController,
+): Promise<OverpassResponse> {
   const timeout = setTimeout(() => controller.abort(), MIRROR_TIMEOUT_MS)
   try {
     const res = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      headers: REQUEST_HEADERS,
       body: `data=${encodeURIComponent(query)}`,
       next: { revalidate: 21600 },
       signal: controller.signal,
@@ -128,27 +144,35 @@ async function queryOverpassMirror(url: string, query: string): Promise<Overpass
 
 /**
  * Overpass's public instances occasionally reset the TLS connection or
- * stall under load — transient flakiness, not a query problem. Tries every
- * mirror with a short per-attempt timeout, then makes one more full pass
- * across all mirrors before giving up, since a bad network window on one
- * pass often clears by the second.
+ * stall under load — transient flakiness, not a query problem. Races every
+ * mirror concurrently (first success wins) instead of trying them one at a
+ * time: a stalled handshake on one instance no longer blocks the others
+ * behind it.
+ *
+ * The previous implementation tried mirrors sequentially across two full
+ * passes, so a bad window could take up to MIRROR_TIMEOUT_MS × mirrors ×
+ * passes (~48s) to fail over — comfortably past this route's serverless
+ * function duration limit, which kills the invocation outright and
+ * surfaces as an inconsistent, connection-dependent failure with no
+ * useful error. Racing bounds the wait to a single timeout window
+ * regardless of how many mirrors are struggling.
  */
 async function queryOverpass(query: string): Promise<OverpassResponse> {
-  let lastError: unknown
-  for (let pass = 0; pass < 2; pass++) {
-    for (const url of OVERPASS_URLS) {
-      try {
-        return await queryOverpassMirror(url, query)
-      } catch (err) {
-        // Try the next mirror (or, on the final mirror of a pass, the next
-        // pass) instead of failing the whole request on one bad attempt.
-        lastError = err
-      }
-    }
+  const controllers = OVERPASS_URLS.map(() => new AbortController())
+  const attempts = OVERPASS_URLS.map((url, i) => queryOverpassMirror(url, query, controllers[i]))
+  try {
+    const result = await Promise.any(attempts)
+    // Stop the losing requests instead of letting them run to their own
+    // timeout in the background.
+    for (const controller of controllers) controller.abort()
+    return result
+  } catch (err) {
+    const causes = err instanceof AggregateError ? err.errors : [err]
+    const lastError = causes[causes.length - 1]
+    throw lastError instanceof Error
+      ? lastError
+      : new Error("No se pudo consultar la API de Overpass (OpenStreetMap)")
   }
-  throw lastError instanceof Error
-    ? lastError
-    : new Error("No se pudo consultar la API de Overpass (OpenStreetMap)")
 }
 
 /**
