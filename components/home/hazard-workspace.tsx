@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Image from "next/image"
-import Link from "next/link"
 import { ArrowRight, Droplets, Flame, Mountain, type LucideIcon } from "lucide-react"
 import { CategoryPanel } from "@/components/home/category-panel"
 import { DeslizamientosPanelContent } from "@/components/home/deslizamientos-panel-content"
@@ -15,6 +14,7 @@ import { useOsmInfrastructure } from "@/lib/osm/use-infrastructure"
 import type { OsmCategoryKey } from "@/lib/osm/categories"
 import { mapModels, type MapModel } from "@/lib/maps"
 import type { MapBounds } from "@/lib/map-bounds"
+import { openInfoPopup } from "@/lib/open-info-popup"
 
 const hazardIcons: Record<string, LucideIcon> = {
   deslizamientos: Mountain,
@@ -105,6 +105,15 @@ export function HazardWorkspace({ initialCategory }: { initialCategory: string }
           </div>
         </div>
 
+        <button
+          type="button"
+          onClick={() => openInfoPopup("/exposicion/popup", "vigia-exposicion")}
+          className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-md bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        >
+          Conoce tu nivel de exposición
+          <ArrowRight className="size-4" aria-hidden="true" />
+        </button>
+
         <div aria-live="polite" className="shrink-0">
           <LiveAreaPopulation
             bounds={bounds}
@@ -131,14 +140,6 @@ export function HazardWorkspace({ initialCategory }: { initialCategory: string }
           points={osmPoints}
           activeCategories={activeOsmCategories}
         />
-
-        <Link
-          href="/demografia"
-          className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-        >
-          Conoce tu nivel de exposición
-          <ArrowRight className="size-4" aria-hidden="true" />
-        </Link>
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">

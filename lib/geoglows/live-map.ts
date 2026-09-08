@@ -52,6 +52,24 @@ export function buildExportUrl(bounds: LatLngBounds, width: number, height: numb
   return `${MAP_SERVER}/export?${params.toString()}`
 }
 
+/**
+ * Same as buildExportUrl, but routed through this app's own
+ * /api/geoglows/export proxy (see that route for why) instead of hitting
+ * ArcGIS directly. Used by the exposición popup's map, which needs the
+ * image to carry CORS headers for html2canvas capture.
+ */
+export function buildProxyExportUrl(bounds: LatLngBounds, width: number, height: number): string {
+  const params = new URLSearchParams({
+    north: String(bounds.north),
+    south: String(bounds.south),
+    east: String(bounds.east),
+    west: String(bounds.west),
+    width: String(Math.max(1, Math.round(width))),
+    height: String(Math.max(1, Math.round(height))),
+  })
+  return `/api/geoglows/export?${params.toString()}`
+}
+
 function buildIdentifyUrl(
   lat: number,
   lon: number,
