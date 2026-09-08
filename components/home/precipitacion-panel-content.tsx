@@ -39,9 +39,10 @@ export function PrecipitacionPanelContent({
         className="relative h-[70vh] min-h-[420px] shrink-0 lg:h-full"
       >
         <p className="sr-only">
-          Mapa interactivo de lluvia acumulada por vereda, con una capa satelital de tasa
-          de precipitación. El panel de población en el encuadre actual, en la barra
-          lateral, resume el mismo contenido en formato de texto.
+          Mapa interactivo de lluvia acumulada o pronosticada por vereda, con controles
+          para elegir el modo (histórico o pronóstico) y la ventana de días, además de una
+          capa satelital de tasa de precipitación. El panel de población en el encuadre
+          actual, en la barra lateral, resume el mismo contenido en formato de texto.
         </p>
         <PrecipitacionLiveMapLoader
           className="relative h-full w-full"
@@ -56,7 +57,8 @@ export function PrecipitacionPanelContent({
           <PrecipitationOverview />
         </div>
         <p className="text-xs text-muted-foreground">
-          Lluvia acumulada por vereda: 7 días más recientes con dato válido de{" "}
+          Modo histórico: lluvia acumulada por vereda en la ventana de días elegida (7,
+          14 o 30), con el dato más reciente válido de{" "}
           <a
             href="https://power.larc.nasa.gov"
             target="_blank"
@@ -65,7 +67,17 @@ export function PrecipitacionPanelContent({
           >
             NASA POWER
           </a>{" "}
-          (reanálisis MERRA-2/GEOS-IT, no satelital directo, ~0.5° de resolución). Capa
+          (reanálisis MERRA-2/GEOS-IT, no satelital directo, ~0.5° de resolución). Modo
+          pronóstico: lluvia prevista por vereda a 7 o 14 días de{" "}
+          <a
+            href="https://open-meteo.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2 hover:text-foreground"
+          >
+            Open-Meteo
+          </a>{" "}
+          (modelos numéricos de pronóstico del tiempo, no observación directa). Capa
           satelital de tasa de precipitación: GPM IMERG vía NASA GIBS. A diferencia de las
           demás capas de amenaza, esta cubre Zarzal con el mismo detalle que Sevilla y
           Caicedonia. Los umbrales de nivel son un criterio simple de referencia, no un

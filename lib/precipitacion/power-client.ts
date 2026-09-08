@@ -1,5 +1,10 @@
 import "server-only"
 
+import { ACCUMULATION_WINDOW_OPTIONS, type AccumulationWindowDays } from "./api-types"
+
+export { ACCUMULATION_WINDOW_OPTIONS }
+export type { AccumulationWindowDays }
+
 /**
  * Client for NASA POWER's daily point API (power.larc.nasa.gov), queried
  * once per vereda centroid for `PRECTOTCORR` (bias-corrected precipitation,
@@ -27,11 +32,9 @@ import "server-only"
 const POWER_DAILY_POINT_URL = "https://power.larc.nasa.gov/api/temporal/daily/point"
 const FILL_VALUE = -999
 
-const ACCUMULATION_WINDOW_DAYS = 7
-// Query a wider lookback than the 7-day window we actually accumulate,
-// since POWER returns -999 fill values for the most recent few days until
-// its near-real-time source settles.
-const LOOKBACK_DAYS = 21
+// Buffer beyond the requested window, since POWER returns -999 fill values
+// for the most recent few days until its near-real-time source settles.
+const LOOKBACK_BUFFER_DAYS = 14
 
 const REVALIDATE_SECONDS = 10800 // 3h — rain accumulation changes slowly enough that hourly polling would be wasteful.
 
@@ -40,23 +43,25 @@ function formatDate(d: Date): string {
 }
 
 export interface PrecipitationAccumulation {
-  /** Sum of the most recent ACCUMULATION_WINDOW_DAYS valid (non-fill-value) daily totals, in mm. */
+  /** Sum of the most recent `windowDays` valid (non-fill-value) daily totals, in mm. */
   accumulatedMm: number
-  /** How many valid days actually went into the sum — normally 7. */
+  /** How many valid days actually went into the sum — normally equal to windowDays. */
   validDays: number
 }
 
 /**
- * Fetches accumulated rainfall for one point. Returns `null` if POWER has
- * no valid data at all in the lookback window (never a fabricated value).
+ * Fetches accumulated rainfall for one point over the given window (7, 14,
+ * or 30 days). Returns `null` if POWER has no valid data at all in the
+ * lookback window (never a fabricated value).
  */
 export async function getAccumulatedPrecipitation(
   lon: number,
   lat: number,
+  windowDays: AccumulationWindowDays = 7,
 ): Promise<PrecipitationAccumulation | null> {
   const end = new Date()
   const start = new Date(end)
-  start.setUTCDate(start.getUTCDate() - LOOKBACK_DAYS)
+  start.setUTCDate(start.getUTCDate() - (windowDays + LOOKBACK_BUFFER_DAYS))
 
   const params = new URLSearchParams({
     parameters: "PRECTOTCORR",
@@ -83,7 +88,7 @@ export async function getAccumulatedPrecipitation(
     .map((key) => byDate[key])
     .filter((v) => typeof v === "number" && v !== FILL_VALUE)
 
-  const mostRecentValid = validValues.slice(-ACCUMULATION_WINDOW_DAYS)
+  const mostRecentValid = validValues.slice(-windowDays)
   if (mostRecentValid.length === 0) return null
 
   return {
@@ -100,6 +105,7 @@ export async function getAccumulatedPrecipitation(
  */
 export async function getAccumulatedPrecipitationBatch(
   points: Array<{ lon: number; lat: number }>,
+  windowDays: AccumulationWindowDays = 7,
   concurrency = 6,
 ): Promise<Array<PrecipitationAccumulation | null>> {
   const results: Array<PrecipitationAccumulation | null> = new Array(points.length).fill(null)
@@ -110,7 +116,7 @@ export async function getAccumulatedPrecipitationBatch(
       const index = cursor++
       const p = points[index]
       try {
-        results[index] = await getAccumulatedPrecipitation(p.lon, p.lat)
+        results[index] = await getAccumulatedPrecipitation(p.lon, p.lat, windowDays)
       } catch {
         results[index] = null
       }
