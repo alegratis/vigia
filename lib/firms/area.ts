@@ -22,16 +22,25 @@ export function areaCoordinates(): string {
 }
 
 /**
- * VIIRS 375 m sources combined for fuller coverage of small fires.
- * S-NPP plus the two NOAA operational platforms.
+ * VIIRS 375 m sources combined for fuller coverage of small fires
+ * (S-NPP plus the two NOAA operational platforms), plus MODIS 1 km NRT
+ * (Terra + Aqua) for the map's separate MODIS toggle. NASA FIRMS' area/csv
+ * API has no Sentinel-3 source — that sensor is rendered instead from
+ * GWIS/Copernicus EFFIS's WMS hotspot layer (see lib/incendios/gwis.ts).
  */
 export const FIRMS_SOURCES = [
   "VIIRS_SNPP_NRT",
   "VIIRS_NOAA20_NRT",
   "VIIRS_NOAA21_NRT",
+  "MODIS_NRT",
 ] as const
 
 export type FirmsSource = (typeof FIRMS_SOURCES)[number]
+
+/** Which map toggle a FIRMS source belongs to. */
+export function firmsSensor(source: FirmsSource): "modis" | "viirs" {
+  return source.startsWith("MODIS") ? "modis" : "viirs"
+}
 
 /** Human labels for the municipalities used to tag nearby detections. */
 export const REFERENCE_POINTS = [

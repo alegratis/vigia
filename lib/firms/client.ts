@@ -1,6 +1,7 @@
 import "server-only"
 import {
   areaCoordinates,
+  firmsSensor,
   FIRMS_SOURCES,
   REFERENCE_POINTS,
   type FirmsSource,
@@ -38,6 +39,8 @@ export type FireDetection = {
   daynight: "D" | "N" | "unknown"
   satellite: string
   source: FirmsSource
+  /** Which map toggle this detection belongs to — derived from `source`. */
+  sensor: "modis" | "viirs"
   /** Nearest reference municipality and distance in km. */
   nearest: { name: string; distanceKm: number }
 }
@@ -71,11 +74,22 @@ function nearestPoint(lat: number, lon: number) {
   return { name: best.name, distanceKm: Math.round(best.distanceKm * 10) / 10 }
 }
 
+/**
+ * VIIRS reports confidence as a letter code ("l"/"n"/"h"); MODIS reports it
+ * as a 0–100% value instead, binned here per NASA's published thresholds
+ * (<30% low, 30–79% nominal, >=80% high) so both sensors share one legend.
+ */
 function normalizeConfidence(raw: string): FireDetection["confidence"] {
   const v = raw.trim().toLowerCase()
   if (v === "h" || v === "high") return "high"
   if (v === "n" || v === "nominal") return "nominal"
   if (v === "l" || v === "low") return "low"
+  const pct = Number.parseInt(v, 10)
+  if (Number.isFinite(pct)) {
+    if (pct >= 80) return "high"
+    if (pct >= 30) return "nominal"
+    return "low"
+  }
   return "unknown"
 }
 
@@ -89,12 +103,14 @@ function parseCsv(csv: string, source: FirmsSource): FireDetection[] {
   const iLat = idx("latitude")
   const iLon = idx("longitude")
   const iFrp = idx("frp")
-  const iBright = idx("bright_ti4")
+  // VIIRS calls its brightness column "bright_ti4"; MODIS calls it "brightness".
+  const iBright = idx("bright_ti4") >= 0 ? idx("bright_ti4") : idx("brightness")
   const iConf = idx("confidence")
   const iDate = idx("acq_date")
   const iTime = idx("acq_time")
   const iSat = idx("satellite")
   const iDayNight = idx("daynight")
+  const sensor = firmsSensor(source)
 
   const out: FireDetection[] = []
   for (let i = 1; i < lines.length; i++) {
@@ -126,6 +142,7 @@ function parseCsv(csv: string, source: FirmsSource): FireDetection[] {
       daynight: dn === "D" || dn === "N" ? dn : "unknown",
       satellite: iSat >= 0 ? cells[iSat]?.trim() || source : source,
       source,
+      sensor,
       nearest: nearestPoint(lat, lon),
     })
   }
@@ -167,8 +184,9 @@ export type FireResult = {
 }
 
 /**
- * Query all configured VIIRS sources for the study area and merge them.
- * Deduplicates near-identical detections reported by overlapping platforms.
+ * Query all configured FIRMS sources (VIIRS + MODIS) for the study area and
+ * merge them. Deduplicates near-identical detections reported by
+ * overlapping platforms of the same sensor.
  */
 export async function getAreaFires(dayRange = 2): Promise<FireResult> {
   const mapKey = process.env.FIRMS_MAP_KEY
@@ -215,11 +233,18 @@ export async function getAreaFires(dayRange = 2): Promise<FireResult> {
   }
 }
 
-/** Collapse detections from different platforms that fall on the same ~400m cell and time. */
+/**
+ * Collapse detections from overlapping platforms of the *same* sensor
+ * (e.g. VIIRS_SNPP + VIIRS_NOAA20 both reporting one fire) that fall on the
+ * same ~400m cell and time. Deliberately keyed by `sensor` too, so a MODIS
+ * detection never absorbs a VIIRS one — the map's MODIS/VIIRS toggles are
+ * independent, and merging across them would make one disappear depending
+ * on which happened to have the higher FRP.
+ */
 function dedupe(list: FireDetection[]): FireDetection[] {
   const seen = new Map<string, FireDetection>()
   for (const d of list) {
-    const key = `${d.lat.toFixed(3)}-${d.lon.toFixed(3)}-${d.acqDate}-${d.daynight}`
+    const key = `${d.sensor}-${d.lat.toFixed(3)}-${d.lon.toFixed(3)}-${d.acqDate}-${d.daynight}`
     const existing = seen.get(key)
     // Keep the detection with the higher FRP as representative.
     if (!existing || d.frp > existing.frp) seen.set(key, d)
