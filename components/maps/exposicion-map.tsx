@@ -19,6 +19,7 @@ import "leaflet/dist/leaflet.css"
 import useSWR from "swr"
 import { Download, Loader2, Mountain, Droplets, Flame, CloudRain } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { BasemapTileLayer } from "@/components/maps/basemap-tile-layer"
 import {
   SUSCEPTIBILITY_LEVELS,
   levelColorToken,
@@ -449,11 +450,7 @@ function ExposicionMapImpl({ vereda }: { vereda: VeredaListEntry }) {
         >
           <ZoomControl position="topright" />
           <AttributionControl position="bottomright" prefix="Leaflet" />
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            crossOrigin="anonymous"
-          />
+          <BasemapTileLayer crossOrigin="anonymous" />
 
           <FitToVereda vereda={vereda} />
 

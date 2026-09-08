@@ -17,6 +17,7 @@ import type { Layer, LatLngBoundsExpression, LeafletMouseEvent, PathOptions, WMS
 import "leaflet/dist/leaflet.css"
 import { Loader2 } from "lucide-react"
 import useSWR from "swr"
+import { BasemapTileLayer } from "@/components/maps/basemap-tile-layer"
 import {
   FIRE_THREAT_LEVELS,
   FIRE_THREAT_LEVEL_STYLES,
@@ -294,10 +295,7 @@ function IncendiosLiveMapImpl({
       >
         <ZoomControl position="topright" />
         <AttributionControl position="bottomright" prefix="Leaflet" />
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
+        <BasemapTileLayer />
         {showForecast && (
           <WMSTileLayer
             url={GWIS_WMS_URL}
