@@ -13,6 +13,7 @@ const navLinks = [
   { label: "Deslizamientos", href: "/?categoria=deslizamientos" },
   { label: "Inundaciones", href: "/?categoria=inundaciones" },
   { label: "Incendios", href: "/?categoria=incendios" },
+  { label: "Precipitación", href: "/?categoria=precipitacion" },
 ]
 
 export function SiteHeader() {

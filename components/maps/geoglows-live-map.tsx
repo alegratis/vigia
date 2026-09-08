@@ -31,7 +31,7 @@ import {
 } from "@/lib/geoglows/live-map"
 import { STATIONS } from "@/lib/geoglows/stations"
 import { FLOOD_SUSCEPTIBILITY_LEVELS, floodSusceptibilityColorToken } from "@/lib/inundaciones/levels"
-import { IMERG_TILE_URL, IMERG_WORLDVIEW_URL } from "@/lib/inundaciones/imerg"
+import { IMERG_TILE_URL, IMERG_WORLDVIEW_URL } from "@/lib/precipitacion/imerg"
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import { formatFlow } from "@/lib/flood-ui"
 import { nearestPoint, type MapBounds } from "@/lib/map-bounds"

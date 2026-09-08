@@ -44,7 +44,7 @@ export function ExposicionPanel() {
         <div>
           <h1 className="text-balance text-xl font-semibold tracking-tight">Conoce tu nivel de exposición</h1>
           <p className="mt-1 max-w-2xl text-pretty text-sm leading-relaxed text-muted-foreground">
-            Elige tu municipio y vereda para ver un mapa enfocado con las tres amenazas que monitorea Vigía y su
+            Elige tu municipio y vereda para ver un mapa enfocado con las cuatro amenazas que monitorea Vigía y su
             pronóstico más reciente.
           </p>
         </div>
@@ -119,7 +119,7 @@ export function ExposicionPanel() {
             <EmptyDescription>
               {error
                 ? "Intenta cerrar esta ventana y abrirla de nuevo."
-                : "El mapa enfocado con las tres amenazas aparecerá aquí una vez elijas tu municipio y vereda."}
+                : "El mapa enfocado con las cuatro amenazas aparecerá aquí una vez elijas tu municipio y vereda."}
             </EmptyDescription>
           </Empty>
         )}

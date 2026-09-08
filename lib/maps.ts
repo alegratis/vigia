@@ -55,6 +55,19 @@ export const mapModels: MapModel[] = [
     href: "/?categoria=incendios",
     ready: true,
   },
+  {
+    slug: "precipitacion",
+    title: "Precipitación",
+    hook: "Seguimos la lluvia acumulada vereda por vereda, la única capa con el mismo detalle en Sevilla, Caicedonia y Zarzal.",
+    description:
+      "Calculamos la lluvia acumulada de los últimos días con datos de NASA POWER para cada vereda, y la cruzamos con la tasa de precipitación satelital GPM IMERG en tiempo casi real, aportando contexto para anticipar tanto inundaciones como incendios.",
+    image: "/images/precipitacion-map.png",
+    imageAlt:
+      "Vista aérea de un valle andino cubierto de nubes de lluvia sobre un río y terreno montañoso",
+    tag: "Amenaza hídrica",
+    href: "/?categoria=precipitacion",
+    ready: true,
+  },
 ]
 
 export function getMapModel(slug: string): MapModel | undefined {

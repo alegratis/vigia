@@ -58,6 +58,10 @@
   --color-inundaciones-moderada: var(--inundaciones-moderada);
   --color-inundaciones-alta: var(--inundaciones-alta);
   --color-inundaciones-muy-alta: var(--inundaciones-muy-alta);
+  --color-precipitacion-bajo: var(--precipitacion-bajo);
+  --color-precipitacion-moderado: var(--precipitacion-moderado);
+  --color-precipitacion-alto: var(--precipitacion-alto);
+  --color-precipitacion-muy-alto: var(--precipitacion-muy-alto);
   --color-osm-business: var(--osm-business);
   --color-osm-health: var(--osm-health);
   --color-osm-financial: var(--osm-financial);
@@ -147,6 +151,16 @@
   --inundaciones-muy-alta: oklch(0.4 0.17 270);
 
   /*
+   * Precipitación accumulation ramp: teal/cyan family, distinct from
+   * inundaciones' blue-indigo susceptibility scale so the two rain-adjacent
+   * signals never read as the same layer.
+   */
+  --precipitacion-bajo: oklch(0.88 0.08 190);
+  --precipitacion-moderado: oklch(0.74 0.11 195);
+  --precipitacion-alto: oklch(0.58 0.13 205);
+  --precipitacion-muy-alto: oklch(0.4 0.12 220);
+
+  /*
    * OSM infrastructure categories (Overpass): five identity colors distinct
    * from every hazard ramp above, since these render alongside a hazard's
    * own legend in the same card stack.
@@ -232,6 +246,12 @@
   --inundaciones-moderada: oklch(0.64 0.13 250);
   --inundaciones-alta: oklch(0.56 0.16 262);
   --inundaciones-muy-alta: oklch(0.48 0.18 270);
+
+  /* Precipitación accumulation ramp: kept vivid and legible on dark surfaces. */
+  --precipitacion-bajo: oklch(0.8 0.08 190);
+  --precipitacion-moderado: oklch(0.68 0.12 195);
+  --precipitacion-alto: oklch(0.56 0.14 205);
+  --precipitacion-muy-alto: oklch(0.46 0.14 220);
 
   /* OSM infrastructure categories: kept vivid and legible on dark surfaces. */
   --osm-business: oklch(0.76 0.14 55);

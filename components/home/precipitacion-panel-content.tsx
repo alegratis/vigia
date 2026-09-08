@@ -1,0 +1,77 @@
+"use client"
+
+import { useRef } from "react"
+import { PrecipitacionLiveMapLoader } from "@/components/maps/precipitacion-live-map-loader"
+import { ScrollHintButton } from "@/components/home/scroll-hint-button"
+import { PrecipitationOverview } from "@/components/precipitacion/precipitation-overview"
+import type { OsmPoint } from "@/lib/osm/api-types"
+import type { MapBounds } from "@/lib/map-bounds"
+
+interface PrecipitacionPanelContentProps {
+  /** Bubbles the map's viewport up to the workspace's shared sidebar card. */
+  onBoundsChange?: (bounds: MapBounds) => void
+  /** Bubbles a clicked vereda's municipio up to the shared sidebar card. */
+  onZoneSelect?: (municipio: string) => void
+  /** OSM infrastructure points, filtered to the categories toggled on in the sidebar. */
+  activeOsmPoints: OsmPoint[]
+}
+
+/**
+ * Expanded precipitación panel for the homepage workspace: the vereda
+ * rainfall-accumulation map fills the full first fold; its source caption
+ * scrolls in below. This is the only hazard category with full coverage
+ * of all three municipios, including Zarzal — see lib/precipitacion/server.ts.
+ * Demographics and infrastructure toggles live in the workspace's shared
+ * sidebar, fed by onBoundsChange/onZoneSelect.
+ */
+export function PrecipitacionPanelContent({
+  onBoundsChange,
+  onZoneSelect,
+  activeOsmPoints,
+}: PrecipitacionPanelContentProps) {
+  const captionRef = useRef<HTMLDivElement>(null)
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+      <div
+        role="region"
+        aria-label="Mapa de precipitación"
+        className="relative h-[70vh] min-h-[420px] shrink-0 lg:h-full"
+      >
+        <p className="sr-only">
+          Mapa interactivo de lluvia acumulada por vereda, con una capa satelital de tasa
+          de precipitación. El panel de población en el encuadre actual, en la barra
+          lateral, resume el mismo contenido en formato de texto.
+        </p>
+        <PrecipitacionLiveMapLoader
+          className="relative h-full w-full"
+          onBoundsChange={onBoundsChange}
+          onZoneSelect={onZoneSelect}
+          osmPoints={activeOsmPoints}
+        />
+        <ScrollHintButton targetRef={captionRef} label="Ver resumen por municipio" />
+      </div>
+      <div ref={captionRef} className="flex flex-col gap-6 p-4 sm:p-6">
+        <div aria-live="polite">
+          <PrecipitationOverview />
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Lluvia acumulada por vereda: 7 días más recientes con dato válido de{" "}
+          <a
+            href="https://power.larc.nasa.gov"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2 hover:text-foreground"
+          >
+            NASA POWER
+          </a>{" "}
+          (reanálisis MERRA-2/GEOS-IT, no satelital directo, ~0.5° de resolución). Capa
+          satelital de tasa de precipitación: GPM IMERG vía NASA GIBS. A diferencia de las
+          demás capas de amenaza, esta cubre Zarzal con el mismo detalle que Sevilla y
+          Caicedonia. Los umbrales de nivel son un criterio simple de referencia, no un
+          modelo de amenaza calibrado. Haz clic sobre cualquier vereda para ver su detalle.
+        </p>
+      </div>
+    </div>
+  )
+}

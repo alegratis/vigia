@@ -52,7 +52,16 @@ export function InundacionesPanelContent({
           Pronóstico de río servido en vivo por GEOGLOWS / Esri Living Atlas (capa pública
           GlobalWaterModel_Medium). Susceptibilidad a inundación: capa pública{" "}
           <code className="text-foreground">susceptibilidad_inundaciones</code>, publicada en
-          ArcGIS Online. Haz clic sobre cualquier tramo del río o zona para ver su detalle.
+          ArcGIS Online. Haz clic sobre cualquier tramo del río o zona para ver su detalle. Esta
+          zonificación no cubre Zarzal; la categoría{" "}
+          <a
+            href="/?categoria=precipitacion"
+            className="underline underline-offset-2 hover:text-foreground"
+          >
+            Precipitación
+          </a>{" "}
+          sí ofrece un dato de contexto (lluvia acumulada por vereda) para los tres municipios,
+          incluido Zarzal.
         </p>
       </div>
     </div>
