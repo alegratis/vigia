@@ -5,29 +5,32 @@ import { multiPolygon } from "@turf/helpers"
 import { getVeredaBoundaries } from "@/lib/veredas/boundaries"
 import { getAccumulatedPrecipitationBatch, type AccumulationWindowDays } from "./power-client"
 import { getForecastPrecipitationBatch, type ForecastWindowDays } from "./forecast-client"
+import { getIdeamAccumulationBatch } from "./ideam-client"
 import { classifyPrecipitation } from "./levels"
-import type { PrecipitacionFeatureCollection, PrecipitacionMode } from "./api-types"
+import type { PrecipitacionFeatureCollection, PrecipitacionFuente, PrecipitacionMode } from "./api-types"
 
 export interface GetPrecipitacionAmenazaOptions {
   mode: PrecipitacionMode
   windowDays: number
+  /** Historical-only; ignored when mode is "pronostico". */
+  fuente: PrecipitacionFuente
 }
 
 /**
  * Builds the vereda-level precipitación GeoJSON for /api/precipitacion/amenaza:
  * reuses the same vereda boundaries fetched for /api/veredas (see
  * lib/veredas/boundaries.ts), computes each vereda's centroid, then queries
- * either NASA POWER for a backward-looking rainfall accumulation (see
- * lib/precipitacion/power-client.ts) or Open-Meteo for a forward-looking
- * forecast (see lib/precipitacion/forecast-client.ts) once per centroid,
- * and classifies the result into a threat level. Every vereda gets a
- * numeric value here — unlike the susceptibility layers, this data source
- * has no municipio gap, so Zarzal gets the same coverage as Sevilla and
- * Caicedonia.
+ * one of three sources once per centroid — NASA POWER or IDEAM stations for
+ * a backward-looking accumulation (see power-client.ts / ideam-client.ts),
+ * or Open-Meteo for a forward-looking forecast (see forecast-client.ts) —
+ * and classifies the result into a threat level. NASA POWER has no
+ * municipio gap (Zarzal gets the same coverage as Sevilla and Caicedonia);
+ * IDEAM's 2 nearby stations do not reach Sevilla or Caicedonia at all.
  */
 export async function getPrecipitacionAmenaza({
   mode,
   windowDays,
+  fuente,
 }: GetPrecipitacionAmenazaOptions): Promise<{
   windowEnd: string
   veredas: PrecipitacionFeatureCollection
@@ -43,7 +46,7 @@ export async function getPrecipitacionAmenaza({
     boundary: (typeof boundaries)[number],
     accumulatedMm: number | undefined,
     validDays: number | undefined,
-    probabilidadMax: number | undefined,
+    extra: { probabilidadMax?: number; estacionNombre?: string; distanciaEstacionKm?: number; sinCobertura?: boolean },
   ) => ({
     codigoVereda: boundary.codigoVereda,
     nombre: boundary.nombre,
@@ -51,7 +54,10 @@ export async function getPrecipitacionAmenaza({
     esCascoUrbano: boundary.esCascoUrbano,
     acumuladoMm: accumulatedMm != null ? Math.round(accumulatedMm * 10) / 10 : null,
     diasValidos: validDays ?? 0,
-    ...(probabilidadMax != null ? { probabilidadMax: Math.round(probabilidadMax) } : {}),
+    ...(extra.probabilidadMax != null ? { probabilidadMax: Math.round(extra.probabilidadMax) } : {}),
+    ...(extra.estacionNombre != null ? { estacionNombre: extra.estacionNombre } : {}),
+    ...(extra.distanciaEstacionKm != null ? { distanciaEstacionKm: extra.distanciaEstacionKm } : {}),
+    ...(extra.sinCobertura ? { sinCobertura: true } : {}),
     nivel: accumulatedMm != null ? classifyPrecipitation(accumulatedMm, windowDays) : null,
   })
 
@@ -64,7 +70,22 @@ export async function getPrecipitacionAmenaza({
       return {
         type: "Feature",
         id: boundary.codigoVereda,
-        properties: buildProperties(boundary, f?.accumulatedMm, f?.validDays, f?.probabilidadMax),
+        properties: buildProperties(boundary, f?.accumulatedMm, f?.validDays, { probabilidadMax: f?.probabilidadMax }),
+        geometry: { type: "MultiPolygon", coordinates: boundary.polygons },
+      }
+    })
+  } else if (fuente === "ideam") {
+    const readings = await getIdeamAccumulationBatch(centroids, windowDays)
+    features = boundaries.map((boundary, i) => {
+      const r = readings[i]
+      return {
+        type: "Feature",
+        id: boundary.codigoVereda,
+        properties: buildProperties(boundary, r?.accumulatedMm, r?.validDays, {
+          estacionNombre: r?.estacionNombre,
+          distanciaEstacionKm: r?.distanciaEstacionKm,
+          sinCobertura: !r,
+        }),
         geometry: { type: "MultiPolygon", coordinates: boundary.polygons },
       }
     })
@@ -75,7 +96,7 @@ export async function getPrecipitacionAmenaza({
       return {
         type: "Feature",
         id: boundary.codigoVereda,
-        properties: buildProperties(boundary, acc?.accumulatedMm, acc?.validDays, undefined),
+        properties: buildProperties(boundary, acc?.accumulatedMm, acc?.validDays, {}),
         geometry: { type: "MultiPolygon", coordinates: boundary.polygons },
       }
     })
