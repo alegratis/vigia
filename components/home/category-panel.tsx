@@ -39,12 +39,12 @@ export function CategoryPanel({ model, icon: Icon, isActive, onActivate, childre
           className="object-cover transition-transform duration-500 group-hover:scale-105"
         />
         <div
-          className="absolute inset-0 bg-black/55 transition-colors duration-300 group-hover:bg-black/40"
+          className="absolute inset-0 bg-white/65 transition-colors duration-300 group-hover:bg-white/50 dark:bg-black/55 dark:group-hover:bg-black/40"
           aria-hidden="true"
         />
         <div className="relative z-10 flex w-full items-center gap-3 px-5 lg:flex-col lg:gap-4 lg:px-0">
-          <Icon className="size-5 shrink-0 text-white" aria-hidden="true" />
-          <span className="text-sm font-semibold uppercase tracking-wide text-white lg:[writing-mode:vertical-rl] lg:rotate-180">
+          <Icon className="size-5 shrink-0 text-black dark:text-white" aria-hidden="true" />
+          <span className="text-sm font-semibold uppercase tracking-wide text-black lg:[writing-mode:vertical-rl] lg:rotate-180 dark:text-white">
             {model.title}
           </span>
         </div>
