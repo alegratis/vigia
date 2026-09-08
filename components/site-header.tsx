@@ -6,13 +6,13 @@ import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { Menu, X } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { openInfoPopup } from "@/lib/open-info-popup"
 
 const navLinks = [
   { label: "Panel", href: "/" },
   { label: "Deslizamientos", href: "/?categoria=deslizamientos" },
   { label: "Inundaciones", href: "/?categoria=inundaciones" },
   { label: "Incendios", href: "/?categoria=incendios" },
-  { label: "Demografía", href: "/demografia" },
 ]
 
 export function SiteHeader() {
@@ -69,6 +69,13 @@ export function SiteHeader() {
                 </Link>
               )
             })}
+            <button
+              type="button"
+              onClick={() => openInfoPopup("/demografia/popup", "vigia-demografia")}
+              className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
+              Demografía
+            </button>
           </nav>
           <div className="ml-1">
             <ThemeToggle />
@@ -115,6 +122,15 @@ export function SiteHeader() {
                 </li>
               )
             })}
+            <li>
+              <button
+                type="button"
+                onClick={() => openInfoPopup("/demografia/popup", "vigia-demografia")}
+                className="block w-full rounded-md px-3 py-2.5 text-left text-base font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              >
+                Demografía
+              </button>
+            </li>
           </ul>
         </nav>
       )}
