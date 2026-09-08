@@ -54,11 +54,19 @@ export function CategoryPanel({ model, icon: Icon, isActive, onActivate, childre
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-3 sm:px-6">
-        <Icon className="size-5 text-primary" aria-hidden="true" />
-        <h2 className="text-lg font-semibold tracking-tight">{model.title}</h2>
+      <div className="relative flex shrink-0 items-center gap-2 overflow-hidden border-b border-border px-4 py-3 sm:px-6">
+        <Image
+          src={model.image || "/placeholder.svg"}
+          alt=""
+          fill
+          sizes="(max-width: 1024px) 100vw, 640px"
+          className="object-cover"
+        />
+        <div className="absolute inset-0 bg-white/75 dark:bg-black/65" aria-hidden="true" />
+        <Icon className="relative z-10 size-5 text-primary" aria-hidden="true" />
+        <h2 className="relative z-10 text-lg font-semibold tracking-tight text-black dark:text-white">{model.title}</h2>
         {model.ready && (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-foreground">
+          <span className="relative z-10 inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-foreground">
             <span className="size-1.5 rounded-full bg-[var(--chart-2)]" aria-hidden="true" />
             En vivo
           </span>
