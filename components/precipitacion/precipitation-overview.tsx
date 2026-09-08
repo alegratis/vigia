@@ -1,13 +1,18 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import useSWR from "swr"
-import { AlertTriangle, CloudRain, Droplet, MapPin, RefreshCw } from "lucide-react"
+import { AlertTriangle, CloudRain, Droplet, MapPin, Percent, RefreshCw } from "lucide-react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { PRECIPITATION_LEVEL_STYLES } from "@/lib/precipitacion/levels"
 import { resolveCssColor } from "@/lib/resolve-css-color"
-import type { PrecipitacionAmenazaResponse } from "@/lib/precipitacion/api-types"
+import {
+  ACCUMULATION_WINDOW_OPTIONS,
+  FORECAST_WINDOW_OPTIONS,
+  type PrecipitacionAmenazaResponse,
+  type PrecipitacionMode,
+} from "@/lib/precipitacion/api-types"
 
 const fetcher = async (url: string): Promise<PrecipitacionAmenazaResponse> => {
   const res = await fetch(url)
@@ -29,24 +34,45 @@ interface MunicipioSummary {
   avgMm: number
   wettest: { nombre: string; acumuladoMm: number } | null
   count: number
+  /** Forecast mode only: average of each vereda's max daily precipitation probability (%). */
+  avgProbabilidad: number | null
 }
 
 export function PrecipitationOverview() {
+  const [mode, setMode] = useState<PrecipitacionMode>("historico")
+  const [windowDays, setWindowDays] = useState<number>(7)
+  const windowOptions = mode === "pronostico" ? FORECAST_WINDOW_OPTIONS : ACCUMULATION_WINDOW_OPTIONS
+
+  function handleModeChange(nextMode: PrecipitacionMode) {
+    setMode(nextMode)
+    const nextOptions = nextMode === "pronostico" ? FORECAST_WINDOW_OPTIONS : ACCUMULATION_WINDOW_OPTIONS
+    if (!(nextOptions as readonly number[]).includes(windowDays)) {
+      setWindowDays(7)
+    }
+  }
+
   const { data, error, isLoading, mutate, isValidating } = useSWR<PrecipitacionAmenazaResponse>(
-    "/api/precipitacion/amenaza",
+    `/api/precipitacion/amenaza?mode=${mode}&window=${windowDays}`,
     fetcher,
     { revalidateOnFocus: false },
   )
 
   const summaries = useMemo<MunicipioSummary[]>(() => {
     if (!data) return []
-    const byMunicipio = new Map<string, { sum: number; count: number; wettest: { nombre: string; acumuladoMm: number } | null }>()
+    const byMunicipio = new Map<
+      string,
+      { sum: number; count: number; wettest: { nombre: string; acumuladoMm: number } | null; probSum: number; probCount: number }
+    >()
     for (const f of data.veredas.features) {
-      const { municipio, acumuladoMm, nombre } = f.properties
+      const { municipio, acumuladoMm, nombre, probabilidadMax } = f.properties
       if (acumuladoMm == null) continue
-      const entry = byMunicipio.get(municipio) ?? { sum: 0, count: 0, wettest: null }
+      const entry = byMunicipio.get(municipio) ?? { sum: 0, count: 0, wettest: null, probSum: 0, probCount: 0 }
       entry.sum += acumuladoMm
       entry.count += 1
+      if (probabilidadMax != null) {
+        entry.probSum += probabilidadMax
+        entry.probCount += 1
+      }
       if (!entry.wettest || acumuladoMm > entry.wettest.acumuladoMm) {
         entry.wettest = { nombre, acumuladoMm }
       }
@@ -58,6 +84,7 @@ export function PrecipitationOverview() {
         avgMm: e.sum / e.count,
         wettest: e.wettest,
         count: e.count,
+        avgProbabilidad: e.probCount > 0 ? e.probSum / e.probCount : null,
       }))
       .sort((a, b) => a.municipio.localeCompare(b.municipio))
   }, [data])
@@ -93,7 +120,9 @@ export function PrecipitationOverview() {
             <p className="font-medium">No se pudo cargar la información</p>
           </div>
           <p className="text-sm text-muted-foreground">
-            El servicio NASA POWER podría no estar disponible en este momento.
+            {mode === "pronostico"
+              ? "El servicio Open-Meteo podría no estar disponible en este momento."
+              : "El servicio NASA POWER podría no estar disponible en este momento."}
           </p>
           <button
             type="button"
@@ -108,23 +137,60 @@ export function PrecipitationOverview() {
     )
   }
 
+  const avgLabel = mode === "pronostico" ? `Pronóstico ${windowDays} días` : `Promedio ${windowDays} días`
+  const dateLabel = mode === "pronostico" ? `pronóstico generado el ${data.windowEnd}` : `acumulado hasta el ${data.windowEnd}`
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">
-          Actualizado {formatDateTime(data.generatedAt)} · {data.veredas.features.length} veredas ·
-          acumulado hasta el {data.windowEnd}
-        </p>
+        <div className="inline-flex rounded-md border border-border p-0.5 text-sm" role="group" aria-label="Modo de datos">
+          <button
+            type="button"
+            onClick={() => handleModeChange("historico")}
+            aria-pressed={mode === "historico"}
+            className={`rounded-sm px-3 py-1.5 font-medium transition-colors ${
+              mode === "historico" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Histórico
+          </button>
+          <button
+            type="button"
+            onClick={() => handleModeChange("pronostico")}
+            aria-pressed={mode === "pronostico"}
+            className={`rounded-sm px-3 py-1.5 font-medium transition-colors ${
+              mode === "pronostico" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Pronóstico
+          </button>
+        </div>
+        <select
+          value={windowDays}
+          onChange={(e) => setWindowDays(Number(e.target.value))}
+          aria-label="Ventana de días"
+          className="rounded-md border border-border bg-card px-2.5 py-1.5 text-sm font-medium text-foreground"
+        >
+          {windowOptions.map((d) => (
+            <option key={d} value={d}>
+              {d} días
+            </option>
+          ))}
+        </select>
         <button
           type="button"
           onClick={() => mutate()}
           disabled={isValidating}
-          className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-60"
+          className="ml-auto inline-flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-60"
         >
           <RefreshCw className={isValidating ? "size-4 animate-spin" : "size-4"} aria-hidden="true" />
           Actualizar
         </button>
       </div>
+
+      <p className="text-sm text-muted-foreground">
+        Actualizado {formatDateTime(data.generatedAt)} · {data.veredas.features.length} veredas · {dateLabel}
+      </p>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {summaries.map((s) => (
@@ -140,10 +206,19 @@ export function PrecipitationOverview() {
               <div className="flex items-baseline justify-between">
                 <span className="flex items-center gap-1.5 text-muted-foreground">
                   <Droplet className="size-3.5" aria-hidden="true" />
-                  Promedio 7 días
+                  {avgLabel}
                 </span>
                 <span className="font-semibold tabular-nums">{s.avgMm.toFixed(1)} mm</span>
               </div>
+              {mode === "pronostico" && s.avgProbabilidad != null && (
+                <div className="flex items-baseline justify-between">
+                  <span className="flex items-center gap-1.5 text-muted-foreground">
+                    <Percent className="size-3.5" aria-hidden="true" />
+                    Probabilidad promedio
+                  </span>
+                  <span className="font-semibold tabular-nums">{s.avgProbabilidad.toFixed(0)}%</span>
+                </div>
+              )}
               {s.wettest && (
                 <div className="flex items-baseline justify-between gap-2">
                   <span className="flex items-center gap-1.5 text-muted-foreground">

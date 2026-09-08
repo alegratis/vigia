@@ -15,12 +15,14 @@ export const PRECIPITATION_LEVELS = ["Bajo", "Moderado", "Alto", "Muy alto"] as 
 export type PrecipitationLevel = (typeof PRECIPITATION_LEVELS)[number]
 
 /** Upper bound (mm, exclusive) of accumulated 7-day rainfall for each level; the last has none. */
-const LEVEL_THRESHOLDS_MM: Record<PrecipitationLevel, number | null> = {
+const LEVEL_THRESHOLDS_MM_7D: Record<PrecipitationLevel, number | null> = {
   Bajo: 35,
   Moderado: 75,
   Alto: 150,
   "Muy alto": null,
 }
+
+const BASE_WINDOW_DAYS = 7
 
 export interface PrecipitationLevelStyle {
   label: PrecipitationLevel
@@ -51,11 +53,18 @@ export const PRECIPITATION_LEVEL_STYLES: Record<PrecipitationLevel, Precipitatio
   },
 }
 
-/** Classifies an accumulated 7-day rainfall total (mm) into one of the four levels above. */
-export function classifyPrecipitation(accumulatedMm: number): PrecipitationLevel {
+/**
+ * Classifies an accumulated rainfall total (mm) into one of the four
+ * levels above, scaling the base 7-day thresholds linearly by the actual
+ * window (or forecast horizon) the total covers — so a 30-day accumulation
+ * or a 14-day forecast isn't misclassified as artificially "worse" just
+ * because it covers more days.
+ */
+export function classifyPrecipitation(accumulatedMm: number, windowDays = BASE_WINDOW_DAYS): PrecipitationLevel {
+  const scale = windowDays / BASE_WINDOW_DAYS
   for (const level of PRECIPITATION_LEVELS) {
-    const upperBound = LEVEL_THRESHOLDS_MM[level]
-    if (upperBound === null || accumulatedMm < upperBound) return level
+    const baseUpperBound = LEVEL_THRESHOLDS_MM_7D[level]
+    if (baseUpperBound === null || accumulatedMm < baseUpperBound * scale) return level
   }
   return "Muy alto"
 }

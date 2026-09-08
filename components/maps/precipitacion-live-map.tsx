@@ -22,12 +22,13 @@ import {
   precipitationLevelColorToken,
 } from "@/lib/precipitacion/levels"
 import { IMERG_TILE_URL, IMERG_WORLDVIEW_URL } from "@/lib/precipitacion/imerg"
+import { ACCUMULATION_WINDOW_OPTIONS, FORECAST_WINDOW_OPTIONS } from "@/lib/precipitacion/api-types"
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import { normalizeMunicipioName } from "@/lib/demografia/categories"
 import { getOsmCategory } from "@/lib/osm/categories"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
 import { OsmLegend } from "@/components/maps/osm-legend"
-import type { PrecipitacionAmenazaResponse } from "@/lib/precipitacion/api-types"
+import type { PrecipitacionAmenazaResponse, PrecipitacionMode } from "@/lib/precipitacion/api-types"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
 
@@ -72,7 +73,7 @@ function BoundsSync({ onBoundsChange }: BoundsSyncProps) {
   return null
 }
 
-function ThreatLegend() {
+function ThreatLegend({ title }: { title: string }) {
   const [colors, setColors] = useState<string[] | null>(null)
 
   useEffect(() => {
@@ -81,7 +82,7 @@ function ThreatLegend() {
 
   return (
     <div className="pointer-events-none absolute bottom-3 left-3 z-[400] rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
-      <p className="mb-1.5 font-medium text-foreground">Lluvia acumulada (7 días)</p>
+      <p className="mb-1.5 font-medium text-foreground">{title}</p>
       <ul className="flex flex-col gap-1">
         {PRECIPITATION_LEVELS.map((level, i) => (
           <li key={level} className="flex items-center gap-2 text-muted-foreground">
@@ -99,13 +100,15 @@ function ThreatLegend() {
 }
 
 /**
- * Live precipitación map: renders each vereda colored by its 7-day
- * accumulated-rainfall level (NASA POWER, see lib/precipitacion/server.ts —
- * the only hazard layer in this app with full coverage of Zarzal), with an
- * optional GPM IMERG satellite precipitation-rate raster overlay (NASA
- * GIBS, see lib/precipitacion/imerg.ts — the same live layer the
+ * Live precipitación map: renders each vereda colored by its rainfall
+ * level, toggling between a backward-looking accumulation window (NASA
+ * POWER, 7/14/30 días — see lib/precipitacion/server.ts, the only hazard
+ * layer in this app with full coverage of Zarzal) and a forward-looking
+ * forecast (Open-Meteo, 7/14 días — see lib/precipitacion/forecast-client.ts),
+ * with an optional GPM IMERG satellite precipitation-rate raster overlay
+ * (NASA GIBS, see lib/precipitacion/imerg.ts — the same live layer the
  * inundaciones map offers as rainfall context). Click a vereda for its
- * accumulation and level.
+ * accumulation/forecast and level.
  */
 function PrecipitacionLiveMapImpl({
   onBoundsChange,
@@ -119,13 +122,33 @@ function PrecipitacionLiveMapImpl({
   osmPoints?: OsmPoint[]
   className?: string
 }) {
-  const { data, error } = useSWR<PrecipitacionAmenazaResponse>("/api/precipitacion/amenaza", fetcher, {
-    revalidateOnFocus: false,
-  })
+  const [mode, setMode] = useState<PrecipitacionMode>("historico")
+  const [windowDays, setWindowDays] = useState<number>(7)
+
+  const { data, error } = useSWR<PrecipitacionAmenazaResponse>(
+    `/api/precipitacion/amenaza?mode=${mode}&window=${windowDays}`,
+    fetcher,
+    { revalidateOnFocus: false },
+  )
   const osmColors = useOsmCategoryColors()
 
   const [resolvedColors, setResolvedColors] = useState<Record<string, string> | null>(null)
   const [showImerg, setShowImerg] = useState(true)
+
+  const windowOptions = mode === "pronostico" ? FORECAST_WINDOW_OPTIONS : ACCUMULATION_WINDOW_OPTIONS
+
+  const handleModeChange = useCallback(
+    (nextMode: PrecipitacionMode) => {
+      setMode(nextMode)
+      const nextOptions = nextMode === "pronostico" ? FORECAST_WINDOW_OPTIONS : ACCUMULATION_WINDOW_OPTIONS
+      if (!(nextOptions as readonly number[]).includes(windowDays)) {
+        setWindowDays(7)
+      }
+    },
+    [windowDays],
+  )
+
+  const windowLabel = mode === "pronostico" ? `Pronóstico ${windowDays} días` : `Lluvia acumulada (${windowDays} días)`
 
   useEffect(() => {
     const entries = PRECIPITATION_LEVELS.map(
@@ -155,12 +178,15 @@ function PrecipitacionLiveMapImpl({
       const nivel = feature.properties?.nivel as string | undefined
       const acumulado = feature.properties?.acumuladoMm as number | undefined
       const dias = feature.properties?.diasValidos as number | undefined
+      const probabilidad = feature.properties?.probabilidadMax as number | undefined
+      const rowLabel = mode === "pronostico" ? `Pronóstico ${windowDays} días` : `Acumulado ${windowDays} días`
       layer.bindPopup(
         `<div style="font-size:13px;display:flex;flex-direction:column;gap:2px">
         <strong>${vereda ?? municipio ?? "—"}</strong>
         ${vereda ? `<span>${municipio ?? ""}</span>` : ""}
         <span>Nivel: ${nivel ?? "—"}</span>
-        <span>Acumulado 7 días: ${acumulado != null ? `${acumulado} mm` : "—"}${dias != null && dias < 7 ? ` (${dias} días con datos)` : ""}</span>
+        <span>${rowLabel}: ${acumulado != null ? `${acumulado} mm` : "—"}${dias != null && dias < windowDays ? ` (${dias} días con datos)` : ""}</span>
+        ${probabilidad != null ? `<span>Probabilidad máxima: ${probabilidad}%</span>` : ""}
       </div>`,
       )
       layer.on("mouseover", (e: LeafletMouseEvent) => {
@@ -173,7 +199,7 @@ function PrecipitacionLiveMapImpl({
         if (municipio) onZoneSelect?.(normalizeMunicipioName(municipio))
       })
     },
-    [onZoneSelect],
+    [onZoneSelect, mode, windowDays],
   )
 
   // Re-key the GeoJSON layer once colors resolve so Leaflet re-applies `style` per feature.
@@ -232,7 +258,43 @@ function PrecipitacionLiveMapImpl({
         {onBoundsChange && <BoundsSync onBoundsChange={onBoundsChange} />}
       </MapContainer>
 
-      <div className="absolute left-3 top-3 z-[400] flex flex-col gap-1.5 rounded-md border border-border bg-card/95 px-2.5 py-1.5 text-xs shadow-sm backdrop-blur">
+      <div className="absolute left-3 top-3 z-[400] flex flex-col gap-2 rounded-md border border-border bg-card/95 px-2.5 py-1.5 text-xs shadow-sm backdrop-blur">
+        <div className="flex items-center gap-1.5">
+          <div className="inline-flex rounded-md border border-border p-0.5" role="group" aria-label="Modo de datos">
+            <button
+              type="button"
+              onClick={() => handleModeChange("historico")}
+              aria-pressed={mode === "historico"}
+              className={`rounded-sm px-2 py-1 font-medium transition-colors ${
+                mode === "historico" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Histórico
+            </button>
+            <button
+              type="button"
+              onClick={() => handleModeChange("pronostico")}
+              aria-pressed={mode === "pronostico"}
+              className={`rounded-sm px-2 py-1 font-medium transition-colors ${
+                mode === "pronostico" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Pronóstico
+            </button>
+          </div>
+          <select
+            value={windowDays}
+            onChange={(e) => setWindowDays(Number(e.target.value))}
+            aria-label="Ventana de días"
+            className="rounded-sm border border-border bg-card px-1.5 py-1 font-medium text-foreground"
+          >
+            {windowOptions.map((d) => (
+              <option key={d} value={d}>
+                {d} días
+              </option>
+            ))}
+          </select>
+        </div>
         <label className="flex items-center gap-1.5 font-medium text-foreground">
           <input
             type="checkbox"
@@ -265,7 +327,7 @@ function PrecipitacionLiveMapImpl({
           <span className="text-sm text-destructive">No se pudo cargar la capa.</span>
         </Popup>
       )}
-      <ThreatLegend />
+      <ThreatLegend title={windowLabel} />
       <div className="absolute right-3 top-16 z-[400] max-w-[200px]">
         <OsmLegend points={osmPoints ?? []} />
       </div>
