@@ -14,6 +14,9 @@ importers:
       '@mapbox/vector-tile':
         specifier: ^3.0.0
         version: 3.0.0
+      '@terraformer/arcgis':
+        specifier: ^2.2.2
+        version: 2.2.2
       '@turf/boolean-point-in-polygon':
         specifier: ^7.4.0
         version: 7.4.0
@@ -32,9 +35,9 @@ importers:
       cn:
         specifier: ^0.2.5
         version: 0.2.5
-      html2canvas:
-        specifier: ^1.4.1
-        version: 1.4.1
+      html2canvas-pro:
+        specifier: ^2.4.2
+        version: 2.4.2
       jspdf:
         specifier: ^4.2.1
         version: 4.2.1
@@ -705,6 +708,12 @@ packages:
   '@tailwindcss/postcss@4.3.3':
     resolution: {integrity: sha512-JTSZZGQi1AyKirbLN3azmjVzef92tcX7h+iSqPdaeStyFpGpDlKvvpxeOE8njhbUanbRwr3z8DyzhICWnMtQeg==}
 
+  '@terraformer/arcgis@2.2.2':
+    resolution: {integrity: sha512-Qcl7jhSdJU0HEBfQema6u6RY5zQYecx83CH1++7GXNPlFC42yRF9cxB17Kfi3Jr7ck/tgxhCo6IP3b0OA97f8w==}
+
+  '@terraformer/common@2.2.2':
+    resolution: {integrity: sha512-W+O/hblr5g1RBzkehaEfF/EdCerkG7j6g2cGBawp2B2zHXdCdR7NrXc0Sh106SFFJyadQZ62On36S+8wHF4Kag==}
+
   '@ts-morph/common@0.27.0':
     resolution: {integrity: sha512-Wf29UqxWDpc+i61k3oIOzcUfQt79PIT9y/MWfAGlrkjg6lBC1hwDECLXPVJAhWjiGbfBCxZd65F/LIZF3+jeJQ==}
 
@@ -1294,6 +1303,10 @@ packages:
   hono@4.12.25:
     resolution: {integrity: sha512-2NFaIyNVgJmBs/ecmtGzlmluTFs5cHEWGTdu0t1HBwYzoGXOL5nUQBRMXsXWla5i4KkG//QMzVP88m1+I3fdAQ==}
     engines: {node: '>=16.9.0'}
+
+  html2canvas-pro@2.4.2:
+    resolution: {integrity: sha512-W0QvhquArW7jnorC66FaCpP1LflcUJUdyLTUD8zAz0ka8kJv/PLW45W+lg5ZonBU1lOtKZU+FOntr+XTu1iPcA==}
+    engines: {node: '>=16.0.0'}
 
   html2canvas@1.4.1:
     resolution: {integrity: sha512-fPU6BHNpsyIhr8yyMpTLLxAbkaK8ArIBcmZIRiBLiDhjeqvXolaEmDGmELFuX9I4xDcaKKcJl+TKZLqruBbmWA==}
@@ -2754,6 +2767,12 @@ snapshots:
       postcss: 8.5.19
       tailwindcss: 4.3.3
 
+  '@terraformer/arcgis@2.2.2':
+    dependencies:
+      '@terraformer/common': 2.2.2
+
+  '@terraformer/common@2.2.2': {}
+
   '@ts-morph/common@0.27.0':
     dependencies:
       fast-glob: 3.3.3
@@ -3312,10 +3331,16 @@ snapshots:
 
   hono@4.12.25: {}
 
+  html2canvas-pro@2.4.2:
+    dependencies:
+      css-line-break: 2.1.0
+      text-segmentation: 1.0.3
+
   html2canvas@1.4.1:
     dependencies:
       css-line-break: 2.1.0
       text-segmentation: 1.0.3
+    optional: true
 
   http-errors@2.0.1:
     dependencies:

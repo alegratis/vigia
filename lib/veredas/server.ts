@@ -1,12 +1,12 @@
 import "server-only"
 
-import { getVeredaBoundaries } from "./tiles"
+import { getVeredaBoundaries } from "./boundaries"
 import { aggregateVeredas } from "./aggregate"
 import type { VeredasFeatureCollection } from "./api-types"
 
 /**
  * Builds the full vereda boundary + hazard-summary GeoJSON for /api/veredas:
- * decodes boundaries from DANE's vector tiles, spatially aggregates
+ * fetches boundaries from lib/veredas/boundaries.ts, spatially aggregates
  * susceptibility and sitios-críticos data onto them, and zips the two into
  * one FeatureCollection ready to render as a choropleth overlay.
  */
@@ -23,6 +23,7 @@ export async function getVeredas(): Promise<VeredasFeatureCollection> {
         codigoVereda: boundary.codigoVereda,
         nombre: boundary.nombre,
         municipio: boundary.municipio,
+        esCascoUrbano: boundary.esCascoUrbano,
         isScoreAvg: agg?.isScoreAvg ?? null,
         dominantLevel: agg?.dominantLevel ?? null,
         puntosMuestra: agg?.puntosMuestra ?? 0,
