@@ -28,7 +28,7 @@ import { normalizeMunicipioName } from "@/lib/demografia/categories"
 import { getOsmCategory } from "@/lib/osm/categories"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
 import { OsmLegend } from "@/components/maps/osm-legend"
-import type { PrecipitacionAmenazaResponse, PrecipitacionMode } from "@/lib/precipitacion/api-types"
+import type { PrecipitacionAmenazaResponse, PrecipitacionFuente, PrecipitacionMode } from "@/lib/precipitacion/api-types"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
 
@@ -124,9 +124,10 @@ function PrecipitacionLiveMapImpl({
 }) {
   const [mode, setMode] = useState<PrecipitacionMode>("historico")
   const [windowDays, setWindowDays] = useState<number>(7)
+  const [fuente, setFuente] = useState<PrecipitacionFuente>("power")
 
   const { data, error } = useSWR<PrecipitacionAmenazaResponse>(
-    `/api/precipitacion/amenaza?mode=${mode}&window=${windowDays}`,
+    `/api/precipitacion/amenaza?mode=${mode}&window=${windowDays}&fuente=${fuente}`,
     fetcher,
     { revalidateOnFocus: false },
   )
@@ -148,7 +149,9 @@ function PrecipitacionLiveMapImpl({
     [windowDays],
   )
 
-  const windowLabel = mode === "pronostico" ? `Pronóstico ${windowDays} días` : `Lluvia acumulada (${windowDays} días)`
+  const fuenteLabel = fuente === "ideam" ? "IDEAM" : "NASA POWER"
+  const windowLabel =
+    mode === "pronostico" ? `Pronóstico ${windowDays} días` : `Lluvia acumulada (${windowDays} días) · ${fuenteLabel}`
 
   useEffect(() => {
     const entries = PRECIPITATION_LEVELS.map(
@@ -160,12 +163,15 @@ function PrecipitacionLiveMapImpl({
   const style = useCallback(
     (feature?: GeoJSON.Feature): PathOptions => {
       const level = feature?.properties?.nivel as string | undefined
+      const sinCobertura = feature?.properties?.sinCobertura as boolean | undefined
       const color = (level && resolvedColors?.[level]) || "var(--muted-foreground)"
       return {
         color,
         weight: 1,
         fillColor: color,
-        fillOpacity: 0.5,
+        // IDEAM veredas outside every station's radius get a visibly muted fill,
+        // distinct from a normal "Bajo" level, so sparse coverage reads as "no data" not "low rain".
+        fillOpacity: sinCobertura ? 0.08 : 0.5,
       }
     },
     [resolvedColors],
@@ -179,14 +185,22 @@ function PrecipitacionLiveMapImpl({
       const acumulado = feature.properties?.acumuladoMm as number | undefined
       const dias = feature.properties?.diasValidos as number | undefined
       const probabilidad = feature.properties?.probabilidadMax as number | undefined
+      const sinCobertura = feature.properties?.sinCobertura as boolean | undefined
+      const estacionNombre = feature.properties?.estacionNombre as string | undefined
+      const distanciaEstacionKm = feature.properties?.distanciaEstacionKm as number | undefined
       const rowLabel = mode === "pronostico" ? `Pronóstico ${windowDays} días` : `Acumulado ${windowDays} días`
       layer.bindPopup(
         `<div style="font-size:13px;display:flex;flex-direction:column;gap:2px">
         <strong>${vereda ?? municipio ?? "—"}</strong>
         ${vereda ? `<span>${municipio ?? ""}</span>` : ""}
-        <span>Nivel: ${nivel ?? "—"}</span>
-        <span>${rowLabel}: ${acumulado != null ? `${acumulado} mm` : "—"}${dias != null && dias < windowDays ? ` (${dias} días con datos)` : ""}</span>
+        ${
+          sinCobertura
+            ? `<span>Sin cobertura de estaciones IDEAM cercanas</span>`
+            : `<span>Nivel: ${nivel ?? "—"}</span>
+        <span>${rowLabel}: ${acumulado != null ? `${acumulado} mm` : "—"}${dias != null && dias < windowDays && mode !== "historico" ? ` (${dias} días con datos)` : ""}</span>
         ${probabilidad != null ? `<span>Probabilidad máxima: ${probabilidad}%</span>` : ""}
+        ${estacionNombre ? `<span>Estación: ${estacionNombre} (${distanciaEstacionKm} km)</span>` : ""}`
+        }
       </div>`,
       )
       layer.on("mouseover", (e: LeafletMouseEvent) => {
@@ -295,6 +309,39 @@ function PrecipitacionLiveMapImpl({
             ))}
           </select>
         </div>
+        {mode === "historico" && (
+          <div className="flex items-center gap-1.5">
+            <span className="font-medium text-muted-foreground">Fuente:</span>
+            <div className="inline-flex rounded-md border border-border p-0.5" role="group" aria-label="Fuente de datos históricos">
+              <button
+                type="button"
+                onClick={() => setFuente("power")}
+                aria-pressed={fuente === "power"}
+                className={`rounded-sm px-2 py-1 font-medium transition-colors ${
+                  fuente === "power" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                NASA POWER
+              </button>
+              <button
+                type="button"
+                onClick={() => setFuente("ideam")}
+                aria-pressed={fuente === "ideam"}
+                className={`rounded-sm px-2 py-1 font-medium transition-colors ${
+                  fuente === "ideam" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                IDEAM (estaciones)
+              </button>
+            </div>
+          </div>
+        )}
+        {mode === "historico" && fuente === "ideam" && (
+          <p className="max-w-[220px] text-[11px] leading-snug text-muted-foreground">
+            Datos de estación en tiempo real, más precisos donde hay cobertura, pero solo cerca de Zarzal y
+            Bugalagrande. Las veredas atenuadas no tienen estación cercana.
+          </p>
+        )}
         <label className="flex items-center gap-1.5 font-medium text-foreground">
           <input
             type="checkbox"

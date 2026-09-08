@@ -11,6 +11,7 @@ import {
   ACCUMULATION_WINDOW_OPTIONS,
   FORECAST_WINDOW_OPTIONS,
   type PrecipitacionAmenazaResponse,
+  type PrecipitacionFuente,
   type PrecipitacionMode,
 } from "@/lib/precipitacion/api-types"
 
@@ -41,6 +42,7 @@ interface MunicipioSummary {
 export function PrecipitationOverview() {
   const [mode, setMode] = useState<PrecipitacionMode>("historico")
   const [windowDays, setWindowDays] = useState<number>(7)
+  const [fuente, setFuente] = useState<PrecipitacionFuente>("power")
   const windowOptions = mode === "pronostico" ? FORECAST_WINDOW_OPTIONS : ACCUMULATION_WINDOW_OPTIONS
 
   function handleModeChange(nextMode: PrecipitacionMode) {
@@ -52,7 +54,7 @@ export function PrecipitationOverview() {
   }
 
   const { data, error, isLoading, mutate, isValidating } = useSWR<PrecipitacionAmenazaResponse>(
-    `/api/precipitacion/amenaza?mode=${mode}&window=${windowDays}`,
+    `/api/precipitacion/amenaza?mode=${mode}&window=${windowDays}&fuente=${fuente}`,
     fetcher,
     { revalidateOnFocus: false },
   )
@@ -122,7 +124,9 @@ export function PrecipitationOverview() {
           <p className="text-sm text-muted-foreground">
             {mode === "pronostico"
               ? "El servicio Open-Meteo podría no estar disponible en este momento."
-              : "El servicio NASA POWER podría no estar disponible en este momento."}
+              : fuente === "ideam"
+                ? "El servicio de estaciones IDEAM (datos.gov.co) podría no estar disponible en este momento."
+                : "El servicio NASA POWER podría no estar disponible en este momento."}
           </p>
           <button
             type="button"
@@ -177,6 +181,30 @@ export function PrecipitationOverview() {
             </option>
           ))}
         </select>
+        {mode === "historico" && (
+          <div className="inline-flex rounded-md border border-border p-0.5 text-sm" role="group" aria-label="Fuente de datos históricos">
+            <button
+              type="button"
+              onClick={() => setFuente("power")}
+              aria-pressed={fuente === "power"}
+              className={`rounded-sm px-3 py-1.5 font-medium transition-colors ${
+                fuente === "power" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              NASA POWER
+            </button>
+            <button
+              type="button"
+              onClick={() => setFuente("ideam")}
+              aria-pressed={fuente === "ideam"}
+              className={`rounded-sm px-3 py-1.5 font-medium transition-colors ${
+                fuente === "ideam" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              IDEAM
+            </button>
+          </div>
+        )}
         <button
           type="button"
           onClick={() => mutate()}
@@ -189,8 +217,19 @@ export function PrecipitationOverview() {
       </div>
 
       <p className="text-sm text-muted-foreground">
-        Actualizado {formatDateTime(data.generatedAt)} · {data.veredas.features.length} veredas · {dateLabel}
+        Actualizado {formatDateTime(data.generatedAt)} ·{" "}
+        {fuente === "ideam"
+          ? `${summaries.reduce((n, s) => n + s.count, 0)} de ${data.veredas.features.length} veredas con estación cercana`
+          : `${data.veredas.features.length} veredas`}{" "}
+        · {dateLabel}
       </p>
+      {mode === "historico" && fuente === "ideam" && (
+        <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+          Lecturas en tiempo real de las estaciones IDEAM Guayabal (Zarzal) y Hacienda La Graciosa (Bugalagrande) —
+          más precisas donde alcanzan, pero sin cobertura en la mayoría de Caicedonia y parte de Sevilla. Usa NASA
+          POWER para ver esas zonas.
+        </p>
+      )}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {summaries.map((s) => (

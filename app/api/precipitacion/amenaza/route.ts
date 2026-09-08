@@ -5,6 +5,7 @@ import {
   FORECAST_WINDOW_OPTIONS,
   type PrecipitacionAmenazaErrorResponse,
   type PrecipitacionAmenazaResponse,
+  type PrecipitacionFuente,
   type PrecipitacionMode,
 } from "@/lib/precipitacion/api-types"
 
@@ -24,11 +25,15 @@ export async function GET(request: Request) {
   const windowParam = Number(searchParams.get("window"))
   const windowDays = windowOptions.includes(windowParam) ? windowParam : 7
 
+  const fuenteParam = searchParams.get("fuente")
+  const fuente: PrecipitacionFuente = mode === "historico" && fuenteParam === "ideam" ? "ideam" : "power"
+
   try {
-    const { windowEnd, veredas } = await getPrecipitacionAmenaza({ mode, windowDays })
+    const { windowEnd, veredas } = await getPrecipitacionAmenaza({ mode, windowDays, fuente })
     const body: PrecipitacionAmenazaResponse = {
       generatedAt: new Date().toISOString(),
       mode,
+      fuente,
       windowDays,
       windowEnd,
       veredas,

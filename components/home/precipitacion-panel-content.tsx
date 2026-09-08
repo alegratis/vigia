@@ -40,8 +40,9 @@ export function PrecipitacionPanelContent({
       >
         <p className="sr-only">
           Mapa interactivo de lluvia acumulada o pronosticada por vereda, con controles
-          para elegir el modo (histórico o pronóstico) y la ventana de días, además de una
-          capa satelital de tasa de precipitación. El panel de población en el encuadre
+          para elegir el modo (histórico o pronóstico), en modo histórico la fuente
+          (NASA POWER o estaciones IDEAM) y la ventana de días, además de una capa
+          satelital de tasa de precipitación. El panel de población en el encuadre
           actual, en la barra lateral, resume el mismo contenido en formato de texto.
         </p>
         <PrecipitacionLiveMapLoader
@@ -67,8 +68,19 @@ export function PrecipitacionPanelContent({
           >
             NASA POWER
           </a>{" "}
-          (reanálisis MERRA-2/GEOS-IT, no satelital directo, ~0.5° de resolución). Modo
-          pronóstico: lluvia prevista por vereda a 7 o 14 días de{" "}
+          (reanálisis MERRA-2/GEOS-IT, no satelital directo, ~0.5° de resolución), o —
+          eligiendo la fuente IDEAM en el mapa — de las estaciones automáticas de{" "}
+          <a
+            href="https://www.datos.gov.co/resource/s54a-sgyg.json"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2 hover:text-foreground"
+          >
+            IDEAM
+          </a>{" "}
+          (lecturas cada 10 min, más precisas pero solo cerca de Zarzal y Bugalagrande;
+          las demás veredas quedan sin cobertura). Modo pronóstico: lluvia prevista por
+          vereda a 7 o 14 días de{" "}
           <a
             href="https://open-meteo.com"
             target="_blank"

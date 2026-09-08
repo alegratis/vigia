@@ -113,6 +113,17 @@ const GROUPS: SourceGroup[] = [
         actualizacion: "Diaria; la app cachea 3 horas",
       },
       {
+        nombre: "Lluvia acumulada por estación automática",
+        publicador: "IDEAM",
+        descripcion:
+          "Lecturas de precipitación cada 10 minutos de estaciones automáticas, expuestas en el portal de datos abiertos. Fuente alternativa (junto a NASA POWER) para el modo histórico del mapa de precipitación: más precisa donde hay estación cercana, pero solo 2 estaciones caen dentro de un radio de 20 km del área de estudio (Zarzal y Bugalagrande), sin cobertura en Caicedonia ni buena parte de Sevilla.",
+        url: "https://www.datos.gov.co/resource/s54a-sgyg.json",
+        acceso: "API REST (Socrata/JSON)",
+        licencia: "Datos abiertos de Colombia (datos.gov.co)",
+        cobertura: "2 estaciones dentro de 20 km del área de estudio",
+        actualizacion: "Cada ~10 minutos; la app cachea 3 horas",
+      },
+      {
         nombre: "Índice de riesgo de incendio (FWI)",
         publicador: "Copernicus GWIS / EFFIS (Comisión Europea, JRC)",
         descripcion: "Pronóstico diario del Índice Meteorológico de Incendio (Fire Weather Index), derivado de datos meteorológicos del ECMWF.",
