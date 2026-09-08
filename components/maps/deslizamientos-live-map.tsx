@@ -5,14 +5,13 @@ import {
   AttributionControl,
   CircleMarker,
   MapContainer,
-  Polygon,
   TileLayer,
   Popup,
   ZoomControl,
   useMap,
   useMapEvents,
 } from "react-leaflet"
-import type { LatLngBoundsExpression, LatLngExpression } from "leaflet"
+import type { LatLngBoundsExpression } from "leaflet"
 import "leaflet/dist/leaflet.css"
 import { ExternalLink, Loader2 } from "lucide-react"
 import useSWR from "swr"
@@ -33,8 +32,9 @@ import {
   severityColorToken,
   tipoLabel,
 } from "@/lib/deslizamientos/critical-sites-types"
-import { useVeredas } from "@/lib/veredas/use-veredas"
+import { VeredasOverlay } from "@/components/maps/veredas-overlay"
 import type { DeslizamientosResponse } from "@/lib/deslizamientos/api-types"
+import type { VeredaFeature } from "@/lib/veredas/api-types"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
 
@@ -249,7 +249,6 @@ function DeslizamientosLiveMapImpl({
   const [showCriticalSites, setShowCriticalSites] = useState(false)
   const [showVeredas, setShowVeredas] = useState(false)
   const { points: criticalSites } = useCriticalSites(showCriticalSites)
-  const { veredas } = useVeredas(showVeredas)
 
   useEffect(() => {
     const entries = SUSCEPTIBILITY_LEVELS.map(
@@ -266,11 +265,12 @@ function DeslizamientosLiveMapImpl({
 
   const points = useMemo(() => data?.points.features ?? [], [data])
 
-  /** Converts a vereda's GeoJSON `[lon, lat]` MultiPolygon rings to Leaflet's `[lat, lon]` order. */
-  const veredaPositions = useCallback(
-    (coordinates: number[][][][]): LatLngExpression[][][] =>
-      coordinates.map((polygon) => polygon.map((ring) => ring.map(([lon, lat]) => [lat, lon]))),
-    [],
+  const veredaColor = useCallback(
+    (feature: VeredaFeature) => {
+      const level = feature.properties.dominantLevel
+      return level ? colorForLevel(level) : noDataColor ?? "var(--muted-foreground)"
+    },
+    [colorForLevel, noDataColor],
   )
 
   return (
@@ -300,43 +300,9 @@ function DeslizamientosLiveMapImpl({
             maxNativeZoom={6}
           />
         )}
-        {showVeredas &&
-          resolvedColors &&
-          noDataColor &&
-          veredas?.features.map((feature) => {
-            const props = feature.properties
-            const fillColor = props.dominantLevel ? colorForLevel(props.dominantLevel) : noDataColor
-            return (
-              <Polygon
-                key={feature.id}
-                positions={veredaPositions(feature.geometry.coordinates)}
-                pathOptions={{ color: "#fff", weight: 1, opacity: 0.9, fillColor, fillOpacity: 0.6 }}
-              >
-                <Popup>
-                  <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
-                    <strong>{props.nombre}</strong>
-                    <span>{props.municipio}</span>
-                    {props.dominantLevel ? (
-                      <>
-                        <span>
-                          Susceptibilidad promedio: {props.dominantLevel}
-                          {props.isScoreAvg != null && ` (${props.isScoreAvg.toFixed(2)})`}
-                        </span>
-                        <span>
-                          Población estimada: {props.poblacion != null ? Math.round(props.poblacion).toLocaleString("es-CO") : "—"}
-                        </span>
-                        <span>Escuelas: {props.escuelas} · Hospitales: {props.hospitales} · Farmacias: {props.farmacias}</span>
-                        <span>Infraestructura crítica: {props.infraestructuraCritica}</span>
-                      </>
-                    ) : (
-                      <span style={{ color: "#888" }}>Sin datos del modelo de susceptibilidad</span>
-                    )}
-                    <span>Sitios críticos (2019): {props.sitiosCriticos}</span>
-                  </div>
-                </Popup>
-              </Polygon>
-            )
-          })}
+        {resolvedColors && noDataColor && (
+          <VeredasOverlay enabled={showVeredas} colorForFeature={veredaColor} />
+        )}
         {!showVeredas &&
           resolvedColors &&
           points.map((feature, i) => {

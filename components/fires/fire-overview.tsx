@@ -207,8 +207,9 @@ export function FireOverview() {
         </p>
       )}
       <p className="text-xs text-muted-foreground">
-        Fuente: NASA FIRMS ({data.sourcesQueried.join(", ")}). Detecciones satelitales
-        VIIRS de 375 m; no reemplazan la verificación en campo.
+        Fuente: NASA FIRMS ({data.sourcesQueried.join(", ")}). Detecciones satelitales VIIRS
+        (375 m) y MODIS (1 km); no reemplazan la verificación en campo. El mapa además ofrece
+        focos de Sentinel-3 vía GWIS/Copernicus EFFIS.
       </p>
     </div>
   )

@@ -22,13 +22,21 @@ import {
   FIRE_THREAT_LEVEL_STYLES,
   fireLevelColorToken,
 } from "@/lib/incendios/levels"
-import { forecastDayOptions, GWIS_FWI_LAYER, GWIS_LEGEND_URL, GWIS_WMS_URL } from "@/lib/incendios/gwis"
+import {
+  forecastDayOptions,
+  GWIS_FWI_LAYER,
+  GWIS_LEGEND_URL,
+  GWIS_S3_HOTSPOT_LAYER,
+  GWIS_S3_HOTSPOT_LEGEND_URL,
+  GWIS_WMS_URL,
+} from "@/lib/incendios/gwis"
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import { CONFIDENCE_STYLES, formatDateTime, formatDistance, formatFrp } from "@/lib/firms/ui"
 import { normalizeMunicipioName } from "@/lib/demografia/categories"
 import { getOsmCategory } from "@/lib/osm/categories"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
 import { OsmLegend } from "@/components/maps/osm-legend"
+import { VeredasOverlay } from "@/components/maps/veredas-overlay"
 import type { IncendiosAmenazaResponse } from "@/lib/incendios/api-types"
 import type { FireDetection, FiresResponse } from "@/lib/firms/api-types"
 import type { OsmPoint } from "@/lib/osm/api-types"
@@ -126,7 +134,7 @@ function FwiLegend() {
 function FireLegend({ colors }: { colors: Record<FireDetection["confidence"], string> | null }) {
   return (
     <div className="pointer-events-none rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
-      <p className="mb-1.5 font-medium text-foreground">Focos activos (NASA FIRMS)</p>
+      <p className="mb-1.5 font-medium text-foreground">Focos activos (MODIS / VIIRS)</p>
       <ul className="flex flex-col gap-1">
         {(Object.keys(CONFIDENCE_STYLES) as FireDetection["confidence"][]).map((key) => (
           <li key={key} className="flex items-center gap-2 text-muted-foreground">
@@ -143,12 +151,28 @@ function FireLegend({ colors }: { colors: Record<FireDetection["confidence"], st
   )
 }
 
+function S3Legend() {
+  return (
+    <div className="pointer-events-none rounded-md border border-border bg-white p-1.5 shadow-sm">
+      {/* GWIS/EFFIS legend image, rendered on its own white chip since it's not theme-aware. */}
+      <img
+        src={GWIS_S3_HOTSPOT_LEGEND_URL || "/placeholder.svg"}
+        alt="Escala de antigüedad de los focos activos Sentinel-3"
+        className="block max-h-40"
+      />
+    </div>
+  )
+}
+
 /**
  * Live forest-fire threat map: renders the public `AmenazaIncendios`
- * polygons published on ArcGIS Online (by vereda), with an optional overlay
- * of GWIS/Copernicus EFFIS's Fire Weather Index (FWI) forecast — an open WMS
- * run by the EU Joint Research Centre. Click a zone for its municipality,
- * vereda and threat level.
+ * polygons published on ArcGIS Online (by vereda), with optional overlays
+ * for GWIS/Copernicus EFFIS's Fire Weather Index (FWI) forecast, active
+ * fires by sensor (MODIS and VIIRS as NASA FIRMS points, Sentinel-3 as a
+ * GWIS WMS tile — see lib/incendios/gwis.ts), and vereda boundaries with a
+ * population/infrastructure summary (shared with the deslizamientos map,
+ * see components/maps/veredas-overlay.tsx). Click a zone for its
+ * municipality, vereda and threat level.
  */
 function IncendiosLiveMapImpl({
   onBoundsChange,
@@ -172,15 +196,29 @@ function IncendiosLiveMapImpl({
   const dayOptions = useMemo(() => forecastDayOptions(), [])
   const [selectedDay, setSelectedDay] = useState(dayOptions[0].value)
 
-  const [showFires, setShowFires] = useState(true)
+  // Active fires, broken down by sensor per gwis_current_situation's own
+  // layer picker: MODIS and VIIRS come from NASA FIRMS as geolocated points
+  // (rich popups); Sentinel-3 has no FIRMS source, so it renders as a GWIS
+  // WMS raster tile instead (see GWIS_S3_HOTSPOT_LAYER above).
+  const [showModis, setShowModis] = useState(false)
+  const [showViirs, setShowViirs] = useState(true)
+  const [showSentinel3, setShowSentinel3] = useState(false)
+  const [showVeredas, setShowVeredas] = useState(false)
   const [fireDays, setFireDays] = useState<number>(2)
+  const needsFirms = showModis || showViirs
   const { data: firesData } = useSWR<FiresResponse>(
-    showFires ? `/api/incendios?days=${fireDays}` : null,
+    needsFirms ? `/api/incendios?days=${fireDays}` : null,
     firesFetcher,
     { revalidateOnFocus: false },
   )
   const [fireColors, setFireColors] = useState<Record<FireDetection["confidence"], string> | null>(
     null,
+  )
+
+  const visibleFires = useMemo(
+    () =>
+      firesData?.detections.filter((d) => (d.sensor === "modis" ? showModis : showViirs)) ?? [],
+    [firesData, showModis, showViirs],
   )
 
   useEffect(() => {
@@ -285,9 +323,23 @@ function IncendiosLiveMapImpl({
             onEachFeature={onEachFeature}
           />
         )}
-        {showFires &&
-          fireColors &&
-          firesData?.detections.map((d) => (
+        <VeredasOverlay enabled={showVeredas} />
+        {showSentinel3 && (
+          <WMSTileLayer
+            url={GWIS_WMS_URL}
+            opacity={0.85}
+            params={
+              {
+                layers: GWIS_S3_HOTSPOT_LAYER,
+                format: "image/png",
+                transparent: true,
+                version: "1.1.1",
+              } as WMSParams
+            }
+          />
+        )}
+        {fireColors &&
+          visibleFires.map((d) => (
             <CircleMarker
               key={d.id}
               center={[d.lat, d.lon]}
@@ -336,52 +388,88 @@ function IncendiosLiveMapImpl({
         {onBoundsChange && <BoundsSync onBoundsChange={onBoundsChange} />}
       </MapContainer>
 
-      <div className="absolute left-3 top-3 z-[400] flex flex-wrap items-center gap-2 rounded-md border border-border bg-card/95 px-2.5 py-1.5 text-xs shadow-sm backdrop-blur">
-        <label className="flex items-center gap-1.5 font-medium text-foreground">
-          <input
-            type="checkbox"
-            checked={showForecast}
-            onChange={(e) => setShowForecast(e.target.checked)}
-            className="size-3.5 accent-[var(--primary)]"
-          />
-          Pronóstico FWI (GWIS)
-        </label>
-        {showForecast && (
-          <select
-            value={selectedDay}
-            onChange={(e) => setSelectedDay(e.target.value)}
-            className="rounded border border-border bg-background px-1.5 py-0.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            {dayOptions.map((d) => (
-              <option key={d.value} value={d.value}>
-                {d.label}
-              </option>
-            ))}
-          </select>
-        )}
-        <span className="h-4 w-px bg-border" aria-hidden="true" />
-        <label className="flex items-center gap-1.5 font-medium text-foreground">
-          <input
-            type="checkbox"
-            checked={showFires}
-            onChange={(e) => setShowFires(e.target.checked)}
-            className="size-3.5 accent-[var(--primary)]"
-          />
-          Focos activos (FIRMS)
-        </label>
-        {showFires && (
-          <select
-            value={fireDays}
-            onChange={(e) => setFireDays(Number(e.target.value))}
-            className="rounded border border-border bg-background px-1.5 py-0.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            {FIRE_DAY_OPTIONS.map((d) => (
-              <option key={d} value={d}>
-                {d} {d === 1 ? "día" : "días"}
-              </option>
-            ))}
-          </select>
-        )}
+      <div className="absolute left-3 top-3 z-[400] flex flex-col gap-2 rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
+        <div className="flex flex-col gap-1.5">
+          <label className="flex items-center gap-2 font-medium text-foreground">
+            <input
+              type="checkbox"
+              checked={showForecast}
+              onChange={(e) => setShowForecast(e.target.checked)}
+              className="size-3.5 accent-primary"
+            />
+            Pronóstico FWI (ECMWF / GWIS)
+          </label>
+          {showForecast && (
+            <select
+              value={selectedDay}
+              onChange={(e) => setSelectedDay(e.target.value)}
+              className="ml-5 rounded border border-border bg-background px-1.5 py-0.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {dayOptions.map((d) => (
+                <option key={d.value} value={d.value}>
+                  {d.label}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+        <div className="flex flex-col gap-1.5 border-t border-border pt-1.5">
+          <p className="font-medium text-foreground">Focos activos</p>
+          <label className="flex items-center gap-2 text-foreground">
+            <input
+              type="checkbox"
+              checked={showModis}
+              onChange={(e) => setShowModis(e.target.checked)}
+              className="size-3.5 accent-primary"
+            />
+            MODIS
+          </label>
+          <label className="flex items-center gap-2 text-foreground">
+            <input
+              type="checkbox"
+              checked={showViirs}
+              onChange={(e) => setShowViirs(e.target.checked)}
+              className="size-3.5 accent-primary"
+            />
+            VIIRS (todas)
+          </label>
+          <label className="flex items-center gap-2 text-foreground">
+            <input
+              type="checkbox"
+              checked={showSentinel3}
+              onChange={(e) => setShowSentinel3(e.target.checked)}
+              className="size-3.5 accent-primary"
+            />
+            Sentinel-3
+          </label>
+          {needsFirms && (
+            <label className="ml-5 flex items-center gap-1.5 text-muted-foreground">
+              Periodo
+              <select
+                value={fireDays}
+                onChange={(e) => setFireDays(Number(e.target.value))}
+                className="rounded border border-border bg-background px-1.5 py-0.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {FIRE_DAY_OPTIONS.map((d) => (
+                  <option key={d} value={d}>
+                    {d} {d === 1 ? "día" : "días"}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+        </div>
+        <div className="border-t border-border pt-1.5">
+          <label className="flex items-center gap-2 font-medium text-foreground">
+            <input
+              type="checkbox"
+              checked={showVeredas}
+              onChange={(e) => setShowVeredas(e.target.checked)}
+              className="size-3.5 accent-primary"
+            />
+            Límites veredales
+          </label>
+        </div>
       </div>
 
       {!data && !error && (
@@ -398,10 +486,11 @@ function IncendiosLiveMapImpl({
       <div className="absolute right-3 top-16 z-[400] max-w-[200px]">
         <OsmLegend points={osmPoints ?? []} />
       </div>
-      {(showForecast || showFires) && (
+      {(showForecast || needsFirms || showSentinel3) && (
         <div className="absolute bottom-3 right-3 z-[400] flex flex-col items-end gap-2">
           {showForecast && <FwiLegend />}
-          {showFires && <FireLegend colors={fireColors} />}
+          {needsFirms && <FireLegend colors={fireColors} />}
+          {showSentinel3 && <S3Legend />}
         </div>
       )}
     </div>

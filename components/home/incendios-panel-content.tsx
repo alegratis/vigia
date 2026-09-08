@@ -55,7 +55,8 @@ export function IncendiosPanelContent({
         </div>
         <p className="text-xs text-muted-foreground">
           Amenaza por vereda: capa pública <code className="text-foreground">AmenazaIncendios</code>,
-          publicada en ArcGIS Online. Pronóstico FWI: servicio abierto{" "}
+          publicada en ArcGIS Online. Pronóstico FWI y focos activos de Sentinel-3: servicio
+          abierto{" "}
           <a
             href="https://gwis.jrc.ec.europa.eu"
             target="_blank"
@@ -64,8 +65,8 @@ export function IncendiosPanelContent({
           >
             GWIS / Copernicus EFFIS
           </a>{" "}
-          (Centro Común de Investigación de la UE). Haz clic sobre cualquier zona para ver
-          su municipio, vereda y nivel de amenaza.
+          (Centro Común de Investigación de la UE). Focos activos de MODIS y VIIRS: NASA FIRMS.
+          Haz clic sobre cualquier zona para ver su municipio, vereda y nivel de amenaza.
         </p>
       </div>
     </div>

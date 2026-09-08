@@ -39,6 +39,7 @@ import { REFERENCE_POINTS } from "@/lib/firms/area"
 import { getOsmCategory } from "@/lib/osm/categories"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
 import { OsmLegend } from "@/components/maps/osm-legend"
+import { VeredasOverlay } from "@/components/maps/veredas-overlay"
 import type { InundacionesSusceptibilidadResponse } from "@/lib/inundaciones/api-types"
 import type { OsmPoint } from "@/lib/osm/api-types"
 
@@ -238,8 +239,10 @@ function SusceptibilityLegend() {
  * Live GEOGLOWS flood map: renders their published ArcGIS Living Atlas
  * "GlobalWaterModel_Medium" layer directly over OpenStreetMap, centered on
  * the study area, plus the static flood-susceptibility zoning
- * (`susceptibilidad_inundaciones`, see lib/inundaciones/client.ts) as a
- * toggleable layer underneath. Click any reach for its live forecast
+ * (`susceptibilidad_inundaciones`, see lib/inundaciones/client.ts) and
+ * vereda boundaries with a population/infrastructure summary (shared with
+ * the deslizamientos map, see components/maps/veredas-overlay.tsx) as
+ * toggleable layers underneath. Click any reach for its live forecast
  * attributes, or any susceptibility zone for its threat level.
  */
 function GeoglowsLiveMapImpl({
@@ -260,6 +263,7 @@ function GeoglowsLiveMapImpl({
   const containerRef = useRef<HTMLDivElement>(null)
   const [showSusceptibility, setShowSusceptibility] = useState(true)
   const [showPrecipitation, setShowPrecipitation] = useState(false)
+  const [showVeredas, setShowVeredas] = useState(false)
   const osmColors = useOsmCategoryColors()
 
   const { data: susceptibility, error: susceptibilityError } = useSWR<InundacionesSusceptibilidadResponse>(
@@ -367,6 +371,7 @@ function GeoglowsLiveMapImpl({
         {showPrecipitation && (
           <TileLayer attribution="NASA GIBS / IMERG" url={IMERG_TILE_URL} opacity={0.6} maxNativeZoom={6} />
         )}
+        <VeredasOverlay enabled={showVeredas} />
         {overlayUrl && overlay && (
           <ImageOverlay url={overlayUrl} bounds={toLatLngBounds(overlay.bounds)} opacity={0.9} />
         )}
@@ -437,6 +442,15 @@ function GeoglowsLiveMapImpl({
             className="size-3.5 accent-[var(--primary)]"
           />
           Precipitación (IMERG)
+        </label>
+        <label className="flex items-center gap-1.5 font-medium text-foreground">
+          <input
+            type="checkbox"
+            checked={showVeredas}
+            onChange={(e) => setShowVeredas(e.target.checked)}
+            className="size-3.5 accent-[var(--primary)]"
+          />
+          Límites veredales
         </label>
         {showPrecipitation && (
           <a
