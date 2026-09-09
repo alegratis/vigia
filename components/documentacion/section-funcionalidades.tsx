@@ -4,9 +4,10 @@ import { Badge } from "@/components/ui/badge"
 const FEATURES = [
   {
     title: "Deslizamientos",
-    tags: ["Sevilla", "Caicedonia"],
+    tags: ["Sevilla", "Caicedonia", "Zarzal"],
     items: [
-      "Índice de susceptibilidad a deslizamientos (RED LabOT) por punto, con población, escuelas, hospitales, farmacias e infraestructura crítica expuestas por nivel de amenaza.",
+      "Mapa de amenaza por vereda coloreado por un modelo propio inspirado en LHASA (NASA): pendiente del terreno + proximidad a vías como susceptibilidad estática, ajustada por un disparador de lluvia reciente frente a su normal histórica. Calculado en las 55 veredas de los tres municipios, incluida Zarzal.",
+      "Población, escuelas, hospitales, farmacias e infraestructura crítica expuestas por nivel de amenaza (RED LabOT, Sevilla y Caicedonia), independiente del color del mapa.",
       "Superposición de pronóstico de humedad del suelo de raíz (NASA SMAP L4), actualizada cada 3–4 días.",
       "\"Sitios críticos\": puntos de daño vial relevados en campo por la Secretaría de Infraestructura del Valle del Cauca.",
     ],
