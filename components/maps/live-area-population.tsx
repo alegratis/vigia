@@ -19,6 +19,7 @@ import {
   type AvailableYear,
 } from "@/lib/demografia/categories"
 import type { DemografiaResponse } from "@/lib/demografia/api-types"
+import type { VeredaFeature } from "@/lib/veredas/api-types"
 
 const fetcher = async (url: string): Promise<DemografiaResponse> => {
   const res = await fetch(url)
@@ -33,6 +34,16 @@ interface LiveAreaPopulationProps {
   basisLabel: string
   /** Set when a zone was just clicked on the map — narrows the panel to that municipio. */
   selectedMunicipio?: string | null
+  /**
+   * Set when a vereda was clicked on the deslizamientos map — narrows the
+   * panel further, down from the municipio (DANE) to the vereda itself.
+   * DANE's urbano/rural/hombres/mujeres split only exists at the municipio
+   * level, so the vereda adds a single extra figure (RED LabOT's own
+   * population grid, summed within its boundary) rather than replacing the
+   * municipio breakdown — Zarzal veredas and any vereda outside that
+   * grid's coverage show as "sin datos" instead of a fabricated number.
+   */
+  selectedVereda?: VeredaFeature | null
   onClearSelection?: () => void
   className?: string
 }
@@ -54,6 +65,7 @@ export function LiveAreaPopulation({
   basis,
   basisLabel,
   selectedMunicipio,
+  selectedVereda,
   onClearSelection,
   className,
 }: LiveAreaPopulationProps) {
@@ -87,23 +99,38 @@ export function LiveAreaPopulation({
       <CardHeader className="gap-1 border-b border-border">
         <h3 className="flex items-center gap-2 font-semibold tracking-tight">
           <Users className="size-4" aria-hidden="true" />
-          {selectedMunicipio ? `Selección: ${selectedMunicipio}` : "Población en el encuadre actual"}
+          {selectedVereda
+            ? `Vereda: ${selectedVereda.properties.nombre}`
+            : selectedMunicipio
+              ? `Selección: ${selectedMunicipio}`
+              : "Población en el encuadre actual"}
         </h3>
         <p className="text-xs leading-relaxed text-muted-foreground">
-          {selectedMunicipio
-            ? "Zona seleccionada en el mapa. Haz clic en \u201cVer todo\u201d para volver al encuadre."
-            : namesInView
-              ? `Municipios visibles: ${namesInView.join(", ")}.`
-              : bounds
-                ? "Ningún centroide municipal cae dentro del encuadre actual; se muestran los tres municipios de referencia."
-                : "Mueve el mapa publicado para filtrar por el área visible. Por ahora se muestran los tres municipios de referencia."}
+          {selectedVereda
+            ? `Vereda dentro de ${selectedVereda.properties.municipio}. El desglose urbano/rural y por sexo de abajo es del municipio (DANE); la vereda solo aporta un total propio. Haz clic en \u201cVer todo\u201d para volver al encuadre.`
+            : selectedMunicipio
+              ? "Zona seleccionada en el mapa. Haz clic en \u201cVer todo\u201d para volver al encuadre."
+              : namesInView
+                ? `Municipios visibles: ${namesInView.join(", ")}.`
+                : bounds
+                  ? "Ningún centroide municipal cae dentro del encuadre actual; se muestran los tres municipios de referencia."
+                  : "Mueve el mapa publicado para filtrar por el área visible. Por ahora se muestran los tres municipios de referencia."}
         </p>
       </CardHeader>
       <CardContent className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto py-4">
         {selectedMunicipio && (
           <div className="flex items-center justify-between rounded-md bg-muted px-2.5 py-1.5 text-xs">
             <span className="text-foreground">
-              Selección: <span className="font-medium">{selectedMunicipio}</span>
+              {selectedVereda ? (
+                <>
+                  Vereda: <span className="font-medium">{selectedVereda.properties.nombre}</span> ·{" "}
+                  {selectedVereda.properties.municipio}
+                </>
+              ) : (
+                <>
+                  Selección: <span className="font-medium">{selectedMunicipio}</span>
+                </>
+              )}
             </span>
             <button
               type="button"
@@ -139,11 +166,33 @@ export function LiveAreaPopulation({
 
         <div className="flex flex-col gap-3">
           <div className="flex items-baseline justify-between">
-            <span className="text-sm text-muted-foreground">Población total</span>
+            <span className="text-sm text-muted-foreground">
+              {selectedVereda ? `Población total — ${selectedVereda.properties.municipio}` : "Población total"}
+            </span>
             <span className="text-lg font-semibold tabular-nums">
               {formatNumber(totalPoblacion)}
             </span>
           </div>
+
+          {selectedVereda && (
+            <div className="flex flex-col gap-1 rounded-lg border border-primary/30 bg-primary/5 p-3">
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="text-sm font-medium text-foreground">
+                  Población estimada — vereda {selectedVereda.properties.nombre}
+                </span>
+                <span className="text-base font-semibold tabular-nums text-foreground">
+                  {selectedVereda.properties.poblacion != null
+                    ? formatNumber(Math.round(selectedVereda.properties.poblacion))
+                    : "—"}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {selectedVereda.properties.poblacion != null
+                  ? "Suma de la grilla poblacional de RED LabOT dentro de los límites de la vereda; no incluye desglose urbano/rural ni por sexo, que solo existe a nivel municipal (DANE)."
+                  : "Esta vereda no tiene cobertura en la grilla de RED LabOT (por ejemplo, en Zarzal), así que no hay un dato de población propio para ella."}
+              </p>
+            </div>
+          )}
 
           {DEMOGRAFIA_CATEGORY_GROUPS.map((group) => (
             <div key={group.key} className="flex flex-col gap-2">
