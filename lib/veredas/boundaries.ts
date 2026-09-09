@@ -48,6 +48,20 @@ function toTitleCase(value: string): string {
     .join(" ")
 }
 
+/**
+ * Known misspellings in Esri Colombia's "Veredas de Colombia" source data
+ * that we correct after title-casing rather than upstream, since it's a
+ * third-party ArcGIS layer we don't control. Keyed by the title-cased
+ * NOMBRE_VER value.
+ */
+const VEREDA_NOMBRE_CORRECTIONS: Record<string, string> = {
+  Comingales: "Cominales",
+}
+
+function correctNombreVereda(nombre: string): string {
+  return VEREDA_NOMBRE_CORRECTIONS[nombre] ?? nombre
+}
+
 /** Flattens a decoded GeoJSON Polygon/MultiPolygon into this module's flat MultiPolygon ring-set shape. */
 function toPolygons(geometry: { type: string; coordinates: unknown }): number[][][][] {
   if (geometry.type === "Polygon") return [geometry.coordinates as number[][][]]
@@ -100,7 +114,7 @@ async function fetchVeredasRurales(): Promise<VeredaBoundary[]> {
       }
       return {
         codigoVereda: f.attributes.CODIGO_VER,
-        nombre: toTitleCase(f.attributes.NOMBRE_VER ?? ""),
+        nombre: correctNombreVereda(toTitleCase(f.attributes.NOMBRE_VER ?? "")),
         municipio: toTitleCase(f.attributes.NOMB_MPIO ?? ""),
         polygons: toPolygons(geo.geometry),
       }
