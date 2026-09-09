@@ -1,9 +1,10 @@
 "use client"
 
-import { useRef } from "react"
+import { useRef, useState } from "react"
 import { PrecipitacionLiveMapLoader } from "@/components/maps/precipitacion-live-map-loader"
 import { ScrollHintButton } from "@/components/home/scroll-hint-button"
 import { PrecipitationOverview } from "@/components/precipitacion/precipitation-overview"
+import { ClimatologyChart, type SelectedVereda } from "@/components/precipitacion/climatology-chart"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
 
@@ -30,6 +31,7 @@ export function PrecipitacionPanelContent({
   activeOsmPoints,
 }: PrecipitacionPanelContentProps) {
   const captionRef = useRef<HTMLDivElement>(null)
+  const [selectedVereda, setSelectedVereda] = useState<SelectedVereda | null>(null)
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
@@ -49,11 +51,15 @@ export function PrecipitacionPanelContent({
           className="relative h-full w-full"
           onBoundsChange={onBoundsChange}
           onZoneSelect={onZoneSelect}
+          onVeredaSelect={setSelectedVereda}
           osmPoints={activeOsmPoints}
         />
         <ScrollHintButton targetRef={captionRef} label="Ver resumen por municipio" />
       </div>
       <div ref={captionRef} className="flex flex-col gap-6 p-4 sm:p-6">
+        <div aria-live="polite">
+          <ClimatologyChart vereda={selectedVereda} />
+        </div>
         <div aria-live="polite">
           <PrecipitationOverview />
         </div>
@@ -93,7 +99,8 @@ export function PrecipitacionPanelContent({
           satelital de tasa de precipitación: GPM IMERG vía NASA GIBS. A diferencia de las
           demás capas de amenaza, esta cubre Zarzal con el mismo detalle que Sevilla y
           Caicedonia. Los umbrales de nivel son un criterio simple de referencia, no un
-          modelo de amenaza calibrado. Haz clic sobre cualquier vereda para ver su detalle.
+          modelo de amenaza calibrado. Haz clic sobre cualquier vereda para ver su detalle
+          y actualizar el histograma de lluvia normal mensual que aparece arriba.
         </p>
       </div>
     </div>

@@ -115,11 +115,14 @@ function ThreatLegend({ title }: { title: string }) {
 function PrecipitacionLiveMapImpl({
   onBoundsChange,
   onZoneSelect,
+  onVeredaSelect,
   osmPoints,
   className,
 }: {
   onBoundsChange?: (bounds: MapBounds) => void
   onZoneSelect?: (municipio: string) => void
+  /** Bubbles a clicked vereda's identity up, so the panel below the map can show its rainfall-normal histogram. */
+  onVeredaSelect?: (vereda: { codigoVereda: string; nombre: string; municipio: string }) => void
   /** OSM infrastructure points for the categories currently toggled on. */
   osmPoints?: OsmPoint[]
   className?: string
@@ -184,6 +187,7 @@ function PrecipitacionLiveMapImpl({
     (feature: GeoJSON.Feature, layer: Layer) => {
       const municipio = feature.properties?.municipio as string | undefined
       const vereda = feature.properties?.nombre as string | undefined
+      const codigoVereda = feature.properties?.codigoVereda as string | undefined
       const nivel = feature.properties?.nivel as string | undefined
       const acumulado = feature.properties?.acumuladoMm as number | undefined
       const dias = feature.properties?.diasValidos as number | undefined
@@ -214,9 +218,10 @@ function PrecipitacionLiveMapImpl({
       })
       layer.on("click", () => {
         if (municipio) onZoneSelect?.(normalizeMunicipioName(municipio))
+        if (codigoVereda && vereda && municipio) onVeredaSelect?.({ codigoVereda, nombre: vereda, municipio })
       })
     },
-    [onZoneSelect, mode, windowDays],
+    [onZoneSelect, onVeredaSelect, mode, windowDays],
   )
 
   // Re-key the GeoJSON layer once colors resolve so Leaflet re-applies `style` per feature.
