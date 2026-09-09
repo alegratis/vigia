@@ -31,6 +31,10 @@ export interface VeredaProperties {
   slopeDeg: number | null
   /** Distance (km) from this vereda's centroid to the nearest OSM road. */
   roadDistanceKm: number | null
+  /** Distance (km) from this vereda's centroid to the nearest mapped geological fault (SGC Atlas Geológico). */
+  faultDistanceKm: number | null
+  /** Distance (km) from this vereda's centroid to the nearest documented historical mass movement (SGC's national inventory). */
+  historyDistanceKm: number | null
   /** Current antecedent-rainfall index over its 3-year same-season baseline; `null` if no baseline could be formed. */
   rainfallRatio: number | null
   /** RED LabOT `VIGIA_Amenaza_IS_Puntos` grid points used for this vereda's population/infrastructure sums below. 0 means no coverage (Zarzal, which that layer never covered). */

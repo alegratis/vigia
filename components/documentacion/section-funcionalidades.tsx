@@ -6,8 +6,9 @@ const FEATURES = [
     title: "Deslizamientos",
     tags: ["Sevilla", "Caicedonia", "Zarzal"],
     items: [
-      "Mapa de amenaza por vereda coloreado por un modelo propio inspirado en LHASA (NASA): pendiente del terreno + proximidad a vías como susceptibilidad estática, ajustada por un disparador de lluvia reciente frente a su normal histórica. Calculado en las 55 veredas de los tres municipios, incluida Zarzal.",
+      "Mapa de amenaza por vereda coloreado por un modelo propio inspirado en LHASA (NASA): pendiente del terreno, proximidad a vías y proximidad a una falla geológica (SGC) como susceptibilidad estática, ajustada por un disparador de lluvia reciente frente a su normal histórica. Calculado en las 55 veredas de los tres municipios, incluida Zarzal.",
       "Población, escuelas, hospitales, farmacias e infraestructura crítica expuestas por nivel de amenaza (RED LabOT, Sevilla y Caicedonia), independiente del color del mapa.",
+      "Capa opcional de fallas geológicas del SGC (líneas), la misma fuente que alimenta el factor de proximidad a fallas del modelo — mostrada como referencia visual, no como un cálculo aparte.",
       "Superposición de pronóstico de humedad del suelo de raíz (NASA SMAP L4), actualizada cada 3–4 días.",
       "\"Sitios críticos\": puntos de daño vial relevados en campo por la Secretaría de Infraestructura del Valle del Cauca.",
     ],
