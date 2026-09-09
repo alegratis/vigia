@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import type { ClimatologiaResponse } from "@/lib/precipitacion/api-types"
 
 export interface SelectedVereda {
@@ -217,6 +217,7 @@ export function ClimatologyChart({ vereda }: ClimatologyChartProps) {
                   connectNulls
                 />
               )}
+              <ChartLegend content={<ChartLegendContent />} />
             </ComposedChart>
           </ChartContainer>
         ) : (
