@@ -38,9 +38,15 @@ interface ChartRow {
 export function Hydrograph({
   series,
   thresholds,
+  className = "h-[420px] w-full",
+  compact = false,
 }: {
   series: FloodPoint[]
   thresholds: Record<string, number>
+  /** Container height/width classes; defaults to the full-size detail view. */
+  className?: string
+  /** Hides axis ticks and threshold labels for small, glanceable summary cards. */
+  compact?: boolean
 }) {
   const data: ChartRow[] = series.map((p) => ({
     datetime: p.datetime,
@@ -62,18 +68,24 @@ export function Hydrograph({
   const yMax = Math.max(maxUpper, topThreshold) * 1.1
 
   return (
-    <ChartContainer config={chartConfig} className="h-[420px] w-full">
-      <ComposedChart data={data} margin={{ top: 8, right: 12, bottom: 8, left: 4 }}>
-        <CartesianGrid vertical={false} strokeDasharray="3 3" />
-        <XAxis
-          dataKey="datetime"
-          tickLine={false}
-          axisLine={false}
-          tickMargin={8}
-          minTickGap={48}
-          tickFormatter={formatDate}
-        />
+    <ChartContainer config={chartConfig} className={className}>
+      <ComposedChart
+        data={data}
+        margin={compact ? { top: 4, right: 4, bottom: 0, left: 4 } : { top: 8, right: 12, bottom: 8, left: 4 }}
+      >
+        {!compact && <CartesianGrid vertical={false} strokeDasharray="3 3" />}
+        {!compact && (
+          <XAxis
+            dataKey="datetime"
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
+            minTickGap={48}
+            tickFormatter={formatDate}
+          />
+        )}
         <YAxis
+          hide={compact}
           tickLine={false}
           axisLine={false}
           tickMargin={8}
@@ -107,39 +119,45 @@ export function Hydrograph({
               stroke={style.color}
               strokeDasharray="5 4"
               strokeOpacity={0.85}
-              label={{
-                value: `${style.label} · ${rp} a`,
-                position: "insideTopRight",
-                fill: style.color,
-                fontSize: 10,
-              }}
+              label={
+                compact
+                  ? undefined
+                  : {
+                      value: `${style.label} · ${rp} a`,
+                      position: "insideTopRight",
+                      fill: style.color,
+                      fontSize: 10,
+                    }
+              }
             />
           )
         })}
 
-        <Tooltip
-          cursor={{ stroke: "var(--border)" }}
-          content={({ active, payload }) => {
-            if (!active || !payload || payload.length === 0) return null
-            const row = payload[0].payload as ChartRow
-            return (
-              <div className="rounded-lg border border-border bg-popover px-3 py-2 text-xs shadow-md">
-                <p className="mb-1 font-medium text-popover-foreground">
-                  {formatDateTime(row.datetime)}
-                </p>
-                <p className="text-muted-foreground">
-                  Mediana:{" "}
-                  <span className="font-medium text-popover-foreground">
-                    {formatFlow(row.median)}
-                  </span>
-                </p>
-                <p className="text-muted-foreground">
-                  Rango: {formatFlow(row.band[0])} – {formatFlow(row.band[1])}
-                </p>
-              </div>
-            )
-          }}
-        />
+        {!compact && (
+          <Tooltip
+            cursor={{ stroke: "var(--border)" }}
+            content={({ active, payload }) => {
+              if (!active || !payload || payload.length === 0) return null
+              const row = payload[0].payload as ChartRow
+              return (
+                <div className="rounded-lg border border-border bg-popover px-3 py-2 text-xs shadow-md">
+                  <p className="mb-1 font-medium text-popover-foreground">
+                    {formatDateTime(row.datetime)}
+                  </p>
+                  <p className="text-muted-foreground">
+                    Mediana:{" "}
+                    <span className="font-medium text-popover-foreground">
+                      {formatFlow(row.median)}
+                    </span>
+                  </p>
+                  <p className="text-muted-foreground">
+                    Rango: {formatFlow(row.band[0])} – {formatFlow(row.band[1])}
+                  </p>
+                </div>
+              )
+            }}
+          />
+        )}
       </ComposedChart>
     </ChartContainer>
   )

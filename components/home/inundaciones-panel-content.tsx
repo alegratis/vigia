@@ -4,6 +4,7 @@ import { useRef } from "react"
 import { GeoglowsLiveMapLoader } from "@/components/maps/geoglows-live-map-loader"
 import { ScrollHintButton } from "@/components/home/scroll-hint-button"
 import { FloodOverview } from "@/components/flood/flood-overview"
+import { MunicipioFloodSummary } from "@/components/flood/municipio-flood-summary"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
 
@@ -18,9 +19,12 @@ interface InundacionesPanelContentProps {
 
 /**
  * Expanded inundaciones panel for the homepage workspace: GEOGLOWS' live
- * flood forecast map fills the full first fold; its source caption scrolls
- * in below. Demographics and infrastructure toggles live in the workspace's
- * shared sidebar, fed by onBoundsChange/onZoneSelect.
+ * flood forecast map fills the full first fold. Below it, a permanent
+ * per-municipio flood summary (MunicipioFloodSummary) and the full station
+ * overview grid (FloodOverview) scroll in — both open a station's full
+ * forecast in an in-place dialog rather than navigating to a separate page.
+ * Demographics and infrastructure toggles live in the workspace's shared
+ * sidebar, fed by onBoundsChange/onZoneSelect.
  */
 export function InundacionesPanelContent({
   onBoundsChange,
@@ -44,7 +48,10 @@ export function InundacionesPanelContent({
         />
         <ScrollHintButton targetRef={captionRef} label="Ver pronóstico por estación" />
       </div>
-      <div ref={captionRef} className="flex flex-col gap-6 p-4 sm:p-6">
+      <div ref={captionRef} className="flex flex-col gap-8 p-4 sm:p-6">
+        <div aria-live="polite">
+          <MunicipioFloodSummary />
+        </div>
         <div aria-live="polite">
           <FloodOverview />
         </div>

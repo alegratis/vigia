@@ -30,7 +30,8 @@ import {
   type LatLngBounds,
   type ReachInfo,
 } from "@/lib/geoglows/live-map"
-import { STATIONS } from "@/lib/geoglows/stations"
+import { STATIONS, type Station } from "@/lib/geoglows/stations"
+import { StationDetailDialog } from "@/components/flood/station-detail-dialog"
 import { FLOOD_SUSCEPTIBILITY_LEVELS, floodSusceptibilityColorToken } from "@/lib/inundaciones/levels"
 import { IMERG_TILE_URL, IMERG_WORLDVIEW_URL } from "@/lib/precipitacion/imerg"
 import { resolveCssColor } from "@/lib/resolve-css-color"
@@ -265,6 +266,7 @@ function GeoglowsLiveMapImpl({
   const [showSusceptibility, setShowSusceptibility] = useState(true)
   const [showPrecipitation, setShowPrecipitation] = useState(false)
   const [showVeredas, setShowVeredas] = useState(false)
+  const [selectedStation, setSelectedStation] = useState<Station | null>(null)
   const osmColors = useOsmCategoryColors()
 
   const { data: susceptibility, error: susceptibilityError } = useSWR<InundacionesSusceptibilidadResponse>(
@@ -379,12 +381,13 @@ function GeoglowsLiveMapImpl({
               <div className="flex flex-col gap-1 text-sm">
                 <span className="font-semibold">{s.name}</span>
                 <span className="text-muted-foreground">{s.municipality}</span>
-                <a
-                  href={`/inundaciones/${s.slug}`}
-                  className="mt-1 text-xs font-medium text-primary underline-offset-2 hover:underline"
+                <button
+                  type="button"
+                  onClick={() => setSelectedStation(s)}
+                  className="mt-1 text-left text-xs font-medium text-primary underline-offset-2 hover:underline"
                 >
                   Ver hidrograma completo →
-                </a>
+                </button>
               </div>
             </Popup>
           </Marker>
@@ -473,6 +476,13 @@ function GeoglowsLiveMapImpl({
         <OsmLegend points={osmPoints ?? []} />
       </div>
       {showSusceptibility && <SusceptibilityLegend />}
+
+      <StationDetailDialog
+        station={selectedStation}
+        onOpenChange={(open) => {
+          if (!open) setSelectedStation(null)
+        }}
+      />
     </div>
   )
 }
