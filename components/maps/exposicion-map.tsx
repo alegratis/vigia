@@ -20,11 +20,8 @@ import useSWR from "swr"
 import { Download, Loader2, Mountain, Droplets, Flame, CloudRain } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { BasemapTileLayer } from "@/components/maps/basemap-tile-layer"
-import {
-  SUSCEPTIBILITY_LEVELS,
-  levelColorToken,
-  normalizeSusceptibilityLevel,
-} from "@/lib/deslizamientos/levels"
+import { SUSCEPTIBILITY_LEVELS, levelColorToken } from "@/lib/deslizamientos/levels"
+import { useVeredas } from "@/lib/veredas/use-veredas"
 import { FLOOD_SUSCEPTIBILITY_LEVELS, floodSusceptibilityColorToken } from "@/lib/inundaciones/levels"
 import { FIRE_THREAT_LEVELS, fireLevelColorToken } from "@/lib/incendios/levels"
 import { PRECIPITATION_LEVELS, precipitationLevelColorToken } from "@/lib/precipitacion/levels"
@@ -35,7 +32,6 @@ import { buildProxyExportUrl, type LatLngBounds as GeoglowsBounds } from "@/lib/
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import { CONFIDENCE_STYLES, formatDateTime, formatDistance, formatFrp } from "@/lib/firms/ui"
 import type { VeredaListEntry } from "@/lib/veredas/list-api-types"
-import type { DeslizamientosResponse } from "@/lib/deslizamientos/api-types"
 import type { InundacionesSusceptibilidadResponse } from "@/lib/inundaciones/api-types"
 import type { IncendiosAmenazaResponse } from "@/lib/incendios/api-types"
 import type { PrecipitacionAmenazaResponse } from "@/lib/precipitacion/api-types"
@@ -50,11 +46,6 @@ const HAZARD_META: Record<HazardKey, { label: string; icon: typeof Mountain }> =
   precipitacion: { label: "Precipitación", icon: CloudRain },
 }
 
-const deslizamientosFetcher = async (url: string): Promise<DeslizamientosResponse> => {
-  const res = await fetch(url)
-  if (!res.ok) throw new Error("No se pudo cargar la capa de deslizamientos")
-  return res.json()
-}
 const inundacionesFetcher = async (url: string): Promise<InundacionesSusceptibilidadResponse> => {
   const res = await fetch(url)
   if (!res.ok) throw new Error("No se pudo cargar la capa de inundaciones")
@@ -255,11 +246,7 @@ function ExposicionMapImpl({ vereda }: { vereda: VeredaListEntry }) {
   const showIncendios = active.has("incendios")
   const showPrecipitacion = active.has("precipitacion")
 
-  const { data: deslizamientos } = useSWR<DeslizamientosResponse>(
-    showDeslizamientos ? "/api/deslizamientos" : null,
-    deslizamientosFetcher,
-    { revalidateOnFocus: false },
-  )
+  const { veredas: veredasHazard } = useVeredas(showDeslizamientos)
   const { data: inundaciones } = useSWR<InundacionesSusceptibilidadResponse>(
     showInundaciones ? "/api/inundaciones/susceptibilidad" : null,
     inundacionesFetcher,
@@ -361,7 +348,10 @@ function ExposicionMapImpl({ vereda }: { vereda: VeredaListEntry }) {
     )
   }, [])
 
-  const deslizamientosPoints = useMemo(() => deslizamientos?.points.features ?? [], [deslizamientos])
+  const veredaHazardFeature = useMemo(
+    () => veredasHazard?.features.find((f) => f.properties.codigoVereda === vereda.codigoVereda) ?? null,
+    [veredasHazard, vereda.codigoVereda],
+  )
 
   const veredaOutline = useMemo(() => toLatLngRings(vereda.polygons), [vereda])
 
@@ -463,27 +453,25 @@ function ExposicionMapImpl({ vereda }: { vereda: VeredaListEntry }) {
             <>
               <TileLayer attribution="NASA GIBS / SMAP" url={SMAP_TILE_URL} opacity={0.55} maxNativeZoom={6} crossOrigin="anonymous" />
               {resolvedColors &&
-                deslizamientosPoints.map((feature, i) => {
-                  const [lon, lat] = feature.geometry.coordinates
-                  const nivel = normalizeSusceptibilityLevel(feature.properties.IS_nivel)
+                veredaHazardFeature &&
+                (() => {
+                  const nivel = veredaHazardFeature.properties.dominantLevel
                   const color = (nivel && resolvedColors.deslizamientos[nivel]) || "var(--muted-foreground)"
                   return (
-                    <CircleMarker
-                      key={`ds-${i}`}
-                      center={[lat, lon]}
-                      radius={3}
-                      pathOptions={{ color, weight: 0, fillColor: color, fillOpacity: 0.8 }}
+                    <Polygon
+                      positions={toLatLngRings(veredaHazardFeature.geometry.coordinates)}
+                      pathOptions={{ color: "#fff", weight: 1, fillColor: color, fillOpacity: 0.5 }}
                     >
                       <Popup>
                         <div style={{ fontSize: 13 }}>
-                          <strong>{feature.properties.municipio ?? "—"}</strong>
+                          <strong>Amenaza (modelo propio)</strong>
                           <br />
-                          Susceptibilidad: {nivel ?? "—"}
+                          {nivel ?? "Sin datos del modelo"}
                         </div>
                       </Popup>
-                    </CircleMarker>
+                    </Polygon>
                   )
-                })}
+                })()}
             </>
           )}
 

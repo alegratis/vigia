@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import {
   AttributionControl,
   CircleMarker,
@@ -14,13 +14,7 @@ import {
 import type { LatLngBoundsExpression } from "leaflet"
 import "leaflet/dist/leaflet.css"
 import { ExternalLink, Loader2 } from "lucide-react"
-import useSWR from "swr"
-import {
-  SUSCEPTIBILITY_LEVELS,
-  SUSCEPTIBILITY_LEVEL_STYLES,
-  levelColorToken,
-  type SusceptibilityLevel,
-} from "@/lib/deslizamientos/levels"
+import { SUSCEPTIBILITY_LEVELS, SUSCEPTIBILITY_LEVEL_STYLES, levelColorToken } from "@/lib/deslizamientos/levels"
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import { SMAP_TILE_URL, SMAP_WORLDVIEW_URL } from "@/lib/deslizamientos/smap"
 import { BasemapTileLayer } from "@/components/maps/basemap-tile-layer"
@@ -34,7 +28,7 @@ import {
   tipoLabel,
 } from "@/lib/deslizamientos/critical-sites-types"
 import { VeredasOverlay } from "@/components/maps/veredas-overlay"
-import type { DeslizamientosResponse } from "@/lib/deslizamientos/api-types"
+import { useVeredas } from "@/lib/veredas/use-veredas"
 import type { VeredaFeature } from "@/lib/veredas/api-types"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
@@ -54,12 +48,6 @@ const AOI_BOUNDS: LatLngBoundsExpression = [
   [3.88, -76.06],
   [4.44, -75.72],
 ]
-
-const fetcher = async (url: string): Promise<DeslizamientosResponse> => {
-  const res = await fetch(url)
-  if (!res.ok) throw new Error("No se pudo cargar la capa de deslizamientos")
-  return res.json()
-}
 
 interface BoundsSyncProps {
   onBoundsChange: (bounds: MapBounds) => void
@@ -118,27 +106,24 @@ interface MapLayersControlProps {
   onSoilMoistureChange: (checked: boolean) => void
   showCriticalSites: boolean
   onCriticalSitesChange: (checked: boolean) => void
-  showVeredas: boolean
-  onVeredasChange: (checked: boolean) => void
 }
 
 /**
- * Combined toggle panel for this map's optional overlays: SMAP root-zone
- * soil moisture (the landslide trigger signal that complements the static
- * susceptibility index), "Sitios críticos" (field-surveyed road-damage
- * points from the Valle del Cauca infrastructure secretariat — see
- * lib/deslizamientos/critical-sites.ts), and vereda boundaries with a
- * per-vereda hazard summary (see lib/veredas/server.ts). No legend is
- * fabricated for soil moisture — GIBS doesn't publish one for this layer,
- * so its caption links to NASA Worldview's own color scale instead.
+ * Toggle panel for this map's optional overlays: SMAP root-zone soil
+ * moisture (a satellite proxy for the antecedent-moisture signal this
+ * map's own rainfall trigger already estimates from ground-station-
+ * informed rainfall — worth cross-checking against, not a duplicate) and
+ * "Sitios críticos" (field-surveyed road-damage points from the Valle del
+ * Cauca infrastructure secretariat — see lib/deslizamientos/critical-sites.ts).
+ * No legend is fabricated for soil moisture — GIBS doesn't publish one for
+ * this layer, so its caption links to NASA Worldview's own color scale
+ * instead.
  */
 function MapLayersControl({
   showSoilMoisture,
   onSoilMoistureChange,
   showCriticalSites,
   onCriticalSitesChange,
-  showVeredas,
-  onVeredasChange,
 }: MapLayersControlProps) {
   return (
     <div className="absolute left-3 top-3 z-[400] flex flex-col gap-2 rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
@@ -175,23 +160,6 @@ function MapLayersControl({
           Sitios críticos (2019)
         </label>
       </div>
-      <div className="border-t border-border pt-1.5">
-        <label className="flex items-center gap-2 font-medium text-foreground">
-          <input
-            type="checkbox"
-            checked={showVeredas}
-            onChange={(e) => onVeredasChange(e.target.checked)}
-            className="size-3.5 accent-primary"
-          />
-          Límites veredales
-          </label>
-        {showVeredas && (
-          <p className="pl-5 pt-1 text-muted-foreground">
-            Reemplaza los puntos por el promedio de susceptibilidad de cada vereda. Zarzal no tiene datos del
-            modelo.
-          </p>
-        )}
-      </div>
     </div>
   )
 }
@@ -220,35 +188,35 @@ function CriticalSitesLegend() {
 }
 
 /**
- * Live landslide susceptibility map: renders RED LabOT's
- * `VIGIA_Amenaza_IS_Puntos` index — 11,721 points across Sevilla and
- * Caicedonia — as canvas-rendered dots over OpenStreetMap, optionally
- * overlaid with NASA GIBS's SMAP root-zone soil moisture (the antecedent
- * moisture trigger signal). Click a point for its municipality and threat
- * level.
+ * Live landslide hazard map: shades each vereda (~55 across Sevilla,
+ * Caicedonia and Zarzal) by this app's own hazard model — slope + road
+ * proximity + a rainfall-anomaly trigger, computed at its centroid (see
+ * lib/deslizamientos/hazard-model.ts) — rather than RED LabOT's discontinued
+ * `VIGIA_Amenaza_IS_Puntos` point grid, which only ever covered Sevilla and
+ * Caicedonia. Optionally overlaid with NASA GIBS's SMAP root-zone soil
+ * moisture. Click a vereda for its hazard level and the model's underlying
+ * factors.
  */
 function DeslizamientosLiveMapImpl({
   onBoundsChange,
-  onPointSelect,
   osmPoints,
   className,
 }: {
   onBoundsChange?: (bounds: MapBounds) => void
-  onPointSelect?: (level: SusceptibilityLevel) => void
   /** OSM infrastructure points for the categories currently toggled on. */
   osmPoints?: OsmPoint[]
   className?: string
 }) {
-  const { data, error } = useSWR<DeslizamientosResponse>("/api/deslizamientos", fetcher, {
-    revalidateOnFocus: false,
-  })
   const osmColors = useOsmCategoryColors()
+  // Always enabled now that vereda shading is this map's primary layer, not
+  // an opt-in overlay — VeredasOverlay's own useVeredas(true) call below
+  // dedupes against this same SWR key, so this doesn't add a second request.
+  const { error: veredasError, isLoading: veredasLoading } = useVeredas(true)
 
   const [resolvedColors, setResolvedColors] = useState<Record<string, string> | null>(null)
   const [noDataColor, setNoDataColor] = useState<string | null>(null)
   const [showSoilMoisture, setShowSoilMoisture] = useState(false)
   const [showCriticalSites, setShowCriticalSites] = useState(false)
-  const [showVeredas, setShowVeredas] = useState(false)
   const { points: criticalSites } = useCriticalSites(showCriticalSites)
 
   useEffect(() => {
@@ -263,8 +231,6 @@ function DeslizamientosLiveMapImpl({
     (level: string | undefined) => (level && resolvedColors?.[level]) || "var(--muted-foreground)",
     [resolvedColors],
   )
-
-  const points = useMemo(() => data?.points.features ?? [], [data])
 
   const veredaColor = useCallback(
     (feature: VeredaFeature) => {
@@ -298,34 +264,7 @@ function DeslizamientosLiveMapImpl({
             maxNativeZoom={6}
           />
         )}
-        {resolvedColors && noDataColor && (
-          <VeredasOverlay enabled={showVeredas} colorForFeature={veredaColor} />
-        )}
-        {!showVeredas &&
-          resolvedColors &&
-          points.map((feature, i) => {
-            const [lon, lat] = feature.geometry.coordinates
-            const nivel = feature.properties.IS_nivel as SusceptibilityLevel | undefined
-            const color = colorForLevel(nivel)
-            return (
-              <CircleMarker
-                key={i}
-                center={[lat, lon]}
-                radius={3}
-                pathOptions={{ color, weight: 0, fillColor: color, fillOpacity: 0.75 }}
-                eventHandlers={
-                  onPointSelect && nivel ? { click: () => onPointSelect(nivel) } : undefined
-                }
-              >
-                <Popup>
-                  <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
-                    <strong>{feature.properties.municipio ?? "—"}</strong>
-                    <span>Susceptibilidad: {nivel ?? "—"}</span>
-                  </div>
-                </Popup>
-              </CircleMarker>
-            )
-          })}
+        {resolvedColors && noDataColor && <VeredasOverlay enabled colorForFeature={veredaColor} />}
         {showCriticalSites &&
           criticalSites?.map((site) => (
             <CircleMarker
@@ -373,12 +312,12 @@ function DeslizamientosLiveMapImpl({
           ))}
         {onBoundsChange && <BoundsSync onBoundsChange={onBoundsChange} />}
       </MapContainer>
-      {!data && !error && (
+      {veredasLoading && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-background/60">
           <Loader2 className="size-6 animate-spin text-muted-foreground" aria-hidden="true" />
         </div>
       )}
-      {error && (
+      {veredasError && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-background/60">
           <span className="text-sm text-destructive">No se pudo cargar la capa.</span>
         </div>
@@ -388,8 +327,6 @@ function DeslizamientosLiveMapImpl({
         onSoilMoistureChange={setShowSoilMoisture}
         showCriticalSites={showCriticalSites}
         onCriticalSitesChange={setShowCriticalSites}
-        showVeredas={showVeredas}
-        onVeredasChange={setShowVeredas}
       />
       <div className="absolute right-3 top-16 z-[400] max-w-[200px]">
         <OsmLegend points={osmPoints ?? []} />

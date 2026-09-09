@@ -16,12 +16,23 @@ const GROUPS: SourceGroup[] = [
         nombre: "Índice de susceptibilidad a deslizamientos",
         publicador: "RED LabOT",
         descripcion:
-          "~11.721 puntos con nivel de susceptibilidad, puntaje y conteos de población y de infraestructura crítica (escuelas, hospitales, farmacias) por punto. Cubre Sevilla y Caicedonia; Zarzal no tiene registros por estar en el valle plano.",
+          "~11.721 puntos con nivel de susceptibilidad, puntaje y conteos de población y de infraestructura crítica (escuelas, hospitales, farmacias) por punto. Ya no colorea el mapa de deslizamientos (ver el modelo propio, abajo); sigue siendo la fuente de los conteos de población e infraestructura del panel de exposición por nivel de amenaza. Cubre Sevilla y Caicedonia; Zarzal no tiene registros por estar en el valle plano.",
         url: "https://services8.arcgis.com/UYEK9SUzH1am9mbk/arcgis/rest/services/VIGIA_Amenaza_IS_Puntos/FeatureServer",
         acceso: "ArcGIS FeatureServer",
         licencia: "Datos abiertos, sin autenticación",
         cobertura: "Sevilla, Caicedonia",
         actualizacion: "Capa estática; la app la relee cada hora",
+      },
+      {
+        nombre: "Modelo propio de amenaza por deslizamiento",
+        publicador: "Vigía (cálculo propio, inspirado en NASA LHASA v1)",
+        descripcion:
+          "Combina pendiente del terreno (DEM Copernicus GLO-30, vía la API de elevación de Open-Meteo), distancia a la vía más cercana (red vial de OpenStreetMap/Overpass) y una anomalía de lluvia reciente frente a su propia línea base histórica de 3 años (archivo histórico de Open-Meteo), calculado en el centroide de cada vereda. Reemplaza al índice de RED LabOT como fuente del color del mapa de deslizamientos — es un modelo propio de esta app, no un índice oficial publicado, pero documentado y con sus factores visibles en el popup de cada vereda.",
+        url: "https://open-meteo.com/en/docs/elevation-api",
+        acceso: "Cálculo propio sobre APIs REST abiertas",
+        licencia: "N/A — calculado por la app a partir de fuentes abiertas",
+        cobertura: "Sevilla, Caicedonia, Zarzal (~55 centroides de vereda)",
+        actualizacion: "Pendiente y vías cambian poco (cache de 30 días y 6 horas); lluvia recalculada cada hora",
       },
       {
         nombre: "Amenaza por incendios forestales",
