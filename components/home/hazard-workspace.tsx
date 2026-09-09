@@ -131,7 +131,7 @@ export function HazardWorkspace({ initialCategory }: { initialCategory: string }
 
         <button
           type="button"
-          onClick={() => openInfoPopup("/exposicion/popup", "vigia-exposicion")}
+          onClick={() => openInfoPopup("/exposicion/popup", "vigia-exposicion", { width: 1180, height: 980 })}
           className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-md bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
           Conoce tu nivel de exposición
