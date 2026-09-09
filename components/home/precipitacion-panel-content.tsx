@@ -6,6 +6,7 @@ import { ScrollHintButton } from "@/components/home/scroll-hint-button"
 import { BackToTopButton } from "@/components/home/back-to-top-button"
 import { PrecipitationOverview } from "@/components/precipitacion/precipitation-overview"
 import { ClimatologyChart, type SelectedVereda } from "@/components/precipitacion/climatology-chart"
+import { QuinquenalChart } from "@/components/precipitacion/quinquenal-chart"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
 
@@ -62,6 +63,9 @@ export function PrecipitacionPanelContent({
       <div ref={captionRef} className="flex flex-col gap-6 p-4 sm:p-6">
         <div aria-live="polite">
           <ClimatologyChart vereda={selectedVereda} />
+        </div>
+        <div aria-live="polite">
+          <QuinquenalChart vereda={selectedVereda} />
         </div>
         <div aria-live="polite">
           <PrecipitationOverview />

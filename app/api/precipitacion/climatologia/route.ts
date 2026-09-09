@@ -7,6 +7,7 @@ import {
   type MonthlyClimatologyPoint,
 } from "@/lib/precipitacion/ideam-climatology"
 import {
+  averageYearMonthlySeries,
   getCurrentYearMonthlyPrecipitation,
   getCurrentYearMonthlyPrecipitationBatch,
   getRecentPastYears,
@@ -30,21 +31,6 @@ function averageClimatology(batch: Array<MonthlyClimatologyPoint[] | null>): Mon
       rango1991_2020: null, // A range string stops making sense once averaged across many veredas' distinct bands.
       mm1981_2010: bs.length > 0 ? Math.round(bs.reduce((sum, v) => sum + v, 0) / bs.length) : null,
       rango1981_2010: null,
-    }
-  })
-}
-
-/** Averages a batch of per-vereda current-year series into one, skipping any vereda that failed to resolve. */
-function averageCurrentYear(batch: Array<CurrentYearMonthlyPoint[] | null>): CurrentYearMonthlyPoint[] {
-  const valid = batch.filter((series): series is CurrentYearMonthlyPoint[] => series != null)
-  return Array.from({ length: 12 }, (_, i) => {
-    const month = i + 1
-    const values = valid.map((s) => s[i]?.mm).filter((v): v is number => v != null)
-    return {
-      month,
-      mm: values.length > 0 ? Math.round((values.reduce((sum, v) => sum + v, 0) / values.length) * 10) / 10 : null,
-      validDays: Math.max(...valid.map((s) => s[i]?.validDays ?? 0), 0),
-      isPartial: valid.some((s) => s[i]?.isPartial),
     }
   })
 }
@@ -97,9 +83,9 @@ export async function GET(request: Request) {
         aniosHistoricos,
         meses: mergeMeses(
           averageClimatology(climatologyBatch),
-          averageCurrentYear(currentYearBatch),
+          averageYearMonthlySeries(currentYearBatch),
           aniosHistoricos,
-          historicoBatches.map((batch) => averageCurrentYear(batch)),
+          historicoBatches.map((batch) => averageYearMonthlySeries(batch)),
         ),
       }
     } else {
