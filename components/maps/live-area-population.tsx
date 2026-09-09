@@ -1,22 +1,22 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import useSWR from "swr"
 import { MapPin, Users } from "lucide-react"
 import { cn } from "cn"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Separator } from "@/components/ui/separator"
-import { DemografiaFilters } from "@/components/demografia/demografia-filters"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { REFERENCE_POINTS } from "@/lib/firms/area"
 import { pointsInBounds, type MapBounds } from "@/lib/map-bounds"
 import { formatNumber, formatShare } from "@/lib/demografia/ui"
 import {
   AVAILABLE_YEARS,
-  DEMOGRAFIA_CATEGORIES,
+  DEMOGRAFIA_CATEGORY_GROUPS,
+  categoriesInGroup,
   getCategoryValue,
   type AvailableYear,
-  type DemografiaCategoryKey,
 } from "@/lib/demografia/categories"
 import type { DemografiaResponse } from "@/lib/demografia/api-types"
 
@@ -42,9 +42,12 @@ const LATEST_YEAR = AVAILABLE_YEARS[AVAILABLE_YEARS.length - 1]
 /**
  * Cross-references the current qgis2web map viewport (received via
  * postMessage from QgisMapCanvas) against the municipality reference points,
- * and shows DANE population for whichever municipalities are in frame. Comes
- * with the same "Panel de consulta" year/category filters as the overview
- * page, preselected to the category most relevant for this hazard.
+ * and shows DANE population for whichever municipalities are in frame.
+ * Every category (urbano, rural, hombres, mujeres) and the total are shown
+ * at once — no checkboxes to reveal them — since this is glanceable
+ * reference data, not a filter the user is choosing between. The only
+ * control left is the year, which genuinely changes which figures are
+ * being shown rather than just hiding/revealing already-computed ones.
  */
 export function LiveAreaPopulation({
   bounds,
@@ -59,14 +62,6 @@ export function LiveAreaPopulation({
   })
 
   const [year, setYear] = useState<AvailableYear>(LATEST_YEAR)
-  const [selectedCategories, setSelectedCategories] = useState<DemografiaCategoryKey[]>(
-    [basis],
-  )
-
-  const activeCategories = useMemo(
-    () => DEMOGRAFIA_CATEGORIES.filter((c) => selectedCategories.includes(c.key)),
-    [selectedCategories],
-  )
 
   if (isLoading || !data) {
     return <Skeleton className={cn("h-[420px] max-h-[60vh] rounded-xl", className)} />
@@ -119,12 +114,26 @@ export function LiveAreaPopulation({
             </button>
           </div>
         )}
-        <DemografiaFilters
-          year={year}
-          onYearChange={setYear}
-          selectedCategories={selectedCategories}
-          onSelectedCategoriesChange={setSelectedCategories}
-        />
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Año
+          </span>
+          <ToggleGroup
+            value={[String(year)]}
+            onValueChange={(value) => {
+              const next = value[0]
+              if (next) setYear(Number(next) as AvailableYear)
+            }}
+            variant="outline"
+            className="flex-wrap justify-end"
+          >
+            {AVAILABLE_YEARS.map((y) => (
+              <ToggleGroupItem key={y} value={String(y)} aria-label={`Año ${y}`}>
+                {y}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+        </div>
 
         <Separator />
 
@@ -135,54 +144,64 @@ export function LiveAreaPopulation({
               {formatNumber(totalPoblacion)}
             </span>
           </div>
-          {activeCategories.length === 0 ? (
-            <p className="text-xs text-muted-foreground">
-              Selecciona al menos una categoría en el panel de consulta.
-            </p>
-          ) : (
-            activeCategories.map((category) => {
-              const value = visible.reduce(
-                (sum, m) => sum + getCategoryValue(m.population, category.key, year),
-                0,
-              )
-              return (
-                <div key={category.key} className="flex items-baseline justify-between">
-                  <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+
+          {DEMOGRAFIA_CATEGORY_GROUPS.map((group) => (
+            <div key={group.key} className="flex flex-col gap-2">
+              {categoriesInGroup(group.key).map((category) => {
+                const value = visible.reduce(
+                  (sum, m) => sum + getCategoryValue(m.population, category.key, year),
+                  0,
+                )
+                const isBasis = category.key === basis
+                return (
+                  <div key={category.key} className="flex items-baseline justify-between">
                     <span
-                      className={`size-2.5 rounded-full ${category.swatchClass}`}
-                      aria-hidden="true"
-                    />
-                    {category.key === basis ? basisLabel : category.label}
-                  </span>
-                  <span className="font-medium tabular-nums">
-                    {formatNumber(value)} ({formatShare(value, totalPoblacion)})
-                  </span>
-                </div>
-              )
-            })
-          )}
+                      className={cn(
+                        "flex items-center gap-1.5 text-sm",
+                        isBasis ? "font-medium text-foreground" : "text-muted-foreground",
+                      )}
+                    >
+                      <span
+                        className={`size-2.5 rounded-full ${category.swatchClass}`}
+                        aria-hidden="true"
+                      />
+                      {isBasis ? basisLabel : category.label}
+                    </span>
+                    <span
+                      className={cn(
+                        "tabular-nums",
+                        isBasis ? "font-semibold text-foreground" : "font-medium text-foreground",
+                      )}
+                    >
+                      {formatNumber(value)} ({formatShare(value, totalPoblacion)})
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          ))}
         </div>
 
-        {activeCategories.length > 0 && (
-          <ul className="flex flex-col gap-1.5 border-t border-border pt-3">
-            {visible.map((m) => (
-              <li key={m.municipio} className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-1.5 text-foreground">
-                  <MapPin className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                  {m.municipio}
-                </span>
-                <span className="flex items-center gap-2 tabular-nums text-muted-foreground">
-                  {activeCategories.map((category) => (
+        <ul className="flex flex-col gap-1.5 border-t border-border pt-3">
+          {visible.map((m) => (
+            <li key={m.municipio} className="flex items-center justify-between text-sm">
+              <span className="flex items-center gap-1.5 text-foreground">
+                <MapPin className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                {m.municipio}
+              </span>
+              <span className="flex items-center gap-2 tabular-nums text-muted-foreground">
+                {DEMOGRAFIA_CATEGORY_GROUPS.flatMap((group) => categoriesInGroup(group.key)).map(
+                  (category) => (
                     <span key={category.key}>
                       {formatNumber(getCategoryValue(m.population, category.key, year))}{" "}
                       {category.label.slice(0, 3).toLowerCase()}.
                     </span>
-                  ))}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
+                  ),
+                )}
+              </span>
+            </li>
+          ))}
+        </ul>
       </CardContent>
     </Card>
   )
