@@ -30,7 +30,7 @@ export function DeslizamientosPanelContent({ onBoundsChange, activeOsmPoints }: 
   const mapRef = useRef<HTMLDivElement>(null)
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+    <div className="flex flex-col overflow-y-auto lg:min-h-0 lg:flex-1">
       <div
         ref={mapRef}
         role="region"
