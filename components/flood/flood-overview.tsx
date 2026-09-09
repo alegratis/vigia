@@ -1,13 +1,15 @@
 "use client"
 
+import { useState } from "react"
 import useSWR from "swr"
-import Link from "next/link"
 import { AlertTriangle, ArrowUpRight, Clock, RefreshCw, TrendingUp } from "lucide-react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { LevelBadge } from "@/components/flood/level-badge"
+import { StationDetailDialog } from "@/components/flood/station-detail-dialog"
 import { formatDateTime, formatFlow, formatLeadTime, levelStyle } from "@/lib/flood-ui"
 import type { OverviewResponse, OverviewStation } from "@/lib/geoglows/api-types"
+import type { Station } from "@/lib/geoglows/stations"
 
 const fetcher = async (url: string): Promise<OverviewResponse> => {
   const res = await fetch(url)
@@ -21,6 +23,7 @@ export function FloodOverview() {
     fetcher,
     { revalidateOnFocus: false },
   )
+  const [selectedStation, setSelectedStation] = useState<Station | null>(null)
 
   if (isLoading) {
     return (
@@ -79,14 +82,31 @@ export function FloodOverview() {
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         {data.stations.map((s) => (
-          <StationSummaryCard key={s.station.slug} entry={s} />
+          <StationSummaryCard
+            key={s.station.slug}
+            entry={s}
+            onSelect={() => setSelectedStation(s.station)}
+          />
         ))}
       </div>
+
+      <StationDetailDialog
+        station={selectedStation}
+        onOpenChange={(open) => {
+          if (!open) setSelectedStation(null)
+        }}
+      />
     </div>
   )
 }
 
-function StationSummaryCard({ entry }: { entry: OverviewStation }) {
+function StationSummaryCard({
+  entry,
+  onSelect,
+}: {
+  entry: OverviewStation
+  onSelect: () => void
+}) {
   const { station } = entry
 
   if (!entry.ok) {
@@ -109,9 +129,10 @@ function StationSummaryCard({ entry }: { entry: OverviewStation }) {
   const accent = levelStyle(entry.current.level.key).color
 
   return (
-    <Link
-      href={`/inundaciones/${station.slug}`}
-      className="group focus-visible:outline-none"
+    <button
+      type="button"
+      onClick={onSelect}
+      className="group block w-full text-left focus-visible:outline-none"
     >
       <Card className="h-full overflow-hidden transition-colors hover:border-foreground/30 group-focus-visible:ring-2 group-focus-visible:ring-ring">
         <span className="block h-1 w-full" style={{ backgroundColor: accent }} aria-hidden="true" />
@@ -155,6 +176,6 @@ function StationSummaryCard({ entry }: { entry: OverviewStation }) {
           </div>
         </CardContent>
       </Card>
-    </Link>
+    </button>
   )
 }

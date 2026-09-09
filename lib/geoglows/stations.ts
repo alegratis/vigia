@@ -106,3 +106,27 @@ export function getStationBySlug(slug: string): Station | undefined {
 export function getStationByReachId(reachId: number): Station | undefined {
   return STATIONS.find((s) => s.reachId === reachId)
 }
+
+/**
+ * Each of the three municipios has one "main channel" station (the river
+ * that actually crosses or borders the municipal seat) plus, for Sevilla
+ * and Caicedonia, one or two smaller tributary stations. This is the
+ * representative station for the permanent per-municipio flood summary
+ * (see components/flood/municipio-flood-summary.tsx) — the one always
+ * plotted, with the others one click away.
+ */
+export const MUNICIPIO_PRIMARY_STATION_SLUG: Record<string, string> = {
+  Zarzal: "cauca-zarzal",
+  Sevilla: "la-vieja-sevilla",
+  Caicedonia: "caicedonia",
+}
+
+/** The three municipios in municipio-primary-station order, each with its full station list. */
+export function getMunicipioStationGroups(): Array<{ municipio: string; stations: Station[] }> {
+  return Object.entries(MUNICIPIO_PRIMARY_STATION_SLUG).map(([municipio, primarySlug]) => {
+    const stations = STATIONS.filter((s) => s.municipality === municipio)
+    // Primary station first, so callers can just take index 0 for the always-visible chart.
+    stations.sort((a, b) => (a.slug === primarySlug ? -1 : b.slug === primarySlug ? 1 : 0))
+    return { municipio, stations }
+  })
+}
