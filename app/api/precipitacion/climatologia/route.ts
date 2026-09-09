@@ -10,7 +10,7 @@ import {
   getCurrentYearMonthlyPrecipitation,
   getCurrentYearMonthlyPrecipitationBatch,
   type CurrentYearMonthlyPoint,
-} from "@/lib/precipitacion/power-client"
+} from "@/lib/precipitacion/openmeteo-historical-client"
 import type { ClimatologiaErrorResponse, ClimatologiaMesPunto, ClimatologiaResponse } from "@/lib/precipitacion/api-types"
 
 /** Averages a batch of per-vereda climatology series into one, skipping any vereda that failed to resolve. */

@@ -127,92 +127,9 @@ export async function getAccumulatedPrecipitationBatch(
   return results
 }
 
-export interface CurrentYearMonthlyPoint {
-  month: number
-  /** Sum of valid daily totals so far this month, in mm — null if POWER has no valid days for it. */
-  mm: number | null
-  validDays: number
-  /** True only for the current, still-in-progress month (a partial-month sum, not a full-month total). */
-  isPartial: boolean
-}
-
-// Only revalidate today's still-accumulating month often; the shorter TTL is fine since this endpoint
-// (unlike the amenaza accumulation above) is only hit when a user opens the climatology chart.
-const CURRENT_YEAR_REVALIDATE_SECONDS = 3600
-
-/**
- * Fetches this calendar year's daily rainfall (Jan 1 through today) for one
- * point and buckets it into 12 monthly sums, for the "current year" line
- * on the vereda/municipio climatology chart. Months after the current one
- * are `null` (no data yet, not zero) rather than plotted as zero rainfall.
- * The current month's value is a partial-month sum through today, flagged
- * with `isPartial` so the UI can label it as still in progress rather than
- * implying the month is over.
- */
-export async function getCurrentYearMonthlyPrecipitation(lon: number, lat: number): Promise<CurrentYearMonthlyPoint[]> {
-  const now = new Date()
-  const year = now.getUTCFullYear()
-  const currentMonth = now.getUTCMonth() + 1
-
-  const params = new URLSearchParams({
-    parameters: "PRECTOTCORR",
-    community: "AG",
-    longitude: lon.toFixed(2),
-    latitude: lat.toFixed(2),
-    start: `${year}0101`,
-    end: formatDate(now),
-    format: "JSON",
-  })
-
-  const res = await fetch(`${POWER_DAILY_POINT_URL}?${params.toString()}`, {
-    next: { revalidate: CURRENT_YEAR_REVALIDATE_SECONDS },
-  })
-  if (!res.ok) {
-    throw new Error(`NASA POWER query failed (${res.status})`)
-  }
-  const data = await res.json()
-  const byDate = (data?.properties?.parameter?.PRECTOTCORR ?? {}) as Record<string, number>
-
-  const months: CurrentYearMonthlyPoint[] = []
-  for (let month = 1; month <= 12; month++) {
-    if (month > currentMonth) {
-      months.push({ month, mm: null, validDays: 0, isPartial: false })
-      continue
-    }
-    const prefix = `${year}${String(month).padStart(2, "0")}`
-    const validValues = Object.entries(byDate)
-      .filter(([key, value]) => key.startsWith(prefix) && typeof value === "number" && value !== FILL_VALUE)
-      .map(([, value]) => value)
-    months.push({
-      month,
-      mm: validValues.length > 0 ? Math.round(validValues.reduce((sum, v) => sum + v, 0) * 10) / 10 : null,
-      validDays: validValues.length,
-      isPartial: month === currentMonth,
-    })
-  }
-  return months
-}
-
-/** Batched version of getCurrentYearMonthlyPrecipitation, for averaging across every vereda in a municipio. */
-export async function getCurrentYearMonthlyPrecipitationBatch(
-  points: Array<{ lon: number; lat: number }>,
-  concurrency = 6,
-): Promise<Array<CurrentYearMonthlyPoint[] | null>> {
-  const results: Array<CurrentYearMonthlyPoint[] | null> = new Array(points.length).fill(null)
-  let cursor = 0
-
-  async function worker() {
-    while (cursor < points.length) {
-      const index = cursor++
-      const p = points[index]
-      try {
-        results[index] = await getCurrentYearMonthlyPrecipitation(p.lon, p.lat)
-      } catch {
-        results[index] = null
-      }
-    }
-  }
-
-  await Promise.all(Array.from({ length: Math.min(concurrency, points.length) }, worker))
-  return results
-}
+// Note: the climatology chart's "current year" comparison line (see
+// /api/precipitacion/climatologia) intentionally does NOT use this client.
+// POWER's near-real-time layer is GPM IMERG-derived and was observed
+// substantially overestimating rainfall in this mountainous terrain. That
+// line is sourced from lib/precipitacion/openmeteo-historical-client.ts
+// instead (ECMWF IFS HRES analysis / ERA5 reanalysis).

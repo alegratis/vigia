@@ -43,9 +43,12 @@ const CHART_CONFIG = {
  * Monthly rainfall chart below the precipitación map: two bars for IDEAM's
  * published normal periods (see lib/precipitacion/ideam-climatology.ts),
  * plus an optional line for this calendar year's actual accumulation
- * (NASA POWER — see power-client.ts's getCurrentYearMonthlyPrecipitation),
- * so a viewer can see whether the current year is running above or below
- * normal for a given month.
+ * (Open-Meteo's historical archive — see
+ * openmeteo-historical-client.ts's getCurrentYearMonthlyPrecipitation —
+ * chosen over NASA POWER's satellite-derived near-real-time layer, which
+ * was observed overestimating rainfall in this terrain), so a viewer can
+ * see whether the current year is running above or below normal for a
+ * given month.
  *
  * Two ways to choose what's plotted:
  * - Click a vereda on the map (bubbles up via onVeredaSelect) — shows that
@@ -152,7 +155,7 @@ export function ClimatologyChart({ vereda }: ClimatologyChartProps) {
           {mode === "vereda" && vereda
             ? "IDEAM — normales mensuales interpoladas en el centroide de la vereda seleccionada."
             : `IDEAM — normales mensuales promediadas entre las ${data?.ubicacion.veredasPromediadas ?? ""} veredas rurales de ${municipio}.`}
-          {showActual && " Línea: acumulado real de este año (NASA POWER)."}
+          {showActual && " Línea: acumulado real de este año (Open-Meteo)."}
         </p>
       </CardHeader>
       <CardContent className="pt-4">
@@ -165,7 +168,7 @@ export function ClimatologyChart({ vereda }: ClimatologyChartProps) {
               <p className="font-medium">No se pudo cargar el histograma</p>
             </div>
             <p className="text-sm text-muted-foreground">
-              El servicio de climatología de IDEAM (visualizador.ideam.gov.co) o NASA POWER podría no estar
+              El servicio de climatología de IDEAM (visualizador.ideam.gov.co) o Open-Meteo podría no estar
               disponible en este momento.
             </p>
             <button
@@ -236,15 +239,16 @@ export function ClimatologyChart({ vereda }: ClimatologyChartProps) {
           cualquier vereda o municipio del área de estudio. La línea de {currentYear}, cuando está activa, es el
           acumulado real de{" "}
           <a
-            href="https://power.larc.nasa.gov"
+            href="https://open-meteo.com"
             target="_blank"
             rel="noopener noreferrer"
             className="underline underline-offset-2 hover:text-foreground"
           >
-            NASA POWER
+            Open-Meteo
           </a>{" "}
-          para cada mes transcurrido; el mes en curso es un acumulado parcial (no cierra hasta fin de mes), y los
-          meses futuros del año no se dibujan.
+          (análisis ECMWF IFS y reanálisis ERA5, que asimilan observaciones reales de estaciones y no solo
+          imágenes satelitales) para cada mes transcurrido; el mes en curso es un acumulado parcial (no cierra
+          hasta fin de mes), y los meses futuros del año no se dibujan.
         </p>
       </CardContent>
     </Card>
