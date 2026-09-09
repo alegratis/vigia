@@ -25,8 +25,8 @@ export function SectionResumen() {
         .
       </p>
 
-      <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center">
+        <div className="flex flex-col gap-1 sm:flex-1">
           <p className="text-sm font-medium text-foreground">Índices de amenaza y créditos</p>
           <p className="max-w-md text-pretty text-sm leading-relaxed text-muted-foreground">
             Los índices de susceptibilidad a deslizamientos e incendios forestales que sostienen
@@ -38,21 +38,21 @@ export function SectionResumen() {
           href="https://redlabot.org"
           target="_blank"
           rel="noopener noreferrer"
-          className="shrink-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="flex shrink-0 items-center justify-center rounded-md sm:w-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
           <Image
             src="/images/redlabot-mark-light.png"
             alt="RED LabOT — Red de Laboratorios de Observación de la Tierra de las Américas"
             width={175}
             height={79}
-            className="block h-10 w-auto dark:hidden"
+            className="block h-16 w-auto dark:hidden"
           />
           <Image
             src="/images/redlabot-mark-dark.png"
             alt="RED LabOT — Red de Laboratorios de Observación de la Tierra de las Américas"
             width={175}
             height={79}
-            className="hidden h-10 w-auto dark:block"
+            className="hidden h-16 w-auto dark:block"
           />
         </a>
       </div>
