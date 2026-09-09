@@ -17,22 +17,28 @@ interface HazardModelPanelProps {
   onClearSelection: () => void
 }
 
-/** The two static-factor inputs and the dynamic trigger, in the order they combine (see lib/deslizamientos/hazard-model.ts). */
+/** The three static-factor inputs and the dynamic trigger, in the order they combine (see lib/deslizamientos/hazard-model.ts). */
 const FACTORS = [
   {
     label: "1. Pendiente del terreno",
-    weight: "70% del factor estático",
+    weight: "50% del factor estático",
     detail:
       "Gradiente de elevación por diferencias finitas (DEM Copernicus GLO-30, vía Open-Meteo), muestreado en el centroide de la vereda y sus 4 vecinos cardinales. Satura en 45°.",
   },
   {
     label: "2. Cercanía a la vía más cercana",
-    weight: "30% del factor estático",
+    weight: "20% del factor estático",
     detail:
       "Distancia Haversine desde el centroide al vértice más cercano de la red vial de OpenStreetMap (Overpass). Deja de influir a partir de 1 km.",
   },
   {
-    label: "3. Anomalía de lluvia reciente",
+    label: "3. Cercanía a una falla geológica",
+    weight: "30% del factor estático",
+    detail:
+      "Distancia real punto-a-segmento (no al vértice más cercano) hasta la traza de falla más próxima del Servicio Geológico Colombiano (SGC), Atlas Geológico de Colombia. Deja de influir a partir de 2 km. También disponible como capa independiente en el mapa.",
+  },
+  {
+    label: "4. Anomalía de lluvia reciente",
     weight: "40% del puntaje final",
     detail:
       "Índice de lluvia de los últimos 15 días con decaimiento (vida media de 4 días) contra el promedio del mismo índice hace 1, 2 y 3 años. Satura al doblar ese promedio histórico.",
@@ -153,6 +159,12 @@ export function HazardModelPanel({ className, selectedVereda, onClearSelection }
                     {formatFactor(selectedProps.roadDistanceKm, " km", 2)}
                   </dd>
                 </div>
+                <div>
+                  <dt className="text-muted-foreground">Falla más cercana</dt>
+                  <dd className="font-medium tabular-nums text-foreground">
+                    {formatFactor(selectedProps.faultDistanceKm, " km", 2)}
+                  </dd>
+                </div>
                 <div className="col-span-2 sm:col-span-4">
                   <dt className="text-muted-foreground">Lluvia reciente vs. histórico (3 años)</dt>
                   <dd className="font-medium tabular-nums text-foreground">
@@ -195,6 +207,7 @@ export function HazardModelPanel({ className, selectedVereda, onClearSelection }
               <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
                 <span>Pendiente prom.: {formatFactor(summary.slopeDegAvg, "°")}</span>
                 <span>Vía prom.: {formatFactor(summary.roadDistanceKmAvg, " km", 2)}</span>
+                <span>Falla prom.: {formatFactor(summary.faultDistanceKmAvg, " km", 2)}</span>
               </div>
               <ul className="flex flex-col gap-0.5 border-t border-border pt-2">
                 {SUSCEPTIBILITY_LEVELS.map((level) => (

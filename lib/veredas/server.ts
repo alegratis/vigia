@@ -28,6 +28,7 @@ export async function getVeredas(): Promise<VeredasFeatureCollection> {
         dominantLevel: agg?.dominantLevel ?? null,
         slopeDeg: agg?.slopeDeg ?? null,
         roadDistanceKm: agg?.roadDistanceKm ?? null,
+        faultDistanceKm: agg?.faultDistanceKm ?? null,
         rainfallRatio: agg?.rainfallRatio ?? null,
         puntosMuestra: agg?.puntosMuestra ?? 0,
         poblacion: agg?.poblacion ?? null,

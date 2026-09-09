@@ -88,15 +88,27 @@ export function VeredasOverlay({ enabled, colorForFeature, onSelect }: VeredasOv
                 {colorForFeature && !props.dominantLevel && (
                   <span style={{ color: "#888" }}>Sin datos del modelo de amenaza</span>
                 )}
-                {colorForFeature && (props.slopeDeg != null || props.roadDistanceKm != null || props.rainfallRatio != null) && (
-                  <span style={{ color: "#888" }}>
-                    {props.slopeDeg != null && `Pendiente: ${props.slopeDeg.toFixed(1)}°`}
-                    {props.slopeDeg != null && (props.roadDistanceKm != null || props.rainfallRatio != null) && " · "}
-                    {props.roadDistanceKm != null && `Vía más cercana: ${props.roadDistanceKm.toFixed(2)} km`}
-                    {props.roadDistanceKm != null && props.rainfallRatio != null && " · "}
-                    {props.rainfallRatio != null && `Lluvia vs. histórico: ${(props.rainfallRatio * 100).toFixed(0)}%`}
-                  </span>
-                )}
+                {colorForFeature &&
+                  (props.slopeDeg != null ||
+                    props.roadDistanceKm != null ||
+                    props.faultDistanceKm != null ||
+                    props.rainfallRatio != null) && (
+                    <span style={{ color: "#888" }}>
+                      {props.slopeDeg != null && `Pendiente: ${props.slopeDeg.toFixed(1)}°`}
+                      {props.slopeDeg != null &&
+                        (props.roadDistanceKm != null ||
+                          props.faultDistanceKm != null ||
+                          props.rainfallRatio != null) &&
+                        " · "}
+                      {props.roadDistanceKm != null && `Vía más cercana: ${props.roadDistanceKm.toFixed(2)} km`}
+                      {props.roadDistanceKm != null &&
+                        (props.faultDistanceKm != null || props.rainfallRatio != null) &&
+                        " · "}
+                      {props.faultDistanceKm != null && `Falla más cercana: ${props.faultDistanceKm.toFixed(2)} km`}
+                      {props.faultDistanceKm != null && props.rainfallRatio != null && " · "}
+                      {props.rainfallRatio != null && `Lluvia vs. histórico: ${(props.rainfallRatio * 100).toFixed(0)}%`}
+                    </span>
+                  )}
                 <span>
                   Población estimada:{" "}
                   {props.poblacion != null ? Math.round(props.poblacion).toLocaleString("es-CO") : "—"}

@@ -34,15 +34,27 @@ const STEPS: Step[] = [
     nota: "Es una aproximación al vértice más cercano, no la distancia exacta punto-a-línea — el error es despreciable porque OSM traza vías con vértices cada pocas decenas de metros, muy por debajo del radio de influencia de 1 km.",
   },
   {
-    title: "3. Factor estático combinado",
-    entrada: "Los dos puntajes anteriores.",
+    title: "3. Cercanía a una falla geológica",
+    entrada:
+      "Trazas de falla del Servicio Geológico Colombiano (SGC), capa \"Fallas\" del Atlas Geológico de Colombia, publicada como un FeatureServer de ArcGIS público y sin autenticación (tipo de falla y nombre por traza).",
     proceso: [
-      "Promedio ponderado: factor_estático = (pendiente_score × 0.7 + vía_score × 0.3) / peso_total.",
-      "Si uno de los dos factores no se pudo calcular para una vereda (falla de red, chunk sin datos), el peso se renormaliza sobre el que sí esté disponible, en vez de descartar la vereda entera.",
+      "Una sola consulta por toda el área de estudio (envolvente de las tres municipalidades) recupera cada traza de falla que la intersecta, con su geometría completa de vértices (esri JSON \"paths\") — no solo sus extremos.",
+      "Para cada centroide se calcula la distancia real punto-a-segmento (no al vértice más cercano) contra cada segmento de cada traza, proyectando localmente a kilómetros alrededor de la latitud del punto: se toma el mínimo sobre todos los segmentos de todas las trazas.",
+      "El puntaje decrece linealmente con la distancia y llega a 0 al superar 2 km: falla_score = max(0, 1 − distancia_km / 2).",
+    ],
+    nota:
+      "A diferencia de la cercanía a vías (donde el vértice más cercano es una aproximación aceptable porque OSM traza vías con vértices muy próximos), las trazas de falla del SGC tienen vértices mucho más espaciados sobre líneas mucho más largas — usar solo el vértice más cercano habría sobrestimado la distancia real a una traza que pasa cerca de un punto entre dos de sus vértices. Por eso este factor sí calcula la distancia real al segmento.",
+  },
+  {
+    title: "4. Factor estático combinado",
+    entrada: "Los tres puntajes anteriores.",
+    proceso: [
+      "Promedio ponderado: factor_estático = (pendiente_score × 0.5 + vía_score × 0.2 + falla_score × 0.3) / peso_total.",
+      "Si alguno de los tres factores no se pudo calcular para una vereda (falla de red, chunk sin datos), el peso se renormaliza sobre los que sí estén disponibles, en vez de descartar la vereda entera.",
     ],
   },
   {
-    title: "4. Disparador de lluvia reciente",
+    title: "5. Disparador de lluvia reciente",
     entrada: "Precipitación diaria histórica de la API de archivo histórico de Open-Meteo (misma fuente que la climatología del mapa de precipitación), consultada una sola vez por centroide en un rango continuo de varios años.",
     proceso: [
       "Índice antecedente actual: suma ponderada por decaimiento de la lluvia diaria de los últimos 15 días, con vida media de 4 días — el día más reciente pesa más que el resto de la ventana (peso = 0.5^(días_atrás / 4)).",
@@ -53,8 +65,8 @@ const STEPS: Step[] = [
     nota: "Compara contra la propia estacionalidad del punto, no contra un umbral absoluto de milímetros — una tormenta moderada en un mes normalmente seco puede pesar más que la misma tormenta en un mes normalmente lluvioso.",
   },
   {
-    title: "5. Puntaje final y nivel de amenaza",
-    entrada: "El factor estático (paso 3) y el disparador de lluvia (paso 4).",
+    title: "6. Puntaje final y nivel de amenaza",
+    entrada: "El factor estático (paso 4) y el disparador de lluvia (paso 5).",
     proceso: [
       "Puntaje final = (factor_estático × 0.6 + disparador_score × 0.4) / peso_total, con la misma renormalización de pesos si alguno de los dos factores falló.",
       "El puntaje 0–1 resultante se traduce al esquema de 5 niveles ya usado en toda la plataforma: Muy bajo (< 0.2), Bajo (< 0.4), Medio (< 0.6), Alto (< 0.8), Muy alto (≥ 0.8).",
@@ -67,6 +79,7 @@ const STEPS: Step[] = [
 const CACHES = [
   { fuente: "Elevación / pendiente", ttl: "30 días", motivo: "el terreno no cambia" },
   { fuente: "Red vial (Overpass)", ttl: "6 horas", motivo: "mismo caché que el resto de capas de OpenStreetMap" },
+  { fuente: "Fallas geológicas (SGC)", ttl: "30 días", motivo: "la cartografía geológica no cambia" },
   { fuente: "Lluvia / disparador", ttl: "1 hora", motivo: "los días más recientes se revisan con nuevas observaciones" },
 ]
 
@@ -146,17 +159,19 @@ export function SectionMetodologia() {
             <span className="mt-2 size-1 shrink-0 rounded-full bg-muted-foreground" aria-hidden="true" />
             <span className="text-pretty">
               No es una calibración validada contra deslizamientos ocurridos en la zona — los pesos y umbrales
-              (0.7/0.3, 0.6/0.4, 45°, 1 km, razón de saturación 2) son elegidos por criterio propio siguiendo
-              la estructura de LHASA v1, no ajustados con datos locales.
+              (0.5/0.2/0.3, 0.6/0.4, 45°, 1 km, 2 km, razón de saturación 2) son elegidos por criterio propio
+              siguiendo la estructura de LHASA v1, no ajustados con datos locales.
             </span>
           </li>
           <li className="flex gap-2">
             <span className="mt-2 size-1 shrink-0 rounded-full bg-muted-foreground" aria-hidden="true" />
             <span className="text-pretty">
-              LHASA v1 usa cinco predictores estáticos; este modelo solo reproduce dos (pendiente y vías).
-              Cobertura de suelo (ESA WorldCover) y geología/fallas se evaluaron pero se descartaron: solo
-              existen como archivos raster satelitales (COG/GeoTIFF) sin una API de consulta por punto viable
-              desde una función serverless.
+              LHASA v1 usa cinco predictores estáticos; este modelo reproduce tres (pendiente, vías y ahora
+              fallas geológicas). Cobertura de suelo (ESA WorldCover) — el único predictor de LHASA que sigue
+              faltando — se evaluó pero se descartó: solo existe como archivo raster satelital (COG/GeoTIFF)
+              sin una API de consulta por punto viable desde una función serverless. Geología/fallas se había
+              descartado por el mismo motivo hasta encontrar la capa del SGC, que resultó ser la excepción: un
+              vector pequeño y directamente consultable, no un raster.
             </span>
           </li>
           <li className="flex gap-2">

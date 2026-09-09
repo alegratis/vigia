@@ -18,11 +18,15 @@ import "server-only"
  *
  * - Static factor: slope (lib/deslizamientos/elevation.ts, from Copernicus
  *   DEM via Open-Meteo) + distance to nearest road (road-proximity.ts, from
- *   OSM Overpass). ESA WorldCover (land cover) and geology/fault layers —
- *   LHASA's other two static predictors — were considered but dropped:
- *   they're only published as raw satellite raster files (COG/GeoTIFF) with
- *   no free point-query API, so fetching them per-point from a route
- *   handler isn't practical.
+ *   OSM Overpass) + distance to the nearest mapped geological fault
+ *   (faults.ts, from the Colombian Geological Survey — SGC — Atlas
+ *   Geológico's fault-trace layer). ESA WorldCover (land cover) — LHASA's
+ *   remaining static predictor — was considered but dropped: it's only
+ *   published as a raw satellite raster file (COG/GeoTIFF) with no free
+ *   point-query API, so fetching it per-point from a route handler isn't
+ *   practical. Geology/faults *was* dropped for the same reason until the
+ *   SGC's fault layer turned out to be the exception — a small, directly
+ *   queryable vector layer, not a raster.
  * - Dynamic factor: decayed antecedent rainfall vs. its own 3-year
  *   same-season baseline (rainfall-trigger.ts, from Open-Meteo's archive
  *   API) — LHASA's percentile-exceedance trigger, simplified to a ratio
@@ -35,12 +39,14 @@ import "server-only"
 
 import { getSlopeForCentroids } from "./elevation"
 import { getRoadVertices, nearestRoadDistanceKm } from "./road-proximity"
+import { getFaultTraces, nearestFaultDistanceKm } from "./faults"
 import { computeRainfallTriggerBatch } from "./rainfall-trigger"
 import { SUSCEPTIBILITY_LEVELS, type SusceptibilityLevel } from "./levels"
 
-/** How much slope vs. road proximity contributes to the static factor. */
-const SLOPE_WEIGHT = 0.7
-const ROAD_WEIGHT = 0.3
+/** How much slope vs. road proximity vs. fault proximity contributes to the static factor. */
+const SLOPE_WEIGHT = 0.5
+const ROAD_WEIGHT = 0.2
+const FAULT_WEIGHT = 0.3
 /** How much the static factor vs. the rainfall trigger contributes to the final score. */
 const STATIC_WEIGHT = 0.6
 const TRIGGER_WEIGHT = 0.4
@@ -49,6 +55,8 @@ const TRIGGER_WEIGHT = 0.4
 const MAX_SLOPE_DEG = 45
 /** Roads farther than this (km) stop contributing to the road-proximity factor at all. */
 const ROAD_INFLUENCE_KM = 1
+/** Faults farther than this (km) stop contributing to the fault-proximity factor at all. */
+const FAULT_INFLUENCE_KM = 2
 
 /** Score cutoffs mapping the final 0–1 composite onto the app's shared 5-level scheme. */
 function levelFromScore(score: number): SusceptibilityLevel {
@@ -71,6 +79,8 @@ export interface VeredaHazardResult {
   score: number | null
   slopeDeg: number | null
   roadDistanceKm: number | null
+  /** Distance (km) from this centroid to the nearest mapped geological fault (SGC). */
+  faultDistanceKm: number | null
   /** Current antecedent-rainfall index over its 3-year same-season baseline; `null` if no baseline could be formed. */
   rainfallRatio: number | null
 }
@@ -94,25 +104,32 @@ export async function computeVeredaHazard(
   const result = new Map<string, VeredaHazardResult>()
   if (centroids.length === 0) return result
 
-  const [slopes, roadVertices, rainfallTriggers] = await Promise.all([
+  const [slopes, roadVertices, faultTraces, rainfallTriggers] = await Promise.all([
     getSlopeForCentroids(centroids).catch(() => null),
     getRoadVertices().catch(() => null),
+    getFaultTraces().catch(() => null),
     computeRainfallTriggerBatch(centroids, 12).catch(() => null),
   ])
 
   centroids.forEach((c, i) => {
     const slopeDeg = slopes?.[i] ?? null
     const roadDistanceKm = roadVertices ? nearestRoadDistanceKm(c.lat, c.lon, roadVertices) : null
+    const faultDistanceKm = faultTraces ? nearestFaultDistanceKm(c.lat, c.lon, faultTraces) : null
     const trigger = rainfallTriggers?.[i] ?? null
 
     const slopeScore = slopeDeg != null ? Math.min(1, slopeDeg / MAX_SLOPE_DEG) : null
     const roadScore = roadDistanceKm != null ? Math.max(0, 1 - roadDistanceKm / ROAD_INFLUENCE_KM) : null
+    const faultScore = faultDistanceKm != null ? Math.max(0, 1 - faultDistanceKm / FAULT_INFLUENCE_KM) : null
 
-    const staticWeight = (slopeScore != null ? SLOPE_WEIGHT : 0) + (roadScore != null ? ROAD_WEIGHT : 0)
+    const staticWeight =
+      (slopeScore != null ? SLOPE_WEIGHT : 0) +
+      (roadScore != null ? ROAD_WEIGHT : 0) +
+      (faultScore != null ? FAULT_WEIGHT : 0)
     const staticScore =
       staticWeight > 0
         ? ((slopeScore ?? 0) * (slopeScore != null ? SLOPE_WEIGHT : 0) +
-            (roadScore ?? 0) * (roadScore != null ? ROAD_WEIGHT : 0)) /
+            (roadScore ?? 0) * (roadScore != null ? ROAD_WEIGHT : 0) +
+            (faultScore ?? 0) * (faultScore != null ? FAULT_WEIGHT : 0)) /
           staticWeight
         : null
 
@@ -131,6 +148,7 @@ export async function computeVeredaHazard(
       score: finalScore,
       slopeDeg,
       roadDistanceKm,
+      faultDistanceKm,
       rainfallRatio: trigger?.ratio ?? null,
     })
   })
