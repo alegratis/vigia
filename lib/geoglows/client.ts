@@ -74,10 +74,36 @@ export class GeoglowsError extends Error {
   }
 }
 
+// GEOGLOWS rate-limits aggressively. Both /api/overview (all 6 stations)
+// and the per-municipio summary's /api/reaches/<id> calls can land on the
+// server within the same page load and ask for the *same* reach's forecast
+// or retrospective at nearly the same instant — Next's fetch data cache
+// only dedupes once the first call has actually completed, so simultaneous
+// callers would otherwise still fire one upstream request each and trip
+// the limit. This in-flight map coalesces concurrent calls to the same
+// path into a single upstream fetch; it's cleared as soon as that fetch
+// settles, so it never becomes a second, stale cache layer of its own.
+const inFlight = new Map<string, Promise<unknown>>()
+
 async function fetchJson<T>(
   path: string,
   revalidate: number,
   timeoutMs = 60_000,
+): Promise<T> {
+  const existing = inFlight.get(path)
+  if (existing) return existing as Promise<T>
+
+  const promise = fetchJsonUncoalesced<T>(path, revalidate, timeoutMs).finally(() => {
+    inFlight.delete(path)
+  })
+  inFlight.set(path, promise)
+  return promise
+}
+
+async function fetchJsonUncoalesced<T>(
+  path: string,
+  revalidate: number,
+  timeoutMs: number,
 ): Promise<T> {
   const url = `${API_BASE}/${path}`
   const controller = new AbortController()
