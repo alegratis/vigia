@@ -49,19 +49,14 @@ function historicoKey(anio: number) {
 }
 
 /**
- * Color for a past year's line: the single `--precipitacion-historico`
- * violet at a rank-based opacity (most recent year most opaque, via
- * color-mix) so the three comparison lines read as one family without
- * introducing three separate color tokens.
+ * Color for a past year's line: three genuinely distinct hues
+ * (`--precipitacion-historico-1/2/3` — teal-blue, violet, rose) rather
+ * than one hue faded to different opacities, so each toggled year reads
+ * as its own line at a glance instead of requiring the legend to tell
+ * "80% violet" apart from "50% violet".
  */
 function historicoColor(rankFromMostRecent: number) {
-  const opacity = [100, 65, 40][rankFromMostRecent] ?? 40
-  return `color-mix(in oklch, var(--precipitacion-historico) ${opacity}%, transparent)`
-}
-
-/** Dash pattern for a past year's line, paired with historicoColor's opacity ladder as a colorblind-safe secondary cue. */
-function historicoDash(rankFromMostRecent: number): string | undefined {
-  return [undefined, "6 4", "2 3"][rankFromMostRecent]
+  return `var(--precipitacion-historico-${(rankFromMostRecent % 3) + 1})`
 }
 
 /**
@@ -336,7 +331,7 @@ export function ClimatologyChart({ vereda }: ClimatologyChartProps) {
                   connectNulls
                 />
               )}
-              {aniosHistoricos.map((anio, rank) => {
+              {aniosHistoricos.map((anio) => {
                 if (!enabledYears.has(anio)) return null
                 const key = historicoKey(anio)
                 return (
@@ -345,7 +340,6 @@ export function ClimatologyChart({ vereda }: ClimatologyChartProps) {
                     dataKey={key}
                     stroke={`var(--color-${key})`}
                     strokeWidth={2}
-                    strokeDasharray={historicoDash(rank)}
                     dot={{ r: 2.5, fill: `var(--color-${key})` }}
                     connectNulls
                   />

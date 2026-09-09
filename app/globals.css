@@ -62,7 +62,9 @@
   --color-precipitacion-moderado: var(--precipitacion-moderado);
   --color-precipitacion-alto: var(--precipitacion-alto);
   --color-precipitacion-muy-alto: var(--precipitacion-muy-alto);
-  --color-precipitacion-historico: var(--precipitacion-historico);
+  --color-precipitacion-historico-1: var(--precipitacion-historico-1);
+  --color-precipitacion-historico-2: var(--precipitacion-historico-2);
+  --color-precipitacion-historico-3: var(--precipitacion-historico-3);
   --color-osm-business: var(--osm-business);
   --color-osm-health: var(--osm-health);
   --color-osm-financial: var(--osm-financial);
@@ -162,15 +164,18 @@
   --precipitacion-muy-alto: oklch(0.4 0.12 220);
 
   /*
-   * Single base color for the climatology histogram's recent-past-years
-   * comparison lines (2025/2024/2023 etc.) — a violet, distinct from the
-   * teal precipitación ramp above, the blue/green IDEAM normal bars, and
-   * the orange "año en curso" line on the same chart. Each year's line
-   * reuses this one hue at a different opacity (most recent year most
-   * opaque) via color-mix, so adding this single token doesn't blow past
-   * the site's color budget.
+   * Climatology histogram recent-past-years comparison lines (2025/2024/
+   * 2023 etc.): three genuinely distinct hues — teal-blue, violet, rose —
+   * rather than one hue faded to different opacities, which read as
+   * "which line is which again?" once more than one was toggled on. Each
+   * hue is also picked clear of every other color already on that same
+   * chart (the chart-1/chart-2 IDEAM normal bars and the chart-4 "año en
+   * curso" line) and, where the gaps allowed, clear of the site's other
+   * hazard ramps too.
    */
-  --precipitacion-historico: oklch(0.55 0.16 300);
+  --precipitacion-historico-1: oklch(0.6 0.13 170);
+  --precipitacion-historico-2: oklch(0.56 0.17 300);
+  --precipitacion-historico-3: oklch(0.6 0.18 348);
 
   /*
    * OSM infrastructure categories (Overpass): five identity colors distinct
@@ -264,7 +269,9 @@
   --precipitacion-moderado: oklch(0.68 0.12 195);
   --precipitacion-alto: oklch(0.56 0.14 205);
   --precipitacion-muy-alto: oklch(0.46 0.14 220);
-  --precipitacion-historico: oklch(0.72 0.16 300);
+  --precipitacion-historico-1: oklch(0.72 0.13 170);
+  --precipitacion-historico-2: oklch(0.7 0.17 300);
+  --precipitacion-historico-3: oklch(0.72 0.18 348);
 
   /* OSM infrastructure categories: kept vivid and legible on dark surfaces. */
   --osm-business: oklch(0.76 0.14 55);
