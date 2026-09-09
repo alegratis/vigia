@@ -3,6 +3,7 @@
 import { useRef } from "react"
 import { GeoglowsLiveMapLoader } from "@/components/maps/geoglows-live-map-loader"
 import { ScrollHintButton } from "@/components/home/scroll-hint-button"
+import { BackToTopButton } from "@/components/home/back-to-top-button"
 import { FloodOverview } from "@/components/flood/flood-overview"
 import { MunicipioFloodSummary } from "@/components/flood/municipio-flood-summary"
 import type { OsmPoint } from "@/lib/osm/api-types"
@@ -32,10 +33,16 @@ export function InundacionesPanelContent({
   activeOsmPoints,
 }: InundacionesPanelContentProps) {
   const captionRef = useRef<HTMLDivElement>(null)
+  const mapRef = useRef<HTMLDivElement>(null)
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-      <div role="region" aria-label="Mapa de inundaciones" className="relative h-[70vh] min-h-[420px] shrink-0 lg:h-full">
+      <div
+        ref={mapRef}
+        role="region"
+        aria-label="Mapa de inundaciones"
+        className="relative h-[70vh] min-h-[420px] shrink-0 lg:h-full"
+      >
         <p className="sr-only">
           Mapa interactivo de inundaciones. El panel de población en el encuadre
           actual, en la barra lateral, resume el mismo contenido en formato de texto.
@@ -70,6 +77,7 @@ export function InundacionesPanelContent({
           sí ofrece un dato de contexto (lluvia acumulada por vereda) para los tres municipios,
           incluido Zarzal.
         </p>
+        <BackToTopButton targetRef={mapRef} />
       </div>
     </div>
   )

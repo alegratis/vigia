@@ -3,6 +3,7 @@
 import { useRef } from "react"
 import { IncendiosLiveMapLoader } from "@/components/maps/incendios-live-map-loader"
 import { ScrollHintButton } from "@/components/home/scroll-hint-button"
+import { BackToTopButton } from "@/components/home/back-to-top-button"
 import { FireOverview } from "@/components/fires/fire-overview"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
@@ -28,10 +29,12 @@ export function IncendiosPanelContent({
   activeOsmPoints,
 }: IncendiosPanelContentProps) {
   const captionRef = useRef<HTMLDivElement>(null)
+  const mapRef = useRef<HTMLDivElement>(null)
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
       <div
+        ref={mapRef}
         role="region"
         aria-label="Mapa de amenaza por incendios forestales"
         className="relative h-[70vh] min-h-[420px] shrink-0 lg:h-full"
@@ -77,6 +80,7 @@ export function IncendiosPanelContent({
           sí ofrece un dato de contexto (lluvia acumulada por vereda) para los tres municipios,
           incluido Zarzal — más lluvia acumulada suele significar menor riesgo de incendio.
         </p>
+        <BackToTopButton targetRef={mapRef} />
       </div>
     </div>
   )

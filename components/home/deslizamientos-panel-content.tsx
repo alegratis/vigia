@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { DeslizamientosLiveMapLoader } from "@/components/maps/deslizamientos-live-map-loader"
 import { LiveThreatPopulation } from "@/components/deslizamientos/live-threat-population"
 import { ScrollHintButton } from "@/components/home/scroll-hint-button"
+import { BackToTopButton } from "@/components/home/back-to-top-button"
 import type { OsmCategoryKey } from "@/lib/osm/categories"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { SusceptibilityLevel } from "@/lib/deslizamientos/levels"
@@ -26,10 +27,12 @@ interface DeslizamientosPanelContentProps {
 export function DeslizamientosPanelContent({ onBoundsChange, activeOsmPoints }: DeslizamientosPanelContentProps) {
   const [selectedLevel, setSelectedLevel] = useState<SusceptibilityLevel | null>(null)
   const statsRef = useRef<HTMLDivElement>(null)
+  const mapRef = useRef<HTMLDivElement>(null)
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
       <div
+        ref={mapRef}
         role="region"
         aria-label="Mapa de susceptibilidad a deslizamiento"
         className="relative h-[70vh] min-h-[420px] shrink-0 lg:h-full"
@@ -63,6 +66,7 @@ export function DeslizamientosPanelContent({ onBoundsChange, activeOsmPoints }: 
           levantamiento de 2019 de la Secretaría de Infraestructura del Valle del Cauca — un
           complemento puntual e histórico al índice modelado, no una capa en vivo.
         </p>
+        <BackToTopButton targetRef={mapRef} />
       </div>
     </div>
   )
