@@ -141,18 +141,29 @@ export function Hydrograph({
               const row = payload[0].payload as ChartRow
               return (
                 <div className="rounded-lg border border-border bg-popover px-3 py-2 text-xs shadow-md">
-                  <p className="mb-1 font-medium text-popover-foreground">
+                  <p className="mb-1.5 font-medium text-popover-foreground">
                     {formatDateTime(row.datetime)}
                   </p>
-                  <p className="text-muted-foreground">
-                    Mediana:{" "}
-                    <span className="font-medium text-popover-foreground">
-                      {formatFlow(row.median)}
-                    </span>
-                  </p>
-                  <p className="text-muted-foreground">
-                    Rango: {formatFlow(row.band[0])} – {formatFlow(row.band[1])}
-                  </p>
+                  <div className="grid gap-1">
+                    <TooltipRow
+                      swatchClassName="rounded-full"
+                      color="var(--color-median)"
+                      label="Mediana"
+                      value={formatFlow(row.median)}
+                    />
+                    <TooltipRow
+                      color="var(--color-band)"
+                      opacity={0.6}
+                      label="Máximo"
+                      value={formatFlow(row.band[1])}
+                    />
+                    <TooltipRow
+                      color="var(--color-band)"
+                      opacity={0.3}
+                      label="Mínimo"
+                      value={formatFlow(row.band[0])}
+                    />
+                  </div>
                 </div>
               )
             }}
@@ -160,5 +171,32 @@ export function Hydrograph({
         )}
       </ComposedChart>
     </ChartContainer>
+  )
+}
+
+/** One labeled value in the hydrograph's hover tooltip, with a color swatch matching the chart series it reads from. */
+function TooltipRow({
+  color,
+  opacity = 1,
+  label,
+  value,
+  swatchClassName = "rounded-[2px]",
+}: {
+  color: string
+  opacity?: number
+  label: string
+  value: string
+  swatchClassName?: string
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <span
+        className={`size-2.5 shrink-0 ${swatchClassName}`}
+        style={{ backgroundColor: color, opacity }}
+        aria-hidden="true"
+      />
+      <span className="text-muted-foreground">{label}:</span>
+      <span className="ml-auto font-medium text-popover-foreground">{value}</span>
+    </div>
   )
 }

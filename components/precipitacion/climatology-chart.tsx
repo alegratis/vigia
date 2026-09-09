@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip } from "@/components/ui/chart"
 import type { ClimatologiaResponse } from "@/lib/precipitacion/api-types"
 
 export interface SelectedVereda {
@@ -192,19 +192,48 @@ export function ClimatologyChart({ vereda }: ClimatologyChartProps) {
                 label={{ value: "mm", angle: -90, position: "insideLeft", style: { textAnchor: "middle" } }}
               />
               <ChartTooltip
-                content={
-                  <ChartTooltipContent
-                    formatter={(value, name, item) => {
-                      if (name === "mmActual") {
-                        const partial = (item?.payload as Record<string, boolean>)?.esMesEnCurso
-                        return `${value} mm${partial ? " (mes en curso, parcial)" : ""}`
-                      }
-                      const rangoKey = name === "mm1991_2020" ? "rango1991_2020" : "rango1981_2010"
-                      const rango = (item?.payload as Record<string, string | null>)?.[rangoKey]
-                      return rango ? `${rango} (aprox. ${value} mm)` : `${value} mm`
-                    }}
-                  />
-                }
+                cursor={{ fill: "var(--muted)", opacity: 0.4 }}
+                content={({ active, payload, label }) => {
+                  if (!active || !payload || payload.length === 0) return null
+                  const row = payload[0].payload as (typeof chartData)[number]
+                  return (
+                    <div className="grid min-w-48 gap-1.5 rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl">
+                      <p className="font-medium text-foreground">{label}</p>
+                      <div className="grid gap-1">
+                        {row.mm1991_2020 != null && (
+                          <TooltipRow
+                            color="var(--color-mm1991_2020)"
+                            label={CHART_CONFIG.mm1991_2020.label}
+                            value={
+                              row.rango1991_2020
+                                ? `${row.rango1991_2020} (aprox. ${row.mm1991_2020} mm)`
+                                : `${row.mm1991_2020} mm`
+                            }
+                          />
+                        )}
+                        {row.mm1981_2010 != null && (
+                          <TooltipRow
+                            color="var(--color-mm1981_2010)"
+                            label={CHART_CONFIG.mm1981_2010.label}
+                            value={
+                              row.rango1981_2010
+                                ? `${row.rango1981_2010} (aprox. ${row.mm1981_2010} mm)`
+                                : `${row.mm1981_2010} mm`
+                            }
+                          />
+                        )}
+                        {showActual && row.mmActual != null && (
+                          <TooltipRow
+                            swatchClassName="rounded-full"
+                            color="var(--color-mmActual)"
+                            label={CHART_CONFIG.mmActual.label}
+                            value={`${row.mmActual} mm${row.esMesEnCurso ? " (mes en curso, parcial)" : ""}`}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  )
+                }}
               />
               <Bar dataKey="mm1991_2020" fill="var(--color-mm1991_2020)" radius={[3, 3, 0, 0]} />
               <Bar dataKey="mm1981_2010" fill="var(--color-mm1981_2010)" radius={[3, 3, 0, 0]} />
@@ -253,5 +282,30 @@ export function ClimatologyChart({ vereda }: ClimatologyChartProps) {
         </p>
       </CardContent>
     </Card>
+  )
+}
+
+/** One labeled value in the histogram's hover tooltip, with a color swatch matching the chart series it reads from. */
+function TooltipRow({
+  color,
+  label,
+  value,
+  swatchClassName = "rounded-[2px]",
+}: {
+  color: string
+  label: string
+  value: string
+  swatchClassName?: string
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <span
+        className={`size-2.5 shrink-0 ${swatchClassName}`}
+        style={{ backgroundColor: color }}
+        aria-hidden="true"
+      />
+      <span className="text-muted-foreground">{label}:</span>
+      <span className="ml-auto font-mono font-medium text-foreground">{value}</span>
+    </div>
   )
 }
