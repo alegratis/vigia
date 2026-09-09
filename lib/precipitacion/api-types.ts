@@ -79,7 +79,7 @@ export interface ClimatologiaMesPunto {
   /** Midpoint estimate (mm) of IDEAM's 1981-2010 normal band for this month, or null if unavailable at this point. */
   mm1981_2010: number | null
   rango1981_2010: string | null
-  /** This calendar year's actual accumulated rainfall (NASA POWER) for this month, or null if the month hasn't started yet or has no valid data. */
+  /** This calendar year's actual accumulated rainfall (Open-Meteo's historical archive) for this month, or null if the month hasn't started yet or has no valid data. */
   mmActual: number | null
   /** True only for the current, still-in-progress month — mmActual is a partial-month sum, not a full month. */
   esMesEnCurso: boolean

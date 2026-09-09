@@ -124,6 +124,17 @@ const GROUPS: SourceGroup[] = [
         actualizacion: "Cada ~10 minutos; la app cachea 3 horas",
       },
       {
+        nombre: "Lluvia mensual del año en curso (archivo histórico)",
+        publicador: "Open-Meteo",
+        descripcion:
+          "Precipitación diaria por análisis ECMWF IFS HRES (últimos ~2 meses, asimila observaciones reales de estaciones y radiosondas) con reanálisis ERA5/ERA5-Land más atrás en el año — no es una lectura satelital directa. Usada para la línea de comparación del año en curso en el histograma de climatología, en lugar de NASA POWER: su capa casi en tiempo real (derivada de GPM IMERG) mostró sobrestimaciones notables de lluvia en este terreno montañoso durante las pruebas.",
+        url: "https://open-meteo.com/en/docs/historical-weather-api",
+        acceso: "API REST (JSON)",
+        licencia: "Uso no comercial gratuito, sin clave",
+        cobertura: "Global (recortada al área de estudio)",
+        actualizacion: "Diaria, con ligero retraso en los días más recientes; la app cachea 1 hora",
+      },
+      {
         nombre: "Índice de riesgo de incendio (FWI)",
         publicador: "Copernicus GWIS / EFFIS (Comisión Europea, JRC)",
         descripcion: "Pronóstico diario del Índice Meteorológico de Incendio (Fire Weather Index), derivado de datos meteorológicos del ECMWF.",
