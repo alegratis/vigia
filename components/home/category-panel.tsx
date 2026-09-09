@@ -58,12 +58,17 @@ export function CategoryPanel({ model, icon: Icon, isActive, onActivate, childre
   return (
     <div
       className={cn(
-        "relative flex min-h-0 flex-col overflow-hidden transition-[flex-grow,flex-basis] duration-500 ease-in-out",
-        isActive ? "grow shrink basis-0" : "grow-0 shrink-0 basis-20 xl:basis-24",
+        // min-h-0 and (for the active state) basis-0/grow are lg-only, mirroring the map row above: they
+        // depend on an ancestor with a definite, clamped height (desktop's h-screen) to have any space to
+        // grow into. On mobile that clamp doesn't exist, so this panel is sized off its own content
+        // instead — basis-auto (the default) plus the active map's explicit h-[70vh] achieves the same
+        // "map fills the first fold" result without a flex-grow chain that has nothing to grow against.
+        "relative flex flex-col overflow-hidden transition-[flex-grow,flex-basis] duration-500 ease-in-out lg:min-h-0",
+        isActive ? "shrink basis-auto lg:grow lg:basis-0" : "grow-0 shrink-0 basis-20 xl:basis-24",
       )}
     >
       {isActive ? (
-        <div className="flex min-h-0 flex-1 flex-col animate-in fade-in slide-in-from-left-2 duration-300">
+        <div className="flex flex-col animate-in fade-in slide-in-from-left-2 duration-300 lg:min-h-0 lg:flex-1">
           <div className="relative flex shrink-0 items-center gap-2 overflow-hidden border-b border-border px-4 py-3 sm:px-6">
             <Image
               src={model.image || "/placeholder.svg"}
@@ -84,7 +89,7 @@ export function CategoryPanel({ model, icon: Icon, isActive, onActivate, childre
               </span>
             )}
           </div>
-          <div className="flex min-h-0 flex-1 flex-col">
+          <div className="flex flex-col lg:min-h-0 lg:flex-1">
             {mapReady ? (
               children
             ) : (

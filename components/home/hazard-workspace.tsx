@@ -166,7 +166,15 @@ export function HazardWorkspace({ initialCategory }: { initialCategory: string }
         />
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+      {/*
+        min-h-0/flex-1 are lg-only: on desktop this row must fill whatever height <main> has left after
+        the fixed viewport clamp in page.tsx, which needs the min-h-0 override so it can shrink below its
+        children's natural size. On mobile there's no such clamp — the page just scrolls — so this row
+        should size itself off its children's own explicit heights (the active category's h-[70vh] map,
+        the collapsed strips' basis-20) instead of being forced into a min-height:0 flex item that has no
+        ambient space to grow into, which is what was collapsing the active map to a sliver.
+      */}
+      <div className="flex flex-col lg:min-h-0 lg:flex-1 lg:flex-row">
         {mapModels.map((model: MapModel) => {
           const isActive = model.slug === activeSlug
           return (
