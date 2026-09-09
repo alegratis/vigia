@@ -143,6 +143,27 @@ export async function getCurrentYearMonthlyPrecipitationBatch(
 }
 
 /**
+ * Averages a batch of per-vereda year-series (see
+ * getYearMonthlyPrecipitationBatch) into one series, skipping any vereda
+ * that failed to resolve — shared by both climatología routes
+ * (/api/precipitacion/climatologia and /api/precipitacion/climatologia-quinquenal)
+ * for their "current year" and "recent individual years" lines.
+ */
+export function averageYearMonthlySeries(batch: Array<CurrentYearMonthlyPoint[] | null>): CurrentYearMonthlyPoint[] {
+  const valid = batch.filter((series): series is CurrentYearMonthlyPoint[] => series != null)
+  return Array.from({ length: 12 }, (_, i) => {
+    const month = i + 1
+    const values = valid.map((s) => s[i]?.mm).filter((v): v is number => v != null)
+    return {
+      month,
+      mm: values.length > 0 ? Math.round((values.reduce((sum, v) => sum + v, 0) / values.length) * 10) / 10 : null,
+      validDays: Math.max(...valid.map((s) => s[i]?.validDays ?? 0), 0),
+      isPartial: valid.some((s) => s[i]?.isPartial),
+    }
+  })
+}
+
+/**
  * The three most recently completed calendar years before the current one
  * (e.g. [2025, 2024, 2023] when today is in 2026), for the climatology
  * chart's recent-history comparison lines. Computed relative to today

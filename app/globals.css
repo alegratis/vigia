@@ -65,6 +65,7 @@
   --color-precipitacion-historico-1: var(--precipitacion-historico-1);
   --color-precipitacion-historico-2: var(--precipitacion-historico-2);
   --color-precipitacion-historico-3: var(--precipitacion-historico-3);
+  --color-precipitacion-quinquenio: var(--precipitacion-quinquenio);
   --color-osm-business: var(--osm-business);
   --color-osm-health: var(--osm-health);
   --color-osm-financial: var(--osm-financial);
@@ -176,6 +177,19 @@
   --precipitacion-historico-1: oklch(0.6 0.13 170);
   --precipitacion-historico-2: oklch(0.56 0.17 300);
   --precipitacion-historico-3: oklch(0.6 0.18 348);
+  /*
+   * Second precipitación histogram's 5-year-bin bars (1999-2003, 2004-2008,
+   * etc. — see openmeteo-quinquenal-climatology.ts): one amber hue, clear of
+   * every other color on either histogram (the teal precipitación ramp, the
+   * chart-1/chart-2 IDEAM normal bars, the chart-4 current-year line, the
+   * historico-1/2/3 line hues), reused at increasing color-mix opacity from
+   * oldest to newest bin. Unlike the fading-opacity year *lines* that were
+   * replaced with the three historico hues above, this is bars in a
+   * genuinely sequential, oldest-to-newest chronological order — the exact
+   * case a sequential single-hue ramp is designed for, not three
+   * interchangeable things sharing a hue.
+   */
+  --precipitacion-quinquenio: oklch(0.62 0.14 70);
 
   /*
    * OSM infrastructure categories (Overpass): five identity colors distinct
@@ -272,6 +286,7 @@
   --precipitacion-historico-1: oklch(0.72 0.13 170);
   --precipitacion-historico-2: oklch(0.7 0.17 300);
   --precipitacion-historico-3: oklch(0.72 0.18 348);
+  --precipitacion-quinquenio: oklch(0.75 0.14 70);
 
   /* OSM infrastructure categories: kept vivid and legible on dark surfaces. */
   --osm-business: oklch(0.76 0.14 55);
