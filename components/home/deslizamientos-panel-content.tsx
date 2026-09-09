@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useRef } from "react"
 import { DeslizamientosLiveMapLoader } from "@/components/maps/deslizamientos-live-map-loader"
 import { LiveThreatPopulation } from "@/components/deslizamientos/live-threat-population"
 import { HazardModelPanel } from "@/components/deslizamientos/hazard-model-panel"
@@ -15,6 +15,9 @@ interface DeslizamientosPanelContentProps {
   onBoundsChange?: (bounds: MapBounds) => void
   /** OSM infrastructure points, filtered to the categories toggled on in the sidebar. */
   activeOsmPoints: OsmPoint[]
+  /** Lifted up so the workspace's shared sidebar card can narrow its population figures to this vereda too. */
+  selectedVereda: VeredaFeature | null
+  onVeredaSelect: (feature: VeredaFeature | null) => void
 }
 
 /**
@@ -27,11 +30,18 @@ interface DeslizamientosPanelContentProps {
  * clicked vereda's own resolved factors (see HazardModelPanel and
  * lib/deslizamientos/hazard-model.ts). The two panels use different level
  * classifications and there's no shared per-point selection between them.
+ * `selectedVereda` is owned by the workspace (HazardWorkspace) rather than
+ * locally, so the shared sidebar demographics card can also narrow down to
+ * whatever vereda is clicked here.
  */
-export function DeslizamientosPanelContent({ onBoundsChange, activeOsmPoints }: DeslizamientosPanelContentProps) {
+export function DeslizamientosPanelContent({
+  onBoundsChange,
+  activeOsmPoints,
+  selectedVereda,
+  onVeredaSelect,
+}: DeslizamientosPanelContentProps) {
   const statsRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<HTMLDivElement>(null)
-  const [selectedVereda, setSelectedVereda] = useState<VeredaFeature | null>(null)
 
   return (
     <div className="flex flex-col overflow-y-auto lg:min-h-0 lg:flex-1">
@@ -50,7 +60,7 @@ export function DeslizamientosPanelContent({ onBoundsChange, activeOsmPoints }: 
         <DeslizamientosLiveMapLoader
           className="relative h-full w-full"
           onBoundsChange={onBoundsChange}
-          onVeredaSelect={setSelectedVereda}
+          onVeredaSelect={onVeredaSelect}
           osmPoints={activeOsmPoints}
         />
         <ScrollHintButton targetRef={statsRef} label="Ver población por amenaza" />
@@ -58,7 +68,7 @@ export function DeslizamientosPanelContent({ onBoundsChange, activeOsmPoints }: 
       <div ref={statsRef} className="flex flex-col gap-4 p-4 sm:p-6">
         <div aria-live="polite" className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <LiveThreatPopulation />
-          <HazardModelPanel selectedVereda={selectedVereda} onClearSelection={() => setSelectedVereda(null)} />
+          <HazardModelPanel selectedVereda={selectedVereda} onClearSelection={() => onVeredaSelect(null)} />
         </div>
         <p className="text-xs text-muted-foreground">
           El panel de población de la izquierda sigue leyendo el índice{" "}

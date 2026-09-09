@@ -15,6 +15,7 @@ import { useOsmInfrastructure } from "@/lib/osm/use-infrastructure"
 import type { OsmCategoryKey } from "@/lib/osm/categories"
 import { mapModels, type MapModel } from "@/lib/maps"
 import type { MapBounds } from "@/lib/map-bounds"
+import type { VeredaFeature } from "@/lib/veredas/api-types"
 import { openInfoPopup } from "@/lib/open-info-popup"
 
 const hazardIcons: Record<string, LucideIcon> = {
@@ -46,10 +47,23 @@ export function HazardWorkspace({ initialCategory }: { initialCategory: string }
   const [activeSlug, setActiveSlug] = useState(initialCategory)
   const [bounds, setBounds] = useState<MapBounds | null>(null)
   const [selectedMunicipio, setSelectedMunicipio] = useState<string | null>(null)
+  // Owned here (rather than inside DeslizamientosPanelContent) so the shared sidebar demographics
+  // card can narrow its population figures down to whatever vereda is clicked on that map.
+  const [selectedVereda, setSelectedVereda] = useState<VeredaFeature | null>(null)
   const { points: osmPoints, isLoading: osmLoading, error: osmError } = useOsmInfrastructure()
   const [activeOsmCategories, setActiveOsmCategories] = useState<Set<OsmCategoryKey>>(new Set())
 
   const activeConfig = CATEGORY_BASIS[activeSlug] ?? CATEGORY_BASIS[mapModels[0].slug]
+
+  const handleVeredaSelect = useCallback((feature: VeredaFeature | null) => {
+    setSelectedVereda(feature)
+    setSelectedMunicipio(feature ? feature.properties.municipio : null)
+  }, [])
+
+  const clearSidebarSelection = useCallback(() => {
+    setSelectedMunicipio(null)
+    setSelectedVereda(null)
+  }, [])
 
   const toggleOsmCategory = useCallback((key: OsmCategoryKey) => {
     setActiveOsmCategories((prev) => {
@@ -70,6 +84,7 @@ export function HazardWorkspace({ initialCategory }: { initialCategory: string }
     setActiveSlug(slug)
     setBounds(null)
     setSelectedMunicipio(null)
+    setSelectedVereda(null)
   }
 
   return (
@@ -144,7 +159,8 @@ export function HazardWorkspace({ initialCategory }: { initialCategory: string }
             basis={activeConfig.basis}
             basisLabel={activeConfig.basisLabel}
             selectedMunicipio={selectedMunicipio}
-            onClearSelection={() => setSelectedMunicipio(null)}
+            selectedVereda={selectedVereda}
+            onClearSelection={clearSidebarSelection}
           />
         </div>
 
@@ -186,7 +202,12 @@ export function HazardWorkspace({ initialCategory }: { initialCategory: string }
               onActivate={() => activate(model.slug)}
             >
               {model.slug === "deslizamientos" && (
-                <DeslizamientosPanelContent onBoundsChange={setBounds} activeOsmPoints={activeOsmPoints} />
+                <DeslizamientosPanelContent
+                  onBoundsChange={setBounds}
+                  activeOsmPoints={activeOsmPoints}
+                  selectedVereda={selectedVereda}
+                  onVeredaSelect={handleVeredaSelect}
+                />
               )}
               {model.slug === "inundaciones" && (
                 <InundacionesPanelContent
