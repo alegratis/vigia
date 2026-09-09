@@ -40,6 +40,31 @@ const CHART_CONFIG = {
 } as const
 
 /**
+ * Data key for a past year's line in chart rows/config, e.g. "hist_2025" —
+ * prefixed since object keys can't be bare numbers and Recharts/ChartConfig
+ * both key off these strings.
+ */
+function historicoKey(anio: number) {
+  return `hist_${anio}`
+}
+
+/**
+ * Color for a past year's line: the single `--precipitacion-historico`
+ * violet at a rank-based opacity (most recent year most opaque, via
+ * color-mix) so the three comparison lines read as one family without
+ * introducing three separate color tokens.
+ */
+function historicoColor(rankFromMostRecent: number) {
+  const opacity = [100, 65, 40][rankFromMostRecent] ?? 40
+  return `color-mix(in oklch, var(--precipitacion-historico) ${opacity}%, transparent)`
+}
+
+/** Dash pattern for a past year's line, paired with historicoColor's opacity ladder as a colorblind-safe secondary cue. */
+function historicoDash(rankFromMostRecent: number): string | undefined {
+  return [undefined, "6 4", "2 3"][rankFromMostRecent]
+}
+
+/**
  * Monthly rainfall chart below the precipitación map: two bars for IDEAM's
  * published normal periods (see lib/precipitacion/ideam-climatology.ts),
  * plus an optional line for this calendar year's actual accumulation
@@ -48,7 +73,11 @@ const CHART_CONFIG = {
  * chosen over NASA POWER's satellite-derived near-real-time layer, which
  * was observed overestimating rainfall in this terrain), so a viewer can
  * see whether the current year is running above or below normal for a
- * given month.
+ * given month. Individually toggleable lines for each of the three most
+ * recently completed calendar years (getRecentPastYears — e.g. 2025, 2024,
+ * 2023) are also available, off by default, for comparing specific recent
+ * years against each other or against the current year rather than only
+ * against the multi-decade IDEAM normal.
  *
  * Two ways to choose what's plotted:
  * - Click a vereda on the map (bubbles up via onVeredaSelect) — shows that
@@ -65,9 +94,21 @@ const CHART_CONFIG = {
 export function ClimatologyChart({ vereda }: ClimatologyChartProps) {
   const [municipio, setMunicipio] = useState<Municipio>("Sevilla")
   const [showActual, setShowActual] = useState(true)
+  // Off by default — three extra lines on top of the two normal bars and the current-year line would
+  // clutter the chart before anyone's asked for a specific year to compare against.
+  const [enabledYears, setEnabledYears] = useState<Set<number>>(new Set())
   // Vereda selection takes over the chart the moment one is clicked; remember whether that's currently
   // in effect so a later municipio-tab click can explicitly hand control back.
   const [mode, setMode] = useState<"vereda" | "municipio">("municipio")
+
+  function toggleYear(anio: number, checked: boolean) {
+    setEnabledYears((prev) => {
+      const next = new Set(prev)
+      if (checked) next.add(anio)
+      else next.delete(anio)
+      return next
+    })
+  }
 
   useEffect(() => {
     if (vereda) setMode("vereda")
@@ -82,21 +123,37 @@ export function ClimatologyChart({ vereda }: ClimatologyChartProps) {
     revalidateOnFocus: false,
   })
 
+  const aniosHistoricos = data?.aniosHistoricos ?? []
+
   const chartData = useMemo(
     () =>
-      (data?.meses ?? []).map((m) => ({
-        monthLabel: m.monthLabel,
-        mm1991_2020: m.mm1991_2020,
-        rango1991_2020: m.rango1991_2020,
-        mm1981_2010: m.mm1981_2010,
-        rango1981_2010: m.rango1981_2010,
-        mmActual: m.mmActual,
-        esMesEnCurso: m.esMesEnCurso,
-      })),
+      (data?.meses ?? []).map((m) => {
+        const historicoValues = Object.fromEntries(m.historico.map((h) => [historicoKey(h.anio), h.mm]))
+        return {
+          monthLabel: m.monthLabel,
+          mm1991_2020: m.mm1991_2020,
+          rango1991_2020: m.rango1991_2020,
+          mm1981_2010: m.mm1981_2010,
+          rango1981_2010: m.rango1981_2010,
+          mmActual: m.mmActual,
+          esMesEnCurso: m.esMesEnCurso,
+          ...historicoValues,
+        }
+      }),
     [data],
   )
   const hasAnyData = chartData.some((m) => m.mm1991_2020 != null || m.mm1981_2010 != null)
   const currentYear = new Date().getFullYear()
+
+  const chartConfig = useMemo(() => {
+    const historicoConfig = Object.fromEntries(
+      aniosHistoricos.map((anio, rank) => [
+        historicoKey(anio),
+        { label: String(anio), color: historicoColor(rank) },
+      ]),
+    )
+    return { ...CHART_CONFIG, ...historicoConfig }
+  }, [aniosHistoricos])
 
   return (
     <Card>
@@ -144,18 +201,35 @@ export function ClimatologyChart({ vereda }: ClimatologyChartProps) {
               ))}
             </ToggleGroup>
           </fieldset>
-          <div className="flex items-center gap-2">
-            <Switch id="show-actual-year" checked={showActual} onCheckedChange={setShowActual} />
-            <Label htmlFor="show-actual-year" className="text-sm font-medium text-foreground">
-              Mostrar {currentYear} (año en curso)
-            </Label>
-          </div>
+          <fieldset className="flex flex-wrap items-center gap-3">
+            <legend className="sr-only">Años a mostrar</legend>
+            <div className="flex items-center gap-2">
+              <Switch id="show-actual-year" checked={showActual} onCheckedChange={setShowActual} />
+              <Label htmlFor="show-actual-year" className="text-sm font-medium text-foreground">
+                {currentYear} (año en curso)
+              </Label>
+            </div>
+            {aniosHistoricos.map((anio) => (
+              <div key={anio} className="flex items-center gap-2">
+                <Switch
+                  id={`show-year-${anio}`}
+                  checked={enabledYears.has(anio)}
+                  onCheckedChange={(checked) => toggleYear(anio, checked)}
+                />
+                <Label htmlFor={`show-year-${anio}`} className="text-sm font-medium text-foreground">
+                  {anio}
+                </Label>
+              </div>
+            ))}
+          </fieldset>
         </div>
         <p className="text-xs text-muted-foreground">
           {mode === "vereda" && vereda
             ? "IDEAM — normales mensuales interpoladas en el centroide de la vereda seleccionada."
             : `IDEAM — normales mensuales promediadas entre las ${data?.ubicacion.veredasPromediadas ?? ""} veredas rurales de ${municipio}.`}
           {showActual && " Línea: acumulado real de este año (Open-Meteo)."}
+          {enabledYears.size > 0 &&
+            ` Comparando con ${[...enabledYears].sort((a, b) => b - a).join(", ")} (acumulado completo del año, Open-Meteo).`}
         </p>
       </CardHeader>
       <CardContent className="pt-4">
@@ -181,7 +255,7 @@ export function ClimatologyChart({ vereda }: ClimatologyChartProps) {
             </button>
           </div>
         ) : hasAnyData ? (
-          <ChartContainer config={CHART_CONFIG} className="h-[320px] w-full">
+          <ChartContainer config={chartConfig} className="h-[320px] w-full">
             <ComposedChart data={chartData} margin={{ top: 24, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid vertical={false} strokeDasharray="3 3" />
               <XAxis dataKey="monthLabel" tickLine={false} axisLine={false} />
@@ -230,6 +304,22 @@ export function ClimatologyChart({ vereda }: ClimatologyChartProps) {
                             value={`${row.mmActual} mm${row.esMesEnCurso ? " (mes en curso, parcial)" : ""}`}
                           />
                         )}
+                        {aniosHistoricos
+                          .filter((anio) => enabledYears.has(anio))
+                          .map((anio) => {
+                            const key = historicoKey(anio)
+                            const mm = (row as unknown as Record<string, number | null>)[key]
+                            if (mm == null) return null
+                            return (
+                              <TooltipRow
+                                key={anio}
+                                swatchClassName="rounded-full"
+                                color={`var(--color-${key})`}
+                                label={String(anio)}
+                                value={`${mm} mm`}
+                              />
+                            )
+                          })}
                       </div>
                     </div>
                   )
@@ -246,6 +336,21 @@ export function ClimatologyChart({ vereda }: ClimatologyChartProps) {
                   connectNulls
                 />
               )}
+              {aniosHistoricos.map((anio, rank) => {
+                if (!enabledYears.has(anio)) return null
+                const key = historicoKey(anio)
+                return (
+                  <Line
+                    key={anio}
+                    dataKey={key}
+                    stroke={`var(--color-${key})`}
+                    strokeWidth={2}
+                    strokeDasharray={historicoDash(rank)}
+                    dot={{ r: 2.5, fill: `var(--color-${key})` }}
+                    connectNulls
+                  />
+                )
+              })}
               <ChartLegend content={<ChartLegendContent />} />
             </ComposedChart>
           </ChartContainer>
@@ -278,7 +383,8 @@ export function ClimatologyChart({ vereda }: ClimatologyChartProps) {
           </a>{" "}
           (análisis ECMWF IFS y reanálisis ERA5, que asimilan observaciones reales de estaciones y no solo
           imágenes satelitales) para cada mes transcurrido; el mes en curso es un acumulado parcial (no cierra
-          hasta fin de mes), y los meses futuros del año no se dibujan.
+          hasta fin de mes), y los meses futuros del año no se dibujan. Las líneas de años anteriores, cuando
+          están activas, son el acumulado completo de esa misma fuente para cada mes de ese año.
         </p>
       </CardContent>
     </Card>

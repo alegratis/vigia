@@ -83,6 +83,14 @@ export interface ClimatologiaMesPunto {
   mmActual: number | null
   /** True only for the current, still-in-progress month — mmActual is a partial-month sum, not a full month. */
   esMesEnCurso: boolean
+  /**
+   * This month's full-month accumulated rainfall (Open-Meteo) for each of
+   * the recent past years listed in `ClimatologiaResponse.aniosHistoricos`,
+   * ordered the same way (most recent year first) — e.g. [2025, 2024, 2023]
+   * when the current year is 2026. Unlike `mmActual`, these are always
+   * complete calendar years, so every entry is a full-month total.
+   */
+  historico: Array<{ anio: number; mm: number | null }>
 }
 
 export interface ClimatologiaResponse {
@@ -99,6 +107,8 @@ export interface ClimatologiaResponse {
   generatedAt: string
   /** 1-12, this calendar year's current month — the last month with any (possibly partial) actual data. */
   mesEnCurso: number
+  /** The recent past years plotted in `meses[].historico`, most recent first — e.g. [2025, 2024, 2023]. */
+  aniosHistoricos: number[]
   meses: ClimatologiaMesPunto[]
 }
 
