@@ -29,6 +29,7 @@ import { normalizeMunicipioName } from "@/lib/demografia/categories"
 import { getOsmCategory } from "@/lib/osm/categories"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
 import { OsmLegend } from "@/components/maps/osm-legend"
+import { VeredasOverlay } from "@/components/maps/veredas-overlay"
 import type { PrecipitacionAmenazaResponse, PrecipitacionFuente, PrecipitacionMode } from "@/lib/precipitacion/api-types"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
@@ -136,6 +137,7 @@ function PrecipitacionLiveMapImpl({
 
   const [resolvedColors, setResolvedColors] = useState<Record<string, string> | null>(null)
   const [showImerg, setShowImerg] = useState(true)
+  const [showVeredas, setShowVeredas] = useState(false)
 
   const windowOptions = mode === "pronostico" ? FORECAST_WINDOW_OPTIONS : ACCUMULATION_WINDOW_OPTIONS
 
@@ -246,6 +248,7 @@ function PrecipitacionLiveMapImpl({
             onEachFeature={onEachFeature}
           />
         )}
+        <VeredasOverlay enabled={showVeredas} />
         {osmColors &&
           osmPoints?.map((p) => (
             <CircleMarker
@@ -360,6 +363,22 @@ function PrecipitacionLiveMapImpl({
             <ExternalLink className="size-3" aria-hidden="true" />
           </a>
         )}
+        <div className="border-t border-border pt-1.5">
+          <label className="flex items-center gap-1.5 font-medium text-foreground">
+            <input
+              type="checkbox"
+              checked={showVeredas}
+              onChange={(e) => setShowVeredas(e.target.checked)}
+              className="size-3.5 accent-primary"
+            />
+            Límites veredales
+          </label>
+          {showVeredas && (
+            <p className="pl-5 pt-1 text-[11px] leading-snug text-muted-foreground">
+              Muestra el resumen de población e infraestructura de cada vereda.
+            </p>
+          )}
+        </div>
       </div>
 
       {!data && !error && (
