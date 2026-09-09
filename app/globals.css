@@ -190,12 +190,17 @@
    * already introduced to avoid for this chart's year *lines*. Each hue is
    * also picked clear of this chart's other two series: the chart-4
    * current-year line and the historico-1/historico-2 recent-year lines.
+   * Kept deliberately darker/less saturated than those two line series
+   * (lower lightness here than historico-1/2's ~0.56-0.6 and chart-4's
+   * 0.66) so the lines read as a distinct, brighter foreground layer
+   * sitting on top of the bars instead of competing with them in
+   * brightness.
    */
-  --precipitacion-quinquenio-1: oklch(0.78 0.13 125);
-  --precipitacion-quinquenio-2: oklch(0.68 0.12 195);
-  --precipitacion-quinquenio-3: oklch(0.58 0.15 250);
-  --precipitacion-quinquenio-4: oklch(0.64 0.19 20);
-  --precipitacion-quinquenio-5: oklch(0.62 0.18 340);
+  --precipitacion-quinquenio-1: oklch(0.62 0.14 125);
+  --precipitacion-quinquenio-2: oklch(0.54 0.13 195);
+  --precipitacion-quinquenio-3: oklch(0.48 0.16 250);
+  --precipitacion-quinquenio-4: oklch(0.52 0.19 20);
+  --precipitacion-quinquenio-5: oklch(0.5 0.18 340);
 
   /*
    * OSM infrastructure categories (Overpass): five identity colors distinct
@@ -292,11 +297,11 @@
   --precipitacion-historico-1: oklch(0.72 0.13 170);
   --precipitacion-historico-2: oklch(0.7 0.17 300);
   --precipitacion-historico-3: oklch(0.72 0.18 348);
-  --precipitacion-quinquenio-1: oklch(0.82 0.12 125);
-  --precipitacion-quinquenio-2: oklch(0.76 0.12 195);
-  --precipitacion-quinquenio-3: oklch(0.68 0.15 250);
-  --precipitacion-quinquenio-4: oklch(0.72 0.18 20);
-  --precipitacion-quinquenio-5: oklch(0.72 0.17 340);
+  --precipitacion-quinquenio-1: oklch(0.66 0.13 125);
+  --precipitacion-quinquenio-2: oklch(0.6 0.13 195);
+  --precipitacion-quinquenio-3: oklch(0.54 0.16 250);
+  --precipitacion-quinquenio-4: oklch(0.58 0.19 20);
+  --precipitacion-quinquenio-5: oklch(0.58 0.18 340);
 
   /* OSM infrastructure categories: kept vivid and legible on dark surfaces. */
   --osm-business: oklch(0.76 0.14 55);
