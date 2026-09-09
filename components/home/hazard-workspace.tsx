@@ -213,6 +213,7 @@ export function HazardWorkspace({ initialCategory }: { initialCategory: string }
                 <InundacionesPanelContent
                   onBoundsChange={setBounds}
                   onZoneSelect={setSelectedMunicipio}
+                  onVeredaSelect={handleVeredaSelect}
                   activeOsmPoints={activeOsmPoints}
                 />
               )}
@@ -220,6 +221,7 @@ export function HazardWorkspace({ initialCategory }: { initialCategory: string }
                 <IncendiosPanelContent
                   onBoundsChange={setBounds}
                   onZoneSelect={setSelectedMunicipio}
+                  onVeredaSelect={handleVeredaSelect}
                   activeOsmPoints={activeOsmPoints}
                 />
               )}
@@ -227,6 +229,7 @@ export function HazardWorkspace({ initialCategory }: { initialCategory: string }
                 <PrecipitacionPanelContent
                   onBoundsChange={setBounds}
                   onZoneSelect={setSelectedMunicipio}
+                  onVeredaFeatureSelect={handleVeredaSelect}
                   activeOsmPoints={activeOsmPoints}
                 />
               )}

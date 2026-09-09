@@ -1,6 +1,7 @@
 import "server-only"
 
 import { arcgisToGeoJSON } from "@terraformer/arcgis"
+import { normalizeVeredaNombre } from "./name-corrections"
 
 /**
  * Fetches vereda (sub-municipal) administrative boundaries for the study
@@ -46,20 +47,6 @@ function toTitleCase(value: string): string {
     .split(" ")
     .map((word) => (word ? word.charAt(0).toUpperCase() + word.slice(1) : word))
     .join(" ")
-}
-
-/**
- * Known misspellings in Esri Colombia's "Veredas de Colombia" source data
- * that we correct after title-casing rather than upstream, since it's a
- * third-party ArcGIS layer we don't control. Keyed by the title-cased
- * NOMBRE_VER value.
- */
-const VEREDA_NOMBRE_CORRECTIONS: Record<string, string> = {
-  Comingales: "Cominales",
-}
-
-function correctNombreVereda(nombre: string): string {
-  return VEREDA_NOMBRE_CORRECTIONS[nombre] ?? nombre
 }
 
 /** Flattens a decoded GeoJSON Polygon/MultiPolygon into this module's flat MultiPolygon ring-set shape. */
@@ -114,7 +101,7 @@ async function fetchVeredasRurales(): Promise<VeredaBoundary[]> {
       }
       return {
         codigoVereda: f.attributes.CODIGO_VER,
-        nombre: correctNombreVereda(toTitleCase(f.attributes.NOMBRE_VER ?? "")),
+        nombre: normalizeVeredaNombre(f.attributes.NOMBRE_VER ?? ""),
         municipio: toTitleCase(f.attributes.NOMB_MPIO ?? ""),
         polygons: toPolygons(geo.geometry),
       }

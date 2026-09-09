@@ -42,6 +42,7 @@ import type { IncendiosAmenazaResponse } from "@/lib/incendios/api-types"
 import type { FireDetection, FiresResponse } from "@/lib/firms/api-types"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
+import type { VeredaFeature } from "@/lib/veredas/api-types"
 
 const FIRE_DAY_OPTIONS = [1, 2, 3, 5] as const
 
@@ -173,16 +174,21 @@ function S3Legend() {
  * GWIS WMS tile — see lib/incendios/gwis.ts), and vereda boundaries with a
  * population/infrastructure summary (shared with the deslizamientos map,
  * see components/maps/veredas-overlay.tsx). Click a zone for its
- * municipality, vereda and threat level.
+ * municipality, vereda and threat level, or turn on "Límites veredales"
+ * and click a vereda boundary to narrow the shared sidebar's population
+ * card down to it (same mechanism the deslizamientos map uses).
  */
 function IncendiosLiveMapImpl({
   onBoundsChange,
   onZoneSelect,
+  onVeredaSelect,
   osmPoints,
   className,
 }: {
   onBoundsChange?: (bounds: MapBounds) => void
   onZoneSelect?: (municipio: string) => void
+  /** Called with the clicked vereda's feature when "Límites veredales" is on. */
+  onVeredaSelect?: (feature: VeredaFeature) => void
   /** OSM infrastructure points for the categories currently toggled on. */
   osmPoints?: OsmPoint[]
   className?: string
@@ -321,7 +327,7 @@ function IncendiosLiveMapImpl({
             onEachFeature={onEachFeature}
           />
         )}
-        <VeredasOverlay enabled={showVeredas} />
+        <VeredasOverlay enabled={showVeredas} onSelect={onVeredaSelect} />
         {showSentinel3 && (
           <WMSTileLayer
             url={GWIS_WMS_URL}

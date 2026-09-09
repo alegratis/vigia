@@ -30,9 +30,11 @@ import { getOsmCategory } from "@/lib/osm/categories"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
 import { OsmLegend } from "@/components/maps/osm-legend"
 import { VeredasOverlay } from "@/components/maps/veredas-overlay"
+import { useVeredas } from "@/lib/veredas/use-veredas"
 import type { PrecipitacionAmenazaResponse, PrecipitacionFuente, PrecipitacionMode } from "@/lib/precipitacion/api-types"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
+import type { VeredaFeature } from "@/lib/veredas/api-types"
 
 // Fallback center if bounds-fitting is unavailable — the midpoint of AOI_BOUNDS below.
 const AOI_CENTER: [number, number] = [4.24, -76.0]
@@ -110,12 +112,16 @@ function ThreatLegend({ title }: { title: string }) {
  * with an optional GPM IMERG satellite precipitation-rate raster overlay
  * (NASA GIBS, see lib/precipitacion/imerg.ts — the same live layer the
  * inundaciones map offers as rainfall context). Click a vereda for its
- * accumulation/forecast and level.
+ * accumulation/forecast and level; the shared sidebar's population card
+ * narrows down to the same vereda too, resolved by DIVIPOLA code against
+ * the RED LabOT veredas layer (see lib/veredas/boundaries.ts) that this
+ * map's own vereda polygons are already built from.
  */
 function PrecipitacionLiveMapImpl({
   onBoundsChange,
   onZoneSelect,
   onVeredaSelect,
+  onVeredaFeatureSelect,
   osmPoints,
   className,
 }: {
@@ -123,6 +129,8 @@ function PrecipitacionLiveMapImpl({
   onZoneSelect?: (municipio: string) => void
   /** Bubbles a clicked vereda's identity up, so the panel below the map can show its rainfall-normal histogram. */
   onVeredaSelect?: (vereda: { codigoVereda: string; nombre: string; municipio: string }) => void
+  /** Bubbles the clicked vereda's full population/hazard feature up to the shared sidebar card. */
+  onVeredaFeatureSelect?: (feature: VeredaFeature | null) => void
   /** OSM infrastructure points for the categories currently toggled on. */
   osmPoints?: OsmPoint[]
   className?: string
@@ -137,6 +145,10 @@ function PrecipitacionLiveMapImpl({
     { revalidateOnFocus: false },
   )
   const osmColors = useOsmCategoryColors()
+  // Always fetched (not gated behind the "Límites veredales" toggle below) since every
+  // vereda click on this map's own primary layer needs to resolve a population figure
+  // for the shared sidebar card, regardless of whether that boundary overlay is on.
+  const { veredas: veredasPoblacion } = useVeredas(true)
 
   const [resolvedColors, setResolvedColors] = useState<Record<string, string> | null>(null)
   const [showImerg, setShowImerg] = useState(true)
@@ -218,14 +230,27 @@ function PrecipitacionLiveMapImpl({
       })
       layer.on("click", () => {
         if (municipio) onZoneSelect?.(normalizeMunicipioName(municipio))
-        if (codigoVereda && vereda && municipio) onVeredaSelect?.({ codigoVereda, nombre: vereda, municipio })
+        if (codigoVereda && vereda && municipio) {
+          onVeredaSelect?.({ codigoVereda, nombre: vereda, municipio })
+          const feature = veredasPoblacion?.features.find(
+            (f) => f.properties.codigoVereda === codigoVereda,
+          )
+          onVeredaFeatureSelect?.(feature ?? null)
+        }
       })
     },
-    [onZoneSelect, onVeredaSelect, mode, windowDays],
+    [onZoneSelect, onVeredaSelect, onVeredaFeatureSelect, veredasPoblacion, mode, windowDays],
   )
 
-  // Re-key the GeoJSON layer once colors resolve so Leaflet re-applies `style` per feature.
-  const geoJsonKey = useMemo(() => (resolvedColors ? "resolved" : "pending"), [resolvedColors])
+  // Re-key the GeoJSON layer once colors resolve (so Leaflet re-applies `style` per feature) and
+  // again once the population lookup loads: react-leaflet's GeoJSON only calls `onEachFeature`
+  // once, at layer construction, so its closure would otherwise keep referencing `veredasPoblacion`
+  // as it was at mount (near-certainly still null — that fetch takes several seconds) forever,
+  // even though the callback prop itself is refreshed on every render.
+  const geoJsonKey = useMemo(
+    () => `${resolvedColors ? "resolved" : "pending"}-${veredasPoblacion ? "with-poblacion" : "no-poblacion"}`,
+    [resolvedColors, veredasPoblacion],
+  )
 
   return (
     <div className={className ?? "relative h-full min-h-[420px] w-full overflow-hidden rounded-xl border border-border"}>
@@ -253,7 +278,7 @@ function PrecipitacionLiveMapImpl({
             onEachFeature={onEachFeature}
           />
         )}
-        <VeredasOverlay enabled={showVeredas} />
+        <VeredasOverlay enabled={showVeredas} onSelect={onVeredaFeatureSelect} />
         {osmColors &&
           osmPoints?.map((p) => (
             <CircleMarker
