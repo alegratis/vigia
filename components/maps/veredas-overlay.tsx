@@ -27,6 +27,8 @@ interface VeredasOverlayProps {
    * infrastructure summary popup.
    */
   colorForFeature?: (feature: VeredaFeature) => string
+  /** Called with the clicked vereda's feature — lets a host map drive a detail panel off the same click that opens this overlay's own popup. */
+  onSelect?: (feature: VeredaFeature) => void
 }
 
 /**
@@ -37,7 +39,7 @@ interface VeredasOverlayProps {
  * deslizamientos map and reused as a neutral reference layer on the
  * incendios and inundaciones maps.
  */
-export function VeredasOverlay({ enabled, colorForFeature }: VeredasOverlayProps) {
+export function VeredasOverlay({ enabled, colorForFeature, onSelect }: VeredasOverlayProps) {
   const { veredas } = useVeredas(enabled)
   const [outlineColor, setOutlineColor] = useState<string | null>(null)
 
@@ -67,7 +69,10 @@ export function VeredasOverlay({ enabled, colorForFeature }: VeredasOverlayProps
               // Some host maps (e.g. GEOGLOWS') listen for clicks anywhere on the
               // map to run their own lookup; stop that from firing underneath
               // this polygon's own popup, same guard the OSM point layers use.
-              click: (e: LeafletMouseEvent) => L.DomEvent.stopPropagation(e),
+              click: (e: LeafletMouseEvent) => {
+                L.DomEvent.stopPropagation(e)
+                onSelect?.(feature)
+              },
             }}
           >
             <Popup>
