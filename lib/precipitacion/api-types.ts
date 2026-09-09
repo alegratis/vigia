@@ -67,3 +67,26 @@ export interface PrecipitacionAmenazaResponse {
 export interface PrecipitacionAmenazaErrorResponse {
   error: string
 }
+
+/** One month of /api/precipitacion/climatologia — see lib/precipitacion/ideam-climatology.ts. */
+export interface ClimatologiaMesPunto {
+  month: number
+  monthLabel: string
+  /** Midpoint estimate (mm) of IDEAM's 1991-2020 normal band for this month, or null if unavailable at this point. */
+  mm1991_2020: number | null
+  /** The original published range, e.g. "150 - 200 mm". */
+  rango1991_2020: string | null
+  /** Midpoint estimate (mm) of IDEAM's 1981-2010 normal band for this month, or null if unavailable at this point. */
+  mm1981_2010: number | null
+  rango1981_2010: string | null
+}
+
+export interface ClimatologiaResponse {
+  vereda: { codigoVereda: string; nombre: string; municipio: string }
+  generatedAt: string
+  meses: ClimatologiaMesPunto[]
+}
+
+export interface ClimatologiaErrorResponse {
+  error: string
+}

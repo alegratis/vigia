@@ -107,3 +107,19 @@ export async function getPrecipitacionAmenaza({
     veredas: { type: "FeatureCollection", features },
   }
 }
+
+/**
+ * Looks up one vereda's centroid by its `codigoVereda`, for
+ * /api/precipitacion/climatologia — reuses the same boundaries fetch and
+ * centroid math as getPrecipitacionAmenaza above, just for a single vereda
+ * rather than all of them.
+ */
+export async function getVeredaCentroidByCode(
+  codigoVereda: string,
+): Promise<{ lon: number; lat: number; nombre: string; municipio: string } | null> {
+  const boundaries = await getVeredaBoundaries()
+  const boundary = boundaries.find((b) => b.codigoVereda === codigoVereda)
+  if (!boundary) return null
+  const [lon, lat] = centroid(multiPolygon(boundary.polygons)).geometry.coordinates
+  return { lon, lat, nombre: boundary.nombre, municipio: boundary.municipio }
+}
