@@ -46,15 +46,27 @@ const STEPS: Step[] = [
       "A diferencia de la cercanía a vías (donde el vértice más cercano es una aproximación aceptable porque OSM traza vías con vértices muy próximos), las trazas de falla del SGC tienen vértices mucho más espaciados sobre líneas mucho más largas — usar solo el vértice más cercano habría sobrestimado la distancia real a una traza que pasa cerca de un punto entre dos de sus vértices. Por eso este factor sí calcula la distancia real al segmento.",
   },
   {
-    title: "4. Factor estático combinado",
-    entrada: "Los tres puntajes anteriores.",
+    title: "4. Cercanía a un movimiento en masa histórico",
+    entrada:
+      "Inventario nacional de movimientos en masa del SGC (derivado de SIMMA), 55 puntos dentro del área de estudio, cada uno con tipo y subtipo (deslizamiento, caída, flujo, reptación, deformación gravitacional) pero sin fecha de ocurrencia confiable.",
     proceso: [
-      "Promedio ponderado: factor_estático = (pendiente_score × 0.5 + vía_score × 0.2 + falla_score × 0.3) / peso_total.",
-      "Si alguno de los tres factores no se pudo calcular para una vereda (falla de red, chunk sin datos), el peso se renormaliza sobre los que sí estén disponibles, en vez de descartar la vereda entera.",
+      "Una sola consulta por toda el área de estudio recupera cada punto del inventario que cae dentro de la envolvente de las tres municipalidades.",
+      "Para cada centroide se calcula la distancia Haversine al punto más cercano de todo el inventario recuperado — a diferencia de las fallas, cada registro aquí es un evento puntual, no una traza continua, así que no hace falta la distancia punto-a-segmento.",
+      "El puntaje decrece linealmente con la distancia y llega a 0 al superar 2 km: histórico_score = max(0, 1 − distancia_km / 2).",
+    ],
+    nota:
+      "Es evidencia directa de inestabilidad pasada, no un proxy geomorfológico indirecto como los otros tres factores — por eso recibe el mayor peso del factor estático. Pero con solo 55 puntos dispersos y sin fecha en toda la zona de estudio, es un inventario disperso y no exhaustivo, no un catálogo completo de eventos: complementa a los otros factores, no los sustituye.",
+  },
+  {
+    title: "5. Factor estático combinado",
+    entrada: "Los cuatro puntajes anteriores.",
+    proceso: [
+      "Promedio ponderado: factor_estático = (pendiente_score × 0.35 + vía_score × 0.15 + falla_score × 0.2 + histórico_score × 0.3) / peso_total.",
+      "Si alguno de los cuatro factores no se pudo calcular para una vereda (falla de red, chunk sin datos), el peso se renormaliza sobre los que sí estén disponibles, en vez de descartar la vereda entera.",
     ],
   },
   {
-    title: "5. Disparador de lluvia reciente",
+    title: "6. Disparador de lluvia reciente",
     entrada: "Precipitación diaria histórica de la API de archivo histórico de Open-Meteo (misma fuente que la climatología del mapa de precipitación), consultada una sola vez por centroide en un rango continuo de varios años.",
     proceso: [
       "Índice antecedente actual: suma ponderada por decaimiento de la lluvia diaria de los últimos 15 días, con vida media de 4 días — el día más reciente pesa más que el resto de la ventana (peso = 0.5^(días_atrás / 4)).",
@@ -65,8 +77,8 @@ const STEPS: Step[] = [
     nota: "Compara contra la propia estacionalidad del punto, no contra un umbral absoluto de milímetros — una tormenta moderada en un mes normalmente seco puede pesar más que la misma tormenta en un mes normalmente lluvioso.",
   },
   {
-    title: "6. Puntaje final y nivel de amenaza",
-    entrada: "El factor estático (paso 4) y el disparador de lluvia (paso 5).",
+    title: "7. Puntaje final y nivel de amenaza",
+    entrada: "El factor estático (paso 5) y el disparador de lluvia (paso 6).",
     proceso: [
       "Puntaje final = (factor_estático × 0.6 + disparador_score × 0.4) / peso_total, con la misma renormalización de pesos si alguno de los dos factores falló.",
       "El puntaje 0–1 resultante se traduce al esquema de 5 niveles ya usado en toda la plataforma: Muy bajo (< 0.2), Bajo (< 0.4), Medio (< 0.6), Alto (< 0.8), Muy alto (≥ 0.8).",
@@ -80,6 +92,7 @@ const CACHES = [
   { fuente: "Elevación / pendiente", ttl: "30 días", motivo: "el terreno no cambia" },
   { fuente: "Red vial (Overpass)", ttl: "6 horas", motivo: "mismo caché que el resto de capas de OpenStreetMap" },
   { fuente: "Fallas geológicas (SGC)", ttl: "30 días", motivo: "la cartografía geológica no cambia" },
+  { fuente: "Inventario de movimientos en masa (SGC)", ttl: "30 días", motivo: "es un inventario histórico estático" },
   { fuente: "Lluvia / disparador", ttl: "1 hora", motivo: "los días más recientes se revisan con nuevas observaciones" },
 ]
 
@@ -159,19 +172,30 @@ export function SectionMetodologia() {
             <span className="mt-2 size-1 shrink-0 rounded-full bg-muted-foreground" aria-hidden="true" />
             <span className="text-pretty">
               No es una calibración validada contra deslizamientos ocurridos en la zona — los pesos y umbrales
-              (0.5/0.2/0.3, 0.6/0.4, 45°, 1 km, 2 km, razón de saturación 2) son elegidos por criterio propio
-              siguiendo la estructura de LHASA v1, no ajustados con datos locales.
+              (0.35/0.15/0.2/0.3, 0.6/0.4, 45°, 1 km, 2 km, 2 km, razón de saturación 2) son elegidos por
+              criterio propio siguiendo la estructura de LHASA v1, no ajustados con datos locales.
             </span>
           </li>
           <li className="flex gap-2">
             <span className="mt-2 size-1 shrink-0 rounded-full bg-muted-foreground" aria-hidden="true" />
             <span className="text-pretty">
-              LHASA v1 usa cinco predictores estáticos; este modelo reproduce tres (pendiente, vías y ahora
-              fallas geológicas). Cobertura de suelo (ESA WorldCover) — el único predictor de LHASA que sigue
+              LHASA v1 usa cinco predictores estáticos; este modelo reproduce tres de ellos (pendiente, vías y
+              fallas geológicas) y suma un cuarto factor propio (movimientos en masa históricos) que LHASA v1
+              no incluye. Cobertura de suelo (ESA WorldCover) — el único predictor de LHASA que sigue
               faltando — se evaluó pero se descartó: solo existe como archivo raster satelital (COG/GeoTIFF)
-              sin una API de consulta por punto viable desde una función serverless. Geología/fallas se había
-              descartado por el mismo motivo hasta encontrar la capa del SGC, que resultó ser la excepción: un
-              vector pequeño y directamente consultable, no un raster.
+              sin una API de consulta por punto viable desde una función serverless. Geología/fallas y el
+              inventario histórico se habían descartado por el mismo motivo hasta encontrar sus respectivas
+              capas del SGC, que resultaron ser la excepción: vectores pequeños y directamente consultables,
+              no rásteres.
+            </span>
+          </li>
+          <li className="flex gap-2">
+            <span className="mt-2 size-1 shrink-0 rounded-full bg-muted-foreground" aria-hidden="true" />
+            <span className="text-pretty">
+              El inventario de movimientos históricos solo tiene 55 puntos en toda la zona de estudio y sin
+              fecha de ocurrencia confiable — es evidencia real de inestabilidad pasada, pero disperso y no
+              exhaustivo. Que una vereda quede lejos de los 55 puntos conocidos no significa que nunca haya
+              tenido un movimiento en masa, solo que ninguno quedó registrado en este inventario.
             </span>
           </li>
           <li className="flex gap-2">

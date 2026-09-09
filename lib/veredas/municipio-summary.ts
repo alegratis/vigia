@@ -18,6 +18,7 @@ export interface MunicipioHazardSummary {
   slopeDegAvg: number | null
   roadDistanceKmAvg: number | null
   faultDistanceKmAvg: number | null
+  historyDistanceKmAvg: number | null
   rainfallRatioAvg: number | null
   /** Count of veredas at each hazard level, in SUSCEPTIBILITY_LEVELS order. */
   levelCounts: Record<SusceptibilityLevel, number>
@@ -56,6 +57,7 @@ export function summarizeByMunicipio(veredas: VeredasFeatureCollection): Municip
         slopeDegAvg: average(features.map((f) => f.properties.slopeDeg)),
         roadDistanceKmAvg: average(features.map((f) => f.properties.roadDistanceKm)),
         faultDistanceKmAvg: average(features.map((f) => f.properties.faultDistanceKm)),
+        historyDistanceKmAvg: average(features.map((f) => f.properties.historyDistanceKm)),
         rainfallRatioAvg: average(features.map((f) => f.properties.rainfallRatio)),
         levelCounts,
       }

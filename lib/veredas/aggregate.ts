@@ -54,6 +54,8 @@ export interface VeredaAggregate {
   roadDistanceKm: number | null
   /** Distance (km) from this vereda's centroid to the nearest mapped geological fault (SGC) — see hazard-model.ts. */
   faultDistanceKm: number | null
+  /** Distance (km) from this vereda's centroid to the nearest documented historical mass movement (SGC inventory) — see hazard-model.ts. */
+  historyDistanceKm: number | null
   /** Current antecedent-rainfall index over its 3-year same-season baseline — see hazard-model.ts. */
   rainfallRatio: number | null
   puntosMuestra: number
@@ -150,6 +152,7 @@ export async function aggregateVeredas(
         slopeDeg: hazard?.slopeDeg ?? null,
         roadDistanceKm: hazard?.roadDistanceKm ?? null,
         faultDistanceKm: hazard?.faultDistanceKm ?? null,
+        historyDistanceKm: hazard?.historyDistanceKm ?? null,
         rainfallRatio: hazard?.rainfallRatio ?? null,
         puntosMuestra: 0,
         poblacion: null,
@@ -188,6 +191,7 @@ export async function aggregateVeredas(
       slopeDeg: hazard?.slopeDeg ?? null,
       roadDistanceKm: hazard?.roadDistanceKm ?? null,
       faultDistanceKm: hazard?.faultDistanceKm ?? null,
+      historyDistanceKm: hazard?.historyDistanceKm ?? null,
       rainfallRatio: hazard?.rainfallRatio ?? null,
       puntosMuestra: insidePoints.length,
       poblacion,

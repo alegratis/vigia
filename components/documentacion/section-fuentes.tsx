@@ -27,7 +27,7 @@ const GROUPS: SourceGroup[] = [
         nombre: "Modelo propio de amenaza por deslizamiento",
         publicador: "Vigía (cálculo propio, inspirado en NASA LHASA v1)",
         descripcion:
-          "Combina pendiente del terreno (DEM Copernicus GLO-30, vía la API de elevación de Open-Meteo), distancia a la vía más cercana (red vial de OpenStreetMap/Overpass), distancia a la falla geológica más próxima (capa del SGC, ver la ficha siguiente) y una anomalía de lluvia reciente frente a su propia línea base histórica de 3 años (archivo histórico de Open-Meteo), calculado en el centroide de cada vereda. Reemplaza al índice de RED LabOT como fuente del color del mapa de deslizamientos — es un modelo propio de esta app, no un índice oficial publicado, pero documentado y con sus factores visibles en el popup de cada vereda. Ver la sección \"Metodología\" más abajo para el detalle completo, paso a paso, de cómo se calcula.",
+          "Combina pendiente del terreno (DEM Copernicus GLO-30, vía la API de elevación de Open-Meteo), distancia a la vía más cercana (red vial de OpenStreetMap/Overpass), distancia a la falla geológica más próxima (capa del SGC, ver la ficha siguiente), distancia al movimiento en masa histórico más próximo (inventario del SGC, ver la ficha siguiente) y una anomalía de lluvia reciente frente a su propia línea base histórica de 3 años (archivo histórico de Open-Meteo), calculado en el centroide de cada vereda. Reemplaza al índice de RED LabOT como fuente del color del mapa de deslizamientos — es un modelo propio de esta app, no un índice oficial publicado, pero documentado y con sus factores visibles en el popup de cada vereda. Ver la sección \"Metodología\" más abajo para el detalle completo, paso a paso, de cómo se calcula.",
         url: "https://open-meteo.com/en/docs/elevation-api",
         acceso: "Cálculo propio sobre APIs REST abiertas",
         licencia: "N/A — calculado por la app a partir de fuentes abiertas",
@@ -44,6 +44,17 @@ const GROUPS: SourceGroup[] = [
         licencia: "Datos abiertos, sin autenticación",
         cobertura: "Nacional (recortada al área de estudio)",
         actualizacion: "Cartografía geológica estática; la app la relee cada 30 días",
+      },
+      {
+        nombre: "Inventario de movimientos en masa",
+        publicador: "Servicio Geológico Colombiano (SGC)",
+        descripcion:
+          "55 puntos históricos (deslizamiento, caída, flujo, reptación y deformación gravitacional, con tipo y subtipo, pero sin fecha de ocurrencia confiable) dentro del área de estudio, derivados del inventario nacional SIMMA. Usada dos veces: como quinto factor del modelo propio de amenaza (distancia Haversine al punto más próximo, 30% del factor estático — el mayor peso del factor estático, por ser evidencia directa de inestabilidad pasada) y como capa opcional independiente en el mapa (\"Movimientos en masa históricos (SGC)\"), mostrada como puntos con su tipo y subtipo en el popup. Solo 55 puntos en toda la zona de estudio: es un complemento a los otros factores, no un sustituto — nunca fue pensada como un catálogo exhaustivo de eventos.",
+        url: "https://services1.arcgis.com/Og2nrTKe5bptW02d/arcgis/rest/services/Inventario_de_movimientos_en_masa/FeatureServer/0",
+        acceso: "ArcGIS FeatureServer",
+        licencia: "Datos abiertos, sin autenticación",
+        cobertura: "Nacional (recortada al área de estudio)",
+        actualizacion: "Inventario histórico estático; la app la relee cada 30 días",
       },
       {
         nombre: "Amenaza por incendios forestales",

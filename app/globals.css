@@ -80,6 +80,7 @@
   --color-critical-site-3: var(--critical-site-3);
   --color-critical-site-4: var(--critical-site-4);
   --color-fault-line: var(--fault-line);
+  --color-historical-event: var(--historical-event);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -232,6 +233,14 @@
    * violet-magenta dots, without competing with either.
    */
   --fault-line: oklch(0.5 0.08 255);
+
+  /*
+   * SGC historical mass-movement inventory: a warm amber, distinct from
+   * the fault layer's slate-blue, the sitios-críticos violet-magenta
+   * dots, and the susceptibility ramp — reads as "documented past event"
+   * rather than a structural line or a live field-survey point.
+   */
+  --historical-event: oklch(0.68 0.16 60);
 }
 
 .dark {
@@ -327,6 +336,9 @@
 
   /* SGC geological fault traces: kept vivid and legible on dark surfaces. */
   --fault-line: oklch(0.72 0.1 255);
+
+  /* SGC historical mass-movement inventory: kept vivid and legible on dark surfaces. */
+  --historical-event: oklch(0.78 0.15 60);
 }
 
 @layer base {

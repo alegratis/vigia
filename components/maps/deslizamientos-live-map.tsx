@@ -29,6 +29,7 @@ import {
   tipoLabel,
 } from "@/lib/deslizamientos/critical-sites-types"
 import { useFaults } from "@/lib/deslizamientos/use-faults"
+import { useLandslideInventory } from "@/lib/deslizamientos/use-landslide-inventory"
 import { VeredasOverlay } from "@/components/maps/veredas-overlay"
 import { useVeredas } from "@/lib/veredas/use-veredas"
 import type { VeredaFeature } from "@/lib/veredas/api-types"
@@ -110,6 +111,8 @@ interface MapLayersControlProps {
   onCriticalSitesChange: (checked: boolean) => void
   showFaults: boolean
   onFaultsChange: (checked: boolean) => void
+  showHistory: boolean
+  onHistoryChange: (checked: boolean) => void
 }
 
 /**
@@ -119,11 +122,14 @@ interface MapLayersControlProps {
  * informed rainfall — worth cross-checking against, not a duplicate),
  * "Sitios críticos" (field-surveyed road-damage points from the Valle del
  * Cauca infrastructure secretariat — see lib/deslizamientos/critical-sites.ts)
- * and "Fallas geológicas" (SGC fault traces — the same layer already used
- * as the hazard model's fault-proximity factor, see lib/deslizamientos/faults.ts,
- * shown here as raw lines instead of a derived score). No legend is
- * fabricated for soil moisture — GIBS doesn't publish one for this layer,
- * so its caption links to NASA Worldview's own color scale instead.
+ * "Fallas geológicas" (SGC fault traces — the same layer already used as
+ * the hazard model's fault-proximity factor, see lib/deslizamientos/faults.ts,
+ * shown here as raw lines instead of a derived score) and "Movimientos en
+ * masa históricos" (the SGC's national mass-movement inventory — the same
+ * layer already used as the hazard model's historical-proximity factor,
+ * see lib/deslizamientos/landslide-inventory.ts). No legend is fabricated
+ * for soil moisture — GIBS doesn't publish one for this layer, so its
+ * caption links to NASA Worldview's own color scale instead.
  */
 function MapLayersControl({
   showSoilMoisture,
@@ -132,6 +138,8 @@ function MapLayersControl({
   onCriticalSitesChange,
   showFaults,
   onFaultsChange,
+  showHistory,
+  onHistoryChange,
 }: MapLayersControlProps) {
   return (
     <div className="absolute left-3 top-3 z-[400] flex flex-col gap-2 rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
@@ -177,6 +185,17 @@ function MapLayersControl({
             className="size-3.5 accent-primary"
           />
           Fallas geológicas (SGC)
+        </label>
+      </div>
+      <div className="border-t border-border pt-1.5">
+        <label className="flex items-center gap-2 font-medium text-foreground">
+          <input
+            type="checkbox"
+            checked={showHistory}
+            onChange={(e) => onHistoryChange(e.target.checked)}
+            className="size-3.5 accent-primary"
+          />
+          Movimientos en masa históricos (SGC)
         </label>
       </div>
     </div>
@@ -240,9 +259,12 @@ function DeslizamientosLiveMapImpl({
   const [showSoilMoisture, setShowSoilMoisture] = useState(false)
   const [showCriticalSites, setShowCriticalSites] = useState(false)
   const [showFaults, setShowFaults] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
   const { points: criticalSites } = useCriticalSites(showCriticalSites)
   const { traces: faultTraces } = useFaults(showFaults)
+  const { records: historyRecords } = useLandslideInventory(showHistory)
   const [faultLineColor, setFaultLineColor] = useState<string | null>(null)
+  const [historyColor, setHistoryColor] = useState<string | null>(null)
 
   useEffect(() => {
     const entries = SUSCEPTIBILITY_LEVELS.map(
@@ -251,6 +273,7 @@ function DeslizamientosLiveMapImpl({
     setResolvedColors(Object.fromEntries(entries))
     setNoDataColor(resolveCssColor("var(--muted-foreground)"))
     setFaultLineColor(resolveCssColor("var(--fault-line)"))
+    setHistoryColor(resolveCssColor("var(--historical-event)"))
   }, [])
 
   const colorForLevel = useCallback(
@@ -336,6 +359,31 @@ function DeslizamientosLiveMapImpl({
               </Popup>
             </CircleMarker>
           ))}
+        {showHistory &&
+          historyColor &&
+          historyRecords?.map((record) => (
+            <CircleMarker
+              key={record.id}
+              center={[record.lat, record.lon]}
+              radius={5}
+              pathOptions={{
+                color: "#fff",
+                weight: 1,
+                fillColor: historyColor,
+                fillOpacity: 0.9,
+              }}
+            >
+              <Popup>
+                <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
+                  <strong>{record.tipo ?? "Movimiento sin tipo"}</strong>
+                  <span>{record.subtipo ?? "Subtipo no especificado"}</span>
+                  <span style={{ color: "#888" }}>
+                    Inventario de movimientos en masa, Servicio Geológico Colombiano (SGC) — sin fecha registrada
+                  </span>
+                </div>
+              </Popup>
+            </CircleMarker>
+          ))}
         {osmColors &&
           osmPoints?.map((p) => (
             <CircleMarker
@@ -376,6 +424,8 @@ function DeslizamientosLiveMapImpl({
         onCriticalSitesChange={setShowCriticalSites}
         showFaults={showFaults}
         onFaultsChange={setShowFaults}
+        showHistory={showHistory}
+        onHistoryChange={setShowHistory}
       />
       <div className="absolute right-3 top-16 z-[400] max-w-[200px]">
         <OsmLegend points={osmPoints ?? []} />
