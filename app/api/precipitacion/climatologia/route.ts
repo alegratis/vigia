@@ -9,6 +9,9 @@ import {
 import {
   getCurrentYearMonthlyPrecipitation,
   getCurrentYearMonthlyPrecipitationBatch,
+  getRecentPastYears,
+  getYearMonthlyPrecipitation,
+  getYearMonthlyPrecipitationBatch,
   type CurrentYearMonthlyPoint,
 } from "@/lib/precipitacion/openmeteo-historical-client"
 import type { ClimatologiaErrorResponse, ClimatologiaMesPunto, ClimatologiaResponse } from "@/lib/precipitacion/api-types"
@@ -46,11 +49,17 @@ function averageCurrentYear(batch: Array<CurrentYearMonthlyPoint[] | null>): Cur
   })
 }
 
-function mergeMeses(climatology: MonthlyClimatologyPoint[], currentYear: CurrentYearMonthlyPoint[]): ClimatologiaMesPunto[] {
+function mergeMeses(
+  climatology: MonthlyClimatologyPoint[],
+  currentYear: CurrentYearMonthlyPoint[],
+  aniosHistoricos: number[],
+  historicoSeries: CurrentYearMonthlyPoint[][],
+): ClimatologiaMesPunto[] {
   return climatology.map((m, i) => ({
     ...m,
     mmActual: currentYear[i]?.mm ?? null,
     esMesEnCurso: currentYear[i]?.isPartial ?? false,
+    historico: aniosHistoricos.map((anio, yi) => ({ anio, mm: historicoSeries[yi]?.[i]?.mm ?? null })),
   }))
 }
 
@@ -66,6 +75,7 @@ export async function GET(request: Request) {
 
   try {
     const now = new Date()
+    const aniosHistoricos = getRecentPastYears(3, now)
     let body: ClimatologiaResponse
 
     if (municipio) {
@@ -74,16 +84,23 @@ export async function GET(request: Request) {
         const errorBody: ClimatologiaErrorResponse = { error: "Municipio no encontrado." }
         return NextResponse.json(errorBody, { status: 404 })
       }
-      const [climatologyBatch, currentYearBatch] = await Promise.all([
+      const [climatologyBatch, currentYearBatch, historicoBatches] = await Promise.all([
         getMonthlyClimatologyBatch(match.centroids),
         getCurrentYearMonthlyPrecipitationBatch(match.centroids),
+        Promise.all(aniosHistoricos.map((anio) => getYearMonthlyPrecipitationBatch(match.centroids, anio))),
       ])
       body = {
         scope: "municipio",
         ubicacion: { nombre: match.nombre, municipio: match.nombre, veredasPromediadas: match.centroids.length },
         generatedAt: now.toISOString(),
         mesEnCurso: now.getUTCMonth() + 1,
-        meses: mergeMeses(averageClimatology(climatologyBatch), averageCurrentYear(currentYearBatch)),
+        aniosHistoricos,
+        meses: mergeMeses(
+          averageClimatology(climatologyBatch),
+          averageCurrentYear(currentYearBatch),
+          aniosHistoricos,
+          historicoBatches.map((batch) => averageCurrentYear(batch)),
+        ),
       }
     } else {
       const vereda = await getVeredaCentroidByCode(codigoVereda!)
@@ -91,16 +108,18 @@ export async function GET(request: Request) {
         const errorBody: ClimatologiaErrorResponse = { error: "Vereda no encontrada." }
         return NextResponse.json(errorBody, { status: 404 })
       }
-      const [climatology, currentYear] = await Promise.all([
+      const [climatology, currentYear, historicoSeries] = await Promise.all([
         getMonthlyClimatology(vereda.lon, vereda.lat),
         getCurrentYearMonthlyPrecipitation(vereda.lon, vereda.lat),
+        Promise.all(aniosHistoricos.map((anio) => getYearMonthlyPrecipitation(vereda.lon, vereda.lat, anio))),
       ])
       body = {
         scope: "vereda",
         ubicacion: { nombre: vereda.nombre, municipio: vereda.municipio, codigoVereda: codigoVereda! },
         generatedAt: now.toISOString(),
         mesEnCurso: now.getUTCMonth() + 1,
-        meses: mergeMeses(climatology, currentYear),
+        aniosHistoricos,
+        meses: mergeMeses(climatology, currentYear, aniosHistoricos, historicoSeries),
       }
     }
 

@@ -40,16 +40,23 @@ export interface CurrentYearMonthlyPoint {
 }
 
 /**
- * Fetches this calendar year's daily rainfall (Jan 1 through today) for one
- * point and buckets it into 12 monthly sums, for the "current year" line on
- * the vereda/municipio climatology chart. Months after the current one are
- * `null` (no data yet, not zero) rather than plotted as zero rainfall. The
- * current month's value is a partial-month sum through today, flagged with
- * `isPartial` so the UI can label it as still in progress.
+ * Fetches one calendar year's daily rainfall for one point and buckets it
+ * into 12 monthly sums — shared by the "current year" line and the "recent
+ * past years" comparison lines on the vereda/municipio climatology chart.
+ *
+ * For the current year, only Jan 1 through today is fetched; months after
+ * the current one are `null` (no data yet, not zero), and the current
+ * month's value is a partial-month sum flagged with `isPartial` so the UI
+ * can label it as still in progress. For any past year, the full Jan 1 –
+ * Dec 31 range is fetched and every month is a complete total.
  */
-export async function getCurrentYearMonthlyPrecipitation(lon: number, lat: number): Promise<CurrentYearMonthlyPoint[]> {
+export async function getYearMonthlyPrecipitation(
+  lon: number,
+  lat: number,
+  year: number,
+): Promise<CurrentYearMonthlyPoint[]> {
   const now = new Date()
-  const year = now.getUTCFullYear()
+  const isCurrentYear = year === now.getUTCFullYear()
   const currentMonth = now.getUTCMonth() + 1
 
   const params = new URLSearchParams({
@@ -58,7 +65,7 @@ export async function getCurrentYearMonthlyPrecipitation(lon: number, lat: numbe
     daily: "precipitation_sum",
     timezone: "America/Bogota",
     start_date: `${year}-01-01`,
-    end_date: formatDate(now),
+    end_date: isCurrentYear ? formatDate(now) : `${year}-12-31`,
   })
 
   const res = await fetch(`${ARCHIVE_URL}?${params.toString()}`, {
@@ -82,7 +89,7 @@ export async function getCurrentYearMonthlyPrecipitation(lon: number, lat: numbe
 
   const months: CurrentYearMonthlyPoint[] = []
   for (let month = 1; month <= 12; month++) {
-    if (month > currentMonth) {
+    if (isCurrentYear && month > currentMonth) {
       months.push({ month, mm: null, validDays: 0, isPartial: false })
       continue
     }
@@ -91,15 +98,16 @@ export async function getCurrentYearMonthlyPrecipitation(lon: number, lat: numbe
       month,
       mm: values.length > 0 ? Math.round(values.reduce((sum, v) => sum + v, 0) * 10) / 10 : null,
       validDays: values.length,
-      isPartial: month === currentMonth,
+      isPartial: isCurrentYear && month === currentMonth,
     })
   }
   return months
 }
 
-/** Batched version of getCurrentYearMonthlyPrecipitation, for averaging across every vereda in a municipio. */
-export async function getCurrentYearMonthlyPrecipitationBatch(
+/** Batched version of getYearMonthlyPrecipitation, for averaging across every vereda in a municipio. */
+export async function getYearMonthlyPrecipitationBatch(
   points: Array<{ lon: number; lat: number }>,
+  year: number,
   concurrency = 6,
 ): Promise<Array<CurrentYearMonthlyPoint[] | null>> {
   const results: Array<CurrentYearMonthlyPoint[] | null> = new Array(points.length).fill(null)
@@ -110,7 +118,7 @@ export async function getCurrentYearMonthlyPrecipitationBatch(
       const index = cursor++
       const p = points[index]
       try {
-        results[index] = await getCurrentYearMonthlyPrecipitation(p.lon, p.lat)
+        results[index] = await getYearMonthlyPrecipitation(p.lon, p.lat, year)
       } catch {
         results[index] = null
       }
@@ -119,4 +127,29 @@ export async function getCurrentYearMonthlyPrecipitationBatch(
 
   await Promise.all(Array.from({ length: Math.min(concurrency, points.length) }, worker))
   return results
+}
+
+/** This calendar year's data, for the chart's "año en curso" line — see getYearMonthlyPrecipitation. */
+export async function getCurrentYearMonthlyPrecipitation(lon: number, lat: number): Promise<CurrentYearMonthlyPoint[]> {
+  return getYearMonthlyPrecipitation(lon, lat, new Date().getUTCFullYear())
+}
+
+/** Batched version of getCurrentYearMonthlyPrecipitation. */
+export async function getCurrentYearMonthlyPrecipitationBatch(
+  points: Array<{ lon: number; lat: number }>,
+  concurrency = 6,
+): Promise<Array<CurrentYearMonthlyPoint[] | null>> {
+  return getYearMonthlyPrecipitationBatch(points, new Date().getUTCFullYear(), concurrency)
+}
+
+/**
+ * The three most recently completed calendar years before the current one
+ * (e.g. [2025, 2024, 2023] when today is in 2026), for the climatology
+ * chart's recent-history comparison lines. Computed relative to today
+ * rather than hardcoded so the set rolls forward automatically each
+ * January instead of going stale.
+ */
+export function getRecentPastYears(count = 3, referenceDate: Date = new Date()): number[] {
+  const currentYear = referenceDate.getUTCFullYear()
+  return Array.from({ length: count }, (_, i) => currentYear - 1 - i)
 }
