@@ -182,26 +182,51 @@ export function LiveAreaPopulation({
           ))}
         </div>
 
-        <ul className="flex flex-col gap-1.5 border-t border-border pt-3">
-          {visible.map((m) => (
-            <li key={m.municipio} className="flex items-center justify-between text-sm">
-              <span className="flex items-center gap-1.5 text-foreground">
-                <MapPin className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                {m.municipio}
-              </span>
-              <span className="flex items-center gap-2 tabular-nums text-muted-foreground">
-                {DEMOGRAFIA_CATEGORY_GROUPS.flatMap((group) => categoriesInGroup(group.key)).map(
-                  (category) => (
-                    <span key={category.key}>
-                      {formatNumber(getCategoryValue(m.population, category.key, year))}{" "}
-                      {category.label.slice(0, 3).toLowerCase()}.
-                    </span>
-                  ),
-                )}
-              </span>
-            </li>
-          ))}
-        </ul>
+        <div className="flex flex-col gap-2.5 border-t border-border pt-3">
+          {visible.map((m) => {
+            const total = m.population.years[year]?.total ?? 0
+            return (
+              <div key={m.municipio} className="flex flex-col gap-2 rounded-lg border border-border bg-muted/30 p-3">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                    <MapPin className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                    {m.municipio}
+                  </span>
+                  <span className="text-sm font-semibold tabular-nums text-foreground">
+                    {formatNumber(total)}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {DEMOGRAFIA_CATEGORY_GROUPS.flatMap((group) => categoriesInGroup(group.key)).map(
+                    (category) => {
+                      const value = getCategoryValue(m.population, category.key, year)
+                      return (
+                        <div
+                          key={category.key}
+                          className="flex flex-col gap-0.5 rounded-md bg-background px-2 py-1.5"
+                        >
+                          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <span
+                              className={`size-2 shrink-0 rounded-full ${category.swatchClass}`}
+                              aria-hidden="true"
+                            />
+                            {category.label}
+                          </span>
+                          <span className="text-sm font-medium tabular-nums text-foreground">
+                            {formatNumber(value)}{" "}
+                            <span className="text-xs font-normal text-muted-foreground">
+                              ({formatShare(value, total)})
+                            </span>
+                          </span>
+                        </div>
+                      )
+                    },
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
       </CardContent>
     </Card>
   )
