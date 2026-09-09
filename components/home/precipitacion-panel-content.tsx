@@ -3,6 +3,7 @@
 import { useRef, useState } from "react"
 import { PrecipitacionLiveMapLoader } from "@/components/maps/precipitacion-live-map-loader"
 import { ScrollHintButton } from "@/components/home/scroll-hint-button"
+import { BackToTopButton } from "@/components/home/back-to-top-button"
 import { PrecipitationOverview } from "@/components/precipitacion/precipitation-overview"
 import { ClimatologyChart, type SelectedVereda } from "@/components/precipitacion/climatology-chart"
 import type { OsmPoint } from "@/lib/osm/api-types"
@@ -31,11 +32,13 @@ export function PrecipitacionPanelContent({
   activeOsmPoints,
 }: PrecipitacionPanelContentProps) {
   const captionRef = useRef<HTMLDivElement>(null)
+  const mapRef = useRef<HTMLDivElement>(null)
   const [selectedVereda, setSelectedVereda] = useState<SelectedVereda | null>(null)
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
       <div
+        ref={mapRef}
         role="region"
         aria-label="Mapa de precipitación"
         className="relative h-[70vh] min-h-[420px] shrink-0 lg:h-full"
@@ -102,6 +105,7 @@ export function PrecipitacionPanelContent({
           modelo de amenaza calibrado. Haz clic sobre cualquier vereda para ver su detalle
           y actualizar el histograma de lluvia normal mensual que aparece arriba.
         </p>
+        <BackToTopButton targetRef={mapRef} />
       </div>
     </div>
   )
