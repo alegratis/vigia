@@ -27,7 +27,7 @@ const GROUPS: SourceGroup[] = [
         nombre: "Modelo propio de amenaza por deslizamiento",
         publicador: "Vigía (cálculo propio, inspirado en NASA LHASA v1)",
         descripcion:
-          "Combina pendiente del terreno (DEM Copernicus GLO-30, vía la API de elevación de Open-Meteo), distancia a la vía más cercana (red vial de OpenStreetMap/Overpass) y una anomalía de lluvia reciente frente a su propia línea base histórica de 3 años (archivo histórico de Open-Meteo), calculado en el centroide de cada vereda. Reemplaza al índice de RED LabOT como fuente del color del mapa de deslizamientos — es un modelo propio de esta app, no un índice oficial publicado, pero documentado y con sus factores visibles en el popup de cada vereda.",
+          "Combina pendiente del terreno (DEM Copernicus GLO-30, vía la API de elevación de Open-Meteo), distancia a la vía más cercana (red vial de OpenStreetMap/Overpass) y una anomalía de lluvia reciente frente a su propia línea base histórica de 3 años (archivo histórico de Open-Meteo), calculado en el centroide de cada vereda. Reemplaza al índice de RED LabOT como fuente del color del mapa de deslizamientos — es un modelo propio de esta app, no un índice oficial publicado, pero documentado y con sus factores visibles en el popup de cada vereda. Ver la sección \"Metodología\" más abajo para el detalle completo, paso a paso, de cómo se calcula.",
         url: "https://open-meteo.com/en/docs/elevation-api",
         acceso: "Cálculo propio sobre APIs REST abiertas",
         licencia: "N/A — calculado por la app a partir de fuentes abiertas",
