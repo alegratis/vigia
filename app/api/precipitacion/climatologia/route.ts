@@ -1,30 +1,109 @@
 import { NextResponse } from "next/server"
-import { getVeredaCentroidByCode } from "@/lib/precipitacion/server"
-import { getMonthlyClimatology } from "@/lib/precipitacion/ideam-climatology"
-import type { ClimatologiaErrorResponse, ClimatologiaResponse } from "@/lib/precipitacion/api-types"
+import { getMunicipioCentroids, getVeredaCentroidByCode } from "@/lib/precipitacion/server"
+import {
+  getMonthlyClimatology,
+  getMonthlyClimatologyBatch,
+  MONTH_LABELS_ES,
+  type MonthlyClimatologyPoint,
+} from "@/lib/precipitacion/ideam-climatology"
+import {
+  getCurrentYearMonthlyPrecipitation,
+  getCurrentYearMonthlyPrecipitationBatch,
+  type CurrentYearMonthlyPoint,
+} from "@/lib/precipitacion/power-client"
+import type { ClimatologiaErrorResponse, ClimatologiaMesPunto, ClimatologiaResponse } from "@/lib/precipitacion/api-types"
+
+/** Averages a batch of per-vereda climatology series into one, skipping any vereda that failed to resolve. */
+function averageClimatology(batch: Array<MonthlyClimatologyPoint[] | null>): MonthlyClimatologyPoint[] {
+  const valid = batch.filter((series): series is MonthlyClimatologyPoint[] => series != null)
+  return MONTH_LABELS_ES.map((monthLabel, i) => {
+    const month = i + 1
+    const as = valid.map((s) => s[i]?.mm1991_2020).filter((v): v is number => v != null)
+    const bs = valid.map((s) => s[i]?.mm1981_2010).filter((v): v is number => v != null)
+    return {
+      month,
+      monthLabel,
+      mm1991_2020: as.length > 0 ? Math.round(as.reduce((sum, v) => sum + v, 0) / as.length) : null,
+      rango1991_2020: null, // A range string stops making sense once averaged across many veredas' distinct bands.
+      mm1981_2010: bs.length > 0 ? Math.round(bs.reduce((sum, v) => sum + v, 0) / bs.length) : null,
+      rango1981_2010: null,
+    }
+  })
+}
+
+/** Averages a batch of per-vereda current-year series into one, skipping any vereda that failed to resolve. */
+function averageCurrentYear(batch: Array<CurrentYearMonthlyPoint[] | null>): CurrentYearMonthlyPoint[] {
+  const valid = batch.filter((series): series is CurrentYearMonthlyPoint[] => series != null)
+  return Array.from({ length: 12 }, (_, i) => {
+    const month = i + 1
+    const values = valid.map((s) => s[i]?.mm).filter((v): v is number => v != null)
+    return {
+      month,
+      mm: values.length > 0 ? Math.round((values.reduce((sum, v) => sum + v, 0) / values.length) * 10) / 10 : null,
+      validDays: Math.max(...valid.map((s) => s[i]?.validDays ?? 0), 0),
+      isPartial: valid.some((s) => s[i]?.isPartial),
+    }
+  })
+}
+
+function mergeMeses(climatology: MonthlyClimatologyPoint[], currentYear: CurrentYearMonthlyPoint[]): ClimatologiaMesPunto[] {
+  return climatology.map((m, i) => ({
+    ...m,
+    mmActual: currentYear[i]?.mm ?? null,
+    esMesEnCurso: currentYear[i]?.isPartial ?? false,
+  }))
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const codigoVereda = searchParams.get("codigoVereda")
+  const municipio = searchParams.get("municipio")
 
-  if (!codigoVereda) {
-    const body: ClimatologiaErrorResponse = { error: "Falta el parámetro codigoVereda." }
+  if (!codigoVereda && !municipio) {
+    const body: ClimatologiaErrorResponse = { error: "Falta el parámetro codigoVereda o municipio." }
     return NextResponse.json(body, { status: 400 })
   }
 
   try {
-    const vereda = await getVeredaCentroidByCode(codigoVereda)
-    if (!vereda) {
-      const body: ClimatologiaErrorResponse = { error: "Vereda no encontrada." }
-      return NextResponse.json(body, { status: 404 })
+    const now = new Date()
+    let body: ClimatologiaResponse
+
+    if (municipio) {
+      const match = await getMunicipioCentroids(municipio)
+      if (!match) {
+        const errorBody: ClimatologiaErrorResponse = { error: "Municipio no encontrado." }
+        return NextResponse.json(errorBody, { status: 404 })
+      }
+      const [climatologyBatch, currentYearBatch] = await Promise.all([
+        getMonthlyClimatologyBatch(match.centroids),
+        getCurrentYearMonthlyPrecipitationBatch(match.centroids),
+      ])
+      body = {
+        scope: "municipio",
+        ubicacion: { nombre: match.nombre, municipio: match.nombre, veredasPromediadas: match.centroids.length },
+        generatedAt: now.toISOString(),
+        mesEnCurso: now.getUTCMonth() + 1,
+        meses: mergeMeses(averageClimatology(climatologyBatch), averageCurrentYear(currentYearBatch)),
+      }
+    } else {
+      const vereda = await getVeredaCentroidByCode(codigoVereda!)
+      if (!vereda) {
+        const errorBody: ClimatologiaErrorResponse = { error: "Vereda no encontrada." }
+        return NextResponse.json(errorBody, { status: 404 })
+      }
+      const [climatology, currentYear] = await Promise.all([
+        getMonthlyClimatology(vereda.lon, vereda.lat),
+        getCurrentYearMonthlyPrecipitation(vereda.lon, vereda.lat),
+      ])
+      body = {
+        scope: "vereda",
+        ubicacion: { nombre: vereda.nombre, municipio: vereda.municipio, codigoVereda: codigoVereda! },
+        generatedAt: now.toISOString(),
+        mesEnCurso: now.getUTCMonth() + 1,
+        meses: mergeMeses(climatology, currentYear),
+      }
     }
 
-    const meses = await getMonthlyClimatology(vereda.lon, vereda.lat)
-    const body: ClimatologiaResponse = {
-      vereda: { codigoVereda, nombre: vereda.nombre, municipio: vereda.municipio },
-      generatedAt: new Date().toISOString(),
-      meses,
-    }
     return NextResponse.json(body)
   } catch (err) {
     const body: ClimatologiaErrorResponse = {

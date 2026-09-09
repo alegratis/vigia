@@ -146,3 +146,32 @@ export async function getMonthlyClimatology(lon: number, lat: number): Promise<M
     }
   })
 }
+
+/**
+ * Batched version of getMonthlyClimatology, for averaging the climatology
+ * of every vereda centroid in a municipio into one "whole territory"
+ * series (see /api/precipitacion/climatologia's `municipio` mode). Capped
+ * concurrency so a ~20-vereda municipio doesn't fan out all at once.
+ */
+export async function getMonthlyClimatologyBatch(
+  points: Array<{ lon: number; lat: number }>,
+  concurrency = 6,
+): Promise<Array<MonthlyClimatologyPoint[] | null>> {
+  const results: Array<MonthlyClimatologyPoint[] | null> = new Array(points.length).fill(null)
+  let cursor = 0
+
+  async function worker() {
+    while (cursor < points.length) {
+      const index = cursor++
+      const p = points[index]
+      try {
+        results[index] = await getMonthlyClimatology(p.lon, p.lat)
+      } catch {
+        results[index] = null
+      }
+    }
+  }
+
+  await Promise.all(Array.from({ length: Math.min(concurrency, points.length) }, worker))
+  return results
+}

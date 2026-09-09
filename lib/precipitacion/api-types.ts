@@ -79,11 +79,26 @@ export interface ClimatologiaMesPunto {
   /** Midpoint estimate (mm) of IDEAM's 1981-2010 normal band for this month, or null if unavailable at this point. */
   mm1981_2010: number | null
   rango1981_2010: string | null
+  /** This calendar year's actual accumulated rainfall (NASA POWER) for this month, or null if the month hasn't started yet or has no valid data. */
+  mmActual: number | null
+  /** True only for the current, still-in-progress month — mmActual is a partial-month sum, not a full month. */
+  esMesEnCurso: boolean
 }
 
 export interface ClimatologiaResponse {
-  vereda: { codigoVereda: string; nombre: string; municipio: string }
+  /** "vereda" for a single clicked vereda, "municipio" for an averaged whole-territory view. */
+  scope: "vereda" | "municipio"
+  ubicacion: {
+    /** Vereda name, or the municipio name again when scope is "municipio". */
+    nombre: string
+    municipio: string
+    codigoVereda?: string
+    /** Only set when scope is "municipio": how many vereda centroids were averaged together. */
+    veredasPromediadas?: number
+  }
   generatedAt: string
+  /** 1-12, this calendar year's current month — the last month with any (possibly partial) actual data. */
+  mesEnCurso: number
   meses: ClimatologiaMesPunto[]
 }
 
