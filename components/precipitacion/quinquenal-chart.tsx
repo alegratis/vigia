@@ -43,19 +43,14 @@ function recienteKey(anio: number) {
 }
 
 /**
- * Color for a 5-year bin bar: one amber hue (`--precipitacion-quinquenio`)
- * at increasing opacity from the oldest bin to the newest, via color-mix —
- * a sequential ramp, which (unlike the year *lines* on the other
- * histogram) fits this data naturally since the bins really are one
- * chronological sequence rather than several interchangeable series
- * sharing a hue.
+ * Color for a 5-year bin bar: five genuinely distinct hues
+ * (`--precipitacion-quinquenio-1..5`) rather than one hue faded to
+ * different opacities — a same-hue gradient is hard to read at a glance,
+ * exactly the problem the historico-1/2/3 line hues on the other
+ * histogram were already introduced to avoid.
  */
-function quinquenioColor(index: number, total: number) {
-  if (total <= 1) return "var(--precipitacion-quinquenio)"
-  const minOpacity = 35
-  const maxOpacity = 100
-  const opacity = Math.round(minOpacity + ((maxOpacity - minOpacity) * index) / (total - 1))
-  return `color-mix(in oklch, var(--precipitacion-quinquenio) ${opacity}%, transparent)`
+function quinquenioColor(index: number) {
+  return `var(--precipitacion-quinquenio-${(index % 5) + 1})`
 }
 
 /** The two most recent individual years reuse the first two "historico" hues from the other histogram, for a consistent visual vocabulary across both charts. */
@@ -69,10 +64,10 @@ function recienteColor(rankFromMostRecent: number) {
  * one computes its own monthly averages directly from Open-Meteo's
  * historical archive over consecutive 5-year windows starting in 1999
  * (see lib/precipitacion/openmeteo-quinquenal-climatology.ts) — one bar
- * per window, shaded from lightest (oldest) to most saturated (newest) so
- * a viewer can see whether rainfall for a given month has been trending up
- * or down across recent 5-year spans, something a single multi-decade
- * normal smooths away. The current year and the two years right before it
+ * per window, each window in its own distinct color, so a viewer can see
+ * whether rainfall for a given month has been trending up or down across
+ * recent 5-year spans, something a single multi-decade normal smooths
+ * away. The current year and the two years right before it
  * are deliberately left out of the bins and shown as individual lines
  * instead (same convention as the other histogram: current year on by
  * default with its own switch, the two prior years off by default and
@@ -140,7 +135,7 @@ export function QuinquenalChart({ vereda }: QuinquenalChartProps) {
     const binConfig = Object.fromEntries(
       quinquenios.map((q, i) => [
         binKey(q.inicio, q.fin),
-        { label: `${q.inicio}-${q.fin}`, color: quinquenioColor(i, quinquenios.length) },
+        { label: `${q.inicio}-${q.fin}`, color: quinquenioColor(i) },
       ]),
     )
     const recienteConfig = Object.fromEntries(
@@ -354,8 +349,8 @@ export function QuinquenalChart({ vereda }: QuinquenalChartProps) {
           </a>{" "}
           (análisis ECMWF IFS y reanálisis ERA5) a lo largo de un quinquenio completo — 5 años, no 30 como en
           el histograma de IDEAM arriba — para ver si un mes viene subiendo o bajando en años recientes, algo
-          que una sola normal de varias décadas puede ocultar; el tono más intenso marca el quinquenio más
-          reciente. El año {currentYear} y los dos anteriores se dejan fuera de las barras a propósito y se
+          que una sola normal de varias décadas puede ocultar; cada quinquenio tiene su propio color, en
+          orden cronológico según la leyenda. El año {currentYear} y los dos anteriores se dejan fuera de las barras a propósito y se
           muestran como líneas individuales (misma convención que el otro histograma) para no diluir la
           comparación más reciente dentro de un promedio.
         </p>
