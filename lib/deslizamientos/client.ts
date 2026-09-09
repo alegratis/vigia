@@ -9,9 +9,13 @@ import "server-only"
  * layer (lib/geoglows/live-map.ts):
  *
  * - `VIGIA_Amenaza_IS_Puntos`: 11,721 points, same attributes as the polygon
- *   layer below but without geometry rings — used for the map visual
- *   (rendered as canvas dots) since the full polygon geometry is too heavy
- *   for Leaflet to render as individual SVG paths at this feature count.
+ *   layer below but without geometry rings. Once also the deslizamientos
+ *   map's own visual (rendered as canvas dots) — now superseded there by
+ *   this app's own hazard model (lib/deslizamientos/hazard-model.ts), which
+ *   covers all three municipios instead of just these two. Still the source
+ *   for `getSusceptibilityPointsForAggregation`'s population/infrastructure
+ *   counts (see lib/veredas/aggregate.ts) — there's no equivalent per-vereda
+ *   population source to fall back to.
  * - `VIGIA_Amenaza_IS_Poligonos`: same 11,721 records with polygon geometry —
  *   used only for server-side aggregate stats (population + exposure sums by
  *   level), never downloaded whole.
@@ -29,11 +33,7 @@ import "server-only"
  * Docs: https://services8.arcgis.com/UYEK9SUzH1am9mbk/arcgis/rest/services/VIGIA_Amenaza_IS_Puntos/FeatureServer
  */
 
-import type {
-  ExposureByLevel,
-  PopulationByLevel,
-  SusceptibilityFeatureCollection,
-} from "./api-types"
+import type { ExposureByLevel, PopulationByLevel } from "./api-types"
 import { normalizeSusceptibilityLevel, SUSCEPTIBILITY_LEVELS, type SusceptibilityLevel } from "./levels"
 
 const SERVICE_ROOT = "https://services8.arcgis.com/UYEK9SUzH1am9mbk/arcgis/rest/services"
@@ -42,49 +42,6 @@ const POLYGONS_LAYER = `${SERVICE_ROOT}/VIGIA_Amenaza_IS_Poligonos/FeatureServer
 
 /** ArcGIS Online caps `resultRecordCount` at 2000 per query; the layer has ~11,721 records. */
 const PAGE_SIZE = 2000
-
-/**
- * Fetches every susceptibility point (~11,721) as ready-to-render GeoJSON in
- * WGS84, paginating past ArcGIS's 2000-record cap. Only `municipio` and
- * `IS_nivel` are requested — the exposure attributes are surfaced through
- * `getExposureByLevel` instead, aggregated server-side.
- */
-export async function getSusceptibilityPoints(): Promise<SusceptibilityFeatureCollection> {
-  const features: SusceptibilityFeatureCollection["features"] = []
-  let offset = 0
-
-  // The layer's exact count isn't known ahead of time, so page until a
-  // response comes back with fewer than a full page.
-  while (true) {
-    const params = new URLSearchParams({
-      where: "1=1",
-      outFields: "municipio,IS_nivel",
-      outSR: "4326",
-      resultOffset: String(offset),
-      resultRecordCount: String(PAGE_SIZE),
-      f: "geojson",
-    })
-    const res = await fetch(`${POINTS_LAYER}/query?${params.toString()}`, {
-      next: { revalidate: 3600 },
-    })
-    if (!res.ok) {
-      throw new Error("No se pudo consultar la capa de susceptibilidad a deslizamientos")
-    }
-    const page = (await res.json()) as SusceptibilityFeatureCollection
-    for (const feature of page.features) {
-      const level = normalizeSusceptibilityLevel(feature.properties.IS_nivel)
-      if (!level) continue
-      features.push({
-        ...feature,
-        properties: { ...feature.properties, IS_nivel: level },
-      })
-    }
-    if (page.features.length < PAGE_SIZE) break
-    offset += PAGE_SIZE
-  }
-
-  return { type: "FeatureCollection", features }
-}
 
 export interface SusceptibilityPointFull {
   lat: number

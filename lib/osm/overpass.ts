@@ -31,7 +31,7 @@ const OVERPASS_URLS = [
 ]
 
 /** Same AOI bounding box the live hazard maps fit to: south,west,north,east. */
-const AOI_BBOX = "3.88,-76.06,4.44,-75.72"
+export const AOI_BBOX = "3.88,-76.06,4.44,-75.72"
 
 const HEALTH_AMENITIES = [
   "hospital",
@@ -95,10 +95,12 @@ interface OverpassElement {
   lat?: number
   lon?: number
   center?: { lat: number; lon: number }
+  /** Present when the query uses `out geom` on a way — its full vertex list, e.g. for road-proximity.ts. */
+  geometry?: Array<{ lat: number; lon: number }>
   tags?: Record<string, string>
 }
 
-interface OverpassResponse {
+export interface OverpassResponse {
   elements: OverpassElement[]
 }
 
@@ -157,7 +159,13 @@ async function queryOverpassMirror(
  * useful error. Racing bounds the wait to a single timeout window
  * regardless of how many mirrors are struggling.
  */
-async function queryOverpass(query: string): Promise<OverpassResponse> {
+/**
+ * Races every Overpass mirror for an arbitrary query — exported so other
+ * Overpass consumers (e.g. road-proximity.ts's road-network query for the
+ * deslizamientos hazard model) reuse this same mirror-racing/User-Agent
+ * setup instead of duplicating it.
+ */
+export async function queryOverpass(query: string): Promise<OverpassResponse> {
   const controllers = OVERPASS_URLS.map(() => new AbortController())
   const attempts = OVERPASS_URLS.map((url, i) => queryOverpassMirror(url, query, controllers[i]))
   try {

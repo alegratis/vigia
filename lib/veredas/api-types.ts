@@ -18,18 +18,25 @@ export interface VeredaProperties {
   esCascoUrbano?: boolean
 
   /**
-   * Average `IS_score` across `VIGIA_Amenaza_IS_Puntos` grid points whose
-   * coordinates fall inside this vereda's boundary, or `null` where the
-   * source layer has no coverage (Zarzal sits on the flat valley floor and
-   * has no records in that layer — see lib/deslizamientos/client.ts).
+   * Final 0–1 composite score from this app's own hazard model (slope +
+   * road proximity + rainfall-anomaly trigger — see
+   * lib/deslizamientos/hazard-model.ts), computed at this vereda's
+   * centroid. `null` only if every input factor failed for this vereda.
+   * Covers all three municipios, including Zarzal.
    */
   isScoreAvg: number | null
-  /** Most common susceptibility level among the same points, or `null` where uncovered. */
+  /** Hazard level from the same model, mapped onto the app's shared 5-level scheme. */
   dominantLevel: string | null
-  /** Grid points used for this vereda's aggregate. 0 means no coverage (Zarzal). */
+  /** Terrain slope (degrees) at this vereda's centroid. */
+  slopeDeg: number | null
+  /** Distance (km) from this vereda's centroid to the nearest OSM road. */
+  roadDistanceKm: number | null
+  /** Current antecedent-rainfall index over its 3-year same-season baseline; `null` if no baseline could be formed. */
+  rainfallRatio: number | null
+  /** RED LabOT `VIGIA_Amenaza_IS_Puntos` grid points used for this vereda's population/infrastructure sums below. 0 means no coverage (Zarzal, which that layer never covered). */
   puntosMuestra: number
 
-  /** Population sums sourced from the susceptibility layer's per-point population attribution — `null` where uncovered. */
+  /** Population sums sourced from RED LabOT's susceptibility layer's per-point population attribution — `null` where uncovered. */
   poblacion: number | null
   poblacionMenores5: number | null
   poblacionMayores60: number | null

@@ -76,12 +76,21 @@ export function VeredasOverlay({ enabled, colorForFeature }: VeredasOverlayProps
                 <span>{props.municipio}</span>
                 {colorForFeature && props.dominantLevel && (
                   <span>
-                    Susceptibilidad promedio: {props.dominantLevel}
+                    Amenaza (modelo propio): {props.dominantLevel}
                     {props.isScoreAvg != null && ` (${props.isScoreAvg.toFixed(2)})`}
                   </span>
                 )}
                 {colorForFeature && !props.dominantLevel && (
-                  <span style={{ color: "#888" }}>Sin datos del modelo de susceptibilidad</span>
+                  <span style={{ color: "#888" }}>Sin datos del modelo de amenaza</span>
+                )}
+                {colorForFeature && (props.slopeDeg != null || props.roadDistanceKm != null || props.rainfallRatio != null) && (
+                  <span style={{ color: "#888" }}>
+                    {props.slopeDeg != null && `Pendiente: ${props.slopeDeg.toFixed(1)}°`}
+                    {props.slopeDeg != null && (props.roadDistanceKm != null || props.rainfallRatio != null) && " · "}
+                    {props.roadDistanceKm != null && `Vía más cercana: ${props.roadDistanceKm.toFixed(2)} km`}
+                    {props.roadDistanceKm != null && props.rainfallRatio != null && " · "}
+                    {props.rainfallRatio != null && `Lluvia vs. histórico: ${(props.rainfallRatio * 100).toFixed(0)}%`}
+                  </span>
                 )}
                 <span>
                   Población estimada:{" "}

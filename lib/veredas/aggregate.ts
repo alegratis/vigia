@@ -3,38 +3,57 @@ import "server-only"
 /**
  * Spatially aggregates data this app already fetches at the point or
  * municipio level onto the finer-grained vereda boundaries fetched in
- * lib/veredas/boundaries.ts, via point-in-polygon tests (turf).
+ * lib/veredas/boundaries.ts, via point-in-polygon tests (turf), and
+ * combines it with this app's own per-vereda hazard model.
  *
- * Two independent sources, both restricted to their own municipio before
- * testing (cheap prefilter, and the honest thing to do — a Sevilla grid
- * point should never count toward a Caicedonia vereda even if it were
- * geometrically close to the border):
+ * Three independent sources:
  *
- * - `VIGIA_Amenaza_IS_Puntos` susceptibility grid (~11,721 points, Sevilla +
- *   Caicedonia only — see lib/deslizamientos/client.ts): each point already
- *   carries a population/infrastructure count for its own small area, the
- *   same fields `getPopulationByLevel`/`getExposureByLevel` sum by threat
- *   level. Summing them by vereda instead is the same data, finer grain —
- *   not a new or estimated number.
+ * - `VIGIA_Amenaza_IS_Puntos` population/infrastructure grid (~11,721
+ *   points, Sevilla + Caicedonia only — see lib/deslizamientos/client.ts),
+ *   restricted to its own municipio before testing (cheap prefilter, and
+ *   the honest thing to do — a Sevilla grid point should never count
+ *   toward a Caicedonia vereda even if it were geometrically close to the
+ *   border): each point already carries a population/infrastructure count
+ *   for its own small area, the same fields
+ *   `getPopulationByLevel`/`getExposureByLevel` sum by threat level.
+ *   Summing them by vereda instead is the same data, finer grain — not a
+ *   new or estimated number. This is the *only* remaining use of the RED
+ *   LabOT layer here: its own susceptibility level/score are no longer
+ *   used for `dominantLevel`/`isScoreAvg` below (see next point), since
+ *   there's no equivalent per-vereda population source to fall back to if
+ *   this layer's population counts were dropped instead.
+ * - This app's own hazard model (lib/deslizamientos/hazard-model.ts) —
+ *   slope + road proximity + a rainfall-anomaly trigger — computed once
+ *   per vereda centroid rather than aggregated from a grid, and covering
+ *   all three municipios, including Zarzal (which the RED LabOT layer
+ *   never had zones for at all).
  * - "Sitios críticos" field survey (94 points across all three
  *   municipios — see lib/deslizamientos/critical-sites.ts).
  *
- * Zarzal has no records in the susceptibility layer at all (flat valley
- * floor, out of scope for that model), so its veredas get `null` for every
- * susceptibility/population/infrastructure field — never a fabricated or
- * estimated value — while still getting a sitios-críticos count.
+ * Zarzal has no records in the RED LabOT population grid (flat valley
+ * floor, out of scope for that layer), so its veredas get `null` for
+ * every population/infrastructure field — never a fabricated or estimated
+ * value — while still getting a hazard level and a sitios-críticos count.
  */
 
 import { booleanPointInPolygon } from "@turf/boolean-point-in-polygon"
+import { centroid } from "@turf/centroid"
 import { multiPolygon, point } from "@turf/helpers"
 import { getSusceptibilityPointsForAggregation } from "@/lib/deslizamientos/client"
 import { getCriticalSites } from "@/lib/deslizamientos/critical-sites"
-import { SUSCEPTIBILITY_LEVELS, type SusceptibilityLevel } from "@/lib/deslizamientos/levels"
+import { computeVeredaHazard } from "@/lib/deslizamientos/hazard-model"
+import type { SusceptibilityLevel } from "@/lib/deslizamientos/levels"
 import type { VeredaBoundary } from "./boundaries"
 
 export interface VeredaAggregate {
   isScoreAvg: number | null
   dominantLevel: SusceptibilityLevel | null
+  /** Terrain slope (degrees) at this vereda's centroid — see hazard-model.ts. */
+  slopeDeg: number | null
+  /** Distance (km) from this vereda's centroid to the nearest OSM road — see hazard-model.ts. */
+  roadDistanceKm: number | null
+  /** Current antecedent-rainfall index over its 3-year same-season baseline — see hazard-model.ts. */
+  rainfallRatio: number | null
   puntosMuestra: number
   poblacion: number | null
   poblacionMenores5: number | null
@@ -71,16 +90,24 @@ function inBbox(lon: number, lat: number, bbox: Bbox): boolean {
 }
 
 /**
- * Aggregates susceptibility and sitios-críticos data onto each vereda
- * boundary. Returns a Map keyed by `codigoVereda` so the caller can zip it
- * back onto the boundary list when building the final GeoJSON response.
+ * Aggregates RED LabOT population/infrastructure data and sitios-críticos
+ * onto each vereda boundary, and merges in this app's own per-vereda
+ * hazard model. Returns a Map keyed by `codigoVereda` so the caller can
+ * zip it back onto the boundary list when building the final GeoJSON
+ * response.
  */
 export async function aggregateVeredas(
   boundaries: VeredaBoundary[],
 ): Promise<Map<string, VeredaAggregate>> {
-  const [susceptibilityPoints, criticalSites] = await Promise.all([
+  const centroids = boundaries.map((boundary) => {
+    const [lon, lat] = centroid(multiPolygon(boundary.polygons)).geometry.coordinates
+    return { codigoVereda: boundary.codigoVereda, lat, lon }
+  })
+
+  const [susceptibilityPoints, criticalSites, hazardByVereda] = await Promise.all([
     getSusceptibilityPointsForAggregation(),
     getCriticalSites(),
+    computeVeredaHazard(centroids),
   ])
 
   const pointsByMunicipio = new Map<string, typeof susceptibilityPoints>()
@@ -102,6 +129,7 @@ export async function aggregateVeredas(
   for (const boundary of boundaries) {
     const bbox = computeBbox(boundary.polygons)
     const poly = multiPolygon(boundary.polygons)
+    const hazard = hazardByVereda.get(boundary.codigoVereda) ?? null
 
     const candidatePoints = pointsByMunicipio.get(boundary.municipio) ?? []
     const insidePoints = candidatePoints.filter(
@@ -115,8 +143,11 @@ export async function aggregateVeredas(
 
     if (insidePoints.length === 0) {
       result.set(boundary.codigoVereda, {
-        isScoreAvg: null,
-        dominantLevel: null,
+        isScoreAvg: hazard?.score ?? null,
+        dominantLevel: hazard?.level ?? null,
+        slopeDeg: hazard?.slopeDeg ?? null,
+        roadDistanceKm: hazard?.roadDistanceKm ?? null,
+        rainfallRatio: hazard?.rainfallRatio ?? null,
         puntosMuestra: 0,
         poblacion: null,
         poblacionMenores5: null,
@@ -130,9 +161,6 @@ export async function aggregateVeredas(
       continue
     }
 
-    const levelCounts = new Map<SusceptibilityLevel, number>()
-    let scoreSum = 0
-    let scoreCount = 0
     let poblacion = 0
     let poblacionMenores5 = 0
     let poblacionMayores60 = 0
@@ -142,11 +170,6 @@ export async function aggregateVeredas(
     let infraestructuraCritica = 0
 
     for (const p of insidePoints) {
-      levelCounts.set(p.level, (levelCounts.get(p.level) ?? 0) + 1)
-      if (p.isScore != null) {
-        scoreSum += p.isScore
-        scoreCount += 1
-      }
       poblacion += p.pobGen
       poblacionMenores5 += p.pobMen5
       poblacionMayores60 += p.pobMay60
@@ -156,23 +179,12 @@ export async function aggregateVeredas(
       infraestructuraCritica += p.infraCrit
     }
 
-    let dominantLevel: SusceptibilityLevel | null = null
-    let dominantCount = -1
-    // Ties break toward the higher-severity level (SUSCEPTIBILITY_LEVELS is
-    // ordered low → high) rather than whichever level happened to be
-    // inserted first — a vereda evenly split shouldn't read as the milder
-    // of its two dominant levels.
-    for (const level of SUSCEPTIBILITY_LEVELS) {
-      const count = levelCounts.get(level) ?? 0
-      if (count >= dominantCount && count > 0) {
-        dominantCount = count
-        dominantLevel = level
-      }
-    }
-
     result.set(boundary.codigoVereda, {
-      isScoreAvg: scoreCount > 0 ? scoreSum / scoreCount : null,
-      dominantLevel,
+      isScoreAvg: hazard?.score ?? null,
+      dominantLevel: hazard?.level ?? null,
+      slopeDeg: hazard?.slopeDeg ?? null,
+      roadDistanceKm: hazard?.roadDistanceKm ?? null,
+      rainfallRatio: hazard?.rainfallRatio ?? null,
       puntosMuestra: insidePoints.length,
       poblacion,
       poblacionMenores5,

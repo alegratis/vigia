@@ -1,20 +1,10 @@
-/** Client-safe response shapes for /api/deslizamientos. No server imports. */
-
-export interface SusceptibilityFeatureProperties {
-  municipio: string
-  /** Already normalized to the title-case SusceptibilityLevel scheme. */
-  IS_nivel: string
-}
-
-/** Point geometry — see lib/deslizamientos/client.ts for why polygons aren't used for the map visual. */
-export interface SusceptibilityFeatureCollection {
-  type: "FeatureCollection"
-  features: Array<{
-    type: "Feature"
-    properties: SusceptibilityFeatureProperties
-    geometry: GeoJSON.Point
-  }>
-}
+/**
+ * Client-safe response shapes for /api/deslizamientos — RED LabOT's
+ * population/infrastructure-by-level exposure summary only. The map's own
+ * hazard coloring comes from /api/veredas instead (see
+ * lib/deslizamientos/hazard-model.ts); this endpoint no longer serves the
+ * `VIGIA_Amenaza_IS_Puntos` point grid itself. No server imports.
+ */
 
 export interface PopulationByLevel {
   level: string
@@ -34,7 +24,6 @@ export interface ExposureByLevel {
 
 export interface DeslizamientosResponse {
   generatedAt: string
-  points: SusceptibilityFeatureCollection
   populationByLevel: PopulationByLevel[]
   exposureByLevel: ExposureByLevel[]
 }
