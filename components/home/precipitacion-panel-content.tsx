@@ -9,12 +9,15 @@ import { ClimatologyChart, type SelectedVereda } from "@/components/precipitacio
 import { QuinquenalChart } from "@/components/precipitacion/quinquenal-chart"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
+import type { VeredaFeature } from "@/lib/veredas/api-types"
 
 interface PrecipitacionPanelContentProps {
   /** Bubbles the map's viewport up to the workspace's shared sidebar card. */
   onBoundsChange?: (bounds: MapBounds) => void
   /** Bubbles a clicked vereda's municipio up to the shared sidebar card. */
   onZoneSelect?: (municipio: string) => void
+  /** Bubbles the clicked vereda's full population/hazard feature up to the shared sidebar card. */
+  onVeredaFeatureSelect?: (feature: VeredaFeature | null) => void
   /** OSM infrastructure points, filtered to the categories toggled on in the sidebar. */
   activeOsmPoints: OsmPoint[]
 }
@@ -25,11 +28,12 @@ interface PrecipitacionPanelContentProps {
  * scrolls in below. This is the only hazard category with full coverage
  * of all three municipios, including Zarzal — see lib/precipitacion/server.ts.
  * Demographics and infrastructure toggles live in the workspace's shared
- * sidebar, fed by onBoundsChange/onZoneSelect.
+ * sidebar, fed by onBoundsChange/onZoneSelect/onVeredaFeatureSelect.
  */
 export function PrecipitacionPanelContent({
   onBoundsChange,
   onZoneSelect,
+  onVeredaFeatureSelect,
   activeOsmPoints,
 }: PrecipitacionPanelContentProps) {
   const captionRef = useRef<HTMLDivElement>(null)
@@ -56,6 +60,7 @@ export function PrecipitacionPanelContent({
           onBoundsChange={onBoundsChange}
           onZoneSelect={onZoneSelect}
           onVeredaSelect={setSelectedVereda}
+          onVeredaFeatureSelect={onVeredaFeatureSelect}
           osmPoints={activeOsmPoints}
         />
         <ScrollHintButton targetRef={captionRef} label="Ver resumen por municipio" />

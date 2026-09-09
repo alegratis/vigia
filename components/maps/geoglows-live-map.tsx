@@ -44,6 +44,7 @@ import { OsmLegend } from "@/components/maps/osm-legend"
 import { VeredasOverlay } from "@/components/maps/veredas-overlay"
 import type { InundacionesSusceptibilidadResponse } from "@/lib/inundaciones/api-types"
 import type { OsmPoint } from "@/lib/osm/api-types"
+import type { VeredaFeature } from "@/lib/veredas/api-types"
 
 function toLatLngBounds(b: LatLngBounds): LatLngBoundsExpression {
   return [
@@ -245,16 +246,22 @@ function SusceptibilityLegend() {
  * vereda boundaries with a population/infrastructure summary (shared with
  * the deslizamientos map, see components/maps/veredas-overlay.tsx) as
  * toggleable layers underneath. Click any reach for its live forecast
- * attributes, or any susceptibility zone for its threat level.
+ * attributes, or any susceptibility zone for its threat level. Turn on
+ * "Límites veredales" and click a vereda boundary to narrow the shared
+ * sidebar's population card down to it (same mechanism the
+ * deslizamientos map uses).
  */
 function GeoglowsLiveMapImpl({
   onBoundsChange,
   onZoneSelect,
+  onVeredaSelect,
   osmPoints,
   className,
 }: {
   onBoundsChange?: (bounds: MapBounds) => void
   onZoneSelect?: (municipio: string) => void
+  /** Called with the clicked vereda's feature when "Límites veredales" is on. */
+  onVeredaSelect?: (feature: VeredaFeature) => void
   /** OSM infrastructure points for the categories currently toggled on. */
   osmPoints?: OsmPoint[]
   className?: string
@@ -371,7 +378,7 @@ function GeoglowsLiveMapImpl({
         {showPrecipitation && (
           <TileLayer attribution="NASA GIBS / IMERG" url={IMERG_TILE_URL} opacity={0.6} maxNativeZoom={6} />
         )}
-        <VeredasOverlay enabled={showVeredas} />
+        <VeredasOverlay enabled={showVeredas} onSelect={onVeredaSelect} />
         {overlayUrl && overlay && (
           <ImageOverlay url={overlayUrl} bounds={toLatLngBounds(overlay.bounds)} opacity={0.9} />
         )}

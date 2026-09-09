@@ -7,12 +7,15 @@ import { BackToTopButton } from "@/components/home/back-to-top-button"
 import { FireOverview } from "@/components/fires/fire-overview"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
+import type { VeredaFeature } from "@/lib/veredas/api-types"
 
 interface IncendiosPanelContentProps {
   /** Bubbles the map's viewport up to the workspace's shared sidebar card. */
   onBoundsChange?: (bounds: MapBounds) => void
   /** Bubbles a clicked zone's municipio up to the shared sidebar card. */
   onZoneSelect?: (municipio: string) => void
+  /** Bubbles a clicked vereda (via the map's "Límites veredales" overlay) up to the shared sidebar card. */
+  onVeredaSelect?: (feature: VeredaFeature) => void
   /** OSM infrastructure points, filtered to the categories toggled on in the sidebar. */
   activeOsmPoints: OsmPoint[]
 }
@@ -21,11 +24,12 @@ interface IncendiosPanelContentProps {
  * Expanded incendios panel for the homepage workspace: the fire-threat map
  * fills the full first fold; its source caption scrolls in below.
  * Demographics and infrastructure toggles live in the workspace's shared
- * sidebar, fed by onBoundsChange/onZoneSelect.
+ * sidebar, fed by onBoundsChange/onZoneSelect/onVeredaSelect.
  */
 export function IncendiosPanelContent({
   onBoundsChange,
   onZoneSelect,
+  onVeredaSelect,
   activeOsmPoints,
 }: IncendiosPanelContentProps) {
   const captionRef = useRef<HTMLDivElement>(null)
@@ -48,6 +52,7 @@ export function IncendiosPanelContent({
           className="relative h-full w-full"
           onBoundsChange={onBoundsChange}
           onZoneSelect={onZoneSelect}
+          onVeredaSelect={onVeredaSelect}
           osmPoints={activeOsmPoints}
         />
         <ScrollHintButton targetRef={captionRef} label="Ver focos activos NASA FIRMS" />

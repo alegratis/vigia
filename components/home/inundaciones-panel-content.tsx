@@ -8,12 +8,15 @@ import { FloodOverview } from "@/components/flood/flood-overview"
 import { MunicipioFloodSummary } from "@/components/flood/municipio-flood-summary"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
+import type { VeredaFeature } from "@/lib/veredas/api-types"
 
 interface InundacionesPanelContentProps {
   /** Bubbles the map's viewport up to the workspace's shared sidebar card. */
   onBoundsChange?: (bounds: MapBounds) => void
   /** Bubbles a clicked river reach/zone's municipio up to the shared sidebar card. */
   onZoneSelect?: (municipio: string) => void
+  /** Bubbles a clicked vereda (via the map's "Límites veredales" overlay) up to the shared sidebar card. */
+  onVeredaSelect?: (feature: VeredaFeature) => void
   /** OSM infrastructure points, filtered to the categories toggled on in the sidebar. */
   activeOsmPoints: OsmPoint[]
 }
@@ -25,11 +28,12 @@ interface InundacionesPanelContentProps {
  * overview grid (FloodOverview) scroll in — both open a station's full
  * forecast in an in-place dialog rather than navigating to a separate page.
  * Demographics and infrastructure toggles live in the workspace's shared
- * sidebar, fed by onBoundsChange/onZoneSelect.
+ * sidebar, fed by onBoundsChange/onZoneSelect/onVeredaSelect.
  */
 export function InundacionesPanelContent({
   onBoundsChange,
   onZoneSelect,
+  onVeredaSelect,
   activeOsmPoints,
 }: InundacionesPanelContentProps) {
   const captionRef = useRef<HTMLDivElement>(null)
@@ -51,6 +55,7 @@ export function InundacionesPanelContent({
           className="relative h-full w-full"
           onBoundsChange={onBoundsChange}
           onZoneSelect={onZoneSelect}
+          onVeredaSelect={onVeredaSelect}
           osmPoints={activeOsmPoints}
         />
         <ScrollHintButton targetRef={captionRef} label="Ver pronóstico por estación" />
