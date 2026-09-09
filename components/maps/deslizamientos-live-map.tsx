@@ -199,10 +199,13 @@ function CriticalSitesLegend() {
  */
 function DeslizamientosLiveMapImpl({
   onBoundsChange,
+  onVeredaSelect,
   osmPoints,
   className,
 }: {
   onBoundsChange?: (bounds: MapBounds) => void
+  /** Bubbles up the vereda clicked on the map, so a panel below can drill into its own hazard-model factors. */
+  onVeredaSelect?: (feature: VeredaFeature) => void
   /** OSM infrastructure points for the categories currently toggled on. */
   osmPoints?: OsmPoint[]
   className?: string
@@ -264,7 +267,9 @@ function DeslizamientosLiveMapImpl({
             maxNativeZoom={6}
           />
         )}
-        {resolvedColors && noDataColor && <VeredasOverlay enabled colorForFeature={veredaColor} />}
+        {resolvedColors && noDataColor && (
+          <VeredasOverlay enabled colorForFeature={veredaColor} onSelect={onVeredaSelect} />
+        )}
         {showCriticalSites &&
           criticalSites?.map((site) => (
             <CircleMarker
