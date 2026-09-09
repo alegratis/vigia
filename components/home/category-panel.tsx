@@ -1,7 +1,9 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import Image from "next/image"
 import type { LucideIcon } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { MapModel } from "@/lib/maps"
 
@@ -12,6 +14,9 @@ interface CategoryPanelProps {
   onActivate: () => void
   children: React.ReactNode
 }
+
+/** Must match the panel's flex-basis/flex-grow transition duration below. */
+const SLIDE_DURATION_MS = 500
 
 /**
  * One accordion slot in the homepage's hazard workspace. Collapsed, it's a
@@ -29,8 +34,27 @@ interface CategoryPanelProps {
  * instantly snapping to its new width. The collapsed/expanded views inside
  * it still mount and unmount (heavy map content only exists while active),
  * each fading in on mount so the swap doesn't feel like an abrupt cut.
+ *
+ * `children` (the map) is deliberately not mounted the instant a panel
+ * activates: Leaflet/MapLibre measure their container's pixel size once at
+ * mount, and the panel is still animating from a ~80px strip to its full
+ * width at that point, so the map would compute tiles for a container size
+ * that's already stale a moment later, rendering cut off or misaligned. A
+ * short placeholder with a loading spinner covers the slide instead, and
+ * the map only mounts once the transition has actually finished.
  */
 export function CategoryPanel({ model, icon: Icon, isActive, onActivate, children }: CategoryPanelProps) {
+  const [mapReady, setMapReady] = useState(false)
+
+  useEffect(() => {
+    if (!isActive) {
+      setMapReady(false)
+      return
+    }
+    const timer = setTimeout(() => setMapReady(true), SLIDE_DURATION_MS)
+    return () => clearTimeout(timer)
+  }, [isActive])
+
   return (
     <div
       className={cn(
@@ -60,7 +84,16 @@ export function CategoryPanel({ model, icon: Icon, isActive, onActivate, childre
               </span>
             )}
           </div>
-          <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+          <div className="flex min-h-0 flex-1 flex-col">
+            {mapReady ? (
+              children
+            ) : (
+              <div className="flex h-[70vh] min-h-[420px] shrink-0 flex-col items-center justify-center gap-2 bg-muted/40 lg:h-full">
+                <Loader2 className="size-5 animate-spin text-muted-foreground" aria-hidden="true" />
+                <span className="text-sm text-muted-foreground">Cargando mapa…</span>
+              </div>
+            )}
+          </div>
         </div>
       ) : (
         <button
