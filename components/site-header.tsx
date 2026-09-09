@@ -72,7 +72,7 @@ export function SiteHeader() {
             })}
             <button
               type="button"
-              onClick={() => openInfoPopup("/demografia/popup", "vigia-demografia")}
+              onClick={() => openInfoPopup("/demografia/popup", "vigia-demografia", { width: 1180, height: 980 })}
               className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               Demografía
@@ -135,7 +135,7 @@ export function SiteHeader() {
             <li>
               <button
                 type="button"
-                onClick={() => openInfoPopup("/demografia/popup", "vigia-demografia")}
+                onClick={() => openInfoPopup("/demografia/popup", "vigia-demografia", { width: 1180, height: 980 })}
                 className="block w-full rounded-md px-3 py-2.5 text-left text-base font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
                 Demografía
