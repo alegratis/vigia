@@ -16,7 +16,7 @@ export function HomeTopBar() {
     <div className="flex h-12 shrink-0 items-center justify-end gap-4 border-b border-border px-4 sm:px-6">
       <button
         type="button"
-        onClick={() => openInfoPopup("/demografia/popup", "vigia-demografia")}
+        onClick={() => openInfoPopup("/demografia/popup", "vigia-demografia", { width: 1180, height: 980 })}
         className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         Demografía
