@@ -9,20 +9,24 @@ import {
   TileLayer,
   Tooltip,
   Popup,
+  WMSTileLayer,
   ZoomControl,
   useMap,
   useMapEvents,
 } from "react-leaflet"
-import type { LatLngBoundsExpression } from "leaflet"
+import type { LatLngBoundsExpression, WMSParams } from "leaflet"
 import "leaflet/dist/leaflet.css"
 import { Loader2 } from "lucide-react"
 import { SUSCEPTIBILITY_LEVELS, SUSCEPTIBILITY_LEVEL_STYLES, levelColorToken } from "@/lib/deslizamientos/levels"
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import { SMAP_TILE_URL, SMAP_COLOR_STOPS, SMAP_MAX_VALUE } from "@/lib/deslizamientos/smap"
+import { GWIS_WMS_URL } from "@/lib/incendios/gwis"
+import { GWIS_LANDCOVER_LAYER, GWIS_LANDCOVER_LEGEND_URL } from "@/lib/land-cover/gwis-landcover"
 import { BasemapTileLayer } from "@/components/maps/basemap-tile-layer"
 import { getOsmCategory } from "@/lib/osm/categories"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
 import { OsmLegend } from "@/components/maps/osm-legend"
+import { WmsLegendChip } from "@/components/maps/wms-legend-chip"
 import { useCriticalSites } from "@/lib/deslizamientos/use-critical-sites"
 import {
   CRITICAL_SITE_SEVERITIES,
@@ -114,6 +118,8 @@ interface MapLayersControlProps {
   onFaultsChange: (checked: boolean) => void
   showHistory: boolean
   onHistoryChange: (checked: boolean) => void
+  showLandCover: boolean
+  onLandCoverChange: (checked: boolean) => void
 }
 
 /**
@@ -126,10 +132,12 @@ interface MapLayersControlProps {
  * Cauca infrastructure secretariat — see lib/deslizamientos/critical-sites.ts)
  * "Fallas geológicas" (SGC fault traces — the same layer already used as
  * the hazard model's fault-proximity factor, see lib/deslizamientos/faults.ts,
- * shown here as raw lines instead of a derived score) and "Movimientos en
+ * shown here as raw lines instead of a derived score), "Movimientos en
  * masa históricos" (the SGC's national mass-movement inventory — the same
  * layer already used as the hazard model's historical-proximity factor,
- * see lib/deslizamientos/landslide-inventory.ts).
+ * see lib/deslizamientos/landslide-inventory.ts) and "Cobertura del suelo"
+ * (GWIS/EFFIS's MODIS land-cover layer — ground-cover/vegetation context
+ * for exposure, shared with the fire map, see lib/land-cover/gwis-landcover.ts).
  */
 function MapLayersControl({
   showSoilMoisture,
@@ -140,6 +148,8 @@ function MapLayersControl({
   onFaultsChange,
   showHistory,
   onHistoryChange,
+  showLandCover,
+  onLandCoverChange,
 }: MapLayersControlProps) {
   return (
     <div className="absolute left-3 top-3 z-[400] flex flex-col gap-2 rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
@@ -187,7 +197,32 @@ function MapLayersControl({
           Movimientos en masa históricos (SGC)
         </label>
       </div>
+      <div className="border-t border-border pt-1.5">
+        <label className="flex items-center gap-2 font-medium text-foreground">
+          <input
+            type="checkbox"
+            checked={showLandCover}
+            onChange={(e) => onLandCoverChange(e.target.checked)}
+            className="size-3.5 accent-primary"
+          />
+          Cobertura del suelo (MODIS)
+        </label>
+      </div>
     </div>
+  )
+}
+
+/**
+ * Legend for the "Cobertura del suelo" overlay — GWIS/EFFIS's own
+ * GetLegendGraphic image, rendered on a fixed white chip since it's not
+ * theme-aware. Shared with the fire map, see components/maps/wms-legend-chip.tsx.
+ */
+function LandCoverLegend() {
+  return (
+    <WmsLegendChip
+      src={GWIS_LANDCOVER_LEGEND_URL}
+      alt="Escala de cobertura del suelo (MODIS MCD12Q1)"
+    />
   )
 }
 
@@ -286,6 +321,7 @@ function DeslizamientosLiveMapImpl({
   const [showCriticalSites, setShowCriticalSites] = useState(false)
   const [showFaults, setShowFaults] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
+  const [showLandCover, setShowLandCover] = useState(false)
   const { points: criticalSites } = useCriticalSites(showCriticalSites)
   const { traces: faultTraces } = useFaults(showFaults)
   const { records: historyRecords } = useLandslideInventory(showHistory)
@@ -353,6 +389,20 @@ function DeslizamientosLiveMapImpl({
             url={SMAP_TILE_URL}
             opacity={0.6}
             maxNativeZoom={6}
+          />
+        )}
+        {showLandCover && (
+          <WMSTileLayer
+            url={GWIS_WMS_URL}
+            opacity={0.55}
+            params={
+              {
+                layers: GWIS_LANDCOVER_LAYER,
+                format: "image/png",
+                transparent: true,
+                version: "1.1.1",
+              } as WMSParams
+            }
           />
         )}
         {resolvedColors && noDataColor && (
@@ -495,15 +545,18 @@ function DeslizamientosLiveMapImpl({
         onFaultsChange={setShowFaults}
         showHistory={showHistory}
         onHistoryChange={setShowHistory}
+        showLandCover={showLandCover}
+        onLandCoverChange={setShowLandCover}
       />
       <div className="absolute right-3 top-16 z-[400] max-w-[200px]">
         <OsmLegend points={osmPoints ?? []} />
       </div>
       <Legend />
-      {(showCriticalSites || showSoilMoisture) && (
+      {(showCriticalSites || showSoilMoisture || showLandCover) && (
         <BottomRightLegends>
           {showSoilMoisture && <SoilMoistureLegend />}
           {showCriticalSites && <CriticalSitesLegend />}
+          {showLandCover && <LandCoverLegend />}
         </BottomRightLegends>
       )}
     </div>
