@@ -32,6 +32,12 @@ import {
   GWIS_WMS_URL,
 } from "@/lib/incendios/gwis"
 import { GWIS_LANDCOVER_LAYER, GWIS_LANDCOVER_LEGEND_URL } from "@/lib/land-cover/gwis-landcover"
+import {
+  GWIS_SETTLEMENT_LAYER,
+  GWIS_SETTLEMENT_LEGEND_URL,
+  GWIS_PROTECTED_AREAS_LAYER,
+  GWIS_PROTECTED_AREAS_LEGEND_URL,
+} from "@/lib/demografia/gwis-context-layers"
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import { CONFIDENCE_STYLES, formatDateTime, formatDistance, formatFrp } from "@/lib/firms/ui"
 import { normalizeMunicipioName } from "@/lib/demografia/categories"
@@ -171,6 +177,24 @@ function LandCoverLegend() {
   )
 }
 
+function SettlementLegend() {
+  return (
+    <WmsLegendChip
+      src={GWIS_SETTLEMENT_LEGEND_URL}
+      alt="Leyenda de asentamientos humanos (GHSL Built-Up)"
+    />
+  )
+}
+
+function ProtectedAreasLegend() {
+  return (
+    <WmsLegendChip
+      src={GWIS_PROTECTED_AREAS_LEGEND_URL}
+      alt="Leyenda de áreas protegidas (WDPA)"
+    />
+  )
+}
+
 /**
  * Live forest-fire threat map: renders the public `AmenazaIncendios`
  * polygons published on ArcGIS Online (by vereda), with optional overlays
@@ -217,6 +241,8 @@ function IncendiosLiveMapImpl({
   const [showSentinel3, setShowSentinel3] = useState(false)
   const [showVeredas, setShowVeredas] = useState(false)
   const [showLandCover, setShowLandCover] = useState(false)
+  const [showSettlement, setShowSettlement] = useState(false)
+  const [showProtectedAreas, setShowProtectedAreas] = useState(false)
   const [fireDays, setFireDays] = useState<number>(2)
   const needsFirms = showModis || showViirs
   const { data: firesData } = useSWR<FiresResponse>(
@@ -340,6 +366,34 @@ function IncendiosLiveMapImpl({
             params={
               {
                 layers: GWIS_LANDCOVER_LAYER,
+                format: "image/png",
+                transparent: true,
+                version: "1.1.1",
+              } as WMSParams
+            }
+          />
+        )}
+        {showSettlement && (
+          <WMSTileLayer
+            url={GWIS_WMS_URL}
+            opacity={0.7}
+            params={
+              {
+                layers: GWIS_SETTLEMENT_LAYER,
+                format: "image/png",
+                transparent: true,
+                version: "1.1.1",
+              } as WMSParams
+            }
+          />
+        )}
+        {showProtectedAreas && (
+          <WMSTileLayer
+            url={GWIS_WMS_URL}
+            opacity={0.6}
+            params={
+              {
+                layers: GWIS_PROTECTED_AREAS_LAYER,
                 format: "image/png",
                 transparent: true,
                 version: "1.1.1",
@@ -498,6 +552,28 @@ function IncendiosLiveMapImpl({
           <label className="flex items-center gap-2 font-medium text-foreground">
             <input
               type="checkbox"
+              checked={showSettlement}
+              onChange={(e) => setShowSettlement(e.target.checked)}
+              className="size-3.5 accent-primary"
+            />
+            Asentamientos humanos (GHSL)
+          </label>
+        </div>
+        <div className="border-t border-border pt-1.5">
+          <label className="flex items-center gap-2 font-medium text-foreground">
+            <input
+              type="checkbox"
+              checked={showProtectedAreas}
+              onChange={(e) => setShowProtectedAreas(e.target.checked)}
+              className="size-3.5 accent-primary"
+            />
+            Áreas protegidas (WDPA)
+          </label>
+        </div>
+        <div className="border-t border-border pt-1.5">
+          <label className="flex items-center gap-2 font-medium text-foreground">
+            <input
+              type="checkbox"
               checked={showVeredas}
               onChange={(e) => setShowVeredas(e.target.checked)}
               className="size-3.5 accent-primary"
@@ -521,12 +597,14 @@ function IncendiosLiveMapImpl({
       <div className="absolute right-3 top-16 z-[400] max-w-[200px]">
         <OsmLegend points={osmPoints ?? []} />
       </div>
-      {(showForecast || needsFirms || showSentinel3 || showLandCover) && (
+      {(showForecast || needsFirms || showSentinel3 || showLandCover || showSettlement || showProtectedAreas) && (
         <div className="absolute bottom-3 right-3 z-[400] flex flex-col items-end gap-2">
           {showForecast && <FwiLegend />}
           {needsFirms && <FireLegend colors={fireColors} />}
           {showSentinel3 && <S3Legend />}
           {showLandCover && <LandCoverLegend />}
+          {showSettlement && <SettlementLegend />}
+          {showProtectedAreas && <ProtectedAreasLegend />}
         </div>
       )}
     </div>

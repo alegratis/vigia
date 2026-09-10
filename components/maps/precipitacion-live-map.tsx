@@ -8,12 +8,13 @@ import {
   TileLayer,
   GeoJSON,
   Popup,
+  WMSTileLayer,
   ZoomControl,
   useMap,
   useMapEvents,
 } from "react-leaflet"
 import { BasemapTileLayer } from "./basemap-tile-layer"
-import type { Layer, LatLngBoundsExpression, LeafletMouseEvent, PathOptions } from "leaflet"
+import type { Layer, LatLngBoundsExpression, LeafletMouseEvent, PathOptions, WMSParams } from "leaflet"
 import "leaflet/dist/leaflet.css"
 import { ExternalLink, Loader2 } from "lucide-react"
 import useSWR from "swr"
@@ -31,6 +32,14 @@ import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
 import { OsmLegend } from "@/components/maps/osm-legend"
 import { VeredasOverlay } from "@/components/maps/veredas-overlay"
 import { useVeredas } from "@/lib/veredas/use-veredas"
+import { WmsLegendChip } from "@/components/maps/wms-legend-chip"
+import { GWIS_WMS_URL } from "@/lib/incendios/gwis"
+import {
+  GWIS_SETTLEMENT_LAYER,
+  GWIS_SETTLEMENT_LEGEND_URL,
+  GWIS_PROTECTED_AREAS_LAYER,
+  GWIS_PROTECTED_AREAS_LEGEND_URL,
+} from "@/lib/demografia/gwis-context-layers"
 import type { PrecipitacionAmenazaResponse, PrecipitacionFuente, PrecipitacionMode } from "@/lib/precipitacion/api-types"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
@@ -103,6 +112,24 @@ function ThreatLegend({ title }: { title: string }) {
   )
 }
 
+function SettlementLegend() {
+  return (
+    <WmsLegendChip
+      src={GWIS_SETTLEMENT_LEGEND_URL}
+      alt="Leyenda de asentamientos humanos (GHSL Built-Up)"
+    />
+  )
+}
+
+function ProtectedAreasLegend() {
+  return (
+    <WmsLegendChip
+      src={GWIS_PROTECTED_AREAS_LEGEND_URL}
+      alt="Leyenda de áreas protegidas (WDPA)"
+    />
+  )
+}
+
 /**
  * Live precipitación map: renders each vereda colored by its rainfall
  * level, toggling between a backward-looking accumulation window (NASA
@@ -153,6 +180,8 @@ function PrecipitacionLiveMapImpl({
   const [resolvedColors, setResolvedColors] = useState<Record<string, string> | null>(null)
   const [showImerg, setShowImerg] = useState(true)
   const [showVeredas, setShowVeredas] = useState(false)
+  const [showSettlement, setShowSettlement] = useState(false)
+  const [showProtectedAreas, setShowProtectedAreas] = useState(false)
 
   const windowOptions = mode === "pronostico" ? FORECAST_WINDOW_OPTIONS : ACCUMULATION_WINDOW_OPTIONS
 
@@ -269,6 +298,34 @@ function PrecipitacionLiveMapImpl({
         <BasemapTileLayer />
         {showImerg && (
           <TileLayer attribution="NASA GIBS / IMERG" url={IMERG_TILE_URL} opacity={0.6} maxNativeZoom={6} />
+        )}
+        {showSettlement && (
+          <WMSTileLayer
+            url={GWIS_WMS_URL}
+            opacity={0.7}
+            params={
+              {
+                layers: GWIS_SETTLEMENT_LAYER,
+                format: "image/png",
+                transparent: true,
+                version: "1.1.1",
+              } as WMSParams
+            }
+          />
+        )}
+        {showProtectedAreas && (
+          <WMSTileLayer
+            url={GWIS_WMS_URL}
+            opacity={0.6}
+            params={
+              {
+                layers: GWIS_PROTECTED_AREAS_LAYER,
+                format: "image/png",
+                transparent: true,
+                version: "1.1.1",
+              } as WMSParams
+            }
+          />
         )}
         {data?.veredas && resolvedColors && (
           <GeoJSON
@@ -409,6 +466,28 @@ function PrecipitacionLiveMapImpl({
             </p>
           )}
         </div>
+        <div className="border-t border-border pt-1.5">
+          <label className="flex items-center gap-1.5 font-medium text-foreground">
+            <input
+              type="checkbox"
+              checked={showSettlement}
+              onChange={(e) => setShowSettlement(e.target.checked)}
+              className="size-3.5 accent-primary"
+            />
+            Asentamientos humanos (GHSL)
+          </label>
+        </div>
+        <div className="border-t border-border pt-1.5">
+          <label className="flex items-center gap-1.5 font-medium text-foreground">
+            <input
+              type="checkbox"
+              checked={showProtectedAreas}
+              onChange={(e) => setShowProtectedAreas(e.target.checked)}
+              className="size-3.5 accent-primary"
+            />
+            Áreas protegidas (WDPA)
+          </label>
+        </div>
       </div>
 
       {!data && !error && (
@@ -425,6 +504,12 @@ function PrecipitacionLiveMapImpl({
       <div className="absolute right-3 top-16 z-[400] max-w-[200px]">
         <OsmLegend points={osmPoints ?? []} />
       </div>
+      {(showSettlement || showProtectedAreas) && (
+        <div className="absolute bottom-3 right-3 z-[400] flex flex-col items-end gap-2">
+          {showSettlement && <SettlementLegend />}
+          {showProtectedAreas && <ProtectedAreasLegend />}
+        </div>
+      )}
     </div>
   )
 }
