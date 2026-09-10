@@ -64,11 +64,12 @@ function LevelCountRow({ level, count }: { level: FloodSusceptibilityLevel; coun
 /**
  * Explains, in the app itself rather than only in /documentacion, exactly
  * how the inundaciones map's "Modelo propio de inundación" vereda layer
- * is calculated: the three factors and their weights, an overall summary
- * per municipio built client-side from the same vereda data the map
- * renders (see lib/veredas/municipio-summary.ts — no extra request,
- * including each municipio's official-zoning coverage), and — once a
- * vereda is clicked on the map — that vereda's own resolved factors.
+ * is calculated. Data-first, methodology-last: an overall summary per
+ * municipio built client-side from the same vereda data the map renders
+ * (see lib/veredas/municipio-summary.ts — no extra request, including
+ * each municipio's official-zoning coverage), then — once a vereda is
+ * clicked on the map — that vereda's own resolved factors, and finally
+ * the three factors and their weights that produced all of the above.
  * Mirrors HazardModelPanel's structure for the landslide model.
  */
 export function FloodModelPanel({ className, selectedVereda, onClearSelection }: FloodModelPanelProps) {
@@ -102,20 +103,6 @@ export function FloodModelPanel({ className, selectedVereda, onClearSelection }:
         </p>
       </CardHeader>
       <CardContent className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto py-4">
-        <ul className="flex flex-col gap-3">
-          {FACTORS.map((factor) => (
-            <li key={factor.label} className="flex flex-col gap-0.5">
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="text-sm font-medium text-foreground">{factor.label}</span>
-                <span className="shrink-0 text-xs text-muted-foreground">{factor.weight}</span>
-              </div>
-              <p className="text-pretty text-xs leading-relaxed text-muted-foreground">{factor.detail}</p>
-            </li>
-          ))}
-        </ul>
-
-        <Separator />
-
         {selectedProps && (
           <div className="flex flex-col gap-2 rounded-md bg-muted px-3 py-2.5">
             <div className="flex items-center justify-between gap-2">
@@ -210,6 +197,25 @@ export function FloodModelPanel({ className, selectedVereda, onClearSelection }:
               </ul>
             </div>
           ))}
+        </div>
+
+        <Separator />
+
+        <div className="flex flex-col gap-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Cómo se calcula el puntaje
+          </p>
+          <ul className="flex flex-col gap-3">
+            {FACTORS.map((factor) => (
+              <li key={factor.label} className="flex flex-col gap-0.5">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-sm font-medium text-foreground">{factor.label}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">{factor.weight}</span>
+                </div>
+                <p className="text-pretty text-xs leading-relaxed text-muted-foreground">{factor.detail}</p>
+              </li>
+            ))}
+          </ul>
         </div>
       </CardContent>
     </Card>
