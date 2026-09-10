@@ -43,7 +43,10 @@ import { getOsmCategory } from "@/lib/osm/categories"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
 import { OsmLegend } from "@/components/maps/osm-legend"
 import { VeredasOverlay } from "@/components/maps/veredas-overlay"
-import type { InundacionesSusceptibilidadResponse } from "@/lib/inundaciones/api-types"
+import type {
+  InundacionesQuebradasResponse,
+  InundacionesSusceptibilidadResponse,
+} from "@/lib/inundaciones/api-types"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { VeredaFeature } from "@/lib/veredas/api-types"
 
@@ -59,6 +62,19 @@ const susceptibilityFetcher = async (url: string): Promise<InundacionesSusceptib
   if (!res.ok) throw new Error("No se pudo cargar la capa de susceptibilidad a inundaciones")
   return res.json()
 }
+
+const quebradasFetcher = async (url: string): Promise<InundacionesQuebradasResponse> => {
+  const res = await fetch(url)
+  if (!res.ok) throw new Error("No se pudo cargar la capa de quebradas y ríos")
+  return res.json()
+}
+
+/**
+ * Names singled out for a thicker, brighter line and their own popup
+ * emphasis — Río Totoro (GEOGLOWS rivid 610330643) and Quebrada San José,
+ * both specifically asked about when this layer was added.
+ */
+const HIGHLIGHTED_STREAM_NAMES = new Set(["Río Totoro", "Quebrada San José"])
 
 const stationIcon = L.divIcon({
   className: "",
@@ -294,12 +310,19 @@ function GeoglowsLiveMapImpl({
   const [showSusceptibility, setShowSusceptibility] = useState(false)
   const [showPrecipitation, setShowPrecipitation] = useState(false)
   const [showVeredas, setShowVeredas] = useState(true)
+  const [showQuebradas, setShowQuebradas] = useState(false)
   const [selectedStation, setSelectedStation] = useState<Station | null>(null)
   const osmColors = useOsmCategoryColors()
 
   const { data: susceptibility, error: susceptibilityError } = useSWR<InundacionesSusceptibilidadResponse>(
     "/api/inundaciones/susceptibilidad",
     susceptibilityFetcher,
+    { revalidateOnFocus: false },
+  )
+
+  const { data: quebradas, error: quebradasError } = useSWR<InundacionesQuebradasResponse>(
+    showQuebradas ? "/api/inundaciones/quebradas" : null,
+    quebradasFetcher,
     { revalidateOnFocus: false },
   )
 
@@ -373,6 +396,32 @@ function GeoglowsLiveMapImpl({
     [resolvedColors],
   )
 
+  const quebradaStyle = useCallback((feature?: GeoJSON.Feature): PathOptions => {
+    const nombre = feature?.properties?.nombre as string | undefined
+    const highlighted = nombre ? HIGHLIGHTED_STREAM_NAMES.has(nombre) : false
+    return {
+      color: highlighted ? "#38bdf8" : "#0ea5e9",
+      weight: highlighted ? 4 : 2,
+      opacity: highlighted ? 1 : 0.75,
+    }
+  }, [])
+
+  const onEachQuebradaFeature = useCallback((feature: GeoJSON.Feature, layer: Layer) => {
+    const nombre = feature.properties?.nombre as string | undefined
+    const source = feature.properties?.source as string | undefined
+    layer.bindPopup(
+      `<div style="font-size:13px;display:flex;flex-direction:column;gap:2px">
+        <strong>${nombre ?? "Quebrada / río"}</strong>
+        <span>${source === "osm" ? "Fuente: OpenStreetMap" : "Fuente: capa Quebradas (ArcGIS)"}</span>
+      </div>`,
+    )
+    // Same guard as the susceptibility zones: stop this popup click from
+    // also firing ReachClickLayer's GEOGLOWS reach lookup underneath it.
+    layer.on("click", (e: LeafletMouseEvent) => {
+      L.DomEvent.stopPropagation(e)
+    })
+  }, [])
+
   const handleOverlayChange = useCallback((bounds: LatLngBounds, width: number, height: number) => {
     setOverlay({ bounds, width, height })
   }, [])
@@ -418,6 +467,14 @@ function GeoglowsLiveMapImpl({
           hazardKind="inundaciones"
           blockMapClick={false}
         />
+        {showQuebradas && quebradas?.lines && (
+          <GeoJSON
+            key={`quebradas-${quebradas.generatedAt}`}
+            data={quebradas.lines as unknown as GeoJSON.GeoJsonObject}
+            style={quebradaStyle}
+            onEachFeature={onEachQuebradaFeature}
+          />
+        )}
         <Pane name="geoglows-reach-pane" style={{ zIndex: 450 }}>
           {overlayUrl && overlay && (
             <ImageOverlay url={overlayUrl} bounds={toLatLngBounds(overlay.bounds)} opacity={0.9} />
@@ -501,6 +558,15 @@ function GeoglowsLiveMapImpl({
           />
           Modelo propio de inundación (por vereda, incluye Zarzal)
         </label>
+        <label className="flex items-center gap-1.5 font-medium text-foreground">
+          <input
+            type="checkbox"
+            checked={showQuebradas}
+            onChange={(e) => setShowQuebradas(e.target.checked)}
+            className="size-3.5 accent-[var(--primary)]"
+          />
+          Quebradas y ríos (clic para nombre)
+        </label>
         {showPrecipitation && (
           <a
             href={IMERG_WORLDVIEW_URL}
@@ -513,7 +579,8 @@ function GeoglowsLiveMapImpl({
           </a>
         )}
       </div>
-      {showSusceptibility && !susceptibility && !susceptibilityError && (
+      {((showSusceptibility && !susceptibility && !susceptibilityError) ||
+        (showQuebradas && !quebradas && !quebradasError)) && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-background/40">
           <Loader2 className="size-6 animate-spin text-muted-foreground" aria-hidden="true" />
         </div>
