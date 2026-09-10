@@ -68,11 +68,28 @@ export function SectionLicencias() {
     <section id="licencias" className="flex flex-col gap-4 scroll-mt-24">
       <h2 className="text-2xl font-semibold tracking-tight">Licencias de código abierto</h2>
       <p className="text-pretty leading-relaxed text-muted-foreground">
-        Vigía se distribuye como proyecto de código abierto, pero este repositorio todavía no
-        publica un archivo LICENSE ni un identificador SPDX propio — algo pendiente de definir por
-        sus mantenedores. Las dependencias de código que sí lo incluyen se listan a continuación,
-        agrupadas por licencia, tal como la declara cada paquete.
+        Vigía es un proyecto de código abierto, creado por Alejandro Pino y publicado bajo la
+        licencia MIT. Las dependencias de código que trae la app se listan a continuación,
+        agrupadas por su propia licencia, tal como la declara cada paquete.
       </p>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-base">Licencia del proyecto</CardTitle>
+            <Badge variant="outline">MIT</Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-2">
+          <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
+            Creado por Alejandro Pino. El código de Vigía se distribuye bajo la licencia MIT: cualquiera
+            puede usarlo, copiarlo, modificarlo y redistribuirlo, incluso con fines comerciales, siempre
+            que conserve el aviso de copyright original. Se ofrece &quot;tal cual&quot;, sin garantía. El
+            texto completo está en el archivo{" "}
+            <span className="font-mono text-xs sm:text-sm">LICENSE</span> en la raíz del repositorio.
+          </p>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {LICENSE_GROUPS.map((group) => (

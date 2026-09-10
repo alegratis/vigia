@@ -31,7 +31,9 @@ export function DocFooter() {
           Proyecto de código abierto &middot; Datos de RED LabOT, GEOGLOWS, NASA FIRMS/GIBS,
           Copernicus GWIS, DANE, Esri Colombia y OpenStreetMap.
         </p>
-        <p className="text-sm text-muted-foreground">&copy; {year} Vigía.</p>
+        <p className="text-sm text-muted-foreground">
+          &copy; {year} Vigía. Creado por Alejandro Pino. Publicado bajo la licencia MIT.
+        </p>
       </div>
     </footer>
   )
