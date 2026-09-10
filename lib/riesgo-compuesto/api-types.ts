@@ -1,14 +1,14 @@
 /**
  * Client-safe types for /api/riesgo-compuesto/veredas — this app's own
  * compound multi-hazard assessment per vereda, composed entirely from data
- * this app already computes for the other four categories (see
+ * this app already computes for the other five categories (see
  * lib/riesgo-compuesto/server.ts). No server imports here.
  */
 
 import type { CompoundLevel, IdeamActionTier } from "./levels"
 
-/** The four hazards this category combines — same names used across the app's other categories. */
-export type HazardName = "deslizamientos" | "inundaciones" | "incendios" | "precipitacion"
+/** The five hazards this category combines — same names used across the app's other categories. */
+export type HazardName = "deslizamientos" | "inundaciones" | "incendios" | "precipitacion" | "sismologia"
 
 export interface SubHazardSummary {
   hazard: HazardName

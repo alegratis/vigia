@@ -31,7 +31,7 @@ export function buildResumen({
   subHazards: SubHazardSummary[]
 }): string {
   if (!compoundLevel || !actionTier) {
-    return `No hay suficientes datos de ninguno de los cuatro modelos de amenaza para calcular un riesgo compuesto en ${nombre} (${municipio}).`
+    return `No hay suficientes datos de ninguno de los cinco modelos de amenaza para calcular un riesgo compuesto en ${nombre} (${municipio}).`
   }
   const dominant = subHazards.find((h) => h.hazard === dominantHazard)
   const dominantText = dominant

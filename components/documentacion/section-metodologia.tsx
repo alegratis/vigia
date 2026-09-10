@@ -154,31 +154,32 @@ const COMPOUND_STEPS: Step[] = [
   {
     title: "1. Normalización de cada amenaza a 0–1",
     entrada:
-      "Los cuatro modelos de amenaza que esta app ya calcula por vereda: deslizamientos y inundaciones (cada uno con su propio puntaje 0–1 continuo, ver las metodologías anteriores) e incendios forestales y precipitación (cada uno solo con un nivel de 4 categorías, sin puntaje continuo propio).",
+      "Los cinco modelos de amenaza que esta app ya calcula por vereda: deslizamientos, inundaciones y sismología (cada uno con su propio puntaje 0–1 continuo) e incendios forestales y precipitación (cada uno solo con un nivel de 4 categorías, sin puntaje continuo propio).",
     proceso: [
       "Deslizamientos e inundaciones: se reutiliza directamente el puntaje 0–1 ya calculado por cada modelo — nunca se recalcula.",
       "Incendios (AmenazaIncendios, 4 niveles: Muy bajo/Bajo/Medio/Alto) y precipitación (4 niveles: Bajo/Moderado/Alto/Muy alto): sin puntaje continuo publicado, se usa el índice ordinal del nivel sobre el total de niveles como puntaje sustituto — la misma técnica que el modelo de inundación ya usa para traducir la clase de zonificación oficial a un puntaje.",
-      "Incendios se resuelve en el mismo centroide de vereda que los otros tres, mediante un nuevo cruce punto-en-polígono contra la capa AmenazaIncendios (lib/riesgo-compuesto/incendios-join.ts) — un archivo nuevo, no una modificación al mapa de incendios existente.",
+      "Incendios se resuelve en el mismo centroide de vereda que los otros cuatro, mediante un nuevo cruce punto-en-polígono contra la capa AmenazaIncendios (lib/riesgo-compuesto/incendios-join.ts) — un archivo nuevo, no una modificación al mapa de incendios existente.",
       "Precipitación reutiliza /api/precipitacion/amenaza en su modo histórico de 7 días con NASA POWER, ya calculado por vereda.",
+      "Sismología: sin zonificación por vereda publicada, se calcula un puntaje propio de exposición por decaimiento espacial desde los epicentros de USGS (en vivo) y SGC (histórico) — ver lib/sismologia/exposure-score.ts.",
     ],
     nota:
-      "Ninguna de las cuatro amenazas se recalcula desde cero — el módulo compuesto solo importa y combina las funciones ya exportadas por cada categoría existente.",
+      "Ninguna de las cinco amenazas se recalcula desde cero — el módulo compuesto solo importa y combina las funciones ya exportadas por cada categoría existente (sismología incluida, con su propio módulo de exposición).",
   },
   {
     title: "2. Nivel compuesto: la amenaza más alta gobierna",
-    entrada: "Los cuatro puntajes normalizados del paso 1.",
+    entrada: "Los cinco puntajes normalizados del paso 1.",
     proceso: [
       "Cada puntaje normalizado se traduce individualmente al mismo esquema de 5 niveles usado en toda la plataforma (Muy bajo <0.2, Bajo <0.4, Moderado <0.6, Alto <0.8, Muy alto ≥0.8).",
-      "El nivel compuesto de la vereda es el mayor de esos cuatro niveles — no un promedio — siguiendo la doctrina de la OMM y GDACS (Global Disaster Alert and Coordination System) de que la amenaza más severa determina la alerta general, sin diluirla con amenazas más tranquilas.",
+      "El nivel compuesto de la vereda es el mayor de esos cinco niveles — no un promedio — siguiendo la doctrina de la OMM y GDACS (Global Disaster Alert and Coordination System) de que la amenaza más severa determina la alerta general, sin diluirla con amenazas más tranquilas.",
       "La amenaza \"dominante\" reportada es la que alcanzó ese nivel máximo (en caso de empate entre niveles, la de mayor puntaje normalizado).",
     ],
   },
   {
     title: "3. Puntaje compuesto: promedio ponderado al estilo INFORM",
-    entrada: "Los mismos cuatro puntajes normalizados del paso 1.",
+    entrada: "Los mismos cinco puntajes normalizados del paso 1.",
     proceso: [
-      "Puntaje compuesto = promedio ponderado de los cuatro puntajes, con peso igual de 25% cada uno por defecto — al estilo del Índice de Riesgo INFORM (composición ponderada de componentes de riesgo).",
-      "Si una amenaza no tiene datos para una vereda (p. ej. incendios fuera de su cobertura en Sevilla/Caicedonia, o precipitación sin lectura válida), su peso se renormaliza sobre las que sí resolvieron — la misma convención de \"sin datos nunca inventados\" que usa cada modelo individual.",
+      "Puntaje compuesto = promedio ponderado de los cinco puntajes, con peso igual de 20% cada uno por defecto — al estilo del Índice de Riesgo INFORM (composición ponderada de componentes de riesgo).",
+      "Si una amenaza no tiene datos para una vereda (p. ej. incendios fuera de su cobertura en Sevilla/Caicedonia, o precipitación sin lectura válida), su peso se renormaliza sobre las que sí resolvieron — la misma convención de \"sin datos nunca inventados\" que usa cada modelo individual. Sismología siempre resuelve (es un fenómeno regional, no zonificado), por lo que casi nunca deja de aportar su 20%.",
       "Este puntaje no define el nivel compuesto (eso lo hace el paso 2) — solo ordena veredas dentro de un mismo nivel para color de intensidad o priorización relativa.",
     ],
   },
@@ -197,6 +198,7 @@ const COMPOUND_CACHES = [
   { fuente: "Deslizamientos e inundaciones", ttl: "reutilizada", motivo: "mismo caché que cada modelo individual (vía aggregateVeredas)" },
   { fuente: "Incendios forestales (cruce por centroide)", ttl: "1 hora", motivo: "mismo caché que la capa AmenazaIncendios original" },
   { fuente: "Precipitación (NASA POWER, 7 días)", ttl: "3 horas", motivo: "mismo caché que /api/precipitacion/amenaza" },
+  { fuente: "Sismología (USGS en vivo / SGC histórico)", ttl: "5 min / 1 día", motivo: "mismo caché que /api/sismologia/eventos" },
 ]
 
 export function SectionMetodologia() {
@@ -419,9 +421,10 @@ export function SectionMetodologia() {
           <Badge variant="outline">Cálculo propio, no un índice oficial</Badge>
         </div>
         <p className="max-w-3xl text-pretty leading-relaxed text-muted-foreground">
-          La capa &quot;Riesgo compuesto&quot; combina las cuatro amenazas que esta app ya modela por
-          vereda —deslizamientos, inundaciones (modelo propio), incendios forestales y precipitación— en una
-          sola evaluación, siguiendo dos enfoques ya usados en la práctica internacional en vez de inventar
+          La capa &quot;Riesgo compuesto&quot; combina las cinco amenazas que esta app ya modela por
+          vereda —deslizamientos, inundaciones (modelo propio), incendios forestales, precipitación y
+          sismología— en una sola evaluación, siguiendo dos enfoques ya usados en la práctica internacional
+          en vez de inventar
           uno nuevo: la doctrina de la OMM/GDACS de que &quot;la amenaza más alta gobierna&quot; para el
           nivel de alerta, y la composición ponderada al estilo del Índice de Riesgo INFORM para un puntaje
           continuo de referencia. El resultado se traduce además al marco de acción

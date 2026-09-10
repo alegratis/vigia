@@ -39,8 +39,8 @@ export function RiesgoCompuestoPanelContent({ onBoundsChange, activeOsmPoints }:
       >
         <p className="sr-only">
           Mapa interactivo de riesgo compuesto por vereda, combinando deslizamientos, inundaciones,
-          incendios forestales y precipitación. Al hacer clic en una vereda se abre un resumen de las cuatro
-          amenazas con un botón para ver el reporte completo.
+          incendios forestales, precipitación y sismología. Al hacer clic en una vereda se abre un resumen de
+          las cinco amenazas con un botón para ver el reporte completo.
         </p>
         <CompoundLiveMapLoader
           className="relative isolate h-full w-full"
@@ -54,7 +54,7 @@ export function RiesgoCompuestoPanelContent({ onBoundsChange, activeOsmPoints }:
         <CompoundModelPanel selectedVereda={selectedVereda} onClearSelection={() => setSelectedVereda(null)} />
         <p className="text-xs text-muted-foreground">
           Haz clic en &quot;Ver reporte completo&quot; dentro del popup de cualquier vereda para el desglose
-          narrativo de las cuatro amenazas, la exposición demográfica y la metodología detallada.
+          narrativo de las cinco amenazas, la exposición demográfica y la metodología detallada.
         </p>
         <BackToTopButton targetRef={mapRef} />
       </div>

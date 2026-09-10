@@ -258,20 +258,60 @@ const GROUPS: SourceGroup[] = [
     ],
   },
   {
+    title: "Sismología",
+    description:
+      "Actividad sísmica en vivo (USGS) y el catálogo histórico oficial de Colombia (SGC), más un resumen opcional de reportes comunitarios de daños en Sevilla.",
+    sources: [
+      {
+        nombre: "Catálogo sísmico en vivo (FDSN Event Web Service)",
+        publicador: "USGS (Servicio Geológico de Estados Unidos)",
+        descripcion:
+          "Eventos sísmicos globales de los últimos 90 días dentro de la zona de estudio, sin magnitud mínima — magnitud, profundidad, ubicación y lugar descriptivo.",
+        url: "https://earthquake.usgs.gov/fdsnws/event/1/",
+        acceso: "API REST pública (GeoJSON), sin clave",
+        licencia: "Dominio público (USGS)",
+        cobertura: "Global, filtrado a la región de Sevilla/Caicedonia/Zarzal",
+        actualizacion: "Consultado cada 5 minutos",
+      },
+      {
+        nombre: "Catálogo de sismos histórico",
+        publicador: "Servicio Geológico Colombiano (SGC)",
+        descripcion:
+          "Registro sísmico oficial de Colombia — magnitud, profundidad y ubicación de eventos históricos en la región. No es un feed en vivo.",
+        url: "http://geoportal.sgc.gov.co/arcgis/rest/services/catalogo_sismos/catalogo_de_sismos_2/FeatureServer",
+        acceso: "ArcGIS FeatureServer",
+        licencia: "Datos abiertos del Estado colombiano",
+        cobertura: "Colombia, filtrado a la región de Sevilla/Caicedonia/Zarzal",
+        actualizacion: "Consultado una vez al día",
+      },
+      {
+        nombre: "Reportes de daños (Sevilla)",
+        publicador: "UVGeomatica — formulario de campo comunitario (Survey123)",
+        descripcion:
+          "Reportes de daños por sismo, agregados por barrio — solo conteos y estado de la vivienda; nunca direcciones ni cifras de heridos o fallecidos por hogar.",
+        url: "/documentacion#metodologia",
+        acceso: "ArcGIS FeatureServer, agregado en el servidor antes de exponerse",
+        licencia: "Datos comunitarios, sin verificar",
+        cobertura: "Solo Sevilla",
+        actualizacion: "Consultado cada hora",
+      },
+    ],
+  },
+  {
     title: "Riesgo compuesto (multiamenaza)",
     description:
-      "Sin fuente externa propia — esta categoría solo combina, en el servidor, los cuatro modelos de amenaza que ya alimentan las categorías anteriores.",
+      "Sin fuente externa propia — esta categoría solo combina, en el servidor, los cinco modelos de amenaza que ya alimentan las categorías anteriores.",
     sources: [
       {
         nombre: "Riesgo compuesto por vereda",
         publicador: "Vigía (cálculo propio, siguiendo la doctrina OMM/GDACS y el estilo del Índice de Riesgo INFORM)",
         descripcion:
-          "Combina el puntaje/nivel de deslizamientos, el puntaje/nivel de inundaciones (modelo propio), el nivel de incendios forestales (AmenazaIncendios, cruzado por centroide de vereda) y el nivel de precipitación (acumulado de 7 días, NASA POWER) en un nivel compuesto (el mayor de los cuatro, normalizado 0–1) y un puntaje compuesto (promedio ponderado 25%/25%/25%/25%, re-normalizado sobre los que resolvieron), más un reporte narrativo en español generado con plantillas de texto deterministas — nunca con un modelo de lenguaje. Ver la sección \"Metodología\" más abajo para el detalle completo.",
+          "Combina el puntaje/nivel de deslizamientos, el puntaje/nivel de inundaciones (modelo propio), el nivel de incendios forestales (AmenazaIncendios, cruzado por centroide de vereda), el nivel de precipitación (acumulado de 7 días, NASA POWER) y el puntaje de exposición sísmica (decaimiento espacial desde epicentros USGS/SGC) en un nivel compuesto (el mayor de los cinco, normalizado 0–1) y un puntaje compuesto (promedio ponderado 20%/20%/20%/20%/20%, re-normalizado sobre los que resolvieron), más un reporte narrativo en español generado con plantillas de texto deterministas — nunca con un modelo de lenguaje. Ver la sección \"Metodología\" más abajo para el detalle completo.",
         url: "/documentacion#metodologia",
-        acceso: "Cálculo propio, composición de las cuatro categorías existentes",
+        acceso: "Cálculo propio, composición de las cinco categorías existentes",
         licencia: "N/A — calculado por la app a partir de sus propios modelos",
         cobertura: "Sevilla, Caicedonia, Zarzal (~55 centroides de vereda)",
-        actualizacion: "Hereda el caché de cada insumo (30 días / 6 horas / 1 hora / 3 horas)",
+        actualizacion: "Hereda el caché de cada insumo (30 días / 6 horas / 1 hora / 3 horas / 5 min-1 día)",
       },
     ],
   },

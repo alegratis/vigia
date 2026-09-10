@@ -1,7 +1,7 @@
 import "server-only"
 
 /**
- * Combines this app's four already-computed per-vereda hazard
+ * Combines this app's five already-computed per-vereda hazard
  * classifications into one compound assessment. No new external data
  * source or invented algorithm — see lib/riesgo-compuesto/levels.ts for
  * the two precedented approaches this follows (WMO/GDACS max-ordinal tier,
@@ -22,6 +22,11 @@ import "server-only"
  *   for a score, the same technique `zoningLevelToScore` already uses in
  *   the flood model for a level-only input.
  * - Precipitación: same technique, over `PRECIPITATION_LEVELS`.
+ * - Sismología: unlike the other four, there is no published per-vereda
+ *   seismic zonation to join against — `exposure-score.ts`'s own 0–1
+ *   distance-decay score (higher = closer to/stronger nearby seismic
+ *   activity) is used as-is, the same "already continuous, use directly"
+ *   treatment as deslizamientos/inundaciones.
  */
 
 import { FIRE_THREAT_LEVELS, type FireThreatLevel } from "@/lib/incendios/levels"
@@ -31,8 +36,8 @@ import type { FloodSusceptibilityLevel } from "@/lib/inundaciones/levels"
 import { compoundLevelFromScore, type CompoundLevel } from "./levels"
 import type { HazardName, SubHazardSummary } from "./api-types"
 
-/** Equal 25% weights by default — re-normalized over whichever hazards resolved for a given vereda. */
-const HAZARD_WEIGHT = 0.25
+/** Equal 20% weights by default — re-normalized over whichever hazards resolved for a given vereda. */
+const HAZARD_WEIGHT = 0.2
 
 function ordinalScore<T extends string>(levels: readonly T[], value: T | null): number | null {
   if (value == null) return null
@@ -46,6 +51,7 @@ export interface CompoundModelInput {
   inundaciones: { level: FloodSusceptibilityLevel | null; score: number | null }
   incendios: { level: FireThreatLevel | null }
   precipitacion: { level: PrecipitationLevel | null; accumulatedMm: number | null }
+  sismologia: { score: number | null }
 }
 
 export interface CompoundModelResult {
@@ -60,6 +66,7 @@ const HAZARD_LABELS: Record<HazardName, string> = {
   inundaciones: "Inundaciones",
   incendios: "Incendios forestales",
   precipitacion: "Precipitación",
+  sismologia: "Sismología",
 }
 
 /**
@@ -77,22 +84,29 @@ export function computeCompoundVeredaRisk(input: CompoundModelInput): CompoundMo
   const inundacionesNorm = input.inundaciones.score
   const incendiosNorm = ordinalScore(FIRE_THREAT_LEVELS, input.incendios.level)
   const precipitacionNorm = ordinalScore(PRECIPITATION_LEVELS, input.precipitacion.level)
+  const sismologiaNorm = input.sismologia.score
 
   const normalized: Record<HazardName, number | null> = {
     deslizamientos: deslizamientosNorm,
     inundaciones: inundacionesNorm,
     incendios: incendiosNorm,
     precipitacion: precipitacionNorm,
+    sismologia: sismologiaNorm,
   }
 
+  // Sismología has no native level vocabulary (its own score is a continuous distance-decay
+  // value, not a published tier) — its "raw level" for the report is the same magnitude tier
+  // used on its own map/legend, derived from the nearest contributing event's magnitude when
+  // the caller supplies one via `detail` in lib/riesgo-compuesto/server.ts.
   const rawLevels: Record<HazardName, string | null> = {
     deslizamientos: input.deslizamientos.level,
     inundaciones: input.inundaciones.level,
     incendios: input.incendios.level,
     precipitacion: input.precipitacion.level,
+    sismologia: sismologiaNorm != null ? compoundLevelFromScore(sismologiaNorm) : null,
   }
 
-  const order: HazardName[] = ["deslizamientos", "inundaciones", "incendios", "precipitacion"]
+  const order: HazardName[] = ["deslizamientos", "inundaciones", "incendios", "precipitacion", "sismologia"]
 
   // Weighted composite (INFORM style): equal weights, re-normalized over resolved hazards only.
   let weightedSum = 0
@@ -137,6 +151,12 @@ export function computeCompoundVeredaRisk(input: CompoundModelInput): CompoundMo
   return { compoundLevel, compoundScore, dominantHazard, subHazards }
 }
 
+// Sismología's raw "level" for the report is the shared compound 5-tier scale (its own score has
+// no native level vocabulary of its own — see the comment above `rawLevels` in
+// computeCompoundVeredaRisk), so its color needs an index-based lookup into its own CSS ramp
+// rather than a name-slug match like the other four hazards' native levels.
+const SISMOLOGIA_LEVEL_TOKENS = ["sismologia-micro", "sismologia-menor", "sismologia-ligero", "sismologia-moderado", "sismologia-fuerte"]
+
 function colorTokenFor(hazard: HazardName, rawLevel: string | null): string {
   if (!rawLevel) return "var(--muted-foreground)"
   switch (hazard) {
@@ -148,6 +168,11 @@ function colorTokenFor(hazard: HazardName, rawLevel: string | null): string {
       return `var(--incendios-${slug(rawLevel)})`
     case "precipitacion":
       return `var(--precipitacion-${slug(rawLevel)})`
+    case "sismologia": {
+      const index = ["Muy bajo", "Bajo", "Moderado", "Alto", "Muy alto"].indexOf(rawLevel)
+      const token = SISMOLOGIA_LEVEL_TOKENS[index] ?? "muted-foreground"
+      return `var(--${token})`
+    }
   }
 }
 
