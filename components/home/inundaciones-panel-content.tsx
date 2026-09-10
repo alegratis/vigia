@@ -26,15 +26,17 @@ interface InundacionesPanelContentProps {
 
 /**
  * Expanded inundaciones panel for the homepage workspace: GEOGLOWS' live
- * flood forecast map fills the full first fold. Below it, a permanent
- * per-municipio flood summary (MunicipioFloodSummary), this app's own
+ * flood forecast map fills the full first fold. Below it, sections run
+ * data-first, methodology-last: a permanent per-municipio flood summary
+ * (MunicipioFloodSummary), the full per-river station overview grid
+ * (FloodOverview — opens a station's full forecast in an in-place dialog
+ * rather than navigating to a separate page), and finally this app's own
  * vereda-level flood model breakdown (FloodModelPanel — mirrors the
- * deslizamientos map's HazardModelPanel) and the full station overview
- * grid (FloodOverview) scroll in — the first two share the map's
- * `selectedVereda`, and FloodOverview opens a station's full forecast in
- * an in-place dialog rather than navigating to a separate page.
- * Demographics and infrastructure toggles live in the workspace's shared
- * sidebar, fed by onBoundsChange/onZoneSelect/onVeredaSelect.
+ * deslizamientos map's HazardModelPanel), which explains *how* the
+ * "Modelo propio" map layer above is calculated. FloodModelPanel shares
+ * the map's `selectedVereda`. Demographics and infrastructure toggles
+ * live in the workspace's shared sidebar, fed by
+ * onBoundsChange/onZoneSelect/onVeredaSelect.
  */
 export function InundacionesPanelContent({
   onBoundsChange,
@@ -72,13 +74,13 @@ export function InundacionesPanelContent({
           <MunicipioFloodSummary />
         </div>
         <div aria-live="polite">
+          <FloodOverview />
+        </div>
+        <div aria-live="polite">
           <FloodModelPanel
             selectedVereda={selectedVereda}
             onClearSelection={() => onVeredaSelect?.(null)}
           />
-        </div>
-        <div aria-live="polite">
-          <FloodOverview />
         </div>
         <p className="text-xs text-muted-foreground">
           Pronóstico de río servido en vivo por GEOGLOWS / Esri Living Atlas (capa pública

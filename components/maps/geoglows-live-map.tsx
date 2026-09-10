@@ -9,6 +9,7 @@ import {
   ImageOverlay,
   GeoJSON,
   Marker,
+  Pane,
   Popup,
   ZoomControl,
   useMap,
@@ -42,7 +43,10 @@ import { getOsmCategory } from "@/lib/osm/categories"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
 import { OsmLegend } from "@/components/maps/osm-legend"
 import { VeredasOverlay } from "@/components/maps/veredas-overlay"
-import type { InundacionesSusceptibilidadResponse } from "@/lib/inundaciones/api-types"
+import type {
+  InundacionesQuebradasResponse,
+  InundacionesSusceptibilidadResponse,
+} from "@/lib/inundaciones/api-types"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { VeredaFeature } from "@/lib/veredas/api-types"
 
@@ -58,6 +62,19 @@ const susceptibilityFetcher = async (url: string): Promise<InundacionesSusceptib
   if (!res.ok) throw new Error("No se pudo cargar la capa de susceptibilidad a inundaciones")
   return res.json()
 }
+
+const quebradasFetcher = async (url: string): Promise<InundacionesQuebradasResponse> => {
+  const res = await fetch(url)
+  if (!res.ok) throw new Error("No se pudo cargar la capa de quebradas y ríos")
+  return res.json()
+}
+
+/**
+ * Names singled out for a thicker, brighter line and their own popup
+ * emphasis — Río Totoro (GEOGLOWS rivid 610330643) and Quebrada San José,
+ * both specifically asked about when this layer was added.
+ */
+const HIGHLIGHTED_STREAM_NAMES = new Set(["Río Totoro", "Quebrada San José"])
 
 const stationIcon = L.divIcon({
   className: "",
@@ -101,32 +118,51 @@ function OverlaySync({ onBoundsChange, onOverlayChange }: OverlaySyncProps) {
   return null
 }
 
-function ReachClickLayer() {
+/**
+ * Listens for map clicks and queries GEOGLOWS' identify endpoint for the
+ * reach under the cursor — gated behind `enabled` (the "Consultar río al
+ * hacer clic" toggle). The GEOGLOWS raster has no real transparent gaps:
+ * its identify service answers for *any* lat/lng, "no reach here" included,
+ * so this handler unconditionally wins every map click it's attached to —
+ * there's no z-order trick that makes a vereda or quebrada polygon "more
+ * clickable" underneath it. `enabled` is the only thing that decides
+ * whether this layer participates in a click at all; the image overlay
+ * itself always keeps rendering as a plain graphic regardless.
+ */
+function ReachClickLayer({ enabled }: { enabled: boolean }) {
   const map = useMap()
   const [popup, setPopup] = useState<{ lat: number; lon: number; loading: boolean; info: ReachInfo | null; error: string | null } | null>(
     null,
   )
 
-  useMapEvents({
-    click: async (e) => {
-      const { lat, lng } = e.latlng
-      setPopup({ lat, lon: lng, loading: true, info: null, error: null })
-      const b = map.getBounds()
-      const size = map.getSize()
-      try {
-        const info = await identifyReach(
-          lat,
-          lng,
-          { north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() },
-          size.x,
-          size.y,
-        )
-        setPopup({ lat, lon: lng, loading: false, info, error: info ? null : "no-reach" })
-      } catch {
-        setPopup({ lat, lon: lng, loading: false, info: null, error: "network" })
-      }
-    },
-  })
+  useEffect(() => {
+    if (!enabled) setPopup(null)
+  }, [enabled])
+
+  useMapEvents(
+    enabled
+      ? {
+          click: async (e) => {
+            const { lat, lng } = e.latlng
+            setPopup({ lat, lon: lng, loading: true, info: null, error: null })
+            const b = map.getBounds()
+            const size = map.getSize()
+            try {
+              const info = await identifyReach(
+                lat,
+                lng,
+                { north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() },
+                size.x,
+                size.y,
+              )
+              setPopup({ lat, lon: lng, loading: false, info, error: info ? null : "no-reach" })
+            } catch {
+              setPopup({ lat, lon: lng, loading: false, info: null, error: "network" })
+            }
+          },
+        }
+      : {},
+  )
 
   if (!popup) return null
 
@@ -255,11 +291,31 @@ function SusceptibilityLegend({ title }: { title: string }) {
  * toggleable layers underneath. The official zoning layer only covers
  * Sevilla/Caicedonia's zoned extent; the vereda layer's own model reaches
  * all three municipios, including Zarzal, and both can be on at once
- * (zoning underneath, the model's vereda coloring on top). Click any
- * reach for its live forecast attributes, any susceptibility zone for its
+ * (zoning underneath, the model's vereda coloring on top). This app's own
+ * model is the default-on layer (the official zoning starts off, since
+ * it's a secondary, narrower-coverage reference) — click any reach for
+ * its live GEOGLOWS forecast attributes, any susceptibility zone for its
  * official threat level, or a vereda boundary for its own model's factors
  * — which also narrows the shared sidebar's population card down to it
  * (same mechanism the deslizamientos map uses).
+ *
+ * The GEOGLOWS river layer sits in its own high-zIndex pane so it's
+ * always drawn on top of the zoning/vereda fills, and the vereda overlay
+ * is given `blockMapClick={false}` here (unlike the deslizamientos map's
+ * default) so a click on a vereda still reaches `ReachClickLayer`'s
+ * generic map click underneath instead of being swallowed by the vereda
+ * polygon's own popup — the vereda's own summary stays available through
+ * the sidebar narrowing instead.
+ *
+ * That underlying map click only queries GEOGLOWS when "Consultar río al
+ * hacer clic" is on (off by default). GEOGLOWS' identify endpoint has no
+ * real transparent gaps — it answers "no reach here" for literally any
+ * lat/lng — so leaving it always-on would mean it wins every click,
+ * vereda and quebrada clicks included, no matter how z-order is
+ * arranged. With it off, the raster still renders as a plain graphic
+ * (see `ReachClickLayer`'s doc); turning it on lets a click both query
+ * the river *and* still narrow the sidebar to a vereda underneath, since
+ * `blockMapClick={false}` never stopped that propagation.
  */
 function GeoglowsLiveMapImpl({
   onBoundsChange,
@@ -280,15 +336,29 @@ function GeoglowsLiveMapImpl({
     null,
   )
   const containerRef = useRef<HTMLDivElement>(null)
-  const [showSusceptibility, setShowSusceptibility] = useState(true)
+  const [showSusceptibility, setShowSusceptibility] = useState(false)
   const [showPrecipitation, setShowPrecipitation] = useState(false)
-  const [showVeredas, setShowVeredas] = useState(false)
+  const [showVeredas, setShowVeredas] = useState(true)
+  const [showQuebradas, setShowQuebradas] = useState(false)
+  // Off by default: our own model is the default click target (see module
+  // doc above). GEOGLOWS' identify endpoint answers for any lat/lng, so
+  // leaving this always-on would mean every click — including one meant
+  // for a vereda or quebrada underneath — gets swallowed by the river
+  // layer's own popup instead. The raster graphic itself still always
+  // renders; this only gates whether clicks query it.
+  const [queryReachOnClick, setQueryReachOnClick] = useState(false)
   const [selectedStation, setSelectedStation] = useState<Station | null>(null)
   const osmColors = useOsmCategoryColors()
 
   const { data: susceptibility, error: susceptibilityError } = useSWR<InundacionesSusceptibilidadResponse>(
     "/api/inundaciones/susceptibilidad",
     susceptibilityFetcher,
+    { revalidateOnFocus: false },
+  )
+
+  const { data: quebradas, error: quebradasError } = useSWR<InundacionesQuebradasResponse>(
+    showQuebradas ? "/api/inundaciones/quebradas" : null,
+    quebradasFetcher,
     { revalidateOnFocus: false },
   )
 
@@ -362,6 +432,32 @@ function GeoglowsLiveMapImpl({
     [resolvedColors],
   )
 
+  const quebradaStyle = useCallback((feature?: GeoJSON.Feature): PathOptions => {
+    const nombre = feature?.properties?.nombre as string | undefined
+    const highlighted = nombre ? HIGHLIGHTED_STREAM_NAMES.has(nombre) : false
+    return {
+      color: highlighted ? "#38bdf8" : "#0ea5e9",
+      weight: highlighted ? 4 : 2,
+      opacity: highlighted ? 1 : 0.75,
+    }
+  }, [])
+
+  const onEachQuebradaFeature = useCallback((feature: GeoJSON.Feature, layer: Layer) => {
+    const nombre = feature.properties?.nombre as string | undefined
+    const source = feature.properties?.source as string | undefined
+    layer.bindPopup(
+      `<div style="font-size:13px;display:flex;flex-direction:column;gap:2px">
+        <strong>${nombre ?? "Quebrada / río"}</strong>
+        <span>${source === "osm" ? "Fuente: OpenStreetMap" : "Fuente: capa Quebradas (ArcGIS)"}</span>
+      </div>`,
+    )
+    // Same guard as the susceptibility zones: stop this popup click from
+    // also firing ReachClickLayer's GEOGLOWS reach lookup underneath it.
+    layer.on("click", (e: LeafletMouseEvent) => {
+      L.DomEvent.stopPropagation(e)
+    })
+  }, [])
+
   const handleOverlayChange = useCallback((bounds: LatLngBounds, width: number, height: number) => {
     setOverlay({ bounds, width, height })
   }, [])
@@ -405,10 +501,21 @@ function GeoglowsLiveMapImpl({
           onSelect={onVeredaSelect}
           colorForFeature={veredaFloodColor}
           hazardKind="inundaciones"
+          blockMapClick={false}
         />
-        {overlayUrl && overlay && (
-          <ImageOverlay url={overlayUrl} bounds={toLatLngBounds(overlay.bounds)} opacity={0.9} />
+        {showQuebradas && quebradas?.lines && (
+          <GeoJSON
+            key={`quebradas-${quebradas.generatedAt}`}
+            data={quebradas.lines as unknown as GeoJSON.GeoJsonObject}
+            style={quebradaStyle}
+            onEachFeature={onEachQuebradaFeature}
+          />
         )}
+        <Pane name="geoglows-reach-pane" style={{ zIndex: 450 }}>
+          {overlayUrl && overlay && (
+            <ImageOverlay url={overlayUrl} bounds={toLatLngBounds(overlay.bounds)} opacity={0.9} />
+          )}
+        </Pane>
         {STATIONS.map((s) => (
           <Marker key={s.slug} position={[s.lat, s.lon]} icon={stationIcon}>
             <Popup>
@@ -453,13 +560,23 @@ function GeoglowsLiveMapImpl({
               </Popup>
             </CircleMarker>
           ))}
-        <ReachClickLayer />
+        <ReachClickLayer enabled={queryReachOnClick} />
         {onBoundsChange && (
           <OverlaySync onBoundsChange={onBoundsChange} onOverlayChange={handleOverlayChange} />
         )}
       </MapContainer>
 
       <div className="absolute left-3 top-3 z-[400] flex flex-col gap-1.5 rounded-md border border-border bg-card/95 px-2.5 py-1.5 text-xs shadow-sm backdrop-blur">
+        <label className="flex items-center gap-1.5 font-medium text-foreground">
+          <input
+            type="checkbox"
+            checked={queryReachOnClick}
+            onChange={(e) => setQueryReachOnClick(e.target.checked)}
+            className="size-3.5 accent-[var(--primary)]"
+          />
+          Consultar río al hacer clic (GEOGLOWS)
+        </label>
+        <div className="my-0.5 h-px bg-border" aria-hidden="true" />
         <label className="flex items-center gap-1.5 font-medium text-foreground">
           <input
             type="checkbox"
@@ -487,6 +604,15 @@ function GeoglowsLiveMapImpl({
           />
           Modelo propio de inundación (por vereda, incluye Zarzal)
         </label>
+        <label className="flex items-center gap-1.5 font-medium text-foreground">
+          <input
+            type="checkbox"
+            checked={showQuebradas}
+            onChange={(e) => setShowQuebradas(e.target.checked)}
+            className="size-3.5 accent-[var(--primary)]"
+          />
+          Quebradas y ríos (clic para nombre)
+        </label>
         {showPrecipitation && (
           <a
             href={IMERG_WORLDVIEW_URL}
@@ -499,7 +625,8 @@ function GeoglowsLiveMapImpl({
           </a>
         )}
       </div>
-      {showSusceptibility && !susceptibility && !susceptibilityError && (
+      {((showSusceptibility && !susceptibility && !susceptibilityError) ||
+        (showQuebradas && !quebradas && !quebradasError)) && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-background/40">
           <Loader2 className="size-6 animate-spin text-muted-foreground" aria-hidden="true" />
         </div>

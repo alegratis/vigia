@@ -37,6 +37,18 @@ interface VeredasOverlayProps {
    * this app's own flood model instead of a neutral outline.
    */
   hazardKind?: "deslizamientos" | "inundaciones"
+  /**
+   * Whether a click on a vereda polygon stops the map's own click layer
+   * from also firing underneath it — the deslizamientos/incendios maps
+   * have no such layer, so the default (`true`) is harmless there. The
+   * inundaciones map passes `false`: its GEOGLOWS river layer relies on a
+   * generic map click to identify the reach under the cursor, and that
+   * should keep working even over a vereda's fill. When `false`, this
+   * overlay also skips its own Popup — the vereda's own summary stays
+   * available through `onSelect`'s sidebar narrowing instead of a competing
+   * popup — and the click still reaches GEOGLOWS underneath.
+   */
+  blockMapClick?: boolean
 }
 
 /**
@@ -54,6 +66,7 @@ export function VeredasOverlay({
   colorForFeature,
   onSelect,
   hazardKind = "deslizamientos",
+  blockMapClick = true,
 }: VeredasOverlayProps) {
   const { veredas } = useVeredas(enabled)
   const [outlineColor, setOutlineColor] = useState<string | null>(null)
@@ -81,16 +94,19 @@ export function VeredasOverlay({
               fillOpacity: colorForFeature ? 0.6 : 0.04,
             }}
             eventHandlers={{
-              // Some host maps (e.g. GEOGLOWS') listen for clicks anywhere on the
-              // map to run their own lookup; stop that from firing underneath
-              // this polygon's own popup, same guard the OSM point layers use.
+              // Some host maps (e.g. deslizamientos') listen for clicks anywhere
+              // on the map to run their own lookup; stop that from firing
+              // underneath this polygon's own popup, same guard the OSM point
+              // layers use. The inundaciones map passes `blockMapClick={false}`
+              // instead, since its GEOGLOWS layer needs that same map click to
+              // keep working over a vereda's fill — see the prop doc above.
               click: (e: LeafletMouseEvent) => {
-                L.DomEvent.stopPropagation(e)
+                if (blockMapClick) L.DomEvent.stopPropagation(e)
                 onSelect?.(feature)
               },
             }}
           >
-            <Popup>
+            {blockMapClick && <Popup>
               <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
                 <strong>{props.nombre}</strong>
                 <span>{props.municipio}</span>
@@ -171,7 +187,7 @@ export function VeredasOverlay({
                 <span>Infraestructura crítica: {props.infraestructuraCritica ?? "—"}</span>
                 <span>Sitios críticos (2019): {props.sitiosCriticos}</span>
               </div>
-            </Popup>
+            </Popup>}
           </Polygon>
         )
       })}
