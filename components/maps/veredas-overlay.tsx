@@ -7,6 +7,7 @@ import type { LatLngExpression, LeafletMouseEvent } from "leaflet"
 import { useVeredas } from "@/lib/veredas/use-veredas"
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import type { VeredaFeature } from "@/lib/veredas/api-types"
+import { floodSusceptibilityColorToken } from "@/lib/inundaciones/levels"
 
 /** Converts a vereda's GeoJSON `[lon, lat]` MultiPolygon rings to Leaflet's `[lat, lon]` order. */
 function veredaPositions(coordinates: number[][][][]): LatLngExpression[][][] {
@@ -41,12 +42,13 @@ interface VeredasOverlayProps {
    * Whether a click on a vereda polygon stops the map's own click layer
    * from also firing underneath it — the deslizamientos/incendios maps
    * have no such layer, so the default (`true`) is harmless there. The
-   * inundaciones map passes `false`: its GEOGLOWS river layer relies on a
-   * generic map click to identify the reach under the cursor, and that
-   * should keep working even over a vereda's fill. When `false`, this
-   * overlay also skips its own Popup — the vereda's own summary stays
-   * available through `onSelect`'s sidebar narrowing instead of a competing
-   * popup — and the click still reaches GEOGLOWS underneath.
+   * inundaciones map passes `false`: its GEOGLOWS reach-identify layer is
+   * opt-in via its own "Consultar río al hacer clic" toggle (see
+   * ReachClickLayer in geoglows-live-map.tsx), and when that's on, a click
+   * over a vereda should still reach it underneath instead of being
+   * swallowed here — this overlay's own Popup opens either way, Leaflet
+   * just auto-closes whichever popup opened first if both fire from the
+   * same click.
    */
   blockMapClick?: boolean
 }
@@ -106,7 +108,7 @@ export function VeredasOverlay({
               },
             }}
           >
-            {blockMapClick && <Popup>
+            <Popup>
               <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
                 <strong>{props.nombre}</strong>
                 <span>{props.municipio}</span>
@@ -151,8 +153,18 @@ export function VeredasOverlay({
                     </span>
                   )}
                 {colorForFeature && hazardKind === "inundaciones" && props.floodLevel && (
-                  <span>
-                    Amenaza por inundación (modelo propio): {props.floodLevel}
+                  <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span
+                      style={{
+                        display: "inline-block",
+                        width: 9,
+                        height: 9,
+                        borderRadius: "50%",
+                        flexShrink: 0,
+                        backgroundColor: floodSusceptibilityColorToken(props.floodLevel),
+                      }}
+                    />
+                    Nivel de alerta (modelo propio): {props.floodLevel}
                     {props.floodScoreAvg != null && ` (${props.floodScoreAvg.toFixed(2)})`}
                   </span>
                 )}
@@ -187,7 +199,7 @@ export function VeredasOverlay({
                 <span>Infraestructura crítica: {props.infraestructuraCritica ?? "—"}</span>
                 <span>Sitios críticos (2019): {props.sitiosCriticos}</span>
               </div>
-            </Popup>}
+            </Popup>
           </Polygon>
         )
       })}
