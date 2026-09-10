@@ -6,6 +6,7 @@ import { ScrollHintButton } from "@/components/home/scroll-hint-button"
 import { BackToTopButton } from "@/components/home/back-to-top-button"
 import { FloodOverview } from "@/components/flood/flood-overview"
 import { MunicipioFloodSummary } from "@/components/flood/municipio-flood-summary"
+import { FloodModelPanel } from "@/components/inundaciones/flood-model-panel"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
 import type { VeredaFeature } from "@/lib/veredas/api-types"
@@ -15,18 +16,23 @@ interface InundacionesPanelContentProps {
   onBoundsChange?: (bounds: MapBounds) => void
   /** Bubbles a clicked river reach/zone's municipio up to the shared sidebar card. */
   onZoneSelect?: (municipio: string) => void
-  /** Bubbles a clicked vereda (via the map's "Límites veredales" overlay) up to the shared sidebar card. */
-  onVeredaSelect?: (feature: VeredaFeature) => void
+  /** Bubbles a clicked vereda (via the map's "Límites veredales" overlay) up to the shared sidebar card, or `null` to clear the selection (see FloodModelPanel's "Ver todo"). */
+  onVeredaSelect?: (feature: VeredaFeature | null) => void
   /** OSM infrastructure points, filtered to the categories toggled on in the sidebar. */
   activeOsmPoints: OsmPoint[]
+  /** Lifted up so FloodModelPanel and the workspace's shared sidebar card can both narrow down to whatever vereda is clicked on the map. */
+  selectedVereda: VeredaFeature | null
 }
 
 /**
  * Expanded inundaciones panel for the homepage workspace: GEOGLOWS' live
  * flood forecast map fills the full first fold. Below it, a permanent
- * per-municipio flood summary (MunicipioFloodSummary) and the full station
- * overview grid (FloodOverview) scroll in — both open a station's full
- * forecast in an in-place dialog rather than navigating to a separate page.
+ * per-municipio flood summary (MunicipioFloodSummary), this app's own
+ * vereda-level flood model breakdown (FloodModelPanel — mirrors the
+ * deslizamientos map's HazardModelPanel) and the full station overview
+ * grid (FloodOverview) scroll in — the first two share the map's
+ * `selectedVereda`, and FloodOverview opens a station's full forecast in
+ * an in-place dialog rather than navigating to a separate page.
  * Demographics and infrastructure toggles live in the workspace's shared
  * sidebar, fed by onBoundsChange/onZoneSelect/onVeredaSelect.
  */
@@ -35,6 +41,7 @@ export function InundacionesPanelContent({
   onZoneSelect,
   onVeredaSelect,
   activeOsmPoints,
+  selectedVereda,
 }: InundacionesPanelContentProps) {
   const captionRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<HTMLDivElement>(null)
@@ -65,6 +72,12 @@ export function InundacionesPanelContent({
           <MunicipioFloodSummary />
         </div>
         <div aria-live="polite">
+          <FloodModelPanel
+            selectedVereda={selectedVereda}
+            onClearSelection={() => onVeredaSelect?.(null)}
+          />
+        </div>
+        <div aria-live="polite">
           <FloodOverview />
         </div>
         <p className="text-xs text-muted-foreground">
@@ -72,15 +85,18 @@ export function InundacionesPanelContent({
           GlobalWaterModel_Medium). Susceptibilidad a inundación: capa pública{" "}
           <code className="text-foreground">susceptibilidad_inundaciones</code>, publicada en
           ArcGIS Online. Haz clic sobre cualquier tramo del río o zona para ver su detalle. Esta
-          zonificación no cubre Zarzal; la categoría{" "}
+          zonificación oficial no cubre Zarzal; activa la capa &quot;Modelo propio de
+          inundación&quot; en el mapa para ver una amenaza por vereda calculada por esta misma
+          app en los tres municipios, incluido Zarzal (ver el panel &quot;Cómo se calcula la
+          amenaza por inundación&quot; arriba). La categoría{" "}
           <a
             href="/?categoria=precipitacion"
             className="underline underline-offset-2 hover:text-foreground"
           >
             Precipitación
           </a>{" "}
-          sí ofrece un dato de contexto (lluvia acumulada por vereda) para los tres municipios,
-          incluido Zarzal.
+          también ofrece un dato de contexto (lluvia acumulada por vereda) para los tres
+          municipios.
         </p>
         <BackToTopButton targetRef={mapRef} />
       </div>

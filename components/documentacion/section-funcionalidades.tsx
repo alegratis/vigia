@@ -15,9 +15,10 @@ const FEATURES = [
   },
   {
     title: "Inundaciones",
-    tags: ["Sevilla", "Caicedonia"],
+    tags: ["Sevilla", "Caicedonia", "Zarzal"],
     items: [
-      "Polígonos de susceptibilidad estática a inundación por vereda.",
+      "Polígonos de susceptibilidad estática a inundación por zona (RED LabOT) — solo cubre el área zonificada de Sevilla y Caicedonia.",
+      "Mapa de amenaza por vereda coloreado por un modelo propio de inundación: zonificación oficial (donde exista), distancia a la quebrada o río más próximo y planicie del terreno (pendiente reutilizada del modelo de deslizamiento). Calculado en las 69 veredas de los tres municipios, incluida Zarzal — la única capa de amenaza por inundación con esa cobertura.",
       "Pronóstico de caudal en vivo de GEOGLOWS, evaluado contra períodos de retorno calculados localmente (ajuste de Gumbel) sobre el registro retrospectivo del tramo de río más cercano.",
       "Superposición de tasa de precipitación en vivo (NASA GPM IMERG, actualizada cada ~30 minutos).",
     ],

@@ -215,6 +215,7 @@ export function HazardWorkspace({ initialCategory }: { initialCategory: string }
                   onZoneSelect={setSelectedMunicipio}
                   onVeredaSelect={handleVeredaSelect}
                   activeOsmPoints={activeOsmPoints}
+                  selectedVereda={selectedVereda}
                 />
               )}
               {model.slug === "incendios" && (
