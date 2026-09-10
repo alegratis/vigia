@@ -55,10 +55,11 @@ function LevelCountRow({ level, count }: { level: CompoundLevel; count: number }
 }
 
 const WEIGHTS = [
-  { label: "Deslizamientos", weight: "25%" },
-  { label: "Inundaciones (modelo propio)", weight: "25%" },
-  { label: "Incendios forestales", weight: "25%" },
-  { label: "Precipitación (acumulado 7 días)", weight: "25%" },
+  { label: "Deslizamientos", weight: "20%" },
+  { label: "Inundaciones (modelo propio)", weight: "20%" },
+  { label: "Incendios forestales", weight: "20%" },
+  { label: "Precipitación (acumulado 7 días)", weight: "20%" },
+  { label: "Sismología (exposición por distancia)", weight: "20%" },
 ]
 
 interface CompoundModelPanelProps {
@@ -94,8 +95,8 @@ export function CompoundModelPanel({ className, selectedVereda, onClearSelection
           Cómo se calcula el riesgo compuesto
         </h3>
         <p className="text-xs leading-relaxed text-muted-foreground">
-          Combina los cuatro modelos de amenaza de esta app en una sola evaluación por vereda — el nivel más
-          alto entre las cuatro gobierna el resultado.{" "}
+          Combina los cinco modelos de amenaza de esta app en una sola evaluación por vereda — el nivel más
+          alto entre las cinco gobierna el resultado.{" "}
           <a href="/documentacion#metodologia" className="text-primary underline-offset-2 hover:underline">
             Ver metodología completa
           </a>
@@ -126,7 +127,7 @@ export function CompoundModelPanel({ className, selectedVereda, onClearSelection
               <p className="text-xs leading-relaxed text-muted-foreground">{selectedProps.narrative.resumen}</p>
             ) : (
               <p className="text-xs text-muted-foreground">
-                Ninguno de los cuatro modelos de amenaza tiene datos suficientes para esta vereda.
+                Ninguno de los cinco modelos de amenaza tiene datos suficientes para esta vereda.
               </p>
             )}
           </div>
@@ -175,9 +176,10 @@ export function CompoundModelPanel({ className, selectedVereda, onClearSelection
           </ul>
           <p className="text-pretty text-xs leading-relaxed text-muted-foreground">
             Pesos iguales por defecto, re-normalizados sobre las amenazas que sí tengan datos para cada
-            vereda. El nivel mostrado en el mapa es el mayor nivel entre las cuatro (doctrina OMM/GDACS), no
+            vereda. El nivel mostrado en el mapa es el mayor nivel entre las cinco (doctrina OMM/GDACS), no
             el promedio — el puntaje 0–1 es el promedio ponderado (estilo INFORM) y solo ordena veredas
-            dentro de un mismo nivel.
+            dentro de un mismo nivel. A diferencia de las otras cuatro, sismología no tiene una zonificación
+            por vereda publicada — su puntaje se calcula por distancia a los epicentros de USGS y SGC.
           </p>
         </div>
       </CardContent>

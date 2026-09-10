@@ -81,6 +81,11 @@
   --color-critical-site-4: var(--critical-site-4);
   --color-fault-line: var(--fault-line);
   --color-historical-event: var(--historical-event);
+  --color-sismologia-micro: var(--sismologia-micro);
+  --color-sismologia-menor: var(--sismologia-menor);
+  --color-sismologia-ligero: var(--sismologia-ligero);
+  --color-sismologia-moderado: var(--sismologia-moderado);
+  --color-sismologia-fuerte: var(--sismologia-fuerte);
   --color-riesgo-compuesto-muy-bajo: var(--riesgo-compuesto-muy-bajo);
   --color-riesgo-compuesto-bajo: var(--riesgo-compuesto-bajo);
   --color-riesgo-compuesto-moderado: var(--riesgo-compuesto-moderado);
@@ -174,6 +179,19 @@
   --precipitacion-moderado: oklch(0.74 0.11 195);
   --precipitacion-alto: oklch(0.58 0.13 205);
   --precipitacion-muy-alto: oklch(0.4 0.12 220);
+
+  /*
+   * Sismología magnitude ramp: pale violet (micro) to deep magenta (fuerte)
+   * — a hue arc none of the other four hazard ramps occupy (deslizamientos
+   * 25-115, incendios 28-100, inundaciones 235-270, precipitación
+   * 190-220), so all five sub-hazard color dots stay distinguishable when
+   * listed together in the riesgo-compuesto report.
+   */
+  --sismologia-micro: oklch(0.86 0.06 285);
+  --sismologia-menor: oklch(0.78 0.1 295);
+  --sismologia-ligero: oklch(0.68 0.14 305);
+  --sismologia-moderado: oklch(0.58 0.17 315);
+  --sismologia-fuerte: oklch(0.42 0.19 325);
 
   /*
    * Climatology histogram recent-past-years comparison lines (2025/2024/
@@ -340,6 +358,13 @@
   --precipitacion-quinquenio-3: oklch(0.54 0.16 250);
   --precipitacion-quinquenio-4: oklch(0.58 0.19 20);
   --precipitacion-quinquenio-5: oklch(0.58 0.18 340);
+
+  /* Sismología magnitude ramp: kept vivid and legible on dark surfaces. */
+  --sismologia-micro: oklch(0.8 0.06 285);
+  --sismologia-menor: oklch(0.72 0.1 295);
+  --sismologia-ligero: oklch(0.64 0.15 305);
+  --sismologia-moderado: oklch(0.56 0.19 315);
+  --sismologia-fuerte: oklch(0.48 0.21 325);
 
   /* OSM infrastructure categories: kept vivid and legible on dark surfaces. */
   --osm-business: oklch(0.76 0.14 55);

@@ -20,7 +20,7 @@ const STEPS: GuideStep[] = [
     number: 1,
     title: "Elige una amenaza para vigilar",
     simple:
-      "Cuando abres Vigía, ya estás viendo un mapa. A la derecha hay cuatro franjas verticales con un ícono cada una: Deslizamientos, Inundaciones, Incendios y Precipitación (más Riesgo compuesto, que junta las cuatro). Toca cualquier franja y el mapa completo cambia a esa amenaza — no se abre una página nueva, todo pasa en la misma pantalla.",
+      "Cuando abres Vigía, ya estás viendo un mapa. A la derecha hay cinco franjas verticales con un ícono cada una: Deslizamientos, Inundaciones, Incendios, Precipitación y Sismología (más Riesgo compuesto, que junta las cinco). Toca cualquier franja y el mapa completo cambia a esa amenaza — no se abre una página nueva, todo pasa en la misma pantalla.",
     technical:
       "Cada amenaza carga su propio mapa Leaflet con capas independientes que se activan y desactivan con las casillas de la esquina superior izquierda (por ejemplo, \"Humedad del suelo (SMAP)\" o \"Fallas geológicas (SGC)\"). La leyenda de colores está siempre en la esquina inferior — de verde (muy bajo) a rojo (muy alto).",
     image: {
@@ -62,9 +62,9 @@ const STEPS: GuideStep[] = [
     number: 4,
     title: "Abre el reporte completo de una vereda",
     simple:
-      "Dentro del mapa de \"Riesgo compuesto\", toca cualquier vereda coloreada. Se abre una ventana con el nombre del lugar, el nivel de riesgo (Bajo, Medio, Alto...), qué hacer al respecto (Informar, Prepararse o Actuar) y el detalle de cada una de las cuatro amenazas por separado. También tiene su propio botón para exportar ese reporte a PDF.",
+      "Dentro del mapa de \"Riesgo compuesto\", toca cualquier vereda coloreada. Se abre una ventana con el nombre del lugar, el nivel de riesgo (Bajo, Medio, Alto...), qué hacer al respecto (Informar, Prepararse o Actuar) y el detalle de cada una de las cinco amenazas por separado. También tiene su propio botón para exportar ese reporte a PDF.",
     technical:
-      "El nivel de riesgo compuesto es el mayor entre las cuatro amenazas normalizadas (la amenaza más alta gobierna, siguiendo la doctrina de la OMM/GDACS), mientras que el puntaje de 0 a 1 es un promedio ponderado al estilo del Índice de Riesgo INFORM. El texto del reporte es una plantilla que se rellena con los mismos números que ya se ven en el mapa — no usa generación de lenguaje ni la puerta de enlace de IA de la app.",
+      "El nivel de riesgo compuesto es el mayor entre las cinco amenazas normalizadas (la amenaza más alta gobierna, siguiendo la doctrina de la OMM/GDACS), mientras que el puntaje de 0 a 1 es un promedio ponderado al estilo del Índice de Riesgo INFORM. El texto del reporte es una plantilla que se rellena con los mismos números que ya se ven en el mapa — no usa generación de lenguaje ni la puerta de enlace de IA de la app.",
     image: {
       src: "/images/docs/riesgo-compuesto-reporte.png",
       alt: "Reporte de riesgo compuesto para una vereda de Zarzal, con el nivel de riesgo, el desglose por amenaza y el botón Exportar PDF",

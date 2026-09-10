@@ -69,11 +69,23 @@ export const mapModels: MapModel[] = [
     ready: true,
   },
   {
+    slug: "sismologia",
+    title: "Sismología",
+    hook: "Seguimos la actividad sísmica en tiempo real y su registro histórico, para entender qué tan expuesto está cada territorio.",
+    description:
+      "Combinamos los epicentros en vivo del USGS con el catálogo histórico del Servicio Geológico Colombiano, más un resumen opcional de reportes comunitarios de daños en Sevilla, para estimar la exposición sísmica de cada vereda por distancia a los eventos registrados.",
+    image: "/images/sismologia-map.png",
+    imageAlt: "Mapa de epicentros sísmicos sobre un terreno montañoso andino",
+    tag: "Amenaza geológica",
+    href: "/?categoria=sismologia",
+    ready: true,
+  },
+  {
     slug: "riesgo-compuesto",
     title: "Riesgo compuesto",
-    hook: "Combinamos las cuatro amenazas en una sola lectura por vereda, para saber dónde actuar primero.",
+    hook: "Combinamos las cinco amenazas en una sola lectura por vereda, para saber dónde actuar primero.",
     description:
-      "Cruzamos los cuatro modelos propios de esta app —deslizamientos, inundaciones, incendios forestales y precipitación— en una evaluación única por vereda: el nivel más alto entre las cuatro gobierna el resultado, con un reporte narrativo y la exposición demográfica de cada una.",
+      "Cruzamos los cinco modelos propios de esta app —deslizamientos, inundaciones, incendios forestales, precipitación y sismología— en una evaluación única por vereda: el nivel más alto entre las cinco gobierna el resultado, con un reporte narrativo y la exposición demográfica de cada una.",
     image: "/images/riesgo-compuesto-map.png",
     imageAlt:
       "Vista satelital de un territorio montañoso con capas superpuestas representando múltiples amenazas naturales",
