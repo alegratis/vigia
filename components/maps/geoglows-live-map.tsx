@@ -118,32 +118,51 @@ function OverlaySync({ onBoundsChange, onOverlayChange }: OverlaySyncProps) {
   return null
 }
 
-function ReachClickLayer() {
+/**
+ * Listens for map clicks and queries GEOGLOWS' identify endpoint for the
+ * reach under the cursor — gated behind `enabled` (the "Consultar río al
+ * hacer clic" toggle). The GEOGLOWS raster has no real transparent gaps:
+ * its identify service answers for *any* lat/lng, "no reach here" included,
+ * so this handler unconditionally wins every map click it's attached to —
+ * there's no z-order trick that makes a vereda or quebrada polygon "more
+ * clickable" underneath it. `enabled` is the only thing that decides
+ * whether this layer participates in a click at all; the image overlay
+ * itself always keeps rendering as a plain graphic regardless.
+ */
+function ReachClickLayer({ enabled }: { enabled: boolean }) {
   const map = useMap()
   const [popup, setPopup] = useState<{ lat: number; lon: number; loading: boolean; info: ReachInfo | null; error: string | null } | null>(
     null,
   )
 
-  useMapEvents({
-    click: async (e) => {
-      const { lat, lng } = e.latlng
-      setPopup({ lat, lon: lng, loading: true, info: null, error: null })
-      const b = map.getBounds()
-      const size = map.getSize()
-      try {
-        const info = await identifyReach(
-          lat,
-          lng,
-          { north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() },
-          size.x,
-          size.y,
-        )
-        setPopup({ lat, lon: lng, loading: false, info, error: info ? null : "no-reach" })
-      } catch {
-        setPopup({ lat, lon: lng, loading: false, info: null, error: "network" })
-      }
-    },
-  })
+  useEffect(() => {
+    if (!enabled) setPopup(null)
+  }, [enabled])
+
+  useMapEvents(
+    enabled
+      ? {
+          click: async (e) => {
+            const { lat, lng } = e.latlng
+            setPopup({ lat, lon: lng, loading: true, info: null, error: null })
+            const b = map.getBounds()
+            const size = map.getSize()
+            try {
+              const info = await identifyReach(
+                lat,
+                lng,
+                { north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() },
+                size.x,
+                size.y,
+              )
+              setPopup({ lat, lon: lng, loading: false, info, error: info ? null : "no-reach" })
+            } catch {
+              setPopup({ lat, lon: lng, loading: false, info: null, error: "network" })
+            }
+          },
+        }
+      : {},
+  )
 
   if (!popup) return null
 
@@ -287,6 +306,16 @@ function SusceptibilityLegend({ title }: { title: string }) {
  * generic map click underneath instead of being swallowed by the vereda
  * polygon's own popup — the vereda's own summary stays available through
  * the sidebar narrowing instead.
+ *
+ * That underlying map click only queries GEOGLOWS when "Consultar río al
+ * hacer clic" is on (off by default). GEOGLOWS' identify endpoint has no
+ * real transparent gaps — it answers "no reach here" for literally any
+ * lat/lng — so leaving it always-on would mean it wins every click,
+ * vereda and quebrada clicks included, no matter how z-order is
+ * arranged. With it off, the raster still renders as a plain graphic
+ * (see `ReachClickLayer`'s doc); turning it on lets a click both query
+ * the river *and* still narrow the sidebar to a vereda underneath, since
+ * `blockMapClick={false}` never stopped that propagation.
  */
 function GeoglowsLiveMapImpl({
   onBoundsChange,
@@ -311,6 +340,13 @@ function GeoglowsLiveMapImpl({
   const [showPrecipitation, setShowPrecipitation] = useState(false)
   const [showVeredas, setShowVeredas] = useState(true)
   const [showQuebradas, setShowQuebradas] = useState(false)
+  // Off by default: our own model is the default click target (see module
+  // doc above). GEOGLOWS' identify endpoint answers for any lat/lng, so
+  // leaving this always-on would mean every click — including one meant
+  // for a vereda or quebrada underneath — gets swallowed by the river
+  // layer's own popup instead. The raster graphic itself still always
+  // renders; this only gates whether clicks query it.
+  const [queryReachOnClick, setQueryReachOnClick] = useState(false)
   const [selectedStation, setSelectedStation] = useState<Station | null>(null)
   const osmColors = useOsmCategoryColors()
 
@@ -524,13 +560,23 @@ function GeoglowsLiveMapImpl({
               </Popup>
             </CircleMarker>
           ))}
-        <ReachClickLayer />
+        <ReachClickLayer enabled={queryReachOnClick} />
         {onBoundsChange && (
           <OverlaySync onBoundsChange={onBoundsChange} onOverlayChange={handleOverlayChange} />
         )}
       </MapContainer>
 
       <div className="absolute left-3 top-3 z-[400] flex flex-col gap-1.5 rounded-md border border-border bg-card/95 px-2.5 py-1.5 text-xs shadow-sm backdrop-blur">
+        <label className="flex items-center gap-1.5 font-medium text-foreground">
+          <input
+            type="checkbox"
+            checked={queryReachOnClick}
+            onChange={(e) => setQueryReachOnClick(e.target.checked)}
+            className="size-3.5 accent-[var(--primary)]"
+          />
+          Consultar río al hacer clic (GEOGLOWS)
+        </label>
+        <div className="my-0.5 h-px bg-border" aria-hidden="true" />
         <label className="flex items-center gap-1.5 font-medium text-foreground">
           <input
             type="checkbox"
