@@ -32,7 +32,12 @@ export function DocFooter() {
           Copernicus GWIS, DANE, Esri Colombia y OpenStreetMap.
         </p>
         <p className="text-sm text-muted-foreground">
-          &copy; {year} Vigía. Creado por Alejandro Pino. Publicado bajo la licencia MIT.
+          &copy; {year} Vigía. Creado por Alejandro Pino, SIG &middot; Director Técnico
+          (
+          <a href="mailto:apino@redlabot.org" className="text-primary hover:underline">
+            apino@redlabot.org
+          </a>
+          ). Publicado bajo la licencia MIT.
         </p>
       </div>
     </footer>

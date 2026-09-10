@@ -68,9 +68,9 @@ export function SectionLicencias() {
     <section id="licencias" className="flex flex-col gap-4 scroll-mt-24">
       <h2 className="text-2xl font-semibold tracking-tight">Licencias de código abierto</h2>
       <p className="text-pretty leading-relaxed text-muted-foreground">
-        Vigía es un proyecto de código abierto, creado por Alejandro Pino y publicado bajo la
-        licencia MIT. Las dependencias de código que trae la app se listan a continuación,
-        agrupadas por su propia licencia, tal como la declara cada paquete.
+        Vigía es un proyecto de código abierto, creado por Alejandro Pino (SIG &middot; Director
+        Técnico) y publicado bajo la licencia MIT. Las dependencias de código que trae la app se
+        listan a continuación, agrupadas por su propia licencia, tal como la declara cada paquete.
       </p>
 
       <Card>
@@ -82,10 +82,14 @@ export function SectionLicencias() {
         </CardHeader>
         <CardContent className="flex flex-col gap-2">
           <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
-            Creado por Alejandro Pino. El código de Vigía se distribuye bajo la licencia MIT: cualquiera
-            puede usarlo, copiarlo, modificarlo y redistribuirlo, incluso con fines comerciales, siempre
-            que conserve el aviso de copyright original. Se ofrece &quot;tal cual&quot;, sin garantía. El
-            texto completo está en el archivo{" "}
+            Creado por Alejandro Pino, SIG &middot; Director Técnico (
+            <a href="mailto:apino@redlabot.org" className="text-primary hover:underline">
+              apino@redlabot.org
+            </a>
+            ). El código de Vigía se distribuye bajo la licencia MIT: cualquiera puede usarlo,
+            copiarlo, modificarlo y redistribuirlo, incluso con fines comerciales, siempre que
+            conserve el aviso de copyright original. Se ofrece &quot;tal cual&quot;, sin garantía.
+            El texto completo está en el archivo{" "}
             <span className="font-mono text-xs sm:text-sm">LICENSE</span> en la raíz del repositorio.
           </p>
         </CardContent>
