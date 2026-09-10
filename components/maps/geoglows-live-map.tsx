@@ -9,6 +9,7 @@ import {
   ImageOverlay,
   GeoJSON,
   Marker,
+  Pane,
   Popup,
   ZoomControl,
   useMap,
@@ -255,11 +256,21 @@ function SusceptibilityLegend({ title }: { title: string }) {
  * toggleable layers underneath. The official zoning layer only covers
  * Sevilla/Caicedonia's zoned extent; the vereda layer's own model reaches
  * all three municipios, including Zarzal, and both can be on at once
- * (zoning underneath, the model's vereda coloring on top). Click any
- * reach for its live forecast attributes, any susceptibility zone for its
+ * (zoning underneath, the model's vereda coloring on top). This app's own
+ * model is the default-on layer (the official zoning starts off, since
+ * it's a secondary, narrower-coverage reference) — click any reach for
+ * its live GEOGLOWS forecast attributes, any susceptibility zone for its
  * official threat level, or a vereda boundary for its own model's factors
  * — which also narrows the shared sidebar's population card down to it
  * (same mechanism the deslizamientos map uses).
+ *
+ * The GEOGLOWS river layer sits in its own high-zIndex pane so it's
+ * always drawn on top of the zoning/vereda fills, and the vereda overlay
+ * is given `blockMapClick={false}` here (unlike the deslizamientos map's
+ * default) so a click on a vereda still reaches `ReachClickLayer`'s
+ * generic map click underneath instead of being swallowed by the vereda
+ * polygon's own popup — the vereda's own summary stays available through
+ * the sidebar narrowing instead.
  */
 function GeoglowsLiveMapImpl({
   onBoundsChange,
@@ -280,9 +291,9 @@ function GeoglowsLiveMapImpl({
     null,
   )
   const containerRef = useRef<HTMLDivElement>(null)
-  const [showSusceptibility, setShowSusceptibility] = useState(true)
+  const [showSusceptibility, setShowSusceptibility] = useState(false)
   const [showPrecipitation, setShowPrecipitation] = useState(false)
-  const [showVeredas, setShowVeredas] = useState(false)
+  const [showVeredas, setShowVeredas] = useState(true)
   const [selectedStation, setSelectedStation] = useState<Station | null>(null)
   const osmColors = useOsmCategoryColors()
 
@@ -405,10 +416,13 @@ function GeoglowsLiveMapImpl({
           onSelect={onVeredaSelect}
           colorForFeature={veredaFloodColor}
           hazardKind="inundaciones"
+          blockMapClick={false}
         />
-        {overlayUrl && overlay && (
-          <ImageOverlay url={overlayUrl} bounds={toLatLngBounds(overlay.bounds)} opacity={0.9} />
-        )}
+        <Pane name="geoglows-reach-pane" style={{ zIndex: 450 }}>
+          {overlayUrl && overlay && (
+            <ImageOverlay url={overlayUrl} bounds={toLatLngBounds(overlay.bounds)} opacity={0.9} />
+          )}
+        </Pane>
         {STATIONS.map((s) => (
           <Marker key={s.slug} position={[s.lat, s.lon]} icon={stationIcon}>
             <Popup>
