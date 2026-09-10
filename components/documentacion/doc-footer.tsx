@@ -28,8 +28,8 @@ export function DocFooter() {
           />
         </a>
         <p className="max-w-md text-pretty text-sm text-muted-foreground">
-          Proyecto de código abierto &middot; Datos de RED LabOT, GEOGLOWS, NASA FIRMS/GIBS,
-          Copernicus GWIS, DANE, Esri Colombia y OpenStreetMap.
+          Plataforma de uso público y gratuito &middot; Datos de RED LabOT, GEOGLOWS, NASA
+          FIRMS/GIBS, Copernicus GWIS, DANE, Esri Colombia y OpenStreetMap.
         </p>
         <p className="text-sm text-muted-foreground">
           &copy; {year} Vigía. Creado por Alejandro Pino, SIG &middot; Director Técnico
@@ -37,7 +37,7 @@ export function DocFooter() {
           <a href="mailto:apino@redlabot.org" className="text-primary hover:underline">
             apino@redlabot.org
           </a>
-          ). Publicado bajo la licencia MIT.
+          ). Repositorio público, todos los derechos reservados.
         </p>
       </div>
     </footer>

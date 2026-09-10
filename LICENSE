@@ -1,21 +1,29 @@
-MIT License
+Copyright (c) 2025 Alejandro Pino. All rights reserved.
 
-Copyright (c) 2025 Alejandro Pino
+This repository is published for transparency and public review. Anyone may
+view and read the source code.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+Unless you have received prior written permission from the copyright holder,
+you may NOT:
+  - use this software or any part of it in another project or service,
+  - copy, modify, adapt, or create derivative works from it,
+  - redistribute, sublicense, or publish it (in original or modified form),
+  - or use it for commercial purposes.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+The Vigía platform itself (the deployed, hosted application) remains free and
+public to use by anyone, subject to its own terms of use. This license
+governs only the source code in this repository, not the hosted platform.
+
+This restriction is temporary while the project's functionality is still
+being defined and refined. The maintainer intends to relicense this project
+under an OSI-approved open source license (e.g. MIT) once it reaches a more
+stable state.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+For permissions or questions, contact apino@redlabot.org.
