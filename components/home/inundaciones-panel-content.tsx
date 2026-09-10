@@ -61,7 +61,7 @@ export function InundacionesPanelContent({
           actual, en la barra lateral, resume el mismo contenido en formato de texto.
         </p>
         <GeoglowsLiveMapLoader
-          className="relative h-full w-full"
+          className="relative isolate h-full w-full"
           onBoundsChange={onBoundsChange}
           onZoneSelect={onZoneSelect}
           onVeredaSelect={onVeredaSelect}

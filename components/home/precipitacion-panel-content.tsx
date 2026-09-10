@@ -56,7 +56,7 @@ export function PrecipitacionPanelContent({
           actual, en la barra lateral, resume el mismo contenido en formato de texto.
         </p>
         <PrecipitacionLiveMapLoader
-          className="relative h-full w-full"
+          className="relative isolate h-full w-full"
           onBoundsChange={onBoundsChange}
           onZoneSelect={onZoneSelect}
           onVeredaSelect={setSelectedVereda}

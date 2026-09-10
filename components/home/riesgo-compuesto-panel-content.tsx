@@ -43,7 +43,7 @@ export function RiesgoCompuestoPanelContent({ onBoundsChange, activeOsmPoints }:
           amenazas con un botón para ver el reporte completo.
         </p>
         <CompoundLiveMapLoader
-          className="relative h-full w-full"
+          className="relative isolate h-full w-full"
           onBoundsChange={onBoundsChange}
           onVeredaSelect={setSelectedVereda}
           osmPoints={activeOsmPoints}
