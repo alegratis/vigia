@@ -66,27 +66,37 @@ const LICENSE_GROUPS: LicenseGroup[] = [
 export function SectionLicencias() {
   return (
     <section id="licencias" className="flex flex-col gap-4 scroll-mt-24">
-      <h2 className="text-2xl font-semibold tracking-tight">Licencias de código abierto</h2>
+      <h2 className="text-2xl font-semibold tracking-tight">Licencia y uso del código</h2>
       <p className="text-pretty leading-relaxed text-muted-foreground">
-        Vigía es un proyecto de código abierto, creado por Alejandro Pino y publicado bajo la
-        licencia MIT. Las dependencias de código que trae la app se listan a continuación,
-        agrupadas por su propia licencia, tal como la declara cada paquete.
+        El repositorio de Vigía es público para que cualquiera pueda leer su código, auditarlo y
+        aprender de él, creado por Alejandro Pino (SIG &middot; Director Técnico). La plataforma en
+        sí — el sitio que estás usando — es de uso público y gratuito. El código fuente, en
+        cambio, todavía no tiene una licencia de código abierto: las dependencias que trae la app
+        sí la tienen y se listan a continuación, agrupadas por su propia licencia.
       </p>
 
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
             <CardTitle className="text-base">Licencia del proyecto</CardTitle>
-            <Badge variant="outline">MIT</Badge>
+            <Badge variant="outline">Todos los derechos reservados</Badge>
           </div>
         </CardHeader>
         <CardContent className="flex flex-col gap-2">
           <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
-            Creado por Alejandro Pino. El código de Vigía se distribuye bajo la licencia MIT: cualquiera
-            puede usarlo, copiarlo, modificarlo y redistribuirlo, incluso con fines comerciales, siempre
-            que conserve el aviso de copyright original. Se ofrece &quot;tal cual&quot;, sin garantía. El
-            texto completo está en el archivo{" "}
-            <span className="font-mono text-xs sm:text-sm">LICENSE</span> en la raíz del repositorio.
+            Creado por Alejandro Pino, SIG &middot; Director Técnico (
+            <a href="mailto:apino@redlabot.org" className="text-primary hover:underline">
+              apino@redlabot.org
+            </a>
+            ). El repositorio de Vigía es público para consulta y auditoría, pero el código fuente
+            no está bajo una licencia de código abierto: por ahora no se permite usarlo, copiarlo,
+            modificarlo o redistribuirlo sin permiso escrito del autor, mientras se termina de
+            definir y estabilizar su funcionalidad. La{" "}
+            <span className="text-foreground">plataforma</span> (la aplicación desplegada que ves
+            en este sitio) sí es de uso público y gratuito. El texto completo está en el archivo{" "}
+            <span className="font-mono text-xs sm:text-sm">LICENSE</span> en la raíz del
+            repositorio, e incluye la intención de publicar el código bajo una licencia de código
+            abierto (por ejemplo, MIT) una vez alcance mayor estabilidad.
           </p>
         </CardContent>
       </Card>
