@@ -31,6 +31,7 @@ import {
   GWIS_S3_HOTSPOT_LEGEND_URL,
   GWIS_WMS_URL,
 } from "@/lib/incendios/gwis"
+import { GWIS_LANDCOVER_LAYER, GWIS_LANDCOVER_LEGEND_URL } from "@/lib/land-cover/gwis-landcover"
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import { CONFIDENCE_STYLES, formatDateTime, formatDistance, formatFrp } from "@/lib/firms/ui"
 import { normalizeMunicipioName } from "@/lib/demografia/categories"
@@ -38,6 +39,7 @@ import { getOsmCategory } from "@/lib/osm/categories"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
 import { OsmLegend } from "@/components/maps/osm-legend"
 import { VeredasOverlay } from "@/components/maps/veredas-overlay"
+import { WmsLegendChip } from "@/components/maps/wms-legend-chip"
 import type { IncendiosAmenazaResponse } from "@/lib/incendios/api-types"
 import type { FireDetection, FiresResponse } from "@/lib/firms/api-types"
 import type { OsmPoint } from "@/lib/osm/api-types"
@@ -126,10 +128,7 @@ function ThreatLegend() {
 
 function FwiLegend() {
   return (
-    <div className="pointer-events-none rounded-md border border-border bg-white p-1.5 shadow-sm">
-      {/* GWIS/EFFIS legend image, rendered on its own white chip since it's not theme-aware. */}
-      <img src={GWIS_LEGEND_URL || "/placeholder.svg"} alt="Escala del Índice Meteorológico de Incendio (FWI)" className="block" />
-    </div>
+    <WmsLegendChip src={GWIS_LEGEND_URL} alt="Escala del Índice Meteorológico de Incendio (FWI)" />
   )
 }
 
@@ -155,14 +154,20 @@ function FireLegend({ colors }: { colors: Record<FireDetection["confidence"], st
 
 function S3Legend() {
   return (
-    <div className="pointer-events-none rounded-md border border-border bg-white p-1.5 shadow-sm">
-      {/* GWIS/EFFIS legend image, rendered on its own white chip since it's not theme-aware. */}
-      <img
-        src={GWIS_S3_HOTSPOT_LEGEND_URL || "/placeholder.svg"}
-        alt="Escala de antigüedad de los focos activos Sentinel-3"
-        className="block max-h-40"
-      />
-    </div>
+    <WmsLegendChip
+      src={GWIS_S3_HOTSPOT_LEGEND_URL}
+      alt="Escala de antigüedad de los focos activos Sentinel-3"
+      className="block max-h-40"
+    />
+  )
+}
+
+function LandCoverLegend() {
+  return (
+    <WmsLegendChip
+      src={GWIS_LANDCOVER_LEGEND_URL}
+      alt="Escala de cobertura del suelo (MODIS MCD12Q1)"
+    />
   )
 }
 
@@ -211,6 +216,7 @@ function IncendiosLiveMapImpl({
   const [showViirs, setShowViirs] = useState(true)
   const [showSentinel3, setShowSentinel3] = useState(false)
   const [showVeredas, setShowVeredas] = useState(false)
+  const [showLandCover, setShowLandCover] = useState(false)
   const [fireDays, setFireDays] = useState<number>(2)
   const needsFirms = showModis || showViirs
   const { data: firesData } = useSWR<FiresResponse>(
@@ -325,6 +331,20 @@ function IncendiosLiveMapImpl({
             data={data.polygons as unknown as GeoJSON.GeoJsonObject}
             style={style}
             onEachFeature={onEachFeature}
+          />
+        )}
+        {showLandCover && (
+          <WMSTileLayer
+            url={GWIS_WMS_URL}
+            opacity={0.55}
+            params={
+              {
+                layers: GWIS_LANDCOVER_LAYER,
+                format: "image/png",
+                transparent: true,
+                version: "1.1.1",
+              } as WMSParams
+            }
           />
         )}
         <VeredasOverlay enabled={showVeredas} onSelect={onVeredaSelect} />
@@ -467,6 +487,17 @@ function IncendiosLiveMapImpl({
           <label className="flex items-center gap-2 font-medium text-foreground">
             <input
               type="checkbox"
+              checked={showLandCover}
+              onChange={(e) => setShowLandCover(e.target.checked)}
+              className="size-3.5 accent-primary"
+            />
+            Cobertura del suelo (MODIS)
+          </label>
+        </div>
+        <div className="border-t border-border pt-1.5">
+          <label className="flex items-center gap-2 font-medium text-foreground">
+            <input
+              type="checkbox"
               checked={showVeredas}
               onChange={(e) => setShowVeredas(e.target.checked)}
               className="size-3.5 accent-primary"
@@ -490,11 +521,12 @@ function IncendiosLiveMapImpl({
       <div className="absolute right-3 top-16 z-[400] max-w-[200px]">
         <OsmLegend points={osmPoints ?? []} />
       </div>
-      {(showForecast || needsFirms || showSentinel3) && (
+      {(showForecast || needsFirms || showSentinel3 || showLandCover) && (
         <div className="absolute bottom-3 right-3 z-[400] flex flex-col items-end gap-2">
           {showForecast && <FwiLegend />}
           {needsFirms && <FireLegend colors={fireColors} />}
           {showSentinel3 && <S3Legend />}
+          {showLandCover && <LandCoverLegend />}
         </div>
       )}
     </div>
