@@ -145,6 +145,31 @@ export function HazardWorkspace({ initialCategory }: { initialCategory: string }
               Caicedonia y Zarzal.
             </p>
           </div>
+
+          <div className="flex flex-col items-center gap-1.5">
+            <span className="text-xs font-medium text-muted-foreground">En colaboración con</span>
+            <a
+              href="https://nasalifelines.org"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
+              <Image
+                src="/images/nasa-lifelines-wordmark-darkblue.png"
+                alt="NASA Lifelines"
+                width={5112}
+                height={643}
+                className="block h-5 w-auto dark:hidden"
+              />
+              <Image
+                src="/images/nasa-lifelines-wordmark-white.png"
+                alt="NASA Lifelines"
+                width={5112}
+                height={643}
+                className="hidden h-5 w-auto dark:block"
+              />
+            </a>
+          </div>
         </div>
 
         <button
