@@ -56,6 +56,31 @@ export function SectionResumen() {
           />
         </a>
       </div>
+
+      <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center">
+        <div className="flex flex-col gap-1 sm:flex-1">
+          <p className="text-sm font-medium text-foreground">NASA Lifelines</p>
+          <p className="max-w-md text-pretty text-sm leading-relaxed text-muted-foreground">
+            Vigía forma parte de la comunidad de NASA Lifelines, una iniciativa de la División de
+            Ciencias de la Tierra de la NASA y la firma DevGlobal que impulsa el uso de datos
+            satelitales para fortalecer la acción humanitaria.
+          </p>
+        </div>
+        <a
+          href="https://nasalifelines.org"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex shrink-0 items-center justify-center rounded-md bg-neutral-900 px-4 py-3 sm:w-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        >
+          <Image
+            src="/images/nasa-lifelines-wordmark-white.png"
+            alt="NASA Lifelines"
+            width={2084}
+            height={263}
+            className="h-6 w-auto"
+          />
+        </a>
+      </div>
     </section>
   )
 }
