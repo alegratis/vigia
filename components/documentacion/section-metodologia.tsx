@@ -96,6 +96,60 @@ const CACHES = [
   { fuente: "Lluvia / disparador", ttl: "1 hora", motivo: "los días más recientes se revisan con nuevas observaciones" },
 ]
 
+const FLOOD_STEPS: Step[] = [
+  {
+    title: "1. Zonificación oficial",
+    entrada:
+      "Capa pública susceptibilidad_inundaciones (ArcGIS Online, RED LabOT) — polígonos disueltos con 5 clases de susceptibilidad, cubriendo el área zonificada de Sevilla y Caicedonia.",
+    proceso: [
+      "Para cada centroide de vereda se hace una prueba punto-en-polígono (turf) contra los polígonos de zonificación.",
+      "Si el centroide cae dentro de un polígono, su clase (Muy alta/Alta/Moderada/Baja/Muy baja) se traduce a un puntaje 0–1: zonificación_score = 1 − índice_de_clase / 4 (Muy alta = 1, Muy baja = 0).",
+      "Si el centroide no cae dentro de ningún polígono —el caso de las 19 veredas de Zarzal— el factor queda sin resolver, no en 0.",
+    ],
+    nota:
+      "Es la única evidencia oficial directa que entra al modelo, por eso recibe el mayor peso individual (50%) — pero se limita a ese 50%, en vez de un peso mayor, precisamente para que una vereda sin esta cobertura (todo Zarzal) no quede con un puntaje degenerado por depender de un solo factor ausente.",
+  },
+  {
+    title: "2. Cercanía a una quebrada o río",
+    entrada:
+      "Capa pública de hidrografía \"Quebradas\" (ArcGIS Online, mismo publicador que la zonificación oficial) — 19 cauces con nombre que cubren toda el área de estudio, incluida Zarzal.",
+    proceso: [
+      "Una sola consulta recupera las 19 trazas completas, con su geometría de vértices (esri JSON \"paths\").",
+      "Para cada centroide se calcula la distancia real punto-a-segmento (no al vértice más cercano) contra cada segmento de cada traza, misma proyección local a kilómetros que usa el factor de fallas geológicas del modelo de deslizamiento — se toma el mínimo sobre todos los segmentos de todas las trazas.",
+      "El puntaje decrece linealmente con la distancia y llega a 0 al superar 1 km: quebrada_score = max(0, 1 − distancia_km / 1).",
+    ],
+    nota:
+      "Es el único factor del modelo que efectivamente llega a Zarzal: la capa de hidrografía no tiene el mismo vacío de cobertura que la zonificación oficial.",
+  },
+  {
+    title: "3. Planicie del terreno",
+    entrada: "El mismo valor de pendiente ya calculado por el modelo de amenaza por deslizamiento (paso 1 de esa metodología), en el mismo centroide.",
+    proceso: [
+      "No se vuelve a consultar la API de elevación: se reutiliza directamente el resultado ya calculado para ese centroide.",
+      "A diferencia del modelo de deslizamiento, aquí el efecto se invierte — terreno plano cerca de un cauce se inunda con más facilidad; terreno empinado drena en vez de encharcar: planicie_score = 1 − min(1, pendiente° / 8).",
+      "El puntaje llega a 0 a partir de 8° de pendiente — un umbral mucho más bajo que el de 45° del factor de pendiente del modelo de deslizamiento, porque aquí lo relevante es si el terreno puede retener agua, no si puede colapsar.",
+    ],
+  },
+  {
+    title: "4. Puntaje final y nivel de amenaza",
+    entrada: "Los tres factores anteriores.",
+    proceso: [
+      "Promedio ponderado: puntaje_final = (zonificación_score × 0.5 + quebrada_score × 0.3 + planicie_score × 0.2) / peso_total.",
+      "Si la zonificación oficial no resolvió para una vereda (fuera de su cobertura, o si el propio factor de zonificación falló al cargar), el peso se renormaliza sobre los otros dos — nunca se descarta la vereda entera solo por no tener zonificación oficial.",
+      "El puntaje 0–1 resultante se traduce al mismo vocabulario de 5 niveles que ya usa la zonificación oficial (Muy alta/Alta/Moderada/Baja/Muy baja), en vez de inventar una escala nueva.",
+      "Se calcula una sola vez por centroide de vereda (69 en total entre Sevilla, Caicedonia y Zarzal, incluyendo los cascos urbanos) al resolver /api/veredas.",
+    ],
+    nota:
+      "Ninguna vereda queda sin puntaje: incluso sin zonificación oficial, los otros dos factores por sí solos ya producen un resultado no degenerado en toda vereda de Zarzal — es la extensión de cobertura que motivó este modelo.",
+  },
+]
+
+const FLOOD_CACHES = [
+  { fuente: "Zonificación oficial de inundación", ttl: "1 hora", motivo: "mismo caché que la capa pública original" },
+  { fuente: "Hidrografía (quebradas y ríos)", ttl: "30 días", motivo: "el curso de un cauce cambia muy lentamente" },
+  { fuente: "Pendiente / planicie", ttl: "reutilizada", motivo: "es el mismo valor ya cacheado por el modelo de deslizamiento" },
+]
+
 export function SectionMetodologia() {
   return (
     <section id="metodologia" className="flex flex-col gap-6 scroll-mt-24">
@@ -204,6 +258,107 @@ export function SectionMetodologia() {
               Se calcula en el centroide de cada vereda, no en una grilla densa — una sola pendiente y
               distancia a vía representan a toda la vereda, a diferencia de los ~11.721 puntos que sí tenía
               la capa de RED LabOT dentro de su área de cobertura.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div className="flex flex-col gap-2 border-t border-border pt-6">
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="text-2xl font-semibold tracking-tight">Metodología: modelo propio de amenaza por inundación</h2>
+          <Badge variant="outline">Cálculo propio, no un índice oficial</Badge>
+        </div>
+        <p className="max-w-3xl text-pretty leading-relaxed text-muted-foreground">
+          La capa &quot;Modelo propio de inundación&quot; del mapa de inundaciones extiende la zonificación
+          oficial de RED LabOT —que solo cubre el área zonificada de Sevilla y Caicedonia— a los tres
+          municipios, incluido Zarzal, calculando un puntaje propio por vereda. La zonificación oficial no
+          se descarta: es, al contrario, el insumo de mayor peso del modelo, donde tiene cobertura.
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-4">
+        {FLOOD_STEPS.map((step) => (
+          <Card key={step.title}>
+            <CardHeader>
+              <CardTitle className="text-base">{step.title}</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Entrada</p>
+                <p className="mt-1 text-pretty text-sm leading-relaxed text-foreground">{step.entrada}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Procesamiento</p>
+                <ul className="mt-1 flex flex-col gap-1.5 text-sm leading-relaxed text-muted-foreground">
+                  {step.proceso.map((line) => (
+                    <li key={line} className="flex gap-2">
+                      <span className="mt-2 size-1 shrink-0 rounded-full bg-muted-foreground" aria-hidden="true" />
+                      <span className="text-pretty">{line}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              {step.nota && (
+                <p className="rounded-md bg-muted/50 p-2.5 text-pretty text-xs leading-relaxed text-muted-foreground">
+                  {step.nota}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <h3 className="text-lg font-semibold tracking-tight">Caché por factor</h3>
+        <dl className="grid grid-cols-1 gap-2 rounded-lg bg-muted/50 p-3 text-xs sm:grid-cols-3">
+          {FLOOD_CACHES.map((c) => (
+            <div key={c.fuente}>
+              <dt className="font-medium text-foreground">{c.fuente}</dt>
+              <dd className="mt-0.5 text-muted-foreground">
+                {c.ttl} — {c.motivo}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+
+      <div className="flex flex-col gap-2 border-t border-border pt-4">
+        <h3 className="text-lg font-semibold tracking-tight">Qué no es este modelo</h3>
+        <ul className="flex flex-col gap-1.5 text-sm leading-relaxed text-muted-foreground">
+          <li className="flex gap-2">
+            <span className="mt-2 size-1 shrink-0 rounded-full bg-muted-foreground" aria-hidden="true" />
+            <span className="text-pretty">
+              No es un modelo hidráulico ni hidrológico — no simula caudal, láminas de agua ni tiempos de
+              llegada de una creciente. Es una susceptibilidad relativa por vereda, del mismo tipo que la
+              zonificación oficial que extiende, no un pronóstico de inundación (para eso está el pronóstico
+              de caudal en vivo de GEOGLOWS, ya en el mismo mapa).
+            </span>
+          </li>
+          <li className="flex gap-2">
+            <span className="mt-2 size-1 shrink-0 rounded-full bg-muted-foreground" aria-hidden="true" />
+            <span className="text-pretty">
+              La capa de hidrografía usada para el factor de cercanía a cauces solo tiene 19 trazas con
+              nombre — es una aproximación a la red de drenaje real, no un mapa completo de todo arroyo o
+              canal menor.
+            </span>
+          </li>
+          <li className="flex gap-2">
+            <span className="mt-2 size-1 shrink-0 rounded-full bg-muted-foreground" aria-hidden="true" />
+            <span className="text-pretty">
+              Los pesos y umbrales (0.5/0.3/0.2, 1 km, 8°) son elegidos por criterio propio, siguiendo la
+              misma lógica de factores-por-distancia-e-inclinación del modelo de deslizamiento, no ajustados
+              con datos locales de inundaciones ocurridas.
+            </span>
+          </li>
+          <li className="flex gap-2">
+            <span className="mt-2 size-1 shrink-0 rounded-full bg-muted-foreground" aria-hidden="true" />
+            <span className="text-pretty">
+              Cada traza de cauce de la capa de hidrografía trae también un identificador (rivid) que
+              coincide con el esquema de tramos que ya usa el pronóstico de GEOGLOWS en este mapa — un
+              posible factor dinámico futuro (p. ej. ponderar por el período de retorno en vivo del tramo
+              más cercano), señalado aquí pero no implementado: a diferencia de cada otro insumo de este
+              modelo, que es una sola consulta cacheada, eso implicaría decenas de consultas individuales por
+              tramo en cada solicitud.
             </span>
           </li>
         </ul>

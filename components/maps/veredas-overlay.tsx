@@ -29,6 +29,14 @@ interface VeredasOverlayProps {
   colorForFeature?: (feature: VeredaFeature) => string
   /** Called with the clicked vereda's feature — lets a host map drive a detail panel off the same click that opens this overlay's own popup. */
   onSelect?: (feature: VeredaFeature) => void
+  /**
+   * Which hazard model's fields the popup shows alongside the shared
+   * population/infrastructure summary. Defaults to the landslide model
+   * (the overlay's original, and still most common, use). The
+   * inundaciones map passes `"inundaciones"` when it colors veredas by
+   * this app's own flood model instead of a neutral outline.
+   */
+  hazardKind?: "deslizamientos" | "inundaciones"
 }
 
 /**
@@ -36,10 +44,17 @@ interface VeredasOverlayProps {
  * a per-vereda population/infrastructure summary popup, spatially
  * aggregated server-side from data this app already fetches at the point
  * or municipio level (see lib/veredas/server.ts). Built for the
- * deslizamientos map and reused as a neutral reference layer on the
- * incendios and inundaciones maps.
+ * deslizamientos map (colored by its own landslide hazard model) and
+ * reused on the inundaciones map (colored by its own flood hazard model —
+ * `hazardKind="inundaciones"`, see lib/inundaciones/hazard-model.ts) and
+ * as a neutral outline reference layer on incendios.
  */
-export function VeredasOverlay({ enabled, colorForFeature, onSelect }: VeredasOverlayProps) {
+export function VeredasOverlay({
+  enabled,
+  colorForFeature,
+  onSelect,
+  hazardKind = "deslizamientos",
+}: VeredasOverlayProps) {
   const { veredas } = useVeredas(enabled)
   const [outlineColor, setOutlineColor] = useState<string | null>(null)
 
@@ -79,16 +94,17 @@ export function VeredasOverlay({ enabled, colorForFeature, onSelect }: VeredasOv
               <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
                 <strong>{props.nombre}</strong>
                 <span>{props.municipio}</span>
-                {colorForFeature && props.dominantLevel && (
+                {colorForFeature && hazardKind === "deslizamientos" && props.dominantLevel && (
                   <span>
                     Amenaza (modelo propio): {props.dominantLevel}
                     {props.isScoreAvg != null && ` (${props.isScoreAvg.toFixed(2)})`}
                   </span>
                 )}
-                {colorForFeature && !props.dominantLevel && (
+                {colorForFeature && hazardKind === "deslizamientos" && !props.dominantLevel && (
                   <span style={{ color: "#888" }}>Sin datos del modelo de amenaza</span>
                 )}
                 {colorForFeature &&
+                  hazardKind === "deslizamientos" &&
                   (props.slopeDeg != null ||
                     props.roadDistanceKm != null ||
                     props.faultDistanceKm != null ||
@@ -118,6 +134,32 @@ export function VeredasOverlay({ enabled, colorForFeature, onSelect }: VeredasOv
                       {props.rainfallRatio != null && `Lluvia vs. histórico: ${(props.rainfallRatio * 100).toFixed(0)}%`}
                     </span>
                   )}
+                {colorForFeature && hazardKind === "inundaciones" && props.floodLevel && (
+                  <span>
+                    Amenaza por inundación (modelo propio): {props.floodLevel}
+                    {props.floodScoreAvg != null && ` (${props.floodScoreAvg.toFixed(2)})`}
+                  </span>
+                )}
+                {colorForFeature && hazardKind === "inundaciones" && !props.floodLevel && (
+                  <span style={{ color: "#888" }}>Sin datos del modelo de inundación</span>
+                )}
+                {colorForFeature &&
+                  hazardKind === "inundaciones" &&
+                  (props.floodStreamDistanceKm != null || props.slopeDeg != null) && (
+                    <span style={{ color: "#888" }}>
+                      {props.floodStreamDistanceKm != null &&
+                        `Quebrada más cercana: ${props.floodStreamDistanceKm.toFixed(2)} km`}
+                      {props.floodStreamDistanceKm != null && props.slopeDeg != null && " · "}
+                      {props.slopeDeg != null && `Pendiente: ${props.slopeDeg.toFixed(1)}°`}
+                    </span>
+                  )}
+                {colorForFeature && hazardKind === "inundaciones" && (
+                  <span style={{ color: "#888" }}>
+                    {props.floodZoningCovered
+                      ? `Con zonificación oficial: ${props.floodZoningLevel ?? "—"}`
+                      : "Sin zonificación oficial — solo modelo propio"}
+                  </span>
+                )}
                 <span>
                   Población estimada:{" "}
                   {props.poblacion != null ? Math.round(props.poblacion).toLocaleString("es-CO") : "—"}

@@ -34,6 +34,14 @@ import "server-only"
  * floor, out of scope for that layer), so its veredas get `null` for
  * every population/infrastructure field — never a fabricated or estimated
  * value — while still getting a hazard level and a sitios-críticos count.
+ *
+ * A fourth, independent source follows the same "own model, computed at
+ * each vereda's centroid" pattern as the landslide hazard model: this
+ * app's own flood-susceptibility model (lib/inundaciones/hazard-model.ts —
+ * official zoning + stream proximity + terrain flatness), also covering
+ * all three municipios including Zarzal. It reuses each centroid's
+ * `slopeDeg` already computed by `computeVeredaHazard` above, rather than
+ * re-fetching elevation a second time for the same point.
  */
 
 import { booleanPointInPolygon } from "@turf/boolean-point-in-polygon"
@@ -43,6 +51,8 @@ import { getSusceptibilityPointsForAggregation } from "@/lib/deslizamientos/clie
 import { getCriticalSites } from "@/lib/deslizamientos/critical-sites"
 import { computeVeredaHazard } from "@/lib/deslizamientos/hazard-model"
 import type { SusceptibilityLevel } from "@/lib/deslizamientos/levels"
+import { computeVeredaFloodHazard } from "@/lib/inundaciones/hazard-model"
+import type { FloodSusceptibilityLevel } from "@/lib/inundaciones/levels"
 import type { VeredaBoundary } from "./boundaries"
 
 export interface VeredaAggregate {
@@ -58,6 +68,16 @@ export interface VeredaAggregate {
   historyDistanceKm: number | null
   /** Current antecedent-rainfall index over its 3-year same-season baseline — see hazard-model.ts. */
   rainfallRatio: number | null
+
+  /** Final 0–1 composite score from this app's own flood hazard model — see lib/inundaciones/hazard-model.ts. */
+  floodScoreAvg: number | null
+  floodLevel: FloodSusceptibilityLevel | null
+  /** Distance (km) from this vereda's centroid to the nearest named stream/creek trace. */
+  floodStreamDistanceKm: number | null
+  /** Official zoning class at this centroid, or `null` outside the zoning layer's coverage (every vereda in Zarzal). */
+  floodZoningLevel: FloodSusceptibilityLevel | null
+  floodZoningCovered: boolean
+
   puntosMuestra: number
   poblacion: number | null
   poblacionMenores5: number | null
@@ -114,6 +134,14 @@ export async function aggregateVeredas(
     computeVeredaHazard(centroids),
   ])
 
+  // Flood centroids reuse each vereda's slope from the landslide hazard
+  // result above instead of a second elevation fetch for the same point.
+  const floodCentroids = centroids.map((c) => ({
+    ...c,
+    slopeDeg: hazardByVereda.get(c.codigoVereda)?.slopeDeg ?? null,
+  }))
+  const floodHazardByVereda = await computeVeredaFloodHazard(floodCentroids)
+
   const pointsByMunicipio = new Map<string, typeof susceptibilityPoints>()
   for (const p of susceptibilityPoints) {
     const list = pointsByMunicipio.get(p.municipio)
@@ -134,6 +162,7 @@ export async function aggregateVeredas(
     const bbox = computeBbox(boundary.polygons)
     const poly = multiPolygon(boundary.polygons)
     const hazard = hazardByVereda.get(boundary.codigoVereda) ?? null
+    const floodHazard = floodHazardByVereda.get(boundary.codigoVereda) ?? null
 
     const candidatePoints = pointsByMunicipio.get(boundary.municipio) ?? []
     const insidePoints = candidatePoints.filter(
@@ -154,6 +183,11 @@ export async function aggregateVeredas(
         faultDistanceKm: hazard?.faultDistanceKm ?? null,
         historyDistanceKm: hazard?.historyDistanceKm ?? null,
         rainfallRatio: hazard?.rainfallRatio ?? null,
+        floodScoreAvg: floodHazard?.score ?? null,
+        floodLevel: floodHazard?.level ?? null,
+        floodStreamDistanceKm: floodHazard?.streamDistanceKm ?? null,
+        floodZoningLevel: floodHazard?.zoningLevel ?? null,
+        floodZoningCovered: floodHazard?.zoningCovered ?? false,
         puntosMuestra: 0,
         poblacion: null,
         poblacionMenores5: null,
@@ -193,6 +227,11 @@ export async function aggregateVeredas(
       faultDistanceKm: hazard?.faultDistanceKm ?? null,
       historyDistanceKm: hazard?.historyDistanceKm ?? null,
       rainfallRatio: hazard?.rainfallRatio ?? null,
+      floodScoreAvg: floodHazard?.score ?? null,
+      floodLevel: floodHazard?.level ?? null,
+      floodStreamDistanceKm: floodHazard?.streamDistanceKm ?? null,
+      floodZoningLevel: floodHazard?.zoningLevel ?? null,
+      floodZoningCovered: floodHazard?.zoningCovered ?? false,
       puntosMuestra: insidePoints.length,
       poblacion,
       poblacionMenores5,

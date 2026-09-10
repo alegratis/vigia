@@ -9,6 +9,8 @@
  * No server imports here.
  */
 
+import type { FloodSusceptibilityLevel } from "@/lib/inundaciones/levels"
+
 export interface VeredaProperties {
   /** DIVIPOLA vereda code (departamento+municipio+vereda), e.g. "76895002" — or a synthetic "<mpio-code>-urbano" id for the Casco Urbano pseudo-vereda. */
   codigoVereda: string
@@ -37,6 +39,23 @@ export interface VeredaProperties {
   historyDistanceKm: number | null
   /** Current antecedent-rainfall index over its 3-year same-season baseline; `null` if no baseline could be formed. */
   rainfallRatio: number | null
+
+  /**
+   * Final 0–1 composite score from this app's own flood hazard model
+   * (official zoning + stream proximity + terrain flatness — see
+   * lib/inundaciones/hazard-model.ts), computed at this vereda's
+   * centroid. Covers all three municipios, including Zarzal.
+   */
+  floodScoreAvg: number | null
+  /** Flood hazard level from the same model, mapped onto the zoning layer's own 5-level vocabulary. */
+  floodLevel: FloodSusceptibilityLevel | null
+  /** Distance (km) from this vereda's centroid to the nearest named stream/creek trace. */
+  floodStreamDistanceKm: number | null
+  /** Official zoning class at this centroid, or `null` outside the zoning layer's coverage. */
+  floodZoningLevel: FloodSusceptibilityLevel | null
+  /** Whether this centroid falls inside the official zoning layer's coverage at all — `false` for every vereda in Zarzal. */
+  floodZoningCovered: boolean
+
   /** RED LabOT `VIGIA_Amenaza_IS_Puntos` grid points used for this vereda's population/infrastructure sums below. 0 means no coverage (Zarzal, which that layer never covered). */
   puntosMuestra: number
 

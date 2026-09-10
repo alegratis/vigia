@@ -210,7 +210,13 @@ function ReturnPeriodLegend() {
   )
 }
 
-function SusceptibilityLegend() {
+/**
+ * Legend for the flood hazard color scale — shared by the official zoning
+ * layer and this app's own vereda-level flood model, since both are
+ * deliberately scored onto the same 5-level vocabulary (see
+ * lib/inundaciones/hazard-model.ts). Shown while either layer is on.
+ */
+function SusceptibilityLegend({ title }: { title: string }) {
   const [colors, setColors] = useState<string[] | null>(null)
 
   useEffect(() => {
@@ -221,7 +227,7 @@ function SusceptibilityLegend() {
 
   return (
     <div className="pointer-events-none absolute bottom-3 right-3 z-[400] rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
-      <p className="mb-1.5 font-medium text-foreground">Susceptibilidad a inundación</p>
+      <p className="mb-1.5 font-medium text-foreground">{title}</p>
       <ul className="flex flex-col gap-1">
         {FLOOD_SUSCEPTIBILITY_LEVELS.map((level, i) => (
           <li key={level} className="flex items-center gap-2 text-muted-foreground">
@@ -243,13 +249,17 @@ function SusceptibilityLegend() {
  * "GlobalWaterModel_Medium" layer directly over OpenStreetMap, centered on
  * the study area, plus the static flood-susceptibility zoning
  * (`susceptibilidad_inundaciones`, see lib/inundaciones/client.ts) and
- * vereda boundaries with a population/infrastructure summary (shared with
- * the deslizamientos map, see components/maps/veredas-overlay.tsx) as
- * toggleable layers underneath. Click any reach for its live forecast
- * attributes, or any susceptibility zone for its threat level. Turn on
- * "Límites veredales" and click a vereda boundary to narrow the shared
- * sidebar's population card down to it (same mechanism the
- * deslizamientos map uses).
+ * vereda boundaries — colored by this app's own flood hazard model (see
+ * lib/inundaciones/hazard-model.ts), same "Límites veredales" toggle
+ * pattern the deslizamientos map uses for its own landslide model — as
+ * toggleable layers underneath. The official zoning layer only covers
+ * Sevilla/Caicedonia's zoned extent; the vereda layer's own model reaches
+ * all three municipios, including Zarzal, and both can be on at once
+ * (zoning underneath, the model's vereda coloring on top). Click any
+ * reach for its live forecast attributes, any susceptibility zone for its
+ * official threat level, or a vereda boundary for its own model's factors
+ * — which also narrows the shared sidebar's population card down to it
+ * (same mechanism the deslizamientos map uses).
  */
 function GeoglowsLiveMapImpl({
   onBoundsChange,
@@ -300,6 +310,18 @@ function GeoglowsLiveMapImpl({
         fillColor: color,
         fillOpacity: 0.45,
       }
+    },
+    [resolvedColors],
+  )
+
+  // Reuses the same resolved zoning-level colors above — this app's own
+  // flood hazard model (lib/inundaciones/hazard-model.ts) is deliberately
+  // scored onto the zoning layer's own 5-level vocabulary, so one palette
+  // covers both.
+  const veredaFloodColor = useCallback(
+    (feature: VeredaFeature): string => {
+      const level = feature.properties.floodLevel
+      return (level && resolvedColors?.[level]) || "var(--muted-foreground)"
     },
     [resolvedColors],
   )
@@ -378,7 +400,12 @@ function GeoglowsLiveMapImpl({
         {showPrecipitation && (
           <TileLayer attribution="NASA GIBS / IMERG" url={IMERG_TILE_URL} opacity={0.6} maxNativeZoom={6} />
         )}
-        <VeredasOverlay enabled={showVeredas} onSelect={onVeredaSelect} />
+        <VeredasOverlay
+          enabled={showVeredas}
+          onSelect={onVeredaSelect}
+          colorForFeature={veredaFloodColor}
+          hazardKind="inundaciones"
+        />
         {overlayUrl && overlay && (
           <ImageOverlay url={overlayUrl} bounds={toLatLngBounds(overlay.bounds)} opacity={0.9} />
         )}
@@ -458,7 +485,7 @@ function GeoglowsLiveMapImpl({
             onChange={(e) => setShowVeredas(e.target.checked)}
             className="size-3.5 accent-[var(--primary)]"
           />
-          Límites veredales
+          Modelo propio de inundación (por vereda, incluye Zarzal)
         </label>
         {showPrecipitation && (
           <a
@@ -482,7 +509,17 @@ function GeoglowsLiveMapImpl({
       <div className="absolute right-3 top-16 z-[400] max-w-[200px]">
         <OsmLegend points={osmPoints ?? []} />
       </div>
-      {showSusceptibility && <SusceptibilityLegend />}
+      {(showSusceptibility || showVeredas) && (
+        <SusceptibilityLegend
+          title={
+            showSusceptibility && showVeredas
+              ? "Susceptibilidad a inundación (zonificación oficial y modelo propio)"
+              : showSusceptibility
+                ? "Susceptibilidad a inundación (zonificación oficial)"
+                : "Amenaza a inundación (modelo propio, por vereda)"
+          }
+        />
+      )}
 
       <StationDetailDialog
         station={selectedStation}

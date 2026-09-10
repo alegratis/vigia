@@ -69,12 +69,35 @@ const GROUPS: SourceGroup[] = [
       {
         nombre: "Susceptibilidad a inundaciones",
         publicador: "RED LabOT",
-        descripcion: "Polígonos de zonificación estática de susceptibilidad a inundación.",
+        descripcion:
+          "Polígonos de zonificación estática de susceptibilidad a inundación. Sigue siendo el insumo de mayor peso (50%) del modelo propio de amenaza por inundación, donde tiene cobertura; ya no colorea la capa \"Modelo propio de inundación\" del mapa por sí sola.",
         url: "https://services8.arcgis.com/UYEK9SUzH1am9mbk/arcgis/rest/services/susceptibilidad_inundaciones/FeatureServer",
         acceso: "ArcGIS FeatureServer",
         licencia: "Datos abiertos, sin autenticación",
         cobertura: "Sevilla, Caicedonia",
         actualizacion: "Capa estática; la app la relee cada hora",
+      },
+      {
+        nombre: "Modelo propio de amenaza por inundación",
+        publicador: "Vigía (cálculo propio)",
+        descripcion:
+          "Combina la clase de zonificación oficial (donde exista, 50%), distancia a la quebrada o río más próximo (capa pública de hidrografía, ver la ficha siguiente, 30%) y planicie del terreno —reutilizando la pendiente ya calculada por el modelo de amenaza por deslizamiento, 20%—, calculado en el centroide de cada vereda. Extiende la zonificación oficial a los tres municipios, incluido Zarzal, con nivel de detalle por vereda. Ver la sección \"Metodología\" más abajo para el detalle completo, paso a paso.",
+        url: "https://services8.arcgis.com/UYEK9SUzH1am9mbk/arcgis/rest/services/Quebradas/FeatureServer",
+        acceso: "Cálculo propio sobre capas ArcGIS abiertas",
+        licencia: "N/A — calculado por la app a partir de fuentes abiertas",
+        cobertura: "Sevilla, Caicedonia, Zarzal (69 centroides de vereda)",
+        actualizacion: "Zonificación e hidrografía cambian poco (cache de 1 hora y 30 días); pendiente reutilizada del modelo de deslizamiento",
+      },
+      {
+        nombre: "Quebradas y ríos con nombre",
+        publicador: "RED LabOT",
+        descripcion:
+          "19 trazas de quebrada o río con nombre (p. ej. \"Río Palomino\", \"Quebrada Morelia\") que cubren toda el área de estudio, incluida Zarzal. Usada como segundo factor del modelo propio de amenaza por inundación (distancia real punto-a-segmento hasta la traza más próxima, 30% del puntaje) — es el único factor de ese modelo con cobertura completa en Zarzal. Cada traza también trae un identificador (rivid) que coincide con el esquema de tramos de GEOGLOWS, ya usado en el mismo mapa para el pronóstico de caudal en vivo — un posible cruce futuro, señalado en la metodología pero no implementado todavía.",
+        url: "https://services8.arcgis.com/UYEK9SUzH1am9mbk/arcgis/rest/services/Quebradas/FeatureServer",
+        acceso: "ArcGIS FeatureServer",
+        licencia: "Datos abiertos, sin autenticación",
+        cobertura: "Sevilla, Caicedonia, Zarzal",
+        actualizacion: "Hidrografía estática; la app la relee cada 30 días",
       },
       {
         nombre: "Sitios críticos (daño vial)",
