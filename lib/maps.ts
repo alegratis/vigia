@@ -68,6 +68,19 @@ export const mapModels: MapModel[] = [
     href: "/?categoria=precipitacion",
     ready: true,
   },
+  {
+    slug: "riesgo-compuesto",
+    title: "Riesgo compuesto",
+    hook: "Combinamos las cuatro amenazas en una sola lectura por vereda, para saber dónde actuar primero.",
+    description:
+      "Cruzamos los cuatro modelos propios de esta app —deslizamientos, inundaciones, incendios forestales y precipitación— en una evaluación única por vereda: el nivel más alto entre las cuatro gobierna el resultado, con un reporte narrativo y la exposición demográfica de cada una.",
+    image: "/images/riesgo-compuesto-map.png",
+    imageAlt:
+      "Vista satelital de un territorio montañoso con capas superpuestas representando múltiples amenazas naturales",
+    tag: "Evaluación multiamenaza",
+    href: "/?categoria=riesgo-compuesto",
+    ready: true,
+  },
 ]
 
 export function getMapModel(slug: string): MapModel | undefined {
