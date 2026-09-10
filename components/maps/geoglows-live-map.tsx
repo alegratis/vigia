@@ -11,11 +11,12 @@ import {
   Marker,
   Pane,
   Popup,
+  WMSTileLayer,
   ZoomControl,
   useMap,
   useMapEvents,
 } from "react-leaflet"
-import type { Layer, LatLngBoundsExpression, LeafletMouseEvent, PathOptions } from "leaflet"
+import type { Layer, LatLngBoundsExpression, LeafletMouseEvent, PathOptions, WMSParams } from "leaflet"
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
 import { ExternalLink, Loader2 } from "lucide-react"
@@ -43,6 +44,14 @@ import { getOsmCategory } from "@/lib/osm/categories"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
 import { OsmLegend } from "@/components/maps/osm-legend"
 import { VeredasOverlay } from "@/components/maps/veredas-overlay"
+import { WmsLegendChip } from "@/components/maps/wms-legend-chip"
+import { GWIS_WMS_URL } from "@/lib/incendios/gwis"
+import {
+  GWIS_SETTLEMENT_LAYER,
+  GWIS_SETTLEMENT_LEGEND_URL,
+  GWIS_PROTECTED_AREAS_LAYER,
+  GWIS_PROTECTED_AREAS_LEGEND_URL,
+} from "@/lib/demografia/gwis-context-layers"
 import type {
   InundacionesQuebradasResponse,
   InundacionesSusceptibilidadResponse,
@@ -280,6 +289,24 @@ function SusceptibilityLegend({ title }: { title: string }) {
   )
 }
 
+function SettlementLegend() {
+  return (
+    <WmsLegendChip
+      src={GWIS_SETTLEMENT_LEGEND_URL}
+      alt="Leyenda de asentamientos humanos (GHSL Built-Up)"
+    />
+  )
+}
+
+function ProtectedAreasLegend() {
+  return (
+    <WmsLegendChip
+      src={GWIS_PROTECTED_AREAS_LEGEND_URL}
+      alt="Leyenda de áreas protegidas (WDPA)"
+    />
+  )
+}
+
 /**
  * Live GEOGLOWS flood map: renders their published ArcGIS Living Atlas
  * "GlobalWaterModel_Medium" layer directly over OpenStreetMap, centered on
@@ -340,6 +367,8 @@ function GeoglowsLiveMapImpl({
   const [showPrecipitation, setShowPrecipitation] = useState(false)
   const [showVeredas, setShowVeredas] = useState(true)
   const [showQuebradas, setShowQuebradas] = useState(false)
+  const [showSettlement, setShowSettlement] = useState(false)
+  const [showProtectedAreas, setShowProtectedAreas] = useState(false)
   // Off by default: our own model is the default click target (see module
   // doc above). GEOGLOWS' identify endpoint answers for any lat/lng, so
   // leaving this always-on would mean every click — including one meant
@@ -496,6 +525,34 @@ function GeoglowsLiveMapImpl({
         {showPrecipitation && (
           <TileLayer attribution="NASA GIBS / IMERG" url={IMERG_TILE_URL} opacity={0.6} maxNativeZoom={6} />
         )}
+        {showSettlement && (
+          <WMSTileLayer
+            url={GWIS_WMS_URL}
+            opacity={0.7}
+            params={
+              {
+                layers: GWIS_SETTLEMENT_LAYER,
+                format: "image/png",
+                transparent: true,
+                version: "1.1.1",
+              } as WMSParams
+            }
+          />
+        )}
+        {showProtectedAreas && (
+          <WMSTileLayer
+            url={GWIS_WMS_URL}
+            opacity={0.6}
+            params={
+              {
+                layers: GWIS_PROTECTED_AREAS_LAYER,
+                format: "image/png",
+                transparent: true,
+                version: "1.1.1",
+              } as WMSParams
+            }
+          />
+        )}
         <VeredasOverlay
           enabled={showVeredas}
           onSelect={onVeredaSelect}
@@ -613,6 +670,25 @@ function GeoglowsLiveMapImpl({
           />
           Quebradas y ríos (clic para nombre)
         </label>
+        <div className="my-0.5 h-px bg-border" aria-hidden="true" />
+        <label className="flex items-center gap-1.5 font-medium text-foreground">
+          <input
+            type="checkbox"
+            checked={showSettlement}
+            onChange={(e) => setShowSettlement(e.target.checked)}
+            className="size-3.5 accent-[var(--primary)]"
+          />
+          Asentamientos humanos (GHSL)
+        </label>
+        <label className="flex items-center gap-1.5 font-medium text-foreground">
+          <input
+            type="checkbox"
+            checked={showProtectedAreas}
+            onChange={(e) => setShowProtectedAreas(e.target.checked)}
+            className="size-3.5 accent-[var(--primary)]"
+          />
+          Áreas protegidas (WDPA)
+        </label>
         {showPrecipitation && (
           <a
             href={IMERG_WORLDVIEW_URL}
@@ -646,6 +722,12 @@ function GeoglowsLiveMapImpl({
                 : "Amenaza a inundación (modelo propio, por vereda)"
           }
         />
+      )}
+      {(showSettlement || showProtectedAreas) && (
+        <div className="absolute bottom-3 left-56 z-[400] flex flex-col items-start gap-2">
+          {showSettlement && <SettlementLegend />}
+          {showProtectedAreas && <ProtectedAreasLegend />}
+        </div>
       )}
 
       <StationDetailDialog

@@ -6,11 +6,12 @@ import {
   CircleMarker,
   MapContainer,
   Popup,
+  WMSTileLayer,
   ZoomControl,
   useMap,
   useMapEvents,
 } from "react-leaflet"
-import type { LatLngBoundsExpression } from "leaflet"
+import type { LatLngBoundsExpression, WMSParams } from "leaflet"
 import "leaflet/dist/leaflet.css"
 import { Loader2 } from "lucide-react"
 import { COMPOUND_LEVELS, compoundLevelColorToken } from "@/lib/riesgo-compuesto/levels"
@@ -21,6 +22,14 @@ import { CompoundReportDialog } from "@/components/riesgo-compuesto/compound-rep
 import { getOsmCategory } from "@/lib/osm/categories"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
 import { OsmLegend } from "@/components/maps/osm-legend"
+import { WmsLegendChip } from "@/components/maps/wms-legend-chip"
+import { GWIS_WMS_URL } from "@/lib/incendios/gwis"
+import {
+  GWIS_SETTLEMENT_LAYER,
+  GWIS_SETTLEMENT_LEGEND_URL,
+  GWIS_PROTECTED_AREAS_LAYER,
+  GWIS_PROTECTED_AREAS_LEGEND_URL,
+} from "@/lib/demografia/gwis-context-layers"
 import { useCompoundVeredas } from "@/lib/riesgo-compuesto/use-compound-veredas"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
@@ -76,6 +85,24 @@ function Legend() {
   )
 }
 
+function SettlementLegend() {
+  return (
+    <WmsLegendChip
+      src={GWIS_SETTLEMENT_LEGEND_URL}
+      alt="Leyenda de asentamientos humanos (GHSL Built-Up)"
+    />
+  )
+}
+
+function ProtectedAreasLegend() {
+  return (
+    <WmsLegendChip
+      src={GWIS_PROTECTED_AREAS_LEGEND_URL}
+      alt="Leyenda de áreas protegidas (WDPA)"
+    />
+  )
+}
+
 /**
  * Compound multi-hazard map: shades each vereda by the max-ordinal tier
  * across this app's four hazard models (see
@@ -98,6 +125,8 @@ function CompoundLiveMapImpl({
   const osmColors = useOsmCategoryColors()
   const { error: veredasError, isLoading: veredasLoading } = useCompoundVeredas(true)
   const [reportFeature, setReportFeature] = useState<CompoundFeature | null>(null)
+  const [showSettlement, setShowSettlement] = useState(false)
+  const [showProtectedAreas, setShowProtectedAreas] = useState(false)
 
   return (
     <div
@@ -117,6 +146,34 @@ function CompoundLiveMapImpl({
         <ZoomControl position="topright" />
         <AttributionControl position="bottomright" prefix="Leaflet" />
         <BasemapTileLayer />
+        {showSettlement && (
+          <WMSTileLayer
+            url={GWIS_WMS_URL}
+            opacity={0.7}
+            params={
+              {
+                layers: GWIS_SETTLEMENT_LAYER,
+                format: "image/png",
+                transparent: true,
+                version: "1.1.1",
+              } as WMSParams
+            }
+          />
+        )}
+        {showProtectedAreas && (
+          <WMSTileLayer
+            url={GWIS_WMS_URL}
+            opacity={0.6}
+            params={
+              {
+                layers: GWIS_PROTECTED_AREAS_LAYER,
+                format: "image/png",
+                transparent: true,
+                version: "1.1.1",
+              } as WMSParams
+            }
+          />
+        )}
         <CompoundVeredasOverlay
           enabled
           onSelect={onVeredaSelect}
@@ -150,10 +207,40 @@ function CompoundLiveMapImpl({
           <span className="text-sm text-destructive">No se pudo cargar la capa.</span>
         </div>
       )}
+      <div className="absolute left-3 top-3 z-[400] flex flex-col gap-2 rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
+        <div className="flex flex-col gap-1.5">
+          <label className="flex items-center gap-2 font-medium text-foreground">
+            <input
+              type="checkbox"
+              checked={showSettlement}
+              onChange={(e) => setShowSettlement(e.target.checked)}
+              className="size-3.5 accent-primary"
+            />
+            Asentamientos humanos (GHSL)
+          </label>
+        </div>
+        <div className="border-t border-border pt-1.5">
+          <label className="flex items-center gap-2 font-medium text-foreground">
+            <input
+              type="checkbox"
+              checked={showProtectedAreas}
+              onChange={(e) => setShowProtectedAreas(e.target.checked)}
+              className="size-3.5 accent-primary"
+            />
+            Áreas protegidas (WDPA)
+          </label>
+        </div>
+      </div>
       <div className="absolute right-3 top-3 z-[400] max-w-[200px]">
         <OsmLegend points={osmPoints ?? []} />
       </div>
       <Legend />
+      {(showSettlement || showProtectedAreas) && (
+        <div className="absolute bottom-3 right-3 z-[400] flex flex-col items-end gap-2">
+          {showSettlement && <SettlementLegend />}
+          {showProtectedAreas && <ProtectedAreasLegend />}
+        </div>
+      )}
       <CompoundReportDialog feature={reportFeature} onOpenChange={(open) => !open && setReportFeature(null)} />
     </div>
   )

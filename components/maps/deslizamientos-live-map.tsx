@@ -22,6 +22,12 @@ import { resolveCssColor } from "@/lib/resolve-css-color"
 import { SMAP_TILE_URL, SMAP_COLOR_STOPS, SMAP_MAX_VALUE } from "@/lib/deslizamientos/smap"
 import { GWIS_WMS_URL } from "@/lib/incendios/gwis"
 import { GWIS_LANDCOVER_LAYER, GWIS_LANDCOVER_LEGEND_URL } from "@/lib/land-cover/gwis-landcover"
+import {
+  GWIS_SETTLEMENT_LAYER,
+  GWIS_SETTLEMENT_LEGEND_URL,
+  GWIS_PROTECTED_AREAS_LAYER,
+  GWIS_PROTECTED_AREAS_LEGEND_URL,
+} from "@/lib/demografia/gwis-context-layers"
 import { BasemapTileLayer } from "@/components/maps/basemap-tile-layer"
 import { getOsmCategory } from "@/lib/osm/categories"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
@@ -120,6 +126,10 @@ interface MapLayersControlProps {
   onHistoryChange: (checked: boolean) => void
   showLandCover: boolean
   onLandCoverChange: (checked: boolean) => void
+  showSettlement: boolean
+  onSettlementChange: (checked: boolean) => void
+  showProtectedAreas: boolean
+  onProtectedAreasChange: (checked: boolean) => void
 }
 
 /**
@@ -137,7 +147,10 @@ interface MapLayersControlProps {
  * layer already used as the hazard model's historical-proximity factor,
  * see lib/deslizamientos/landslide-inventory.ts) and "Cobertura del suelo"
  * (GWIS/EFFIS's MODIS land-cover layer — ground-cover/vegetation context
- * for exposure, shared with the fire map, see lib/land-cover/gwis-landcover.ts).
+ * for exposure, shared with the fire map, see lib/land-cover/gwis-landcover.ts),
+ * "Asentamientos humanos" (GHSL built-up, Sentinel-2 derived) and "Áreas
+ * protegidas" (WDPA polygons) — both from the same GWIS server, shared
+ * across every hazard map, see lib/demografia/gwis-context-layers.ts.
  */
 function MapLayersControl({
   showSoilMoisture,
@@ -150,6 +163,10 @@ function MapLayersControl({
   onHistoryChange,
   showLandCover,
   onLandCoverChange,
+  showSettlement,
+  onSettlementChange,
+  showProtectedAreas,
+  onProtectedAreasChange,
 }: MapLayersControlProps) {
   return (
     <div className="absolute left-3 top-3 z-[400] flex flex-col gap-2 rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
@@ -208,6 +225,28 @@ function MapLayersControl({
           Cobertura del suelo (MODIS)
         </label>
       </div>
+      <div className="border-t border-border pt-1.5">
+        <label className="flex items-center gap-2 font-medium text-foreground">
+          <input
+            type="checkbox"
+            checked={showSettlement}
+            onChange={(e) => onSettlementChange(e.target.checked)}
+            className="size-3.5 accent-primary"
+          />
+          Asentamientos humanos (GHSL)
+        </label>
+      </div>
+      <div className="border-t border-border pt-1.5">
+        <label className="flex items-center gap-2 font-medium text-foreground">
+          <input
+            type="checkbox"
+            checked={showProtectedAreas}
+            onChange={(e) => onProtectedAreasChange(e.target.checked)}
+            className="size-3.5 accent-primary"
+          />
+          Áreas protegidas (WDPA)
+        </label>
+      </div>
     </div>
   )
 }
@@ -222,6 +261,24 @@ function LandCoverLegend() {
     <WmsLegendChip
       src={GWIS_LANDCOVER_LEGEND_URL}
       alt="Escala de cobertura del suelo (MODIS MCD12Q1)"
+    />
+  )
+}
+
+function SettlementLegend() {
+  return (
+    <WmsLegendChip
+      src={GWIS_SETTLEMENT_LEGEND_URL}
+      alt="Leyenda de asentamientos humanos (GHSL Built-Up)"
+    />
+  )
+}
+
+function ProtectedAreasLegend() {
+  return (
+    <WmsLegendChip
+      src={GWIS_PROTECTED_AREAS_LEGEND_URL}
+      alt="Leyenda de áreas protegidas (WDPA)"
     />
   )
 }
@@ -322,6 +379,8 @@ function DeslizamientosLiveMapImpl({
   const [showFaults, setShowFaults] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [showLandCover, setShowLandCover] = useState(false)
+  const [showSettlement, setShowSettlement] = useState(false)
+  const [showProtectedAreas, setShowProtectedAreas] = useState(false)
   const { points: criticalSites } = useCriticalSites(showCriticalSites)
   const { traces: faultTraces } = useFaults(showFaults)
   const { records: historyRecords } = useLandslideInventory(showHistory)
@@ -398,6 +457,34 @@ function DeslizamientosLiveMapImpl({
             params={
               {
                 layers: GWIS_LANDCOVER_LAYER,
+                format: "image/png",
+                transparent: true,
+                version: "1.1.1",
+              } as WMSParams
+            }
+          />
+        )}
+        {showSettlement && (
+          <WMSTileLayer
+            url={GWIS_WMS_URL}
+            opacity={0.7}
+            params={
+              {
+                layers: GWIS_SETTLEMENT_LAYER,
+                format: "image/png",
+                transparent: true,
+                version: "1.1.1",
+              } as WMSParams
+            }
+          />
+        )}
+        {showProtectedAreas && (
+          <WMSTileLayer
+            url={GWIS_WMS_URL}
+            opacity={0.6}
+            params={
+              {
+                layers: GWIS_PROTECTED_AREAS_LAYER,
                 format: "image/png",
                 transparent: true,
                 version: "1.1.1",
@@ -547,16 +634,22 @@ function DeslizamientosLiveMapImpl({
         onHistoryChange={setShowHistory}
         showLandCover={showLandCover}
         onLandCoverChange={setShowLandCover}
+        showSettlement={showSettlement}
+        onSettlementChange={setShowSettlement}
+        showProtectedAreas={showProtectedAreas}
+        onProtectedAreasChange={setShowProtectedAreas}
       />
       <div className="absolute right-3 top-16 z-[400] max-w-[200px]">
         <OsmLegend points={osmPoints ?? []} />
       </div>
       <Legend />
-      {(showCriticalSites || showSoilMoisture || showLandCover) && (
+      {(showCriticalSites || showSoilMoisture || showLandCover || showSettlement || showProtectedAreas) && (
         <BottomRightLegends>
           {showSoilMoisture && <SoilMoistureLegend />}
           {showCriticalSites && <CriticalSitesLegend />}
           {showLandCover && <LandCoverLegend />}
+          {showSettlement && <SettlementLegend />}
+          {showProtectedAreas && <ProtectedAreasLegend />}
         </BottomRightLegends>
       )}
     </div>
