@@ -32,14 +32,21 @@ export function DocFooter() {
             href="https://nasalifelines.org"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-center rounded-md bg-neutral-900 px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="flex items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
+            <Image
+              src="/images/nasa-lifelines-wordmark-darkblue.png"
+              alt="NASA Lifelines"
+              width={5112}
+              height={643}
+              className="block h-9 w-auto dark:hidden"
+            />
             <Image
               src="/images/nasa-lifelines-wordmark-white.png"
               alt="NASA Lifelines"
-              width={2084}
-              height={263}
-              className="h-8 w-auto"
+              width={5112}
+              height={643}
+              className="hidden h-9 w-auto dark:block"
             />
           </a>
         </div>
