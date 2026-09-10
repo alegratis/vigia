@@ -1,12 +1,13 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { Fragment, useCallback, useEffect, useState, type ReactNode } from "react"
 import {
   AttributionControl,
   CircleMarker,
   MapContainer,
   Polyline,
   TileLayer,
+  Tooltip,
   Popup,
   ZoomControl,
   useMap,
@@ -14,18 +15,18 @@ import {
 } from "react-leaflet"
 import type { LatLngBoundsExpression } from "leaflet"
 import "leaflet/dist/leaflet.css"
-import { ExternalLink, Loader2 } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import { SUSCEPTIBILITY_LEVELS, SUSCEPTIBILITY_LEVEL_STYLES, levelColorToken } from "@/lib/deslizamientos/levels"
 import { resolveCssColor } from "@/lib/resolve-css-color"
-import { SMAP_TILE_URL, SMAP_WORLDVIEW_URL } from "@/lib/deslizamientos/smap"
+import { SMAP_TILE_URL, SMAP_COLOR_STOPS, SMAP_MAX_VALUE } from "@/lib/deslizamientos/smap"
 import { BasemapTileLayer } from "@/components/maps/basemap-tile-layer"
 import { getOsmCategory } from "@/lib/osm/categories"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
 import { OsmLegend } from "@/components/maps/osm-legend"
 import { useCriticalSites } from "@/lib/deslizamientos/use-critical-sites"
 import {
+  CRITICAL_SITE_SEVERITIES,
   CRITICAL_SITE_SEVERITY_STYLES,
-  severityColorToken,
   tipoLabel,
 } from "@/lib/deslizamientos/critical-sites-types"
 import { useFaults } from "@/lib/deslizamientos/use-faults"
@@ -119,7 +120,8 @@ interface MapLayersControlProps {
  * Toggle panel for this map's optional overlays: SMAP root-zone soil
  * moisture (a satellite proxy for the antecedent-moisture signal this
  * map's own rainfall trigger already estimates from ground-station-
- * informed rainfall — worth cross-checking against, not a duplicate),
+ * informed rainfall — worth cross-checking against, not a duplicate; its
+ * own in-map legend, `SoilMoistureLegend` below, appears while toggled on),
  * "Sitios críticos" (field-surveyed road-damage points from the Valle del
  * Cauca infrastructure secretariat — see lib/deslizamientos/critical-sites.ts)
  * "Fallas geológicas" (SGC fault traces — the same layer already used as
@@ -127,9 +129,7 @@ interface MapLayersControlProps {
  * shown here as raw lines instead of a derived score) and "Movimientos en
  * masa históricos" (the SGC's national mass-movement inventory — the same
  * layer already used as the hazard model's historical-proximity factor,
- * see lib/deslizamientos/landslide-inventory.ts). No legend is fabricated
- * for soil moisture — GIBS doesn't publish one for this layer, so its
- * caption links to NASA Worldview's own color scale instead.
+ * see lib/deslizamientos/landslide-inventory.ts).
  */
 function MapLayersControl({
   showSoilMoisture,
@@ -153,17 +153,6 @@ function MapLayersControl({
           />
           Humedad del suelo (SMAP)
         </label>
-        {showSoilMoisture && (
-          <a
-            href={SMAP_WORLDVIEW_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1 pl-5 text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-          >
-            Ver escala en Worldview
-            <ExternalLink className="size-3" aria-hidden="true" />
-          </a>
-        )}
       </div>
       <div className="border-t border-border pt-1.5">
         <label className="flex items-center gap-2 font-medium text-foreground">
@@ -204,11 +193,13 @@ function MapLayersControl({
 
 /**
  * Legend for the "Sitios críticos" overlay's severity scale
- * (`SEVERIDAD`, 1–4), shown only while the layer is toggled on.
+ * (`SEVERIDAD`, 1–4), shown only while the layer is toggled on. Positioned
+ * by its parent — see `BottomRightLegends` — so it can stack with the
+ * soil-moisture legend without overlapping.
  */
 function CriticalSitesLegend() {
   return (
-    <div className="pointer-events-none absolute bottom-3 right-3 z-[400] rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
+    <div className="pointer-events-none rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
       <p className="mb-1.5 font-medium text-foreground">Sitios críticos — severidad</p>
       <ul className="flex flex-col gap-1">
         {Object.values(CRITICAL_SITE_SEVERITY_STYLES).map((style) => (
@@ -222,6 +213,41 @@ function CriticalSitesLegend() {
         ))}
       </ul>
     </div>
+  )
+}
+
+/**
+ * Legend for the SMAP root-zone soil moisture overlay: a gradient bar built
+ * from `SMAP_COLOR_STOPS` (GIBS's own published colormap), so it reproduces
+ * NASA Worldview's legend instead of linking out to it. Shown only while
+ * the layer is toggled on.
+ */
+function SoilMoistureLegend() {
+  const gradient = SMAP_COLOR_STOPS.map(
+    (stop) => `${stop.rgb} ${((stop.value / SMAP_MAX_VALUE) * 100).toFixed(1)}%`,
+  ).join(", ")
+
+  return (
+    <div className="pointer-events-none rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
+      <p className="mb-1.5 font-medium text-foreground">Humedad del suelo (SMAP)</p>
+      <div
+        className="h-2.5 w-36 rounded-sm"
+        style={{ background: `linear-gradient(to right, ${gradient})` }}
+        aria-hidden="true"
+      />
+      <div className="mt-1 flex items-center justify-between text-muted-foreground">
+        <span>Seco</span>
+        <span>Saturado</span>
+      </div>
+      <p className="mt-1 text-muted-foreground">0.00 – ≥0.70 m³/m³ · NASA GIBS</p>
+    </div>
+  )
+}
+
+/** Stacks the optional bottom-right overlay legends so they never overlap. */
+function BottomRightLegends({ children }: { children: ReactNode }) {
+  return (
+    <div className="absolute bottom-3 right-3 z-[400] flex flex-col items-end gap-2">{children}</div>
   )
 }
 
@@ -265,6 +291,7 @@ function DeslizamientosLiveMapImpl({
   const { records: historyRecords } = useLandslideInventory(showHistory)
   const [faultLineColor, setFaultLineColor] = useState<string | null>(null)
   const [historyColor, setHistoryColor] = useState<string | null>(null)
+  const [criticalSiteColors, setCriticalSiteColors] = useState<Record<number, string> | null>(null)
 
   useEffect(() => {
     const entries = SUSCEPTIBILITY_LEVELS.map(
@@ -274,6 +301,21 @@ function DeslizamientosLiveMapImpl({
     setNoDataColor(resolveCssColor("var(--muted-foreground)"))
     setFaultLineColor(resolveCssColor("var(--fault-line)"))
     setHistoryColor(resolveCssColor("var(--historical-event)"))
+    // Canvas's 2D context can't resolve `var(--token)` strings the way DOM/CSS
+    // can — `severityColorToken()` returning a raw CSS variable reference
+    // straight into `pathOptions.fillColor` silently no-ops on
+    // `ctx.fillStyle`, which is why the map's dots didn't match this same
+    // severity scale's swatches in the legend (those render via a real DOM
+    // `<span>`, where `var(...)` resolves fine). Resolve to actual color
+    // values up front, same as every other overlay color above.
+    setCriticalSiteColors(
+      Object.fromEntries(
+        CRITICAL_SITE_SEVERITIES.map((severity) => [
+          severity,
+          resolveCssColor(CRITICAL_SITE_SEVERITY_STYLES[severity].colorToken),
+        ]),
+      ),
+    )
   }, [])
 
   const colorForLevel = useCallback(
@@ -319,23 +361,50 @@ function DeslizamientosLiveMapImpl({
         {showFaults &&
           faultLineColor &&
           faultTraces?.map((trace) =>
-            trace.paths.map((path, i) => (
-              <Polyline
-                key={`${trace.id}-${i}`}
-                positions={path.map(([lon, lat]) => [lat, lon])}
-                pathOptions={{ color: faultLineColor, weight: 2, dashArray: "6 4" }}
-              >
-                <Popup>
-                  <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
-                    <strong>{trace.nombre ?? "Falla sin nombre"}</strong>
-                    <span>{trace.tipo ?? "Tipo no especificado"}</span>
-                    <span style={{ color: "#888" }}>Servicio Geológico Colombiano (SGC)</span>
-                  </div>
-                </Popup>
-              </Polyline>
-            )),
+            trace.paths.map((path, i) => {
+              const positions = path.map(([lon, lat]) => [lat, lon] as [number, number])
+              return (
+                <Fragment key={`${trace.id}-${i}`}>
+                  {/*
+                   * A thin dashed line's clickable area (its `weight`, per
+                   * Leaflet's canvas hit-testing) is only ~1px wide, so
+                   * clicks land on the vereda polygon underneath almost
+                   * every time. This invisible, much wider companion line
+                   * carries the actual interaction — click opens the popup,
+                   * hover shows the sticky tooltip — while the thin dashed
+                   * line below stays purely decorative (`interactive:
+                   * false`, so it can't compete for the same click/hover).
+                   */}
+                  <Polyline
+                    key={`${trace.id}-${i}-hit`}
+                    positions={positions}
+                    pathOptions={{ color: faultLineColor, weight: 18, opacity: 0 }}
+                  >
+                    <Tooltip sticky>{trace.nombre ?? "Falla sin nombre"}</Tooltip>
+                    <Popup>
+                      <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
+                        <strong>{trace.nombre ?? "Falla sin nombre"}</strong>
+                        <span>{trace.tipo ?? "Tipo no especificado"}</span>
+                        <span style={{ color: "#888" }}>Servicio Geológico Colombiano (SGC)</span>
+                      </div>
+                    </Popup>
+                  </Polyline>
+                  <Polyline
+                    key={`${trace.id}-${i}-line`}
+                    positions={positions}
+                    pathOptions={{
+                      color: faultLineColor,
+                      weight: 2,
+                      dashArray: "6 4",
+                      interactive: false,
+                    }}
+                  />
+                </Fragment>
+              )
+            }),
           )}
         {showCriticalSites &&
+          criticalSiteColors &&
           criticalSites?.map((site) => (
             <CircleMarker
               key={site.id}
@@ -344,7 +413,7 @@ function DeslizamientosLiveMapImpl({
               pathOptions={{
                 color: "#fff",
                 weight: 1,
-                fillColor: severityColorToken(site.severidad),
+                fillColor: criticalSiteColors[site.severidad] ?? noDataColor ?? "#888",
                 fillOpacity: 0.9,
               }}
             >
@@ -431,7 +500,12 @@ function DeslizamientosLiveMapImpl({
         <OsmLegend points={osmPoints ?? []} />
       </div>
       <Legend />
-      {showCriticalSites && <CriticalSitesLegend />}
+      {(showCriticalSites || showSoilMoisture) && (
+        <BottomRightLegends>
+          {showSoilMoisture && <SoilMoistureLegend />}
+          {showCriticalSites && <CriticalSitesLegend />}
+        </BottomRightLegends>
+      )}
     </div>
   )
 }
