@@ -58,7 +58,7 @@ export function DeslizamientosPanelContent({
           amenaza, debajo, resume un índice relacionado en formato de texto.
         </p>
         <DeslizamientosLiveMapLoader
-          className="relative h-full w-full"
+          className="relative isolate h-full w-full"
           onBoundsChange={onBoundsChange}
           onVeredaSelect={onVeredaSelect}
           osmPoints={activeOsmPoints}

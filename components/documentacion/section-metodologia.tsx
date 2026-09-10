@@ -150,6 +150,55 @@ const FLOOD_CACHES = [
   { fuente: "Pendiente / planicie", ttl: "reutilizada", motivo: "es el mismo valor ya cacheado por el modelo de deslizamiento" },
 ]
 
+const COMPOUND_STEPS: Step[] = [
+  {
+    title: "1. Normalización de cada amenaza a 0–1",
+    entrada:
+      "Los cuatro modelos de amenaza que esta app ya calcula por vereda: deslizamientos y inundaciones (cada uno con su propio puntaje 0–1 continuo, ver las metodologías anteriores) e incendios forestales y precipitación (cada uno solo con un nivel de 4 categorías, sin puntaje continuo propio).",
+    proceso: [
+      "Deslizamientos e inundaciones: se reutiliza directamente el puntaje 0–1 ya calculado por cada modelo — nunca se recalcula.",
+      "Incendios (AmenazaIncendios, 4 niveles: Muy bajo/Bajo/Medio/Alto) y precipitación (4 niveles: Bajo/Moderado/Alto/Muy alto): sin puntaje continuo publicado, se usa el índice ordinal del nivel sobre el total de niveles como puntaje sustituto — la misma técnica que el modelo de inundación ya usa para traducir la clase de zonificación oficial a un puntaje.",
+      "Incendios se resuelve en el mismo centroide de vereda que los otros tres, mediante un nuevo cruce punto-en-polígono contra la capa AmenazaIncendios (lib/riesgo-compuesto/incendios-join.ts) — un archivo nuevo, no una modificación al mapa de incendios existente.",
+      "Precipitación reutiliza /api/precipitacion/amenaza en su modo histórico de 7 días con NASA POWER, ya calculado por vereda.",
+    ],
+    nota:
+      "Ninguna de las cuatro amenazas se recalcula desde cero — el módulo compuesto solo importa y combina las funciones ya exportadas por cada categoría existente.",
+  },
+  {
+    title: "2. Nivel compuesto: la amenaza más alta gobierna",
+    entrada: "Los cuatro puntajes normalizados del paso 1.",
+    proceso: [
+      "Cada puntaje normalizado se traduce individualmente al mismo esquema de 5 niveles usado en toda la plataforma (Muy bajo <0.2, Bajo <0.4, Moderado <0.6, Alto <0.8, Muy alto ≥0.8).",
+      "El nivel compuesto de la vereda es el mayor de esos cuatro niveles — no un promedio — siguiendo la doctrina de la OMM y GDACS (Global Disaster Alert and Coordination System) de que la amenaza más severa determina la alerta general, sin diluirla con amenazas más tranquilas.",
+      "La amenaza \"dominante\" reportada es la que alcanzó ese nivel máximo (en caso de empate entre niveles, la de mayor puntaje normalizado).",
+    ],
+  },
+  {
+    title: "3. Puntaje compuesto: promedio ponderado al estilo INFORM",
+    entrada: "Los mismos cuatro puntajes normalizados del paso 1.",
+    proceso: [
+      "Puntaje compuesto = promedio ponderado de los cuatro puntajes, con peso igual de 25% cada uno por defecto — al estilo del Índice de Riesgo INFORM (composición ponderada de componentes de riesgo).",
+      "Si una amenaza no tiene datos para una vereda (p. ej. incendios fuera de su cobertura en Sevilla/Caicedonia, o precipitación sin lectura válida), su peso se renormaliza sobre las que sí resolvieron — la misma convención de \"sin datos nunca inventados\" que usa cada modelo individual.",
+      "Este puntaje no define el nivel compuesto (eso lo hace el paso 2) — solo ordena veredas dentro de un mismo nivel para color de intensidad o priorización relativa.",
+    ],
+  },
+  {
+    title: "4. Marco de acción IDEAM y narrativa",
+    entrada: "El nivel compuesto del paso 2.",
+    proceso: [
+      "El nivel se traduce a las tres categorías de acción que IDEAM ya usa en sus boletines públicos: Informar (Muy bajo/Bajo), Prepararse (Moderado), Actuar (Alto/Muy alto).",
+      "Un reporte narrativo en español se genera con plantillas de texto deterministas (lib/riesgo-compuesto/narrative.ts) rellenadas con los números ya calculados — nunca con un modelo de lenguaje: un resumen de una línea (nivel + amenaza dominante), un desglose por amenaza y un párrafo de exposición demográfica (reutilizando los mismos conteos de población/infraestructura de RED LabOT que ya usa /api/veredas).",
+    ],
+    nota: "Cero riesgo de alucinación y sin necesidad de una nueva integración de IA: es texto de plantilla, no generación de lenguaje.",
+  },
+]
+
+const COMPOUND_CACHES = [
+  { fuente: "Deslizamientos e inundaciones", ttl: "reutilizada", motivo: "mismo caché que cada modelo individual (vía aggregateVeredas)" },
+  { fuente: "Incendios forestales (cruce por centroide)", ttl: "1 hora", motivo: "mismo caché que la capa AmenazaIncendios original" },
+  { fuente: "Precipitación (NASA POWER, 7 días)", ttl: "3 horas", motivo: "mismo caché que /api/precipitacion/amenaza" },
+]
+
 export function SectionMetodologia() {
   return (
     <section id="metodologia" className="flex flex-col gap-6 scroll-mt-24">
@@ -359,6 +408,113 @@ export function SectionMetodologia() {
               más cercano), señalado aquí pero no implementado: a diferencia de cada otro insumo de este
               modelo, que es una sola consulta cacheada, eso implicaría decenas de consultas individuales por
               tramo en cada solicitud.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div className="flex flex-col gap-2 border-t border-border pt-6">
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="text-2xl font-semibold tracking-tight">Metodología: riesgo compuesto (multiamenaza)</h2>
+          <Badge variant="outline">Cálculo propio, no un índice oficial</Badge>
+        </div>
+        <p className="max-w-3xl text-pretty leading-relaxed text-muted-foreground">
+          La capa &quot;Riesgo compuesto&quot; combina las cuatro amenazas que esta app ya modela por
+          vereda —deslizamientos, inundaciones (modelo propio), incendios forestales y precipitación— en una
+          sola evaluación, siguiendo dos enfoques ya usados en la práctica internacional en vez de inventar
+          uno nuevo: la doctrina de la OMM/GDACS de que &quot;la amenaza más alta gobierna&quot; para el
+          nivel de alerta, y la composición ponderada al estilo del Índice de Riesgo INFORM para un puntaje
+          continuo de referencia. El resultado se traduce además al marco de acción
+          Informar/Prepararse/Actuar que ya usa IDEAM en Colombia.
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-4">
+        {COMPOUND_STEPS.map((step) => (
+          <Card key={step.title}>
+            <CardHeader>
+              <CardTitle className="text-base">{step.title}</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Entrada</p>
+                <p className="mt-1 text-pretty text-sm leading-relaxed text-foreground">{step.entrada}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Procesamiento</p>
+                <ul className="mt-1 flex flex-col gap-1.5 text-sm leading-relaxed text-muted-foreground">
+                  {step.proceso.map((line) => (
+                    <li key={line} className="flex gap-2">
+                      <span className="mt-2 size-1 shrink-0 rounded-full bg-muted-foreground" aria-hidden="true" />
+                      <span className="text-pretty">{line}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              {step.nota && (
+                <p className="rounded-md bg-muted/50 p-2.5 text-pretty text-xs leading-relaxed text-muted-foreground">
+                  {step.nota}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <h3 className="text-lg font-semibold tracking-tight">Caché por insumo</h3>
+        <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
+          Este módulo no introduce nuevas fuentes externas — cada insumo hereda el caché que ya tenía en su
+          propia categoría.
+        </p>
+        <dl className="grid grid-cols-1 gap-2 rounded-lg bg-muted/50 p-3 text-xs sm:grid-cols-3">
+          {COMPOUND_CACHES.map((c) => (
+            <div key={c.fuente}>
+              <dt className="font-medium text-foreground">{c.fuente}</dt>
+              <dd className="mt-0.5 text-muted-foreground">
+                {c.ttl} — {c.motivo}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+
+      <div className="flex flex-col gap-2 border-t border-border pt-4">
+        <h3 className="text-lg font-semibold tracking-tight">Qué no es este modelo</h3>
+        <ul className="flex flex-col gap-1.5 text-sm leading-relaxed text-muted-foreground">
+          <li className="flex gap-2">
+            <span className="mt-2 size-1 shrink-0 rounded-full bg-muted-foreground" aria-hidden="true" />
+            <span className="text-pretty">
+              No incluye el pronóstico de caudal en vivo de GEOGLOWS. Ese pronóstico es por tramo de río, no
+              por vereda, y cruzarlo con ~55 veredas exigiría decenas de consultas de identificación de tramo
+              en vivo por solicitud — una integración pesada y frágil fuera del alcance de esta primera
+              versión. La amenaza &quot;inundaciones&quot; en el riesgo compuesto es, en cambio, el modelo
+              propio de inundación por vereda (zonificación + cercanía a cauce + planicie del terreno) que
+              ya representa esa amenaza en las otras tres categorías.
+            </span>
+          </li>
+          <li className="flex gap-2">
+            <span className="mt-2 size-1 shrink-0 rounded-full bg-muted-foreground" aria-hidden="true" />
+            <span className="text-pretty">
+              No usa un modelo de lenguaje ni la puerta de enlace de IA de esta app. El reporte narrativo es
+              texto de plantilla determinista, relleno con los mismos números que ya se muestran en el mapa
+              y el panel — nunca generación libre.
+            </span>
+          </li>
+          <li className="flex gap-2">
+            <span className="mt-2 size-1 shrink-0 rounded-full bg-muted-foreground" aria-hidden="true" />
+            <span className="text-pretty">
+              Los pesos iguales de 25% por amenaza y los umbrales de nivel (0.2/0.4/0.6/0.8) son una elección
+              de diseño razonable, no una calibración validada contra eventos multiamenaza ocurridos en la
+              zona — igual que cada modelo individual que combina.
+            </span>
+          </li>
+          <li className="flex gap-2">
+            <span className="mt-2 size-1 shrink-0 rounded-full bg-muted-foreground" aria-hidden="true" />
+            <span className="text-pretty">
+              Incendios y precipitación no tienen un puntaje continuo propio publicado, así que su
+              contribución al puntaje compuesto es una aproximación ordinal (índice de nivel entre los
+              niveles totales), no una medida continua nativa como sí lo son deslizamientos e inundaciones.
             </span>
           </li>
         </ul>

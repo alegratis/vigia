@@ -81,6 +81,11 @@
   --color-critical-site-4: var(--critical-site-4);
   --color-fault-line: var(--fault-line);
   --color-historical-event: var(--historical-event);
+  --color-riesgo-compuesto-muy-bajo: var(--riesgo-compuesto-muy-bajo);
+  --color-riesgo-compuesto-bajo: var(--riesgo-compuesto-bajo);
+  --color-riesgo-compuesto-moderado: var(--riesgo-compuesto-moderado);
+  --color-riesgo-compuesto-alto: var(--riesgo-compuesto-alto);
+  --color-riesgo-compuesto-muy-alto: var(--riesgo-compuesto-muy-alto);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -241,6 +246,21 @@
    * rather than a structural line or a live field-survey point.
    */
   --historical-event: oklch(0.68 0.16 60);
+
+  /*
+   * Riesgo compuesto ramp: pale mauve (muy bajo) to deep magenta-crimson
+   * (muy alto), a violet-to-rose hue path (300°→345°) distinct from every
+   * other ramp above — deslizamientos/incendios both end near red-orange
+   * (25–28°), inundaciones ends in blue-indigo (270°), precipitación in
+   * teal (220°). This category is a combination of all four, so its own
+   * identity color deliberately doesn't share an endpoint with any one of
+   * them.
+   */
+  --riesgo-compuesto-muy-bajo: oklch(0.88 0.05 300);
+  --riesgo-compuesto-bajo: oklch(0.78 0.09 310);
+  --riesgo-compuesto-moderado: oklch(0.66 0.14 322);
+  --riesgo-compuesto-alto: oklch(0.54 0.18 335);
+  --riesgo-compuesto-muy-alto: oklch(0.38 0.19 345);
 }
 
 .dark {
@@ -339,6 +359,13 @@
 
   /* SGC historical mass-movement inventory: kept vivid and legible on dark surfaces. */
   --historical-event: oklch(0.78 0.15 60);
+
+  /* Riesgo compuesto ramp: kept vivid and legible on dark surfaces. */
+  --riesgo-compuesto-muy-bajo: oklch(0.8 0.05 300);
+  --riesgo-compuesto-bajo: oklch(0.72 0.1 310);
+  --riesgo-compuesto-moderado: oklch(0.62 0.15 322);
+  --riesgo-compuesto-alto: oklch(0.56 0.19 335);
+  --riesgo-compuesto-muy-alto: oklch(0.48 0.2 345);
 }
 
 @layer base {

@@ -253,7 +253,7 @@ function PrecipitacionLiveMapImpl({
   )
 
   return (
-    <div className={className ?? "relative h-full min-h-[420px] w-full overflow-hidden rounded-xl border border-border"}>
+    <div className={className ?? "relative isolate h-full min-h-[420px] w-full overflow-hidden rounded-xl border border-border"}>
       <MapContainer
         center={AOI_CENTER}
         zoom={10}

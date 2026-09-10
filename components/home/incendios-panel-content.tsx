@@ -49,7 +49,7 @@ export function IncendiosPanelContent({
           actual, en la barra lateral, resume el mismo contenido en formato de texto.
         </p>
         <IncendiosLiveMapLoader
-          className="relative h-full w-full"
+          className="relative isolate h-full w-full"
           onBoundsChange={onBoundsChange}
           onZoneSelect={onZoneSelect}
           onVeredaSelect={onVeredaSelect}
