@@ -20,7 +20,7 @@ const STEPS: GuideStep[] = [
     number: 1,
     title: "Elige una amenaza para vigilar",
     simple:
-      "Cuando abres Vigía, ya estás viendo un mapa. A la derecha hay cinco franjas verticales con un ícono cada una: Deslizamientos, Inundaciones, Incendios, Precipitación y Sismología (más Riesgo compuesto, que junta las cinco). Toca cualquier franja y el mapa completo cambia a esa amenaza — no se abre una página nueva, todo pasa en la misma pantalla.",
+      "Cuando abres Vigía, ya estás viendo un mapa. A la derecha hay seis franjas verticales con un ícono cada una: Deslizamientos, Inundaciones, Incendios, Precipitación, Clima y Sismología (más Riesgo compuesto, que junta las cinco amenazas). Clima es un reporte del tiempo, no una amenaza. Toca cualquier franja y el mapa completo cambia a esa vista — no se abre una página nueva, todo pasa en la misma pantalla.",
     technical:
       "Cada amenaza carga su propio mapa Leaflet con capas independientes que se activan y desactivan con las casillas de la esquina superior izquierda (por ejemplo, \"Humedad del suelo (SMAP)\" o \"Fallas geológicas (SGC)\"). La leyenda de colores está siempre en la esquina inferior — de verde (muy bajo) a rojo (muy alto).",
     image: {

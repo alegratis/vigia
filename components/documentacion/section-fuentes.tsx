@@ -191,6 +191,17 @@ const GROUPS: SourceGroup[] = [
         actualizacion: "Diaria, con ligero retraso en los días más recientes; la app cachea 1 hora",
       },
       {
+        nombre: "Pronóstico del tiempo por vereda (forecast)",
+        publicador: "Open-Meteo",
+        descripcion:
+          "Pronóstico meteorológico por punto (temperatura actual, sensación térmica, código de estado del cielo WMO y pronóstico a 7 días con máx/mín y probabilidad de lluvia), derivado de modelos numéricos del ECMWF y otros — no es observación directa. Consultado una vez por centroide de vereda para el mapa de clima, que es un reporte del tiempo de referencia y no una capa de amenaza.",
+        url: "https://open-meteo.com/en/docs",
+        acceso: "API REST (JSON)",
+        licencia: "Uso no comercial gratuito, sin clave",
+        cobertura: "Global (recortada al área de estudio; Sevilla, Caicedonia, Zarzal)",
+        actualizacion: "Actualizado cada hora; la app cachea 3 horas",
+      },
+      {
         nombre: "Índice de riesgo de incendio (FWI)",
         publicador: "Copernicus GWIS / EFFIS (Comisión Europea, JRC)",
         descripcion: "Pronóstico diario del Índice Meteorológico de Incendio (Fire Weather Index), derivado de datos meteorológicos del ECMWF.",
