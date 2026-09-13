@@ -233,6 +233,10 @@ function ClimaLiveMapImpl({
       const glyph = props.grupoActual ? weatherGlyphSvg(props.grupoActual, { size: 16, esDia: props.esDia }) : ""
       const condicion = props.grupoActual ? WEATHER_GROUP_LABELS[props.grupoActual] : "Sin dato"
       const tempActual = props.tempActual != null ? `${Math.round(props.tempActual)}°C` : "—"
+      const sensacionRow =
+        props.sensacionTermica != null
+          ? `<span>Sensación térmica: ${Math.round(props.sensacionTermica)}°C</span>`
+          : ""
       const rango =
         props.tempMaxHoy != null && props.tempMinHoy != null
           ? `${Math.round(props.tempMaxHoy)}° / ${Math.round(props.tempMinHoy)}°`
@@ -255,6 +259,7 @@ function ClimaLiveMapImpl({
             ${glyph}<span style="font-size:18px;font-weight:700">${tempActual}</span>
           </div>
           <span>${condicion}</span>
+          ${sensacionRow}
           <span>Hoy: ${rango}</span>
           <span>Racha seca prevista: ${props.rachaSeca} día${props.rachaSeca === 1 ? "" : "s"}</span>
           ${fireRow}

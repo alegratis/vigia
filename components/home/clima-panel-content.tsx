@@ -93,6 +93,11 @@ function WeatherReportCard({ vereda }: { vereda: ClimaVeredaProperties | null })
             {vereda.tempActual != null ? `${Math.round(vereda.tempActual)}°` : "—"}
           </span>
           <span className="text-sm text-muted-foreground">{condicion}</span>
+          {vereda.sensacionTermica != null && (
+            <span className="text-xs text-muted-foreground">
+              Sensación térmica {Math.round(vereda.sensacionTermica)}°
+            </span>
+          )}
           {vereda.tempMaxHoy != null && vereda.tempMinHoy != null && (
             <span className="text-xs text-muted-foreground">
               Máx {Math.round(vereda.tempMaxHoy)}° · Mín {Math.round(vereda.tempMinHoy)}°

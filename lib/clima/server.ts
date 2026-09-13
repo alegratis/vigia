@@ -89,6 +89,7 @@ export async function getClimaForecast(): Promise<{
         municipio: boundary.municipio,
         esCascoUrbano: boundary.esCascoUrbano,
         tempActual,
+        sensacionTermica: round1(w?.currentApparent),
         weatherCodeActual: w?.currentCode ?? null,
         grupoActual: w?.currentCode != null ? weatherGroupFromCode(w.currentCode) : null,
         esDia: w?.esDia ?? true,

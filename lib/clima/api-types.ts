@@ -70,6 +70,8 @@ export interface ClimaVeredaProperties {
   esCascoUrbano?: boolean
   /** Current temperature (°C) at the vereda centroid, or null if Open-Meteo returned nothing. */
   tempActual: number | null
+  /** Apparent ("feels-like") temperature (°C), factoring wind, humidity and radiation. */
+  sensacionTermica: number | null
   /** Current WMO weather code and its coarse group, or null. */
   weatherCodeActual: number | null
   grupoActual: WeatherGroup | null

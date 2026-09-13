@@ -30,6 +30,8 @@ export interface WeatherDayRaw {
 
 export interface WeatherPoint {
   currentTemp: number | null
+  /** Apparent ("feels-like") temperature, factoring wind, humidity and radiation. */
+  currentApparent: number | null
   currentCode: number | null
   esDia: boolean
   dias: WeatherDayRaw[]
@@ -47,7 +49,7 @@ export async function getWeatherPoint(
   const params = new URLSearchParams({
     latitude: lat.toFixed(2),
     longitude: lon.toFixed(2),
-    current: "temperature_2m,weather_code,is_day",
+    current: "temperature_2m,apparent_temperature,weather_code,is_day",
     daily: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum",
     timezone: "America/Bogota",
     forecast_days: String(forecastDays),
@@ -82,6 +84,7 @@ export async function getWeatherPoint(
   const current = data?.current
   return {
     currentTemp: numOrNull(current?.temperature_2m),
+    currentApparent: numOrNull(current?.apparent_temperature),
     currentCode: typeof current?.weather_code === "number" ? current.weather_code : null,
     esDia: current?.is_day === 1,
     dias,
