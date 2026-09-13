@@ -8,6 +8,7 @@ import { useVeredas } from "@/lib/veredas/use-veredas"
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import type { VeredaFeature } from "@/lib/veredas/api-types"
 import { floodSusceptibilityColorToken } from "@/lib/inundaciones/levels"
+import { isMunicipioActive } from "@/lib/veredas/municipio-toggles"
 
 /** Converts a vereda's GeoJSON `[lon, lat]` MultiPolygon rings to Leaflet's `[lat, lon]` order. */
 function veredaPositions(coordinates: number[][][][]): LatLngExpression[][][] {
@@ -51,6 +52,13 @@ interface VeredasOverlayProps {
    * same click.
    */
   blockMapClick?: boolean
+  /**
+   * Municipalities currently toggled on via the shared MunicipioTogglePanel.
+   * Veredas outside this set render dimmed/greyed so the active ones stand
+   * out; an empty/omitted set leaves every vereda at full emphasis. Popups
+   * stay available on dimmed veredas too.
+   */
+  activeMunicipios?: string[]
 }
 
 /**
@@ -69,12 +77,17 @@ export function VeredasOverlay({
   onSelect,
   hazardKind = "deslizamientos",
   blockMapClick = true,
+  activeMunicipios,
 }: VeredasOverlayProps) {
   const { veredas } = useVeredas(enabled)
   const [outlineColor, setOutlineColor] = useState<string | null>(null)
+  const [highlightColor, setHighlightColor] = useState<string | null>(null)
+  const [mutedColor, setMutedColor] = useState<string | null>(null)
 
   useEffect(() => {
     setOutlineColor(resolveCssColor("var(--foreground)"))
+    setHighlightColor(resolveCssColor("var(--primary)"))
+    setMutedColor(resolveCssColor("var(--muted-foreground)"))
   }, [])
 
   if (!enabled || !veredas) return null
@@ -83,18 +96,33 @@ export function VeredasOverlay({
     <>
       {veredas.features.map((feature) => {
         const props = feature.properties
+        const active = isMunicipioActive(props.municipio, activeMunicipios ?? [])
         const fillColor = colorForFeature?.(feature) ?? "transparent"
+        // Dimmed (municipality toggled off): grey the fill right down and
+        // fade the outline so active municipalities read as the focus.
+        const dimmedPathOptions = {
+          color: mutedColor ?? "#888",
+          weight: 1,
+          opacity: 0.3,
+          fillColor: mutedColor ?? "#888",
+          fillOpacity: colorForFeature ? 0.12 : 0.02,
+        }
+        // Active + colored: this map's hazard fill. Active + outline-only
+        // (incendios/sismología/precip boundary): a clear highlighted border.
+        const activePathOptions = colorForFeature
+          ? { color: "#fff", weight: 1, opacity: 0.9, fillColor, fillOpacity: 0.6 }
+          : {
+              color: highlightColor ?? outlineColor ?? "#888",
+              weight: 2,
+              opacity: 0.9,
+              fillColor: highlightColor ?? "transparent",
+              fillOpacity: 0.06,
+            }
         return (
           <Polygon
             key={feature.id}
             positions={veredaPositions(feature.geometry.coordinates)}
-            pathOptions={{
-              color: colorForFeature ? "#fff" : outlineColor ?? "#888",
-              weight: 1,
-              opacity: colorForFeature ? 0.9 : 0.6,
-              fillColor,
-              fillOpacity: colorForFeature ? 0.6 : 0.04,
-            }}
+            pathOptions={active ? activePathOptions : dimmedPathOptions}
             eventHandlers={{
               // Some host maps (e.g. deslizamientos') listen for clicks anywhere
               // on the map to run their own lookup; stop that from firing

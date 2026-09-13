@@ -31,7 +31,9 @@ import { getOsmCategory } from "@/lib/osm/categories"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
 import { OsmLegend } from "@/components/maps/osm-legend"
 import { VeredasOverlay } from "@/components/maps/veredas-overlay"
+import { MunicipioTogglePanel, type MunicipioRiskSummary } from "@/components/maps/municipio-toggle-panel"
 import { useVeredas } from "@/lib/veredas/use-veredas"
+import { useMunicipioToggles, isMunicipioActive } from "@/lib/veredas/municipio-toggles"
 import { WmsLegendChip } from "@/components/maps/wms-legend-chip"
 import { GWIS_WMS_URL } from "@/lib/incendios/gwis"
 import {
@@ -176,6 +178,30 @@ function PrecipitacionLiveMapImpl({
   // vereda click on this map's own primary layer needs to resolve a population figure
   // for the shared sidebar card, regardless of whether that boundary overlay is on.
   const { veredas: veredasPoblacion } = useVeredas(true)
+  const { active: activeMunicipiosMap, activeMunicipios, toggle: toggleMunicipio } = useMunicipioToggles()
+
+  const municipioSummaries = useMemo<MunicipioRiskSummary[]>(() => {
+    if (!data?.veredas) return []
+    const byMunicipio = new Map<string, Record<string, number>>()
+    for (const feature of data.veredas.features) {
+      const rawMunicipio = feature.properties?.municipio as string | undefined
+      const nivel = feature.properties?.nivel as string | undefined
+      const sinCobertura = feature.properties?.sinCobertura as boolean | undefined
+      if (!rawMunicipio || !nivel || sinCobertura) continue
+      const municipio = normalizeMunicipioName(rawMunicipio)
+      const counts = byMunicipio.get(municipio) ?? {}
+      counts[nivel] = (counts[nivel] ?? 0) + 1
+      byMunicipio.set(municipio, counts)
+    }
+    return Array.from(byMunicipio.entries()).map(([municipio, counts]) => ({
+      municipio,
+      items: PRECIPITATION_LEVELS.filter((level) => (counts[level] ?? 0) > 0).map((level) => ({
+        label: level,
+        value: `${counts[level]}`,
+        colorToken: precipitationLevelColorToken(level),
+      })),
+    }))
+  }, [data])
 
   const [resolvedColors, setResolvedColors] = useState<Record<string, string> | null>(null)
   const [showImerg, setShowImerg] = useState(true)
@@ -211,7 +237,14 @@ function PrecipitacionLiveMapImpl({
     (feature?: GeoJSON.Feature): PathOptions => {
       const level = feature?.properties?.nivel as string | undefined
       const sinCobertura = feature?.properties?.sinCobertura as boolean | undefined
+      const municipio = feature?.properties?.municipio as string | undefined
+      const active = municipio ? isMunicipioActive(municipio, activeMunicipios) : true
       const color = (level && resolvedColors?.[level]) || "var(--muted-foreground)"
+      // Dimmed (municipality toggled off): grey the fill down so the active
+      // municipalities' rainfall coloring stays the focus.
+      if (!active) {
+        return { color: "var(--muted-foreground)", weight: 1, opacity: 0.3, fillColor: "var(--muted-foreground)", fillOpacity: 0.06 }
+      }
       return {
         color,
         weight: 1,
@@ -221,7 +254,7 @@ function PrecipitacionLiveMapImpl({
         fillOpacity: sinCobertura ? 0.08 : 0.5,
       }
     },
-    [resolvedColors],
+    [resolvedColors, activeMunicipios],
   )
 
   const onEachFeature = useCallback(
@@ -251,12 +284,17 @@ function PrecipitacionLiveMapImpl({
         }
       </div>`,
       )
-      layer.on("mouseover", (e: LeafletMouseEvent) => {
-        ;(e.target as Layer & { setStyle: (s: PathOptions) => void }).setStyle({ fillOpacity: 0.75 })
-      })
-      layer.on("mouseout", (e: LeafletMouseEvent) => {
-        ;(e.target as Layer & { setStyle: (s: PathOptions) => void }).setStyle({ fillOpacity: 0.5 })
-      })
+      const active = municipio ? isMunicipioActive(municipio, activeMunicipios) : true
+      // Skip the hover emphasis on dimmed (toggled-off) municipalities so they
+      // stay visibly de-emphasized even under the cursor.
+      if (active) {
+        layer.on("mouseover", (e: LeafletMouseEvent) => {
+          ;(e.target as Layer & { setStyle: (s: PathOptions) => void }).setStyle({ fillOpacity: 0.75 })
+        })
+        layer.on("mouseout", (e: LeafletMouseEvent) => {
+          ;(e.target as Layer & { setStyle: (s: PathOptions) => void }).setStyle({ fillOpacity: 0.5 })
+        })
+      }
       layer.on("click", () => {
         if (municipio) onZoneSelect?.(normalizeMunicipioName(municipio))
         if (codigoVereda && vereda && municipio) {
@@ -268,7 +306,7 @@ function PrecipitacionLiveMapImpl({
         }
       })
     },
-    [onZoneSelect, onVeredaSelect, onVeredaFeatureSelect, veredasPoblacion, mode, windowDays],
+    [onZoneSelect, onVeredaSelect, onVeredaFeatureSelect, veredasPoblacion, mode, windowDays, activeMunicipios],
   )
 
   // Re-key the GeoJSON layer once colors resolve (so Leaflet re-applies `style` per feature) and
@@ -277,8 +315,9 @@ function PrecipitacionLiveMapImpl({
   // as it was at mount (near-certainly still null — that fetch takes several seconds) forever,
   // even though the callback prop itself is refreshed on every render.
   const geoJsonKey = useMemo(
-    () => `${resolvedColors ? "resolved" : "pending"}-${veredasPoblacion ? "with-poblacion" : "no-poblacion"}`,
-    [resolvedColors, veredasPoblacion],
+    () =>
+      `${resolvedColors ? "resolved" : "pending"}-${veredasPoblacion ? "with-poblacion" : "no-poblacion"}-${activeMunicipios.join(",")}`,
+    [resolvedColors, veredasPoblacion, activeMunicipios],
   )
 
   return (
@@ -335,7 +374,11 @@ function PrecipitacionLiveMapImpl({
             onEachFeature={onEachFeature}
           />
         )}
-        <VeredasOverlay enabled={showVeredas} onSelect={onVeredaFeatureSelect} />
+        <VeredasOverlay
+          enabled={showVeredas}
+          onSelect={onVeredaFeatureSelect}
+          activeMunicipios={activeMunicipios}
+        />
         {osmColors &&
           osmPoints?.map((p) => (
             <CircleMarker
@@ -504,6 +547,12 @@ function PrecipitacionLiveMapImpl({
       <div className="absolute right-3 top-16 z-[400] max-w-[200px]">
         <OsmLegend points={osmPoints ?? []} />
       </div>
+      <MunicipioTogglePanel
+        active={activeMunicipiosMap}
+        onToggle={toggleMunicipio}
+        summaries={municipioSummaries}
+        riskTitle="Precipitación (veredas por nivel)"
+      />
       {(showSettlement || showProtectedAreas) && (
         <div className="absolute bottom-3 right-3 z-[400] flex flex-col items-end gap-2">
           {showSettlement && <SettlementLegend />}

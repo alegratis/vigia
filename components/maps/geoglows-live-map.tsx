@@ -44,6 +44,10 @@ import { getOsmCategory } from "@/lib/osm/categories"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
 import { OsmLegend } from "@/components/maps/osm-legend"
 import { VeredasOverlay } from "@/components/maps/veredas-overlay"
+import { MunicipioTogglePanel, type MunicipioRiskSummary } from "@/components/maps/municipio-toggle-panel"
+import { useVeredas } from "@/lib/veredas/use-veredas"
+import { useMunicipioToggles } from "@/lib/veredas/municipio-toggles"
+import { summarizeByMunicipio } from "@/lib/veredas/municipio-summary"
 import { WmsLegendChip } from "@/components/maps/wms-legend-chip"
 import { GWIS_WMS_URL } from "@/lib/incendios/gwis"
 import {
@@ -378,6 +382,22 @@ function GeoglowsLiveMapImpl({
   const [queryReachOnClick, setQueryReachOnClick] = useState(false)
   const [selectedStation, setSelectedStation] = useState<Station | null>(null)
   const osmColors = useOsmCategoryColors()
+  const { active: activeMunicipiosMap, activeMunicipios, toggle: toggleMunicipio } = useMunicipioToggles()
+  // Fetched here (as well as inside VeredasOverlay) to drive the municipality
+  // risk panel; the shared SWR key dedupes so this adds no second request.
+  const { veredas } = useVeredas(true)
+
+  const municipioSummaries = useMemo<MunicipioRiskSummary[]>(() => {
+    if (!veredas) return []
+    return summarizeByMunicipio(veredas).map((s) => ({
+      municipio: s.municipio,
+      items: FLOOD_SUSCEPTIBILITY_LEVELS.filter((level) => s.floodLevelCounts[level] > 0).map((level) => ({
+        label: level,
+        value: `${s.floodLevelCounts[level]}`,
+        colorToken: floodSusceptibilityColorToken(level),
+      })),
+    }))
+  }, [veredas])
 
   const { data: susceptibility, error: susceptibilityError } = useSWR<InundacionesSusceptibilidadResponse>(
     "/api/inundaciones/susceptibilidad",
@@ -559,6 +579,7 @@ function GeoglowsLiveMapImpl({
           colorForFeature={veredaFloodColor}
           hazardKind="inundaciones"
           blockMapClick={false}
+          activeMunicipios={activeMunicipios}
         />
         {showQuebradas && quebradas?.lines && (
           <GeoJSON
@@ -712,6 +733,12 @@ function GeoglowsLiveMapImpl({
       <div className="absolute right-3 top-16 z-[400] max-w-[200px]">
         <OsmLegend points={osmPoints ?? []} />
       </div>
+      <MunicipioTogglePanel
+        active={activeMunicipiosMap}
+        onToggle={toggleMunicipio}
+        summaries={municipioSummaries}
+        riskTitle="Amenaza a inundación (modelo propio, veredas por nivel)"
+      />
       {(showSusceptibility || showVeredas) && (
         <SusceptibilityLegend
           title={

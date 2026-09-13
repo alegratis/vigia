@@ -1,6 +1,6 @@
 "use client"
 
-import { Fragment, useCallback, useEffect, useState, type ReactNode } from "react"
+import { Fragment, useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
 import {
   AttributionControl,
   CircleMarker,
@@ -42,7 +42,10 @@ import {
 import { useFaults } from "@/lib/deslizamientos/use-faults"
 import { useLandslideInventory } from "@/lib/deslizamientos/use-landslide-inventory"
 import { VeredasOverlay } from "@/components/maps/veredas-overlay"
+import { MunicipioTogglePanel, type MunicipioRiskSummary } from "@/components/maps/municipio-toggle-panel"
 import { useVeredas } from "@/lib/veredas/use-veredas"
+import { useMunicipioToggles } from "@/lib/veredas/municipio-toggles"
+import { summarizeByMunicipio } from "@/lib/veredas/municipio-summary"
 import type { VeredaFeature } from "@/lib/veredas/api-types"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
@@ -370,7 +373,20 @@ function DeslizamientosLiveMapImpl({
   // Always enabled now that vereda shading is this map's primary layer, not
   // an opt-in overlay — VeredasOverlay's own useVeredas(true) call below
   // dedupes against this same SWR key, so this doesn't add a second request.
-  const { error: veredasError, isLoading: veredasLoading } = useVeredas(true)
+  const { veredas, error: veredasError, isLoading: veredasLoading } = useVeredas(true)
+  const { active: activeMunicipiosMap, activeMunicipios, toggle: toggleMunicipio } = useMunicipioToggles()
+
+  const municipioSummaries = useMemo<MunicipioRiskSummary[]>(() => {
+    if (!veredas) return []
+    return summarizeByMunicipio(veredas).map((s) => ({
+      municipio: s.municipio,
+      items: SUSCEPTIBILITY_LEVELS.filter((level) => s.levelCounts[level] > 0).map((level) => ({
+        label: level,
+        value: `${s.levelCounts[level]}`,
+        colorToken: levelColorToken(level),
+      })),
+    }))
+  }, [veredas])
 
   const [resolvedColors, setResolvedColors] = useState<Record<string, string> | null>(null)
   const [noDataColor, setNoDataColor] = useState<string | null>(null)
@@ -493,7 +509,12 @@ function DeslizamientosLiveMapImpl({
           />
         )}
         {resolvedColors && noDataColor && (
-          <VeredasOverlay enabled colorForFeature={veredaColor} onSelect={onVeredaSelect} />
+          <VeredasOverlay
+            enabled
+            colorForFeature={veredaColor}
+            onSelect={onVeredaSelect}
+            activeMunicipios={activeMunicipios}
+          />
         )}
         {showFaults &&
           faultLineColor &&
@@ -642,6 +663,12 @@ function DeslizamientosLiveMapImpl({
       <div className="absolute right-3 top-16 z-[400] max-w-[200px]">
         <OsmLegend points={osmPoints ?? []} />
       </div>
+      <MunicipioTogglePanel
+        active={activeMunicipiosMap}
+        onToggle={toggleMunicipio}
+        summaries={municipioSummaries}
+        riskTitle="Susceptibilidad a deslizamiento (veredas por nivel)"
+      />
       <Legend />
       {(showCriticalSites || showSoilMoisture || showLandCover || showSettlement || showProtectedAreas) && (
         <BottomRightLegends>

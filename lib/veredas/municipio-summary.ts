@@ -44,6 +44,48 @@ function average(values: (number | null)[]): number | null {
   return present.length > 0 ? present.reduce((a, b) => a + b, 0) / present.length : null
 }
 
+export interface MunicipioExposureSummary {
+  municipio: string
+  totalVeredas: number
+  poblacion: number | null
+  escuelas: number | null
+  hospitales: number | null
+  infraestructuraCritica: number | null
+  sitiosCriticos: number
+}
+
+function sumOrNull(values: (number | null)[]): number | null {
+  const present = values.filter((v): v is number => v != null)
+  return present.length > 0 ? present.reduce((a, b) => a + b, 0) : null
+}
+
+/**
+ * Sums the population/infrastructure exposure fields per municipio — the
+ * "what's at risk" summary shown on every hazard map's municipality panel,
+ * including the ones (incendios, sismología) whose primary layer is
+ * event-based rather than a per-vereda hazard score.
+ */
+export function summarizeExposureByMunicipio(veredas: VeredasFeatureCollection): MunicipioExposureSummary[] {
+  const byMunicipio = new Map<string, VeredaFeature[]>()
+  for (const feature of veredas.features) {
+    const list = byMunicipio.get(feature.properties.municipio)
+    if (list) list.push(feature)
+    else byMunicipio.set(feature.properties.municipio, [feature])
+  }
+
+  return Array.from(byMunicipio.entries())
+    .map(([municipio, features]) => ({
+      municipio,
+      totalVeredas: features.length,
+      poblacion: sumOrNull(features.map((f) => f.properties.poblacion)),
+      escuelas: sumOrNull(features.map((f) => f.properties.escuelas)),
+      hospitales: sumOrNull(features.map((f) => f.properties.hospitales)),
+      infraestructuraCritica: sumOrNull(features.map((f) => f.properties.infraestructuraCritica)),
+      sitiosCriticos: features.reduce((a, f) => a + f.properties.sitiosCriticos, 0),
+    }))
+    .sort((a, b) => a.municipio.localeCompare(b.municipio, "es"))
+}
+
 /** Groups vereda features by municipio and averages each hazard-model factor over the veredas that resolved it. */
 export function summarizeByMunicipio(veredas: VeredasFeatureCollection): MunicipioHazardSummary[] {
   const byMunicipio = new Map<string, VeredaFeature[]>()
