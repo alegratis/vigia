@@ -70,6 +70,11 @@
   --color-precipitacion-quinquenio-3: var(--precipitacion-quinquenio-3);
   --color-precipitacion-quinquenio-4: var(--precipitacion-quinquenio-4);
   --color-precipitacion-quinquenio-5: var(--precipitacion-quinquenio-5);
+  --color-clima-frio: var(--clima-frio);
+  --color-clima-fresco: var(--clima-fresco);
+  --color-clima-templado: var(--clima-templado);
+  --color-clima-calido: var(--clima-calido);
+  --color-clima-caluroso: var(--clima-caluroso);
   --color-osm-business: var(--osm-business);
   --color-osm-health: var(--osm-health);
   --color-osm-financial: var(--osm-financial);
@@ -228,6 +233,19 @@
   --precipitacion-quinquenio-5: oklch(0.5 0.18 340);
 
   /*
+   * Clima temperature ramp: a natural cool-to-warm arc, cool blue (frío) to
+   * hot red (caluroso). It reads as a thermometer, not a hazard level, and
+   * this map is never shown alongside the other ramps in the compound
+   * report, so its overlap with the precipitación teal / incendios red is
+   * harmless.
+   */
+  --clima-frio: oklch(0.7 0.13 250);
+  --clima-fresco: oklch(0.75 0.11 200);
+  --clima-templado: oklch(0.82 0.13 130);
+  --clima-calido: oklch(0.78 0.15 70);
+  --clima-caluroso: oklch(0.62 0.2 28);
+
+  /*
    * OSM infrastructure categories (Overpass): five identity colors distinct
    * from every hazard ramp above, since these render alongside a hazard's
    * own legend in the same card stack.
@@ -365,6 +383,13 @@
   --sismologia-ligero: oklch(0.64 0.15 305);
   --sismologia-moderado: oklch(0.56 0.19 315);
   --sismologia-fuerte: oklch(0.48 0.21 325);
+
+  /* Clima temperature ramp: kept vivid and legible on dark surfaces. */
+  --clima-frio: oklch(0.74 0.13 250);
+  --clima-fresco: oklch(0.79 0.11 200);
+  --clima-templado: oklch(0.85 0.14 130);
+  --clima-calido: oklch(0.8 0.16 70);
+  --clima-caluroso: oklch(0.66 0.21 28);
 
   /* OSM infrastructure categories: kept vivid and legible on dark surfaces. */
   --osm-business: oklch(0.76 0.14 55);

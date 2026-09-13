@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Image from "next/image"
-import { ArrowRight, Activity, CloudRain, Droplets, Flame, Mountain, ShieldAlert, type LucideIcon } from "lucide-react"
+import { ArrowRight, Activity, CloudRain, CloudSun, Droplets, Flame, Mountain, ShieldAlert, type LucideIcon } from "lucide-react"
 import { CategoryPanel } from "@/components/home/category-panel"
 import { DeslizamientosPanelContent } from "@/components/home/deslizamientos-panel-content"
 import { InundacionesPanelContent } from "@/components/home/inundaciones-panel-content"
 import { IncendiosPanelContent } from "@/components/home/incendios-panel-content"
 import { PrecipitacionPanelContent } from "@/components/home/precipitacion-panel-content"
+import { ClimaPanelContent } from "@/components/home/clima-panel-content"
 import { SismologiaPanelContent } from "@/components/home/sismologia-panel-content"
 import { RiesgoCompuestoPanelContent } from "@/components/home/riesgo-compuesto-panel-content"
 import { LiveAreaPopulation } from "@/components/maps/live-area-population"
@@ -25,6 +26,7 @@ const hazardIcons: Record<string, LucideIcon> = {
   inundaciones: Droplets,
   incendios: Flame,
   precipitacion: CloudRain,
+  clima: CloudSun,
   sismologia: Activity,
   "riesgo-compuesto": ShieldAlert,
 }
@@ -35,6 +37,7 @@ const CATEGORY_BASIS: Record<string, { basis: "urbano" | "rural"; basisLabel: st
   inundaciones: { basis: "urbano", basisLabel: "Población urbana" },
   incendios: { basis: "rural", basisLabel: "Población rural" },
   precipitacion: { basis: "rural", basisLabel: "Población rural" },
+  clima: { basis: "rural", basisLabel: "Población rural" },
   sismologia: { basis: "rural", basisLabel: "Población rural" },
   "riesgo-compuesto": { basis: "rural", basisLabel: "Población rural" },
 }
@@ -259,6 +262,14 @@ export function HazardWorkspace({ initialCategory }: { initialCategory: string }
               )}
               {model.slug === "precipitacion" && (
                 <PrecipitacionPanelContent
+                  onBoundsChange={setBounds}
+                  onZoneSelect={setSelectedMunicipio}
+                  onVeredaFeatureSelect={handleVeredaSelect}
+                  activeOsmPoints={activeOsmPoints}
+                />
+              )}
+              {model.slug === "clima" && (
+                <ClimaPanelContent
                   onBoundsChange={setBounds}
                   onZoneSelect={setSelectedMunicipio}
                   onVeredaFeatureSelect={handleVeredaSelect}
