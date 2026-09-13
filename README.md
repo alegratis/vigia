@@ -4,6 +4,8 @@
 
 Reúne pronósticos, catálogos históricos y sensores satelitales de múltiples fuentes públicas en una sola lectura por vereda, para ayudar a anticipar dónde actuar antes de que una amenaza se convierta en emergencia. Cada modelo cruza la amenaza con la densidad de población para estimar la exposición humana en cada nivel.
 
+> **Vigía está en línea:** accede a la plataforma en **[vigia.redlabot.org](https://vigia.redlabot.org)**.
+
 ## Amenazas y capas
 
 La plataforma organiza la información en siete mapas interactivos, seleccionables mediante el parámetro `?categoria=<slug>`:
