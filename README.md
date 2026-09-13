@@ -1,33 +1,78 @@
-# vigia
+# Vigía
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [v0](https://v0.app).
+**Vigía** es una plataforma de código abierto para la evaluación y gestión de riesgos de desastres a escala municipal y veredal, enfocada en los municipios de **Sevilla, Caicedonia y Zarzal** (Valle del Cauca, Colombia).
 
-## Built with v0
+Reúne pronósticos, catálogos históricos y sensores satelitales de múltiples fuentes públicas en una sola lectura por vereda, para ayudar a anticipar dónde actuar antes de que una amenaza se convierta en emergencia. Cada modelo cruza la amenaza con la densidad de población para estimar la exposición humana en cada nivel.
 
-This repository is linked to a [v0](https://v0.app) project. You can continue developing by visiting the link below -- start new chats to make changes, and v0 will push commits directly to this repo. Every merge to `main` will automatically deploy.
+## Amenazas y capas
 
-[Continue working on v0 →](https://v0.app/chat/projects/prj_vYK575cE65dFibYUOoGbzZYzobCb)
+La plataforma organiza la información en siete mapas interactivos, seleccionables mediante el parámetro `?categoria=<slug>`:
 
-## Getting Started
+| Mapa | Slug | Qué muestra | Fuentes principales |
+| --- | --- | --- | --- |
+| **Deslizamientos** | `deslizamientos` | Susceptibilidad geológica zonificada en cinco niveles, cruzada con densidad poblacional. | Backend QGIS / inventario de amenaza |
+| **Inundaciones** | `inundaciones` | Pronóstico hidrológico de caudales y excedencias por periodo de retorno. | GEOGLOWS (52 modelos de conjunto) |
+| **Incendios** | `incendios` | Focos de calor detectados de forma continua alrededor del territorio. | NASA FIRMS (VIIRS) |
+| **Precipitación** | `precipitacion` | Lluvia acumulada por vereda y tasa de precipitación casi en tiempo real, con climatología quinquenal. | NASA POWER, GPM IMERG, Open-Meteo |
+| **Clima** | `clima` | Reporte meteorológico convencional: temperatura, sensación térmica, condiciones actuales, pronóstico a 7 días y racha seca. | Open-Meteo |
+| **Sismología** | `sismologia` | Epicentros en vivo e históricos, con exposición sísmica por distancia. | USGS, Servicio Geológico Colombiano |
+| **Riesgo compuesto** | `riesgo-compuesto` | Combina los cinco modelos propios en una sola evaluación por vereda (gobierna el nivel más alto). | Modelos internos |
 
-First, run the development server:
+Todas las capas cubren Sevilla y Caicedonia; Precipitación y Clima extienden el mismo detalle a Zarzal.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
+## Arquitectura
+
+- **Framework:** Next.js (App Router) con React 19 y TypeScript.
+- **Mapas:** Leaflet + react-leaflet, con capas GeoJSON y teselas vectoriales.
+- **Datos:** rutas de API en `app/api/*` que consultan servicios externos y un backend QGIS, con revalidación y caché por capa. La obtención de datos en cliente usa SWR.
+- **Gráficas:** Recharts mediante los componentes de gráfico de shadcn/ui.
+- **Estilos:** Tailwind CSS v4 con tokens de diseño semánticos en `app/globals.css` y soporte de tema claro/oscuro.
+
+### Estructura del proyecto
+
+```
+app/            Rutas, páginas y endpoints de API (App Router)
+components/     Mapas (components/maps) y paneles del espacio de trabajo (components/home)
+lib/            Clientes de datos y lógica por dominio (lib/<amenaza>)
+public/         Imágenes de las teselas y recursos estáticos
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Cada amenaza sigue el mismo patrón: un cliente de datos y un ensamblador por servidor en `lib/<amenaza>/`, un endpoint en `app/api/<amenaza>/`, un mapa en `components/maps/` y un panel en `components/home/`. El listado central de modelos vive en `lib/maps.ts`; añadir una entrada allí registra automáticamente el slug en la página principal.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Primeros pasos
 
-## Learn More
+Requisitos: Node.js 20+ y un gestor de paquetes (npm, pnpm o yarn).
 
-To learn more, take a look at the following resources:
+```bash
+# instalar dependencias
+npm install
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-- [v0 Documentation](https://v0.app/docs) - learn about v0 and how to use it.
+# entorno de desarrollo
+npm run dev
+```
+
+Abre [http://localhost:3000](http://localhost:3000) en el navegador. La página se actualiza automáticamente al editar los archivos.
+
+```bash
+# build de producción
+npm run build
+npm run start
+```
+
+## Variables de entorno
+
+Algunas capas requieren credenciales de servicios externos. Configúralas en un archivo `.env.local`:
+
+| Variable | Uso |
+| --- | --- |
+| `FIRMS_MAP_KEY` | Clave de NASA FIRMS para los focos de calor del mapa de Incendios. |
+
+Las fuentes keyless (Open-Meteo, GEOGLOWS, USGS) no requieren configuración adicional.
+
+## Fuentes de datos
+
+Vigía integra datos públicos de NASA POWER, GPM IMERG, NASA FIRMS (VIIRS), Open-Meteo, GEOGLOWS, USGS, el Servicio Geológico Colombiano y un backend QGIS con la cartografía de amenaza local. Los datos meteorológicos y de pronóstico provienen de modelos numéricos, no de observación directa, y se presentan como apoyo a la prevención, no como pronóstico oficial.
+
+## Licencia
+
+Proyecto de código abierto. Consulta el archivo de licencia del repositorio para los términos de uso.
