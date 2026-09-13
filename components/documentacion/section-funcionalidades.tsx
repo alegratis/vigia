@@ -42,6 +42,16 @@ const FEATURES = [
     ],
   },
   {
+    title: "Clima",
+    tags: ["Sevilla", "Caicedonia", "Zarzal"],
+    items: [
+      "Reporte meteorológico convencional por vereda con datos de Open-Meteo (modelos numéricos de pronóstico, no observación directa): temperatura actual, sensación térmica y estado del cielo (despejado, nublado, lluvia o tormenta), con la vereda coloreada por su banda de temperatura.",
+      "Un marcador de condiciones actuales por municipio, en su cabecera, con temperatura y glifo del estado del tiempo.",
+      "Al hacer clic en una vereda: su pronóstico a 7 días (máx/mín, estado del cielo y probabilidad de lluvia) y una breve perspectiva de racha seca. Cubre los tres municipios con el mismo detalle, incluida Zarzal.",
+      "No es una capa de amenaza y no entra en el riesgo compuesto: es información meteorológica de referencia.",
+    ],
+  },
+  {
     title: "Demografía",
     tags: ["Sevilla", "Caicedonia", "Zarzal"],
     items: [
