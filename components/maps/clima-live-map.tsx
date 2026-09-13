@@ -26,7 +26,6 @@ import {
 } from "@/lib/clima/api-types"
 import { WEATHER_GROUP_LABELS } from "@/lib/clima/weather-codes"
 import { weatherGlyphSvg } from "@/lib/clima/weather-glyph"
-import { FIRE_THREAT_LEVELS, fireLevelColorToken } from "@/lib/incendios/levels"
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import { normalizeMunicipioName } from "@/lib/demografia/categories"
 import { getOsmCategory } from "@/lib/osm/categories"
@@ -39,9 +38,6 @@ import { useMunicipioToggles, isMunicipioActive } from "@/lib/veredas/municipio-
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
 import type { VeredaFeature } from "@/lib/veredas/api-types"
-
-/** Which choropleth the vereda fill encodes. */
-type ClimaCapa = "temperatura" | "incendio"
 
 // Fallback center if bounds-fitting is unavailable — the midpoint of AOI_BOUNDS below.
 const AOI_CENTER: [number, number] = [4.24, -76.0]
@@ -75,52 +71,33 @@ function BoundsSync({ onBoundsChange }: { onBoundsChange: (bounds: MapBounds) =>
   return null
 }
 
-function ClimaLegend({ capa, tempColors, fireColors }: {
-  capa: ClimaCapa
-  tempColors: Record<string, string> | null
-  fireColors: Record<string, string> | null
-}) {
-  const rows =
-    capa === "temperatura"
-      ? TEMP_LEVELS.map((level) => ({ label: level, color: tempColors?.[level] }))
-      : FIRE_THREAT_LEVELS.map((level) => ({ label: level, color: fireColors?.[level] }))
-
+function ClimaLegend({ tempColors }: { tempColors: Record<string, string> | null }) {
   return (
     <div className="pointer-events-none absolute bottom-3 left-3 z-[400] rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
-      <p className="mb-1.5 font-medium text-foreground">
-        {capa === "temperatura" ? "Temperatura actual" : "Vulnerabilidad a incendio"}
-      </p>
+      <p className="mb-1.5 font-medium text-foreground">Temperatura actual</p>
       <ul className="flex flex-col gap-1">
-        {rows.map((row) => (
-          <li key={row.label} className="flex items-center gap-2 text-muted-foreground">
+        {TEMP_LEVELS.map((level) => (
+          <li key={level} className="flex items-center gap-2 text-muted-foreground">
             <span
               className="size-2.5 shrink-0 rounded-full"
-              style={{ backgroundColor: row.color ?? "transparent" }}
+              style={{ backgroundColor: tempColors?.[level] ?? "transparent" }}
               aria-hidden="true"
             />
-            {row.label}
+            {level}
           </li>
         ))}
       </ul>
-      {capa === "incendio" && (
-        <p className="mt-1.5 max-w-[190px] text-[11px] leading-snug text-muted-foreground">
-          Amenaza estructural ajustada por la racha seca prevista. Zarzal queda sin dato.
-        </p>
-      )}
     </div>
   )
 }
 
 /**
  * Live clima map: a conventional weather report for the study area. Each
- * vereda is filled either by its current temperature band or by a
- * dry-spell-adjusted fire vulnerability (a derived figure — see
- * lib/clima/fire-adjustment.ts), toggled by the layer switch. One prominent
- * marker per municipality shows its cabecera's current conditions
- * (temperature + weather glyph); clicking any vereda opens its full 7-day
- * report in the card below the map and narrows the shared sidebar's
- * population figures to that vereda. All data comes from Open-Meteo
- * (lib/clima/weather-client.ts).
+ * vereda is filled by its current temperature band. One prominent marker per
+ * municipality shows its cabecera's current conditions (temperature +
+ * weather glyph); clicking any vereda opens its full 7-day report in the card
+ * below the map and narrows the shared sidebar's population figures to that
+ * vereda. All data comes from Open-Meteo (lib/clima/weather-client.ts).
  */
 function ClimaLiveMapImpl({
   onBoundsChange,
@@ -139,7 +116,6 @@ function ClimaLiveMapImpl({
   osmPoints?: OsmPoint[]
   className?: string
 }) {
-  const [capa, setCapa] = useState<ClimaCapa>("temperatura")
   const [showVeredas, setShowVeredas] = useState(false)
 
   const { data, error } = useSWR<ClimaForecastResponse>("/api/clima/forecast", fetcher, {
@@ -150,37 +126,32 @@ function ClimaLiveMapImpl({
   const { active: activeMunicipiosMap, activeMunicipios, toggle: toggleMunicipio } = useMunicipioToggles()
 
   const [tempColors, setTempColors] = useState<Record<string, string> | null>(null)
-  const [fireColors, setFireColors] = useState<Record<string, string> | null>(null)
 
   useEffect(() => {
     setTempColors(Object.fromEntries(TEMP_LEVELS.map((l) => [l, resolveCssColor(tempLevelColorToken(l))])))
-    setFireColors(Object.fromEntries(FIRE_THREAT_LEVELS.map((l) => [l, resolveCssColor(fireLevelColorToken(l))])))
   }, [])
 
-  const colorsReady = tempColors && fireColors
+  const colorsReady = tempColors
 
   const municipioSummaries = useMemo<MunicipioRiskSummary[]>(() => {
     if (!data?.veredas) return []
     const byMunicipio = new Map<string, Record<string, number>>()
     for (const feature of data.veredas.features) {
       const rawMunicipio = feature.properties?.municipio
-      const key =
-        capa === "temperatura" ? feature.properties?.nivelTemp : feature.properties?.amenazaIncendioAjustada
+      const key = feature.properties?.nivelTemp
       if (!rawMunicipio || !key) continue
       const municipio = normalizeMunicipioName(rawMunicipio)
       const counts = byMunicipio.get(municipio) ?? {}
       counts[key] = (counts[key] ?? 0) + 1
       byMunicipio.set(municipio, counts)
     }
-    const order = capa === "temperatura" ? (TEMP_LEVELS as readonly string[]) : (FIRE_THREAT_LEVELS as readonly string[])
-    const colorFor = (level: string) => (capa === "temperatura" ? tempLevelColorToken(level) : fireLevelColorToken(level))
     return Array.from(byMunicipio.entries()).map(([municipio, counts]) => ({
       municipio,
-      items: order
+      items: (TEMP_LEVELS as readonly string[])
         .filter((level) => (counts[level] ?? 0) > 0)
-        .map((level) => ({ label: level, value: `${counts[level]}`, colorToken: colorFor(level) })),
+        .map((level) => ({ label: level, value: `${counts[level]}`, colorToken: tempLevelColorToken(level) })),
     }))
-  }, [data, capa])
+  }, [data])
 
   const municipioMarkers = useMemo(() => {
     if (!data?.municipios) return []
@@ -214,16 +185,10 @@ function ClimaLiveMapImpl({
       if (!active) {
         return { color: "var(--muted-foreground)", weight: 1, opacity: 0.3, fillColor: "var(--muted-foreground)", fillOpacity: 0.06 }
       }
-      if (capa === "temperatura") {
-        const color = (props?.nivelTemp && tempColors?.[props.nivelTemp]) || "var(--muted-foreground)"
-        return { color, weight: 1, fillColor: color, fillOpacity: props?.nivelTemp ? 0.55 : 0.08 }
-      }
-      const level = props?.amenazaIncendioAjustada
-      const color = (level && fireColors?.[level]) || "var(--muted-foreground)"
-      // Veredas with no base fire label (Zarzal) read as no-data, not "low".
-      return { color, weight: 1, fillColor: color, fillOpacity: level ? 0.55 : 0.06 }
+      const color = (props?.nivelTemp && tempColors?.[props.nivelTemp]) || "var(--muted-foreground)"
+      return { color, weight: 1, fillColor: color, fillOpacity: props?.nivelTemp ? 0.55 : 0.08 }
     },
-    [capa, tempColors, fireColors, activeMunicipios],
+    [tempColors, activeMunicipios],
   )
 
   const onEachFeature = useCallback(
@@ -241,12 +206,6 @@ function ClimaLiveMapImpl({
         props.tempMaxHoy != null && props.tempMinHoy != null
           ? `${Math.round(props.tempMaxHoy)}° / ${Math.round(props.tempMinHoy)}°`
           : "—"
-      const fireBase = props.amenazaIncendioBase
-      const fireAdj = props.amenazaIncendioAjustada
-      const fireRow = fireAdj
-        ? `<span>Vulnerabilidad a incendio: ${fireAdj}${props.incendioElevado ? ` (elevada por sequía, base ${fireBase})` : ""}</span>`
-        : `<span>Vulnerabilidad a incendio: sin dato</span>`
-
       layer.bindTooltip(
         `<span style="font-weight:600">${props.nombre}</span> · ${tempActual}`,
         { direction: "top", opacity: 0.95 },
@@ -262,7 +221,6 @@ function ClimaLiveMapImpl({
           ${sensacionRow}
           <span>Hoy: ${rango}</span>
           <span>Racha seca prevista: ${props.rachaSeca} día${props.rachaSeca === 1 ? "" : "s"}</span>
-          ${fireRow}
         </div>`,
       )
 
@@ -288,12 +246,12 @@ function ClimaLiveMapImpl({
   )
 
   // Re-key so Leaflet re-runs `style`/`onEachFeature` when colors resolve, the
-  // population lookup loads, the active municipalities change, or the layer
-  // switches — react-leaflet's GeoJSON only wires those up at construction.
+  // population lookup loads, or the active municipalities change —
+  // react-leaflet's GeoJSON only wires those up at construction.
   const geoJsonKey = useMemo(
     () =>
-      `${colorsReady ? "resolved" : "pending"}-${veredasPoblacion ? "pob" : "nopob"}-${capa}-${activeMunicipios.join(",")}`,
-    [colorsReady, veredasPoblacion, capa, activeMunicipios],
+      `${colorsReady ? "resolved" : "pending"}-${veredasPoblacion ? "pob" : "nopob"}-${activeMunicipios.join(",")}`,
+    [colorsReady, veredasPoblacion, activeMunicipios],
   )
 
   return (
@@ -342,45 +300,21 @@ function ClimaLiveMapImpl({
         {onBoundsChange && <BoundsSync onBoundsChange={onBoundsChange} />}
       </MapContainer>
 
-      <div className="absolute left-3 top-3 z-[400] flex flex-col gap-2 rounded-md border border-border bg-card/95 px-2.5 py-1.5 text-xs shadow-sm backdrop-blur">
-        <div className="inline-flex rounded-md border border-border p-0.5" role="group" aria-label="Capa del mapa">
-          <button
-            type="button"
-            onClick={() => setCapa("temperatura")}
-            aria-pressed={capa === "temperatura"}
-            className={`rounded-sm px-2 py-1 font-medium transition-colors ${
-              capa === "temperatura" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Temperatura
-          </button>
-          <button
-            type="button"
-            onClick={() => setCapa("incendio")}
-            aria-pressed={capa === "incendio"}
-            className={`rounded-sm px-2 py-1 font-medium transition-colors ${
-              capa === "incendio" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Vulnerabilidad a incendio
-          </button>
-        </div>
-        <div className="border-t border-border pt-1.5">
-          <label className="flex items-center gap-1.5 font-medium text-foreground">
-            <input
-              type="checkbox"
-              checked={showVeredas}
-              onChange={(e) => setShowVeredas(e.target.checked)}
-              className="size-3.5 accent-primary"
-            />
-            Límites veredales
-          </label>
-          {showVeredas && (
-            <p className="pl-5 pt-1 text-[11px] leading-snug text-muted-foreground">
-              Muestra el resumen de población e infraestructura de cada vereda.
-            </p>
-          )}
-        </div>
+      <div className="absolute left-3 top-3 z-[400] rounded-md border border-border bg-card/95 px-2.5 py-1.5 text-xs shadow-sm backdrop-blur">
+        <label className="flex items-center gap-1.5 font-medium text-foreground">
+          <input
+            type="checkbox"
+            checked={showVeredas}
+            onChange={(e) => setShowVeredas(e.target.checked)}
+            className="size-3.5 accent-primary"
+          />
+          Límites veredales
+        </label>
+        {showVeredas && (
+          <p className="pl-5 pt-1 text-[11px] leading-snug text-muted-foreground">
+            Muestra el resumen de población e infraestructura de cada vereda.
+          </p>
+        )}
       </div>
 
       {!data && !error && (
@@ -393,7 +327,7 @@ function ClimaLiveMapImpl({
           <span className="text-sm text-destructive">No se pudo cargar la capa.</span>
         </Popup>
       )}
-      <ClimaLegend capa={capa} tempColors={tempColors} fireColors={fireColors} />
+      <ClimaLegend tempColors={tempColors} />
       <div className="absolute right-3 top-16 z-[400] max-w-[200px]">
         <OsmLegend points={osmPoints ?? []} />
       </div>
@@ -401,7 +335,7 @@ function ClimaLiveMapImpl({
         active={activeMunicipiosMap}
         onToggle={toggleMunicipio}
         summaries={municipioSummaries}
-        riskTitle={capa === "temperatura" ? "Temperatura (veredas por banda)" : "Incendio (veredas por nivel)"}
+        riskTitle="Temperatura (veredas por banda)"
       />
     </div>
   )

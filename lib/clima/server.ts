@@ -3,11 +3,9 @@ import "server-only"
 import { centroid } from "@turf/centroid"
 import { multiPolygon } from "@turf/helpers"
 import { getVeredaBoundaries } from "@/lib/veredas/boundaries"
-import { getFireThreatPolygons } from "@/lib/incendios/client"
-import { MUNICIPIOS, normalizeMunicipioName } from "@/lib/demografia/categories"
+import { MUNICIPIOS } from "@/lib/demografia/categories"
 import { getWeatherPointBatch } from "./weather-client"
 import { weatherGroupFromCode } from "./weather-codes"
-import { adjustFireThreat, countRachaSeca } from "./fire-adjustment"
 import {
   CLIMA_FORECAST_DAYS,
   classifyTemp,
@@ -20,16 +18,25 @@ function round1(value: number | null | undefined): number | null {
   return typeof value === "number" && Number.isFinite(value) ? Math.round(value * 10) / 10 : null
 }
 
+/** Counts leading dry days: how many days from the start of the forecast are dry before the first wet day. */
+function countRachaSeca(secoFlags: boolean[]): number {
+  let count = 0
+  for (const seco of secoFlags) {
+    if (!seco) break
+    count++
+  }
+  return count
+}
+
 /**
  * Builds the vereda-level clima GeoJSON for /api/clima/forecast. Reuses the
  * same vereda boundaries and centroid math as the precipitación layer (see
- * lib/precipitacion/server.ts), queries Open-Meteo once per centroid for a
- * conventional weather report (lib/clima/weather-client.ts), and blends each
- * vereda's live dry-spell length with the incendios map's static structural
- * fire label into a derived, dynamic fire vulnerability
- * (lib/clima/fire-adjustment.ts). Municipality headlines are taken from each
- * cabecera's ("Casco Urbano") own weather point so the map shows one
- * prominent current-conditions marker per town.
+ * lib/precipitacion/server.ts) and queries Open-Meteo once per centroid for a
+ * conventional weather report (lib/clima/weather-client.ts): current
+ * conditions, a temperature band, a 7-day forecast and a short dry-spell
+ * outlook. Municipality headlines are taken from each cabecera's ("Casco
+ * Urbano") own weather point so the map shows one prominent
+ * current-conditions marker per town.
  */
 export async function getClimaForecast(): Promise<{
   forecastDays: number
@@ -43,26 +50,7 @@ export async function getClimaForecast(): Promise<{
     return { lon, lat }
   })
 
-  const [weatherPoints, fire] = await Promise.all([
-    getWeatherPointBatch(centroids),
-    // The incendios layer covers only Sevilla and Caicedonia; if it fails,
-    // fall back to no base labels rather than dropping the whole weather map.
-    getFireThreatPolygons().catch(() => null),
-  ])
-
-  // Key the static fire labels by "municipio|vereda", both lower-cased. Both
-  // sides are already run through the same vereda name-correction (see
-  // lib/incendios/client.ts and lib/veredas/boundaries.ts), so the corrected
-  // spellings agree.
-  const fireByKey = new Map<string, string>()
-  if (fire) {
-    for (const f of fire.features) {
-      const mpio = normalizeMunicipioName(f.properties.NOMB_MPIO ?? "").toLowerCase()
-      const ver = (f.properties.NOMBRE_VER ?? "").toLowerCase()
-      const label = f.properties.Amenaza_Label
-      if (ver && label) fireByKey.set(`${mpio}|${ver}`, label)
-    }
-  }
+  const weatherPoints = await getWeatherPointBatch(centroids)
 
   const features: ClimaFeatureCollection["features"] = boundaries.map((boundary, i) => {
     const w = weatherPoints[i]
@@ -76,8 +64,6 @@ export async function getClimaForecast(): Promise<{
       seco: d.precipMm < 1,
     }))
     const rachaSeca = countRachaSeca(dias.map((d) => d.seco))
-    const base = fireByKey.get(`${boundary.municipio.toLowerCase()}|${boundary.nombre.toLowerCase()}`) ?? null
-    const { ajustada, elevado } = adjustFireThreat(base, rachaSeca)
     const tempActual = round1(w?.currentTemp)
 
     return {
@@ -98,9 +84,6 @@ export async function getClimaForecast(): Promise<{
         nivelTemp: tempActual != null ? classifyTemp(tempActual) : null,
         dias,
         rachaSeca,
-        amenazaIncendioBase: base,
-        amenazaIncendioAjustada: ajustada,
-        incendioElevado: elevado,
       },
       geometry: { type: "MultiPolygon", coordinates: boundary.polygons },
     }

@@ -106,15 +106,13 @@ function WeatherReportCard({ vereda }: { vereda: ClimaVeredaProperties | null })
         </div>
       </div>
 
-      {vereda.amenazaIncendioAjustada && (
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          Vulnerabilidad a incendio:{" "}
-          <span className="font-semibold text-foreground">{vereda.amenazaIncendioAjustada}</span>
-          {vereda.incendioElevado
-            ? ` — elevada desde ${vereda.amenazaIncendioBase} por una racha seca de ${vereda.rachaSeca} días prevista.`
-            : `. Racha seca prevista: ${vereda.rachaSeca} día${vereda.rachaSeca === 1 ? "" : "s"}.`}
-        </p>
-      )}
+      <p className="text-xs leading-relaxed text-muted-foreground">
+        Racha seca prevista:{" "}
+        <span className="font-semibold text-foreground">
+          {vereda.rachaSeca} día{vereda.rachaSeca === 1 ? "" : "s"}
+        </span>{" "}
+        {vereda.rachaSeca === 1 ? "consecutivo sin lluvia" : "consecutivos sin lluvia"} al inicio del pronóstico.
+      </p>
 
       {vereda.dias.length > 0 && (
         <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
@@ -168,10 +166,9 @@ export function ClimaPanelContent({
       >
         <p className="sr-only">
           Mapa interactivo del estado del tiempo por vereda, con la temperatura actual y las condiciones del cielo,
-          un selector para alternar entre la capa de temperatura y la de vulnerabilidad a incendios ajustada por la
-          racha seca prevista, y un marcador de condiciones actuales por municipio. Al hacer clic sobre una vereda se
-          muestra su pronóstico a 7 días en la tarjeta bajo el mapa. El panel de población en el encuadre actual, en la
-          barra lateral, resume el mismo contenido en formato de texto.
+          y un marcador de condiciones actuales por municipio. Al hacer clic sobre una vereda se muestra su pronóstico
+          a 7 días en la tarjeta bajo el mapa. El panel de población en el encuadre actual, en la barra lateral, resume
+          el mismo contenido en formato de texto.
         </p>
         <ClimaLiveMapLoader
           className="relative isolate h-full w-full"
@@ -198,11 +195,8 @@ export function ClimaPanelContent({
             Open-Meteo
           </a>{" "}
           (temperatura, código de estado del tiempo WMO y pronóstico a 7 días, a partir de modelos numéricos de
-          pronóstico del tiempo, no de observación directa). La capa de vulnerabilidad a incendio combina la amenaza
-          estructural publicada por vereda (misma fuente que el mapa de Incendios, solo Sevilla y Caicedonia) con la
-          racha seca prevista: cuando se prolonga la sequía, el nivel sube un escalón. Es una estimación ilustrativa y
-          no forma parte del modelo de riesgo compuesto. A diferencia de la mayoría de las capas, esta cubre Zarzal con
-          el mismo detalle que Sevilla y Caicedonia. Haz clic sobre cualquier vereda para ver su pronóstico completo.
+          pronóstico del tiempo, no de observación directa). A diferencia de la mayoría de las capas, esta cubre Zarzal
+          con el mismo detalle que Sevilla y Caicedonia. Haz clic sobre cualquier vereda para ver su pronóstico completo.
         </p>
         <BackToTopButton targetRef={mapRef} />
       </div>

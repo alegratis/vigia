@@ -73,7 +73,7 @@ export const mapModels: MapModel[] = [
     title: "Clima",
     hook: "El estado del tiempo vereda por vereda: temperatura, condiciones actuales y el pronóstico de los próximos días.",
     description:
-      "Un reporte meteorológico convencional por municipio y vereda con datos de Open-Meteo: temperatura actual, cielo despejado o lluvioso y el pronóstico a 7 días. Además, cruzamos las rachas secas previstas con la amenaza estructural por incendios para estimar una vulnerabilidad al fuego que sube cuando se prolonga la sequía.",
+      "Un reporte meteorológico convencional por municipio y vereda con datos de Open-Meteo: temperatura actual, sensación térmica, cielo despejado o lluvioso, el pronóstico a 7 días y una breve perspectiva de racha seca.",
     image: "/images/clima-map.png",
     imageAlt:
       "Vista de un valle andino con cielo parcialmente nublado y nubes de buen tiempo sobre las montañas",

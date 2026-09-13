@@ -28,7 +28,7 @@ export interface ClimaDay {
   tempMin: number | null
   /** Max daily precipitation probability (%). */
   probabilidadLluvia: number
-  /** True when this day's forecast rainfall is under 1 mm — feeds the dry-spell fire adjustment. */
+  /** True when this day's forecast rainfall is under 1 mm — feeds the dry-spell (racha seca) outlook. */
   seco: boolean
 }
 
@@ -83,14 +83,8 @@ export interface ClimaVeredaProperties {
   nivelTemp: TempLevel | null
   /** 7-day forecast, one entry per day. */
   dias: ClimaDay[]
-  /** Consecutive dry days counted from day 0 of the forecast. */
+  /** Consecutive dry days counted from day 0 of the forecast — a short drought outlook. */
   rachaSeca: number
-  /** Static structural fire-threat label from the incendios layer, or null (Zarzal has no coverage; unmatched veredas too). */
-  amenazaIncendioBase: string | null
-  /** Dry-spell-adjusted fire vulnerability, or null when there is no base label to adjust. */
-  amenazaIncendioAjustada: string | null
-  /** True when the current dry spell pushed the adjusted level above its base. */
-  incendioElevado: boolean
 }
 
 export interface ClimaFeatureCollection {
