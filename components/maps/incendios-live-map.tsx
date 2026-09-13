@@ -45,6 +45,8 @@ import { getOsmCategory } from "@/lib/osm/categories"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
 import { OsmLegend } from "@/components/maps/osm-legend"
 import { VeredasOverlay } from "@/components/maps/veredas-overlay"
+import { MunicipioTogglePanel, type MunicipioRiskSummary } from "@/components/maps/municipio-toggle-panel"
+import { useMunicipioToggles, isMunicipioActive } from "@/lib/veredas/municipio-toggles"
 import { WmsLegendChip } from "@/components/maps/wms-legend-chip"
 import type { IncendiosAmenazaResponse } from "@/lib/incendios/api-types"
 import type { FireDetection, FiresResponse } from "@/lib/firms/api-types"
@@ -226,6 +228,29 @@ function IncendiosLiveMapImpl({
     revalidateOnFocus: false,
   })
   const osmColors = useOsmCategoryColors()
+  const { active: activeMunicipiosMap, activeMunicipios, toggle: toggleMunicipio } = useMunicipioToggles()
+
+  const municipioSummaries = useMemo<MunicipioRiskSummary[]>(() => {
+    if (!data?.polygons) return []
+    const byMunicipio = new Map<string, Record<string, number>>()
+    for (const feature of (data.polygons as unknown as GeoJSON.FeatureCollection).features) {
+      const rawMunicipio = feature.properties?.NOMB_MPIO as string | undefined
+      const level = feature.properties?.Amenaza_Label as string | undefined
+      if (!rawMunicipio || !level) continue
+      const municipio = normalizeMunicipioName(rawMunicipio)
+      const counts = byMunicipio.get(municipio) ?? {}
+      counts[level] = (counts[level] ?? 0) + 1
+      byMunicipio.set(municipio, counts)
+    }
+    return Array.from(byMunicipio.entries()).map(([municipio, counts]) => ({
+      municipio,
+      items: FIRE_THREAT_LEVELS.filter((level) => (counts[level] ?? 0) > 0).map((level) => ({
+        label: level,
+        value: `${counts[level]}`,
+        colorToken: fireLevelColorToken(level),
+      })),
+    }))
+  }, [data])
 
   const [resolvedColors, setResolvedColors] = useState<Record<string, string> | null>(null)
   const [showForecast, setShowForecast] = useState(true)
@@ -277,7 +302,14 @@ function IncendiosLiveMapImpl({
   const style = useCallback(
     (feature?: GeoJSON.Feature): PathOptions => {
       const level = feature?.properties?.Amenaza_Label as string | undefined
+      const municipio = feature?.properties?.NOMB_MPIO as string | undefined
+      const active = municipio ? isMunicipioActive(municipio, activeMunicipios) : true
       const color = (level && resolvedColors?.[level]) || "var(--muted-foreground)"
+      // Dimmed (municipality toggled off): grey the fill down so the active
+      // municipalities' fire-threat coloring stays the focus.
+      if (!active) {
+        return { color: "var(--muted-foreground)", weight: 1, opacity: 0.3, fillColor: "var(--muted-foreground)", fillOpacity: 0.06 }
+      }
       return {
         color,
         weight: 1,
@@ -285,7 +317,7 @@ function IncendiosLiveMapImpl({
         fillOpacity: 0.5,
       }
     },
-    [resolvedColors],
+    [resolvedColors, activeMunicipios],
   )
 
   const onEachFeature = useCallback(
@@ -293,6 +325,7 @@ function IncendiosLiveMapImpl({
       const municipio = feature.properties?.NOMB_MPIO as string | undefined
       const vereda = feature.properties?.NOMBRE_VER as string | undefined
       const nivel = feature.properties?.Amenaza_Label as string | undefined
+      const active = municipio ? isMunicipioActive(municipio, activeMunicipios) : true
       layer.bindPopup(
         `<div style="font-size:13px;display:flex;flex-direction:column;gap:2px">
         <strong>${vereda ?? municipio ?? "—"}</strong>
@@ -300,23 +333,28 @@ function IncendiosLiveMapImpl({
         <span>Amenaza: ${nivel ?? "—"}</span>
       </div>`,
       )
-      layer.on("mouseover", (e: LeafletMouseEvent) => {
-        ;(e.target as Layer & { setStyle: (s: PathOptions) => void }).setStyle({ fillOpacity: 0.75 })
-      })
-      layer.on("mouseout", (e: LeafletMouseEvent) => {
-        ;(e.target as Layer & { setStyle: (s: PathOptions) => void }).setStyle({ fillOpacity: 0.5 })
-      })
+      // Skip the hover emphasis on dimmed (toggled-off) municipalities.
+      if (active) {
+        layer.on("mouseover", (e: LeafletMouseEvent) => {
+          ;(e.target as Layer & { setStyle: (s: PathOptions) => void }).setStyle({ fillOpacity: 0.75 })
+        })
+        layer.on("mouseout", (e: LeafletMouseEvent) => {
+          ;(e.target as Layer & { setStyle: (s: PathOptions) => void }).setStyle({ fillOpacity: 0.5 })
+        })
+      }
       layer.on("click", () => {
         if (municipio) onZoneSelect?.(normalizeMunicipioName(municipio))
       })
     },
-    [onZoneSelect],
+    [onZoneSelect, activeMunicipios],
   )
 
-  // Re-key the GeoJSON layer once colors resolve so Leaflet re-applies `style` per feature.
+  // Re-key the GeoJSON layer once colors resolve so Leaflet re-applies `style`
+  // per feature, and again when the municipality selection changes so the
+  // dimming/hover-guard reflect the new active set.
   const geoJsonKey = useMemo(
-    () => (resolvedColors ? "resolved" : "pending"),
-    [resolvedColors],
+    () => `${resolvedColors ? "resolved" : "pending"}-${activeMunicipios.join(",")}`,
+    [resolvedColors, activeMunicipios],
   )
 
   return (
@@ -401,7 +439,7 @@ function IncendiosLiveMapImpl({
             }
           />
         )}
-        <VeredasOverlay enabled={showVeredas} onSelect={onVeredaSelect} />
+        <VeredasOverlay enabled={showVeredas} onSelect={onVeredaSelect} activeMunicipios={activeMunicipios} />
         {showSentinel3 && (
           <WMSTileLayer
             url={GWIS_WMS_URL}
@@ -597,6 +635,12 @@ function IncendiosLiveMapImpl({
       <div className="absolute right-3 top-16 z-[400] max-w-[200px]">
         <OsmLegend points={osmPoints ?? []} />
       </div>
+      <MunicipioTogglePanel
+        active={activeMunicipiosMap}
+        onToggle={toggleMunicipio}
+        summaries={municipioSummaries}
+        riskTitle="Amenaza de incendio (veredas por nivel)"
+      />
       {(showForecast || needsFirms || showSentinel3 || showLandCover || showSettlement || showProtectedAreas) && (
         <div className="absolute bottom-3 right-3 z-[400] flex flex-col items-end gap-2">
           {showForecast && <FwiLegend />}

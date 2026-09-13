@@ -14,6 +14,10 @@ import type { LatLngBoundsExpression } from "leaflet"
 import "leaflet/dist/leaflet.css"
 import { BasemapTileLayer } from "@/components/maps/basemap-tile-layer"
 import { VeredasOverlay } from "@/components/maps/veredas-overlay"
+import { MunicipioTogglePanel, type MunicipioRiskSummary } from "@/components/maps/municipio-toggle-panel"
+import { useVeredas } from "@/lib/veredas/use-veredas"
+import { useMunicipioToggles } from "@/lib/veredas/municipio-toggles"
+import { summarizeExposureByMunicipio } from "@/lib/veredas/municipio-summary"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
 import { getOsmCategory } from "@/lib/osm/categories"
 import { resolveCssColor } from "@/lib/resolve-css-color"
@@ -144,11 +148,32 @@ function SismologiaLiveMapImpl({
 }) {
   const { data } = useSismologiaEventos()
   const osmColors = useOsmCategoryColors()
+  const { active: activeMunicipiosMap, activeMunicipios, toggle: toggleMunicipio } = useMunicipioToggles()
+  // Fetched to drive the municipality highlight + risk panel; the shared SWR
+  // key dedupes against VeredasOverlay's own fetch below.
+  const { veredas } = useVeredas(true)
+
+  const municipioSummaries = useMemo<MunicipioRiskSummary[]>(() => {
+    if (!veredas) return []
+    return summarizeExposureByMunicipio(veredas).map((s) => ({
+      municipio: s.municipio,
+      items: [
+        { label: "Población", value: s.poblacion != null ? Math.round(s.poblacion).toLocaleString("es-CO") : "—" },
+        { label: "Escuelas", value: s.escuelas != null ? `${s.escuelas}` : "—" },
+        { label: "Hospitales", value: s.hospitales != null ? `${s.hospitales}` : "—" },
+        {
+          label: "Infra. crítica",
+          value: s.infraestructuraCritica != null ? `${s.infraestructuraCritica}` : "—",
+        },
+        { label: "Sitios críticos", value: `${s.sitiosCriticos}` },
+      ],
+    }))
+  }, [veredas])
 
   const [showUsgs, setShowUsgs] = useState(true)
   const [showSgc, setShowSgc] = useState(true)
   const [showDamage, setShowDamage] = useState(false)
-  const [showVeredas, setShowVeredas] = useState(false)
+  const [showVeredas, setShowVeredas] = useState(true)
   const [resolvedColors, setResolvedColors] = useState<Record<string, string> | null>(null)
 
   useEffect(() => {
@@ -185,7 +210,7 @@ function SismologiaLiveMapImpl({
         <ZoomControl position="topright" />
         <AttributionControl position="bottomright" prefix="Leaflet" />
         <BasemapTileLayer />
-        <VeredasOverlay enabled={showVeredas} onSelect={onVeredaSelect} />
+        <VeredasOverlay enabled={showVeredas} onSelect={onVeredaSelect} activeMunicipios={activeMunicipios} />
         {resolvedColors &&
           visibleEvents.map((event) => {
             const color = resolvedColors[magnitudeLevel(event.magnitude)]
@@ -252,6 +277,12 @@ function SismologiaLiveMapImpl({
       </div>
 
       <MagnitudeLegend />
+      <MunicipioTogglePanel
+        active={activeMunicipiosMap}
+        onToggle={toggleMunicipio}
+        summaries={municipioSummaries}
+        riskTitle="Exposición por municipio"
+      />
       {showDamage && <DamageReportsPanel />}
     </div>
   )

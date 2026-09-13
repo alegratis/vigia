@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import {
   AttributionControl,
   CircleMarker,
@@ -18,6 +18,8 @@ import { COMPOUND_LEVELS, compoundLevelColorToken } from "@/lib/riesgo-compuesto
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import { BasemapTileLayer } from "@/components/maps/basemap-tile-layer"
 import { CompoundVeredasOverlay } from "@/components/maps/compound-veredas-overlay"
+import { MunicipioTogglePanel, type MunicipioRiskSummary } from "@/components/maps/municipio-toggle-panel"
+import { useMunicipioToggles } from "@/lib/veredas/municipio-toggles"
 import { CompoundReportDialog } from "@/components/riesgo-compuesto/compound-report-dialog"
 import { getOsmCategory } from "@/lib/osm/categories"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
@@ -123,8 +125,29 @@ function CompoundLiveMapImpl({
   className?: string
 }) {
   const osmColors = useOsmCategoryColors()
-  const { error: veredasError, isLoading: veredasLoading } = useCompoundVeredas(true)
+  const { veredas, error: veredasError, isLoading: veredasLoading } = useCompoundVeredas(true)
+  const { active: activeMunicipiosMap, activeMunicipios, toggle: toggleMunicipio } = useMunicipioToggles()
   const [reportFeature, setReportFeature] = useState<CompoundFeature | null>(null)
+
+  const municipioSummaries = useMemo<MunicipioRiskSummary[]>(() => {
+    if (!veredas) return []
+    const byMunicipio = new Map<string, Record<string, number>>()
+    for (const feature of veredas.features) {
+      const level = feature.properties.compoundLevel
+      if (!level) continue
+      const counts = byMunicipio.get(feature.properties.municipio) ?? {}
+      counts[level] = (counts[level] ?? 0) + 1
+      byMunicipio.set(feature.properties.municipio, counts)
+    }
+    return Array.from(byMunicipio.entries()).map(([municipio, counts]) => ({
+      municipio,
+      items: COMPOUND_LEVELS.filter((level) => (counts[level] ?? 0) > 0).map((level) => ({
+        label: level,
+        value: `${counts[level]}`,
+        colorToken: compoundLevelColorToken(level),
+      })),
+    }))
+  }, [veredas])
   const [showSettlement, setShowSettlement] = useState(false)
   const [showProtectedAreas, setShowProtectedAreas] = useState(false)
 
@@ -178,6 +201,7 @@ function CompoundLiveMapImpl({
           enabled
           onSelect={onVeredaSelect}
           onOpenReport={setReportFeature}
+          activeMunicipios={activeMunicipios}
         />
         {osmColors &&
           osmPoints?.map((p) => (
@@ -234,6 +258,12 @@ function CompoundLiveMapImpl({
       <div className="absolute right-3 top-3 z-[400] max-w-[200px]">
         <OsmLegend points={osmPoints ?? []} />
       </div>
+      <MunicipioTogglePanel
+        active={activeMunicipiosMap}
+        onToggle={toggleMunicipio}
+        summaries={municipioSummaries}
+        riskTitle="Riesgo compuesto (veredas por nivel)"
+      />
       <Legend />
       {(showSettlement || showProtectedAreas) && (
         <div className="absolute bottom-3 right-3 z-[400] flex flex-col items-end gap-2">
