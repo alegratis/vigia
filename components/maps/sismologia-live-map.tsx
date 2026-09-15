@@ -25,8 +25,12 @@ import { useSismologiaDanos, useSismologiaEventos } from "@/lib/sismologia/use-s
 import {
   SEISMIC_MAGNITUDE_LEVELS,
   SEISMIC_MAGNITUDE_LEVEL_STYLES,
+  SEISMIC_EXPOSURE_LEVELS,
+  SEISMIC_EXPOSURE_LEVEL_TOKENS,
+  type SeismicExposureLevel,
   magnitudeLevel,
   magnitudeRadius,
+  seismicExposureLevel,
 } from "@/lib/sismologia/levels"
 import type { SeismicEvent } from "@/lib/sismologia/api-types"
 import type { OsmPoint } from "@/lib/osm/api-types"
@@ -56,6 +60,19 @@ const SOURCE_LABEL: Record<SeismicEvent["source"], string> = {
   usgs: "USGS (en vivo)",
   sgc: "SGC (histórico)",
 }
+
+/**
+ * Purely-visual time filter for the event markers. It only changes which
+ * epicenters are drawn — the per-vereda exposure score and every other
+ * metric are computed server-side from the full event set and are never
+ * affected by this control.
+ */
+type TimeWindow = "7" | "14" | "all"
+const TIME_WINDOWS: { value: TimeWindow; label: string }[] = [
+  { value: "7", label: "Últimos 7 días" },
+  { value: "14", label: "Últimos 14 días" },
+  { value: "all", label: "Todo el histórico" },
+]
 
 /** Distinct marker styling per source: SGC live solid (primary), USGS hollow ring, SGC historical dashed. */
 function SOURCE_STYLE(source: SeismicEvent["source"], color: string) {
@@ -98,7 +115,7 @@ function MagnitudeLegend() {
   }, [])
 
   return (
-    <div className="pointer-events-none absolute bottom-3 left-3 z-[400] rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
+    <div className="pointer-events-none rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
       <p className="mb-1.5 font-medium text-foreground">Magnitud</p>
       <ul className="flex flex-col gap-1">
         {SEISMIC_MAGNITUDE_LEVELS.map((level, i) => (
@@ -109,6 +126,38 @@ function MagnitudeLegend() {
               aria-hidden="true"
             />
             {level} <span className="text-muted-foreground/70">({SEISMIC_MAGNITUDE_LEVEL_STYLES[level].range})</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+/**
+ * Legend for the per-vereda seismic exposure choropleth — the 0–1
+ * distance-decay score (lib/sismologia/exposure-score.ts) binned onto the
+ * shared 5-tier scale and colored with the sismología ramp. Sits just above
+ * the magnitude legend so the two read as one stacked key.
+ */
+function ExposureLegend() {
+  const [colors, setColors] = useState<string[] | null>(null)
+
+  useEffect(() => {
+    setColors(SEISMIC_EXPOSURE_LEVELS.map((level) => resolveCssColor(SEISMIC_EXPOSURE_LEVEL_TOKENS[level])))
+  }, [])
+
+  return (
+    <div className="pointer-events-none rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
+      <p className="mb-1.5 font-medium text-foreground">Exposición sísmica por vereda</p>
+      <ul className="flex flex-col gap-1">
+        {SEISMIC_EXPOSURE_LEVELS.map((level, i) => (
+          <li key={level} className="flex items-center gap-2 text-muted-foreground">
+            <span
+              className="size-2.5 shrink-0 rounded-sm"
+              style={{ backgroundColor: colors?.[i] ?? "transparent" }}
+              aria-hidden="true"
+            />
+            {level}
           </li>
         ))}
       </ul>
@@ -191,16 +240,38 @@ function SismologiaLiveMapImpl({
   const [showSgcLive, setShowSgcLive] = useState(true)
   const [showUsgs, setShowUsgs] = useState(true)
   const [showSgc, setShowSgc] = useState(true)
+  const [timeWindow, setTimeWindow] = useState<TimeWindow>("all")
   const [showDamage, setShowDamage] = useState(false)
   const [showVeredas, setShowVeredas] = useState(true)
   const [resolvedColors, setResolvedColors] = useState<Record<string, string> | null>(null)
+  const [exposureColors, setExposureColors] = useState<Record<SeismicExposureLevel, string> | null>(null)
+  const [noDataColor, setNoDataColor] = useState<string | null>(null)
 
   useEffect(() => {
     const entries = SEISMIC_MAGNITUDE_LEVELS.map(
       (level) => [level, resolveCssColor(SEISMIC_MAGNITUDE_LEVEL_STYLES[level].colorToken)] as const,
     )
     setResolvedColors(Object.fromEntries(entries))
+    setExposureColors(
+      Object.fromEntries(
+        SEISMIC_EXPOSURE_LEVELS.map((level) => [level, resolveCssColor(SEISMIC_EXPOSURE_LEVEL_TOKENS[level])] as const),
+      ) as Record<SeismicExposureLevel, string>,
+    )
+    setNoDataColor(resolveCssColor("var(--muted-foreground)"))
   }, [])
+
+  // Shades each vereda by its 0–1 seismic exposure score (the same
+  // distance-decay model that feeds the compound-risk map), mirroring how
+  // the deslizamientos and inundaciones maps shade their veredas — so this
+  // map's polygons carry hazard color instead of rendering as bare outlines.
+  const veredaColor = useCallback(
+    (feature: VeredaFeature) => {
+      const score = feature.properties.seismicScoreAvg
+      if (score == null || !exposureColors) return noDataColor ?? "var(--muted-foreground)"
+      return exposureColors[seismicExposureLevel(score)]
+    },
+    [exposureColors, noDataColor],
+  )
 
   const visibleEvents = useMemo(() => {
     if (!data) return []
@@ -209,8 +280,11 @@ function SismologiaLiveMapImpl({
     if (showSgc) list.push(...data.sgc.events)
     if (showUsgs) list.push(...data.usgs.events)
     if (showSgcLive) list.push(...data.sgcLive.events)
-    return list
-  }, [data, showSgcLive, showUsgs, showSgc])
+    // Visual-only recency filter; does not touch any score.
+    if (timeWindow === "all") return list
+    const cutoff = Date.now() - Number(timeWindow) * 86_400_000
+    return list.filter((event) => new Date(event.time).getTime() >= cutoff)
+  }, [data, showSgcLive, showUsgs, showSgc, timeWindow])
 
   return (
     <div
@@ -231,7 +305,13 @@ function SismologiaLiveMapImpl({
         <ZoomControl position="topright" />
         <AttributionControl position="bottomright" prefix="Leaflet" />
         <BasemapTileLayer />
-        <VeredasOverlay enabled={showVeredas} onSelect={onVeredaSelect} activeMunicipios={activeMunicipios} />
+        <VeredasOverlay
+          enabled={showVeredas}
+          colorForFeature={exposureColors && noDataColor ? veredaColor : undefined}
+          hazardKind="sismologia"
+          onSelect={onVeredaSelect}
+          activeMunicipios={activeMunicipios}
+        />
         {resolvedColors &&
           visibleEvents.map((event) => {
             const color = resolvedColors[magnitudeLevel(event.magnitude)]
@@ -290,6 +370,21 @@ function SismologiaLiveMapImpl({
           <input type="checkbox" checked={showSgc} onChange={(e) => setShowSgc(e.target.checked)} className="size-3.5 accent-primary" />
           SGC histórico
         </label>
+        <div className="flex flex-col gap-1 border-t border-border pt-1.5">
+          <span className="font-medium text-foreground">Ventana temporal (solo visual)</span>
+          {TIME_WINDOWS.map((w) => (
+            <label key={w.value} className="flex items-center gap-2 text-muted-foreground">
+              <input
+                type="radio"
+                name="sismo-time-window"
+                checked={timeWindow === w.value}
+                onChange={() => setTimeWindow(w.value)}
+                className="size-3.5 accent-primary"
+              />
+              {w.label}
+            </label>
+          ))}
+        </div>
         <label className="flex items-center gap-2 border-t border-border pt-1.5 font-medium text-foreground">
           <input type="checkbox" checked={showVeredas} onChange={(e) => setShowVeredas(e.target.checked)} className="size-3.5 accent-primary" />
           Límites veredales
@@ -300,7 +395,10 @@ function SismologiaLiveMapImpl({
         </label>
       </div>
 
-      <MagnitudeLegend />
+      <div className="absolute bottom-3 left-3 z-[400] flex flex-col gap-2">
+        {showVeredas && <ExposureLegend />}
+        <MagnitudeLegend />
+      </div>
       <MunicipioTogglePanel
         active={activeMunicipiosMap}
         onToggle={toggleMunicipio}

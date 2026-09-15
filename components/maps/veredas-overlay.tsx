@@ -8,6 +8,7 @@ import { useVeredas } from "@/lib/veredas/use-veredas"
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import type { VeredaFeature } from "@/lib/veredas/api-types"
 import { floodSusceptibilityColorToken } from "@/lib/inundaciones/levels"
+import { seismicExposureColorToken, seismicExposureLevel } from "@/lib/sismologia/levels"
 import { isMunicipioActive } from "@/lib/veredas/municipio-toggles"
 
 /** Converts a vereda's GeoJSON `[lon, lat]` MultiPolygon rings to Leaflet's `[lat, lon]` order. */
@@ -38,7 +39,7 @@ interface VeredasOverlayProps {
    * inundaciones map passes `"inundaciones"` when it colors veredas by
    * this app's own flood model instead of a neutral outline.
    */
-  hazardKind?: "deslizamientos" | "inundaciones"
+  hazardKind?: "deslizamientos" | "inundaciones" | "sismologia"
   /**
    * Whether a click on a vereda polygon stops the map's own click layer
    * from also firing underneath it — the deslizamientos/incendios maps
@@ -214,6 +215,28 @@ export function VeredasOverlay({
                     {props.floodZoningCovered
                       ? `Con zonificación oficial: ${props.floodZoningLevel ?? "—"}`
                       : "Sin zonificación oficial — solo modelo propio"}
+                  </span>
+                )}
+                {colorForFeature && hazardKind === "sismologia" && props.seismicScoreAvg != null && (
+                  <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span
+                      style={{
+                        display: "inline-block",
+                        width: 9,
+                        height: 9,
+                        borderRadius: "50%",
+                        flexShrink: 0,
+                        backgroundColor: seismicExposureColorToken(props.seismicScoreAvg),
+                      }}
+                    />
+                    Exposición sísmica (modelo propio): {seismicExposureLevel(props.seismicScoreAvg)} (
+                    {props.seismicScoreAvg.toFixed(2)})
+                  </span>
+                )}
+                {colorForFeature && hazardKind === "sismologia" && props.seismicNearestEventKm != null && (
+                  <span style={{ color: "#888" }}>
+                    Epicentro más cercano: {props.seismicNearestEventKm.toFixed(1)} km
+                    {props.seismicNearestMagnitude != null && ` · M ${props.seismicNearestMagnitude.toFixed(1)}`}
                   </span>
                 )}
                 <span>
