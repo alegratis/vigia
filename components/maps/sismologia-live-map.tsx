@@ -61,6 +61,19 @@ const SOURCE_LABEL: Record<SeismicEvent["source"], string> = {
   sgc: "SGC (histórico)",
 }
 
+/**
+ * Purely-visual time filter for the event markers. It only changes which
+ * epicenters are drawn — the per-vereda exposure score and every other
+ * metric are computed server-side from the full event set and are never
+ * affected by this control.
+ */
+type TimeWindow = "7" | "14" | "all"
+const TIME_WINDOWS: { value: TimeWindow; label: string }[] = [
+  { value: "7", label: "Últimos 7 días" },
+  { value: "14", label: "Últimos 14 días" },
+  { value: "all", label: "Todo el histórico" },
+]
+
 /** Distinct marker styling per source: SGC live solid (primary), USGS hollow ring, SGC historical dashed. */
 function SOURCE_STYLE(source: SeismicEvent["source"], color: string) {
   switch (source) {
@@ -227,6 +240,7 @@ function SismologiaLiveMapImpl({
   const [showSgcLive, setShowSgcLive] = useState(true)
   const [showUsgs, setShowUsgs] = useState(true)
   const [showSgc, setShowSgc] = useState(true)
+  const [timeWindow, setTimeWindow] = useState<TimeWindow>("all")
   const [showDamage, setShowDamage] = useState(false)
   const [showVeredas, setShowVeredas] = useState(true)
   const [resolvedColors, setResolvedColors] = useState<Record<string, string> | null>(null)
@@ -266,8 +280,11 @@ function SismologiaLiveMapImpl({
     if (showSgc) list.push(...data.sgc.events)
     if (showUsgs) list.push(...data.usgs.events)
     if (showSgcLive) list.push(...data.sgcLive.events)
-    return list
-  }, [data, showSgcLive, showUsgs, showSgc])
+    // Visual-only recency filter; does not touch any score.
+    if (timeWindow === "all") return list
+    const cutoff = Date.now() - Number(timeWindow) * 86_400_000
+    return list.filter((event) => new Date(event.time).getTime() >= cutoff)
+  }, [data, showSgcLive, showUsgs, showSgc, timeWindow])
 
   return (
     <div
@@ -353,6 +370,21 @@ function SismologiaLiveMapImpl({
           <input type="checkbox" checked={showSgc} onChange={(e) => setShowSgc(e.target.checked)} className="size-3.5 accent-primary" />
           SGC histórico
         </label>
+        <div className="flex flex-col gap-1 border-t border-border pt-1.5">
+          <span className="font-medium text-foreground">Ventana temporal (solo visual)</span>
+          {TIME_WINDOWS.map((w) => (
+            <label key={w.value} className="flex items-center gap-2 text-muted-foreground">
+              <input
+                type="radio"
+                name="sismo-time-window"
+                checked={timeWindow === w.value}
+                onChange={() => setTimeWindow(w.value)}
+                className="size-3.5 accent-primary"
+              />
+              {w.label}
+            </label>
+          ))}
+        </div>
         <label className="flex items-center gap-2 border-t border-border pt-1.5 font-medium text-foreground">
           <input type="checkbox" checked={showVeredas} onChange={(e) => setShowVeredas(e.target.checked)} className="size-3.5 accent-primary" />
           Límites veredales
