@@ -40,9 +40,10 @@ export function SismologiaPanelContent({
         className="relative h-[70vh] min-h-[420px] shrink-0 lg:h-full"
       >
         <p className="sr-only">
-          Mapa interactivo de actividad sísmica, con epicentros en vivo del Servicio Geológico de
-          Estados Unidos (USGS) y el catálogo histórico del Servicio Geológico Colombiano (SGC), más
-          un resumen opcional de reportes comunitarios de daños en Sevilla.
+          Mapa interactivo de actividad sísmica, con epicentros en vivo de la Red Sismológica
+          Nacional de Colombia (SGC) y del Servicio Geológico de Estados Unidos (USGS), el catálogo
+          histórico del Servicio Geológico Colombiano (SGC), más un resumen opcional de reportes
+          comunitarios de daños en Sevilla.
         </p>
         <SismologiaLiveMapLoader
           className="relative isolate h-full w-full"
@@ -57,7 +58,19 @@ export function SismologiaPanelContent({
           <SismologiaOverview />
         </div>
         <p className="text-xs text-muted-foreground">
-          Actividad en vivo (últimos 90 días): servicio público{" "}
+          Fuente en vivo principal (últimos 5 días): feed casi en tiempo real de la{" "}
+          <a
+            href="https://www.sgc.gov.co/sismos"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2 hover:text-foreground"
+          >
+            Red Sismológica Nacional de Colombia (SGC)
+          </a>
+          , la red oficial del país, con cobertura local suficiente para registrar los microsismos
+          (M1–M4) que el catálogo global no detecta. Los sismos no se pueden pronosticar: esto mejora
+          la detección en vivo, no la predicción. Como verificación independiente se conserva el
+          servicio público{" "}
           <a
             href="https://earthquake.usgs.gov/fdsnws/event/1/"
             target="_blank"
@@ -65,8 +78,8 @@ export function SismologiaPanelContent({
             className="underline underline-offset-2 hover:text-foreground"
           >
             USGS FDSN Event Web Service
-          </a>
-          , catálogo global en tiempo casi real. Catálogo histórico: servicio abierto del{" "}
+          </a>{" "}
+          (últimos 90 días). Catálogo histórico: servicio abierto del{" "}
           <a
             href="https://www.sgc.gov.co"
             target="_blank"
@@ -75,8 +88,8 @@ export function SismologiaPanelContent({
           >
             Servicio Geológico Colombiano
           </a>
-          , el registro sísmico oficial de Colombia — no es un feed en vivo, por lo que se muestra
-          como una capa aparte, punteada en el mapa. El{" "}
+          , el registro sísmico oficial de Colombia — se muestra como una capa aparte, punteada en el
+          mapa. El{" "}
           <a
             href="https://osso.univalle.edu.co"
             target="_blank"

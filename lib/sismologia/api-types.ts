@@ -1,6 +1,6 @@
 /** Client-safe types for /api/sismologia/eventos and /api/sismologia/danos. No server imports. */
 
-export type SeismicSource = "usgs" | "sgc"
+export type SeismicSource = "usgs" | "sgc" | "sgc-live"
 
 export interface SeismicEvent {
   id: string
@@ -12,14 +12,23 @@ export interface SeismicEvent {
   depthKm: number | null
   lat: number
   lon: number
-  /** Human-readable place description, when published (USGS only). */
+  /** Human-readable place description, when published (USGS and SGC live). */
   place: string | null
+  /** SGC live only: "manual" (analyst-reviewed) or "automatic". */
+  reviewStatus?: "manual" | "automatic" | null
 }
 
 export interface SismologiaEventosResponse {
   generatedAt: string
   /** Bounding box actually queried, so the map/legend can state the search radius. */
   bbox: { south: number; west: number; north: number; east: number }
+  /** SGC RSNC near-real-time feed — the primary live source (denser local coverage than USGS). */
+  sgcLive: {
+    events: SeismicEvent[]
+    /** Days of history the SGC live feed covers. */
+    windowDays: number
+    ok: boolean
+  }
   usgs: {
     events: SeismicEvent[]
     /** Days back the live USGS feed was queried. */

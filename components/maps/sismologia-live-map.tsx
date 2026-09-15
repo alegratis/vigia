@@ -51,6 +51,24 @@ function formatDateTime(iso: string): string {
   })
 }
 
+const SOURCE_LABEL: Record<SeismicEvent["source"], string> = {
+  "sgc-live": "SGC RSNC (en vivo)",
+  usgs: "USGS (en vivo)",
+  sgc: "SGC (histórico)",
+}
+
+/** Distinct marker styling per source: SGC live solid (primary), USGS hollow ring, SGC historical dashed. */
+function SOURCE_STYLE(source: SeismicEvent["source"], color: string) {
+  switch (source) {
+    case "sgc-live":
+      return { color: "#fff", weight: 1, fillColor: color, fillOpacity: 0.85 }
+    case "usgs":
+      return { color, weight: 2, fillColor: color, fillOpacity: 0.35 }
+    case "sgc":
+      return { color, weight: 2, fillColor: color, fillOpacity: 0.15, dashArray: "2 3" }
+  }
+}
+
 interface BoundsSyncProps {
   onBoundsChange: (bounds: MapBounds) => void
 }
@@ -125,13 +143,13 @@ function DamageReportsPanel() {
 }
 
 /**
- * Live seismic-activity map: USGS's real-time FDSN event feed (last 90
- * días) plus SGC's historical catalog for the region, each independently
- * toggleable and styled distinctly (SGC as a muted outline marker, USGS
- * filled) since they answer different questions — "what just happened"
- * vs. "what has this region historically produced." Also offers an
- * optional Sevilla-only community damage-report summary (Survey123, never
- * showing individual points or victim counts — see
+ * Live seismic-activity map with three independently-toggleable, distinctly
+ * styled sources: SGC's near-real-time RSNC feed (last 5 días) as the
+ * primary live layer — solid filled markers, dense enough to show the small
+ * local tremors USGS misses — USGS's FDSN feed (last 90 días) as a hollow
+ * confirmation ring, and SGC's historical catalog as a dashed outline. Also
+ * offers an optional Sevilla-only community damage-report summary (Survey123,
+ * never showing individual points or victim counts — see
  * lib/sismologia/survey-damage.ts) and the shared vereda-boundary overlay
  * for population/infrastructure context.
  */
@@ -170,6 +188,7 @@ function SismologiaLiveMapImpl({
     }))
   }, [veredas])
 
+  const [showSgcLive, setShowSgcLive] = useState(true)
   const [showUsgs, setShowUsgs] = useState(true)
   const [showSgc, setShowSgc] = useState(true)
   const [showDamage, setShowDamage] = useState(false)
@@ -185,11 +204,13 @@ function SismologiaLiveMapImpl({
 
   const visibleEvents = useMemo(() => {
     if (!data) return []
+    // Draw order = array order: historical (bottom), USGS, then SGC live on top.
     const list: SeismicEvent[] = []
-    if (showUsgs) list.push(...data.usgs.events)
     if (showSgc) list.push(...data.sgc.events)
+    if (showUsgs) list.push(...data.usgs.events)
+    if (showSgcLive) list.push(...data.sgcLive.events)
     return list
-  }, [data, showUsgs, showSgc])
+  }, [data, showSgcLive, showUsgs, showSgc])
 
   return (
     <div
@@ -214,17 +235,13 @@ function SismologiaLiveMapImpl({
         {resolvedColors &&
           visibleEvents.map((event) => {
             const color = resolvedColors[magnitudeLevel(event.magnitude)]
-            const isSgc = event.source === "sgc"
+            const style = SOURCE_STYLE(event.source, color)
             return (
               <CircleMarker
                 key={event.id}
                 center={[event.lat, event.lon]}
                 radius={magnitudeRadius(event.magnitude)}
-                pathOptions={
-                  isSgc
-                    ? { color, weight: 2, fillColor: color, fillOpacity: 0.15, dashArray: "2 3" }
-                    : { color: "#fff", weight: 1, fillColor: color, fillOpacity: 0.85 }
-                }
+                pathOptions={style}
               >
                 <Popup>
                   <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
@@ -232,7 +249,10 @@ function SismologiaLiveMapImpl({
                     <span>{event.place ?? "Catálogo histórico SGC"}</span>
                     <span>{formatDateTime(event.time)}</span>
                     {event.depthKm != null && <span>Profundidad: {event.depthKm.toFixed(1)} km</span>}
-                    <span>Fuente: {isSgc ? "SGC (histórico)" : "USGS (en vivo)"}</span>
+                    <span>Fuente: {SOURCE_LABEL[event.source]}</span>
+                    {event.source === "sgc-live" && event.reviewStatus && (
+                      <span>Revisión: {event.reviewStatus === "manual" ? "manual (analista)" : "automática"}</span>
+                    )}
                   </div>
                 </Popup>
               </CircleMarker>
@@ -258,6 +278,10 @@ function SismologiaLiveMapImpl({
       </MapContainer>
 
       <div className="absolute left-3 top-3 z-[400] flex flex-col gap-1.5 rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
+        <label className="flex items-center gap-2 font-medium text-foreground">
+          <input type="checkbox" checked={showSgcLive} onChange={(e) => setShowSgcLive(e.target.checked)} className="size-3.5 accent-primary" />
+          SGC en vivo (5 días)
+        </label>
         <label className="flex items-center gap-2 font-medium text-foreground">
           <input type="checkbox" checked={showUsgs} onChange={(e) => setShowUsgs(e.target.checked)} className="size-3.5 accent-primary" />
           USGS en vivo (90 días)

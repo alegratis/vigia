@@ -7,7 +7,7 @@ import "server-only"
  * (SGC and USGS publish event catalogs, not a zoned hazard map for this
  * scale) — so instead of a zoning join like `incendios-join.ts`, this
  * computes a distance-decay exposure score directly from nearby epicenters,
- * combining both sources:
+ * combining all three sources (SGC live, USGS live and SGC historical):
  *
  * - Each event's contribution is weighted by its energy (magnitude, via the
  *   standard log-linear proxy `10^(0.5*mag)` — the same relative scaling
@@ -17,8 +17,8 @@ import "server-only"
  * - SGC's historical events are additionally recency-weighted
  *   (`exp(-ageYears / halfLifeYears)`) so a centuries-old event contributes
  *   less than a recent one — "recency-weighted so old events contribute
- *   less," per the brief. USGS's live events are all within the last
- *   `USGS_WINDOW_DAYS` days, so they get no additional decay.
+ *   less," per the brief. The live sources (USGS and SGC RSNC) are already
+ *   restricted to a recent window, so they get no additional decay.
  * - The summed influence per vereda is compressed into 0–1 via
  *   `1 - exp(-sum / scale)`, the same bounded-saturating shape already used
  *   throughout this app to turn an unbounded raw quantity into a 0–1 score
@@ -54,7 +54,7 @@ function energyWeight(magnitude: number): number {
 }
 
 function recencyWeight(event: SeismicEvent): number {
-  if (event.source === "usgs") return 1 // already restricted to a recent live window
+  if (event.source === "usgs" || event.source === "sgc-live") return 1 // already restricted to a recent live window
   const ageYears = (Date.now() - new Date(event.time).getTime()) / (365.25 * 24 * 60 * 60 * 1000)
   if (!Number.isFinite(ageYears) || ageYears < 0) return 1
   return Math.exp(-ageYears / RECENCY_HALF_LIFE_YEARS)
@@ -92,7 +92,7 @@ export async function getSeismicExposureByVereda(
   if (centroids.length === 0) return result
 
   const eventos = await getSismologiaEventos()
-  const events = [...eventos.usgs.events, ...eventos.sgc.events]
+  const events = [...eventos.sgcLive.events, ...eventos.usgs.events, ...eventos.sgc.events]
 
   for (const c of centroids) {
     const origin = point([c.lon, c.lat])
