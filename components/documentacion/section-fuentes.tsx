@@ -271,13 +271,24 @@ const GROUPS: SourceGroup[] = [
   {
     title: "Sismología",
     description:
-      "Actividad sísmica en vivo (USGS) y el catálogo histórico oficial de Colombia (SGC), más un resumen opcional de reportes comunitarios de daños en Sevilla.",
+      "Actividad sísmica en vivo de la Red Sismológica Nacional de Colombia (SGC) como fuente principal, con el catálogo global del USGS como verificación y el catálogo histórico oficial del SGC, más un resumen opcional de reportes comunitarios de daños en Sevilla. Los sismos no se pueden pronosticar: estas fuentes mejoran la detección en vivo, no la predicción.",
     sources: [
+      {
+        nombre: "Feed sísmico casi en tiempo real (RSNC)",
+        publicador: "Red Sismológica Nacional de Colombia — Servicio Geológico Colombiano (SGC)",
+        descripcion:
+          "Fuente en vivo principal: todos los eventos localizados por la red nacional en los últimos 5 días, desde ~M0.4 — magnitud, profundidad, ubicación, lugar descriptivo y estado de revisión (manual/automático). Al ser la red local del país, detecta los microsismos (M1–M4) que el catálogo global del USGS no registra. Cuando un mismo sismo aparece también en el USGS, se conserva el registro del SGC para no duplicarlo. Feed público sin clave; se recomienda coordinar con el SGC el uso automatizado sostenido.",
+        url: "https://www.sgc.gov.co/sismos",
+        acceso: "Feed GeoJSON público, sin clave",
+        licencia: "Datos abiertos del Estado colombiano",
+        cobertura: "Colombia (y eventos mundiales significativos), filtrado a la región de Sevilla/Caicedonia/Zarzal",
+        actualizacion: "Consultado cada 5 minutos",
+      },
       {
         nombre: "Catálogo sísmico en vivo (FDSN Event Web Service)",
         publicador: "USGS (Servicio Geológico de Estados Unidos)",
         descripcion:
-          "Eventos sísmicos globales de los últimos 90 días dentro de la zona de estudio, sin magnitud mínima — magnitud, profundidad, ubicación y lugar descriptivo.",
+          "Verificación independiente y ventana más larga (90 días): eventos sísmicos globales dentro de la zona de estudio, sin magnitud mínima — magnitud, profundidad, ubicación y lugar descriptivo. Confirma los eventos regionales de mayor magnitud, aunque su cobertura para Colombia baja de forma fiable solo hasta ~M4.",
         url: "https://earthquake.usgs.gov/fdsnws/event/1/",
         acceso: "API REST pública (GeoJSON), sin clave",
         licencia: "Dominio público (USGS)",

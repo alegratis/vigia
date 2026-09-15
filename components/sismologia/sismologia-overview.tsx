@@ -67,16 +67,21 @@ export function SismologiaOverview() {
     )
   }
 
-  const allEvents = [...data.usgs.events, ...data.sgc.events]
+  const allEvents = [...data.sgcLive.events, ...data.usgs.events, ...data.sgc.events]
   const maxMagnitude = allEvents.reduce((max, e) => Math.max(max, e.magnitude), 0)
-  const latestUsgs = data.usgs.events[0] ?? null
+  // Most recent across the live sources (SGC RSNC + USGS).
+  const latestLive = [...data.sgcLive.events, ...data.usgs.events].reduce<typeof allEvents[number] | null>(
+    (latest, e) => (latest == null || new Date(e.time) > new Date(latest.time) ? e : latest),
+    null,
+  )
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
-          Actualizado {formatDateTime(data.generatedAt)} · {data.usgs.events.length} eventos USGS en{" "}
-          {data.usgs.windowDays} días · {data.sgc.events.length} eventos SGC históricos
+          Actualizado {formatDateTime(data.generatedAt)} · {data.sgcLive.events.length} eventos SGC en vivo (
+          {data.sgcLive.windowDays} días) · {data.usgs.events.length} USGS ({data.usgs.windowDays} días) ·{" "}
+          {data.sgc.events.length} SGC históricos
         </p>
         <button
           type="button"
@@ -90,8 +95,8 @@ export function SismologiaOverview() {
       </div>
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
         <MetricCard
-          label="Eventos USGS (90 días)"
-          value={String(data.usgs.events.length)}
+          label="Eventos SGC en vivo (5 días)"
+          value={String(data.sgcLive.events.length)}
           icon={<Activity className="size-4" aria-hidden="true" />}
         />
         <MetricCard
@@ -100,11 +105,14 @@ export function SismologiaOverview() {
           icon={<Gauge className="size-4" aria-hidden="true" />}
         />
         <MetricCard
-          label="Último evento USGS"
-          value={latestUsgs ? formatDateTime(latestUsgs.time) : "Sin eventos recientes"}
+          label="Último evento"
+          value={latestLive ? formatDateTime(latestLive.time) : "Sin eventos recientes"}
           icon={<Activity className="size-4" aria-hidden="true" />}
         />
       </div>
+      {!data.sgcLive.ok && (
+        <p className="text-xs text-muted-foreground">La fuente en vivo (SGC RSNC) no respondió en esta actualización.</p>
+      )}
       {!data.usgs.ok && (
         <p className="text-xs text-muted-foreground">La fuente en vivo (USGS) no respondió en esta actualización.</p>
       )}
