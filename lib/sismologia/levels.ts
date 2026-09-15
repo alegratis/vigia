@@ -71,3 +71,40 @@ export function magnitudeColorToken(magnitude: number): string {
 export function magnitudeRadius(magnitude: number): number {
   return Math.min(16, Math.max(4, 3 + magnitude * 1.8))
 }
+
+/**
+ * Per-vereda seismic **exposure** tiers — distinct from the magnitude tiers
+ * above, which classify a single quake. Exposure is the 0–1 distance-decay
+ * score from lib/sismologia/exposure-score.ts (combining every nearby
+ * epicenter), and drives the vereda choropleth fill on the sismología map —
+ * the same way the deslizamientos and inundaciones maps shade their veredas
+ * by their own models. It reuses the app-wide 0.2/0.4/0.6/0.8 score cutoffs
+ * and the same 5-tier vocabulary as the compound-risk model
+ * (lib/riesgo-compuesto/levels.ts), colored with the sismología magnitude
+ * ramp so the whole category reads as one palette.
+ */
+export const SEISMIC_EXPOSURE_LEVELS = ["Muy bajo", "Bajo", "Moderado", "Alto", "Muy alto"] as const
+export type SeismicExposureLevel = (typeof SEISMIC_EXPOSURE_LEVELS)[number]
+
+export const SEISMIC_EXPOSURE_LEVEL_TOKENS: Record<SeismicExposureLevel, string> = {
+  "Muy bajo": "var(--sismologia-micro)",
+  Bajo: "var(--sismologia-menor)",
+  Moderado: "var(--sismologia-ligero)",
+  Alto: "var(--sismologia-moderado)",
+  "Muy alto": "var(--sismologia-fuerte)",
+}
+
+/** Maps a 0–1 exposure score onto the shared 5-tier scale (same cutoffs as `compoundLevelFromScore`). */
+export function seismicExposureLevel(score: number): SeismicExposureLevel {
+  if (score < 0.2) return "Muy bajo"
+  if (score < 0.4) return "Bajo"
+  if (score < 0.6) return "Moderado"
+  if (score < 0.8) return "Alto"
+  return "Muy alto"
+}
+
+/** Raw CSS color token for an exposure score, falling back to a neutral tone when the score is unavailable. */
+export function seismicExposureColorToken(score: number | null | undefined): string {
+  if (score == null) return "var(--muted-foreground)"
+  return SEISMIC_EXPOSURE_LEVEL_TOKENS[seismicExposureLevel(score)]
+}

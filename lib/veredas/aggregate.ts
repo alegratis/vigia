@@ -53,6 +53,7 @@ import { computeVeredaHazard } from "@/lib/deslizamientos/hazard-model"
 import type { SusceptibilityLevel } from "@/lib/deslizamientos/levels"
 import { computeVeredaFloodHazard } from "@/lib/inundaciones/hazard-model"
 import type { FloodSusceptibilityLevel } from "@/lib/inundaciones/levels"
+import { getSeismicExposureByVereda } from "@/lib/sismologia/exposure-score"
 import type { VeredaBoundary } from "./boundaries"
 
 export interface VeredaAggregate {
@@ -77,6 +78,13 @@ export interface VeredaAggregate {
   /** Official zoning class at this centroid, or `null` outside the zoning layer's coverage (every vereda in Zarzal). */
   floodZoningLevel: FloodSusceptibilityLevel | null
   floodZoningCovered: boolean
+
+  /** 0–1 seismic exposure score at this vereda's centroid — see lib/sismologia/exposure-score.ts. Never `null`: seismic exposure is regional, so a vereda far from every known epicenter simply scores near 0. */
+  seismicScoreAvg: number | null
+  /** Distance (km) from this vereda's centroid to the nearest known epicenter (any source). */
+  seismicNearestEventKm: number | null
+  /** Magnitude of that nearest epicenter. */
+  seismicNearestMagnitude: number | null
 
   puntosMuestra: number
   poblacion: number | null
@@ -128,10 +136,11 @@ export async function aggregateVeredas(
     return { codigoVereda: boundary.codigoVereda, lat, lon }
   })
 
-  const [susceptibilityPoints, criticalSites, hazardByVereda] = await Promise.all([
+  const [susceptibilityPoints, criticalSites, hazardByVereda, seismicByVereda] = await Promise.all([
     getSusceptibilityPointsForAggregation(),
     getCriticalSites(),
     computeVeredaHazard(centroids),
+    getSeismicExposureByVereda(centroids),
   ])
 
   // Flood centroids reuse each vereda's slope from the landslide hazard
@@ -188,6 +197,9 @@ export async function aggregateVeredas(
         floodStreamDistanceKm: floodHazard?.streamDistanceKm ?? null,
         floodZoningLevel: floodHazard?.zoningLevel ?? null,
         floodZoningCovered: floodHazard?.zoningCovered ?? false,
+        seismicScoreAvg: seismicByVereda.get(boundary.codigoVereda)?.score ?? null,
+        seismicNearestEventKm: seismicByVereda.get(boundary.codigoVereda)?.nearestEventKm ?? null,
+        seismicNearestMagnitude: seismicByVereda.get(boundary.codigoVereda)?.nearestEventMagnitude ?? null,
         puntosMuestra: 0,
         poblacion: null,
         poblacionMenores5: null,
@@ -232,6 +244,9 @@ export async function aggregateVeredas(
       floodStreamDistanceKm: floodHazard?.streamDistanceKm ?? null,
       floodZoningLevel: floodHazard?.zoningLevel ?? null,
       floodZoningCovered: floodHazard?.zoningCovered ?? false,
+      seismicScoreAvg: seismicByVereda.get(boundary.codigoVereda)?.score ?? null,
+      seismicNearestEventKm: seismicByVereda.get(boundary.codigoVereda)?.nearestEventKm ?? null,
+      seismicNearestMagnitude: seismicByVereda.get(boundary.codigoVereda)?.nearestEventMagnitude ?? null,
       puntosMuestra: insidePoints.length,
       poblacion,
       poblacionMenores5,

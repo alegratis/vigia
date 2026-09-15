@@ -56,6 +56,20 @@ export interface VeredaProperties {
   /** Whether this centroid falls inside the official zoning layer's coverage at all — `false` for every vereda in Zarzal. */
   floodZoningCovered: boolean
 
+  /**
+   * 0–1 seismic exposure score at this vereda's centroid — a distance-decay
+   * combination of every nearby epicenter (SGC live + USGS + SGC
+   * historical), see lib/sismologia/exposure-score.ts. Drives the vereda
+   * choropleth fill on the sismología map. Never `null`: seismic exposure
+   * is a regional phenomenon, so a vereda far from every known event simply
+   * scores near 0.
+   */
+  seismicScoreAvg: number | null
+  /** Distance (km) from this vereda's centroid to the nearest known epicenter. */
+  seismicNearestEventKm: number | null
+  /** Magnitude of that nearest epicenter. */
+  seismicNearestMagnitude: number | null
+
   /** RED LabOT `VIGIA_Amenaza_IS_Puntos` grid points used for this vereda's population/infrastructure sums below. 0 means no coverage (Zarzal, which that layer never covered). */
   puntosMuestra: number
 
