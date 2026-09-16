@@ -54,6 +54,8 @@ import type { SusceptibilityLevel } from "@/lib/deslizamientos/levels"
 import { computeVeredaFloodHazard } from "@/lib/inundaciones/hazard-model"
 import type { FloodSusceptibilityLevel } from "@/lib/inundaciones/levels"
 import { getSeismicExposureByVereda } from "@/lib/sismologia/exposure-score"
+import { getNwpConditionsBatch, fireWeatherScore } from "@/lib/nwp/openmeteo-conditions"
+import { fireWeatherLevelFromScore, type FireThreatLevel } from "@/lib/incendios/fire-weather"
 import type { VeredaBoundary } from "./boundaries"
 
 export interface VeredaAggregate {
@@ -69,6 +71,13 @@ export interface VeredaAggregate {
   historyDistanceKm: number | null
   /** Current antecedent-rainfall index over its 3-year same-season baseline — see hazard-model.ts. */
   rainfallRatio: number | null
+  /** Near-surface (0–7 cm) soil moisture (m³/m³) at this centroid, from Open-Meteo — feeds the landslide score. */
+  soilMoisture: number | null
+
+  /** 0–1 fire-weather score (VPD + wind + dry-spell, Open-Meteo) at this centroid — this app's own live fire model, national. See lib/nwp/openmeteo-conditions.ts. */
+  fireWeatherScoreAvg: number | null
+  /** Fire-weather level from the same score, on the `AmenazaIncendios` 4-level scale. */
+  fireWeatherLevel: FireThreatLevel | null
 
   /** Final 0–1 composite score from this app's own flood hazard model — see lib/inundaciones/hazard-model.ts. */
   floodScoreAvg: number | null
@@ -136,12 +145,24 @@ export async function aggregateVeredas(
     return { codigoVereda: boundary.codigoVereda, lat, lon }
   })
 
+  // One shared NWP fetch per centroid feeds both the landslide soil-moisture
+  // factor and the fire-weather model (see lib/nwp/openmeteo-conditions.ts),
+  // so these predictors add a single fan-out, not one each.
+  const conditions = await getNwpConditionsBatch(centroids).catch(() => null)
+
   const [susceptibilityPoints, criticalSites, hazardByVereda, seismicByVereda] = await Promise.all([
     getSusceptibilityPointsForAggregation(),
     getCriticalSites(),
-    computeVeredaHazard(centroids),
+    computeVeredaHazard(centroids, conditions ?? undefined),
     getSeismicExposureByVereda(centroids),
   ])
+
+  const fireWeatherByVereda = new Map<string, { score: number | null; level: FireThreatLevel | null }>()
+  centroids.forEach((c, i) => {
+    const cond = conditions?.[i] ?? null
+    const score = cond ? fireWeatherScore(cond) : null
+    fireWeatherByVereda.set(c.codigoVereda, { score, level: fireWeatherLevelFromScore(score) })
+  })
 
   // Flood centroids reuse each vereda's slope from the landslide hazard
   // result above instead of a second elevation fetch for the same point.
@@ -192,6 +213,9 @@ export async function aggregateVeredas(
         faultDistanceKm: hazard?.faultDistanceKm ?? null,
         historyDistanceKm: hazard?.historyDistanceKm ?? null,
         rainfallRatio: hazard?.rainfallRatio ?? null,
+        soilMoisture: hazard?.soilMoisture ?? null,
+        fireWeatherScoreAvg: fireWeatherByVereda.get(boundary.codigoVereda)?.score ?? null,
+        fireWeatherLevel: fireWeatherByVereda.get(boundary.codigoVereda)?.level ?? null,
         floodScoreAvg: floodHazard?.score ?? null,
         floodLevel: floodHazard?.level ?? null,
         floodStreamDistanceKm: floodHazard?.streamDistanceKm ?? null,
@@ -239,6 +263,9 @@ export async function aggregateVeredas(
       faultDistanceKm: hazard?.faultDistanceKm ?? null,
       historyDistanceKm: hazard?.historyDistanceKm ?? null,
       rainfallRatio: hazard?.rainfallRatio ?? null,
+      soilMoisture: hazard?.soilMoisture ?? null,
+      fireWeatherScoreAvg: fireWeatherByVereda.get(boundary.codigoVereda)?.score ?? null,
+      fireWeatherLevel: fireWeatherByVereda.get(boundary.codigoVereda)?.level ?? null,
       floodScoreAvg: floodHazard?.score ?? null,
       floodLevel: floodHazard?.level ?? null,
       floodStreamDistanceKm: floodHazard?.streamDistanceKm ?? null,

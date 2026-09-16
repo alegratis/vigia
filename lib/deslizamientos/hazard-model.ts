@@ -49,6 +49,7 @@ import { getRoadVertices, nearestRoadDistanceKm } from "./road-proximity"
 import { getFaultTraces, nearestFaultDistanceKm } from "./faults"
 import { getLandslideRecords, nearestLandslideDistanceKm } from "./landslide-inventory"
 import { computeRainfallTriggerBatch } from "./rainfall-trigger"
+import { soilMoistureScore, type NwpConditions } from "@/lib/nwp/openmeteo-conditions"
 import { SUSCEPTIBILITY_LEVELS, type SusceptibilityLevel } from "./levels"
 
 /** How much slope vs. road proximity vs. fault proximity vs. historical-inventory proximity contributes to the static factor. */
@@ -56,9 +57,16 @@ const SLOPE_WEIGHT = 0.35
 const ROAD_WEIGHT = 0.15
 const FAULT_WEIGHT = 0.2
 const HISTORY_WEIGHT = 0.3
-/** How much the static factor vs. the rainfall trigger contributes to the final score. */
-const STATIC_WEIGHT = 0.6
-const TRIGGER_WEIGHT = 0.4
+/**
+ * How much the static factor vs. the two dynamic (weather) factors —
+ * antecedent-rainfall trigger and near-surface soil moisture — contribute to
+ * the final score. Soil moisture is the NWP predictor added for the national
+ * rollout: a direct wetness state complementing the rainfall anomaly. Weights
+ * are re-normalized over whichever factors actually resolved per vereda.
+ */
+const STATIC_WEIGHT = 0.55
+const TRIGGER_WEIGHT = 0.27
+const SOIL_WEIGHT = 0.18
 
 /** Slope at/above this (degrees) maxes out the slope factor's contribution. */
 const MAX_SLOPE_DEG = 45
@@ -96,6 +104,8 @@ export interface VeredaHazardResult {
   historyDistanceKm: number | null
   /** Current antecedent-rainfall index over its 3-year same-season baseline; `null` if no baseline could be formed. */
   rainfallRatio: number | null
+  /** Near-surface (0–7 cm) volumetric soil moisture (m³/m³) at this centroid, from Open-Meteo; `null` if unavailable. */
+  soilMoisture: number | null
 }
 
 /**
@@ -113,6 +123,7 @@ export interface VeredaHazardResult {
  */
 export async function computeVeredaHazard(
   centroids: HazardCentroid[],
+  conditions?: (NwpConditions | null)[],
 ): Promise<Map<string, VeredaHazardResult>> {
   const result = new Map<string, VeredaHazardResult>()
   if (centroids.length === 0) return result
@@ -155,14 +166,19 @@ export async function computeVeredaHazard(
         : null
 
     const triggerScore = trigger?.score ?? null
+    const cond = conditions?.[i] ?? null
+    const soilScore = cond ? soilMoistureScore(cond) : null
 
-    const totalWeight = (staticScore != null ? STATIC_WEIGHT : 0) + (triggerScore != null ? TRIGGER_WEIGHT : 0)
+    // Combine static + the two dynamic factors, re-normalizing over whichever
+    // actually resolved so a missing predictor lowers precision rather than
+    // dragging the score toward zero.
+    const components: Array<{ value: number; weight: number }> = []
+    if (staticScore != null) components.push({ value: staticScore, weight: STATIC_WEIGHT })
+    if (triggerScore != null) components.push({ value: triggerScore, weight: TRIGGER_WEIGHT })
+    if (soilScore != null) components.push({ value: soilScore, weight: SOIL_WEIGHT })
+    const totalWeight = components.reduce((sum, comp) => sum + comp.weight, 0)
     const finalScore =
-      totalWeight > 0
-        ? ((staticScore ?? 0) * (staticScore != null ? STATIC_WEIGHT : 0) +
-            (triggerScore ?? 0) * (triggerScore != null ? TRIGGER_WEIGHT : 0)) /
-          totalWeight
-        : null
+      totalWeight > 0 ? components.reduce((sum, comp) => sum + comp.value * comp.weight, 0) / totalWeight : null
 
     result.set(c.codigoVereda, {
       level: finalScore != null ? levelFromScore(finalScore) : null,
@@ -172,6 +188,7 @@ export async function computeVeredaHazard(
       faultDistanceKm,
       historyDistanceKm,
       rainfallRatio: trigger?.ratio ?? null,
+      soilMoisture: cond?.soilMoisture ?? null,
     })
   })
 

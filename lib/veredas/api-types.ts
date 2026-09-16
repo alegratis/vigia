@@ -10,6 +10,7 @@
  */
 
 import type { FloodSusceptibilityLevel } from "@/lib/inundaciones/levels"
+import type { FireThreatLevel } from "@/lib/incendios/levels"
 
 export interface VeredaProperties {
   /** DIVIPOLA vereda code (departamento+municipio+vereda), e.g. "76895002" — or a synthetic "<mpio-code>-urbano" id for the Casco Urbano pseudo-vereda. */
@@ -39,6 +40,18 @@ export interface VeredaProperties {
   historyDistanceKm: number | null
   /** Current antecedent-rainfall index over its 3-year same-season baseline; `null` if no baseline could be formed. */
   rainfallRatio: number | null
+  /** Near-surface (0–7 cm) volumetric soil moisture (m³/m³) at this centroid, from Open-Meteo; feeds the landslide score. */
+  soilMoisture: number | null
+
+  /**
+   * 0–1 fire-weather score at this vereda's centroid — vapor-pressure
+   * deficit + wind + dry-spell length from Open-Meteo (see
+   * lib/nwp/openmeteo-conditions.ts). This app's own live, national fire
+   * model, distinct from the study-area-only published amenaza polygons.
+   */
+  fireWeatherScoreAvg: number | null
+  /** Fire-weather level from the same score, on the `AmenazaIncendios` 4-level scale. */
+  fireWeatherLevel: FireThreatLevel | null
 
   /**
    * Final 0–1 composite score from this app's own flood hazard model
