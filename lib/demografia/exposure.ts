@@ -47,9 +47,9 @@ export interface ExposureResult {
   landslideError: string | null
 }
 
-export async function getExposureOverview(): Promise<ExposureResult> {
+export async function getExposureOverview(municipioCodes?: string[]): Promise<ExposureResult> {
   const [populations, floodSettled, fireOutcome, landslideOutcome] = await Promise.all([
-    getMunicipioPopulations(),
+    getMunicipioPopulations(municipioCodes),
     Promise.allSettled(STATIONS.map((s) => assessReach(s.reachId))),
     (async () => {
       try {

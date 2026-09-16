@@ -20,6 +20,8 @@ import {
 } from "@/lib/demografia/categories"
 import type { DemografiaResponse } from "@/lib/demografia/api-types"
 import type { VeredaFeature } from "@/lib/veredas/api-types"
+import { regionQuery } from "@/lib/lugares/region"
+import { useSelectedPlace } from "@/lib/lugares/use-selected-place"
 
 const fetcher = async (url: string): Promise<DemografiaResponse> => {
   const res = await fetch(url)
@@ -69,9 +71,12 @@ export function LiveAreaPopulation({
   onClearSelection,
   className,
 }: LiveAreaPopulationProps) {
-  const { data, isLoading } = useSWR<DemografiaResponse>("/api/demografia", fetcher, {
-    revalidateOnFocus: false,
-  })
+  const { region } = useSelectedPlace()
+  const { data, isLoading } = useSWR<DemografiaResponse>(
+    `/api/demografia${regionQuery(region)}`,
+    fetcher,
+    { revalidateOnFocus: false },
+  )
 
   const [year, setYear] = useState<AvailableYear>(LATEST_YEAR)
 
@@ -94,6 +99,11 @@ export function LiveAreaPopulation({
     0,
   )
 
+  // A nationally-selected municipio outside the study area has no DANE
+  // breakdown checked in — show an honest note instead of zeroed figures.
+  const hasAnyData = visible.some((m) => m.population.hasData)
+  const noDataLabel = visible[0]?.municipio ?? region.label
+
   return (
     <Card className={cn("flex h-[420px] max-h-[60vh] flex-col", className)}>
       <CardHeader className="gap-1 border-b border-border">
@@ -108,10 +118,12 @@ export function LiveAreaPopulation({
         <p className="text-xs leading-relaxed text-muted-foreground">
           {selectedVereda
             ? `Vereda dentro de ${selectedVereda.properties.municipio}. El desglose urbano/rural y por sexo de abajo es del municipio (DANE); la vereda solo aporta un total propio. Haz clic en \u201cVer todo\u201d para volver al encuadre.`
-            : selectedMunicipio
-              ? "Zona seleccionada en el mapa. Haz clic en \u201cVer todo\u201d para volver al encuadre."
-              : namesInView
-                ? `Municipios visibles: ${namesInView.join(", ")}.`
+              : selectedMunicipio
+                ? "Zona seleccionada en el mapa. Haz clic en \u201cVer todo\u201d para volver al encuadre."
+                : !region.isStudyArea
+                  ? `Municipio seleccionado: ${region.label}.`
+                  : namesInView
+                    ? `Municipios visibles: ${namesInView.join(", ")}.`
                 : bounds
                   ? "Ningún centroide municipal cae dentro del encuadre actual; se muestran los tres municipios de referencia."
                   : "Mueve el mapa publicado para filtrar por el área visible. Por ahora se muestran los tres municipios de referencia."}
@@ -141,6 +153,18 @@ export function LiveAreaPopulation({
             </button>
           </div>
         )}
+        {!hasAnyData && (
+          <div className="rounded-lg border border-border bg-muted/30 p-4 text-sm">
+            <p className="font-medium text-foreground">{noDataLabel}</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              El desglose de población DANE (urbano/rural y por sexo) está disponible por ahora solo
+              para los municipios del área de estudio (Sevilla, Caicedonia y Zarzal). Los modelos de
+              amenaza por vereda sí se calculan para el municipio seleccionado.
+            </p>
+          </div>
+        )}
+        {hasAnyData && (
+        <>
         <div className="flex items-center justify-between gap-2">
           <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Año
@@ -276,6 +300,8 @@ export function LiveAreaPopulation({
             )
           })}
         </div>
+        </>
+        )}
       </CardContent>
     </Card>
   )

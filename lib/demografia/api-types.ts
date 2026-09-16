@@ -14,6 +14,8 @@ export interface YearPopulationView {
 export interface MunicipioPopulationView {
   municipio: string
   codigoMunicipio: string
+  /** False when no DANE breakdown exists for this municipio (see lib/demografia/dane.ts). */
+  hasData: boolean
   year: number
   urbano: number
   rural: number

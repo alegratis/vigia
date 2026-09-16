@@ -1,6 +1,7 @@
 import "server-only"
 
 import daneProjections from "./data/dane-projections-2018-2026.json"
+import { getMunicipioByCode } from "@/lib/lugares/registry"
 
 /**
  * DANE municipal population for the three study-area municipalities.
@@ -42,6 +43,14 @@ export interface YearPopulation {
 export interface MunicipioPopulation {
   municipio: string
   codigoMunicipio: string
+  /**
+   * False for a nationally-selected municipio that isn't one of the three
+   * study-area municipalities: DANE's urbano/rural/sex breakdown is only
+   * checked in for those three (the national series exists solely as a
+   * multi-hundred-MB Excel workbook with no per-municipio API). Rather than
+   * fabricate figures, every value is zeroed and the UI shows "sin datos".
+   */
+  hasData: boolean
   /** Most recent year available; the top-level fields below mirror it. */
   year: AvailableYear
   urbano: number
@@ -53,30 +62,71 @@ export interface MunicipioPopulation {
   years: Record<AvailableYear, YearPopulation>
 }
 
-/** Reads and normalizes population for the three study-area municipalities from the static dataset. */
-export async function getMunicipioPopulations(): Promise<MunicipioPopulation[]> {
+type DaneEntry = { codigoMunicipio: string; years: Record<string, YearPopulation> }
+const DANE_MUNICIPIOS = daneProjections.municipios as Record<string, DaneEntry>
+
+/** Study-area municipios indexed by DIVIPOLA code, for selection-aware lookup. */
+const STUDY_AREA_BY_CODE = new Map(
+  MUNICIPIOS.map((name) => [DANE_MUNICIPIOS[name].codigoMunicipio, name] as const),
+)
+
+const EMPTY_YEAR: YearPopulation = { urbano: 0, rural: 0, hombres: 0, mujeres: 0, total: 0 }
+
+function buildFromDane(name: string, latestYear: AvailableYear): MunicipioPopulation {
+  const entry = DANE_MUNICIPIOS[name]
+  const years = Object.fromEntries(
+    AVAILABLE_YEARS.map((y) => [y, entry.years[String(y)]]),
+  ) as Record<AvailableYear, YearPopulation>
+  const latest = years[latestYear]
+  return {
+    municipio: name,
+    codigoMunicipio: entry.codigoMunicipio,
+    hasData: true,
+    year: latestYear,
+    urbano: latest.urbano,
+    rural: latest.rural,
+    hombres: latest.hombres,
+    mujeres: latest.mujeres,
+    total: latest.total,
+    years,
+  }
+}
+
+function buildEmpty(code: string, latestYear: AvailableYear): MunicipioPopulation {
+  const years = Object.fromEntries(AVAILABLE_YEARS.map((y) => [y, EMPTY_YEAR])) as Record<
+    AvailableYear,
+    YearPopulation
+  >
+  return {
+    municipio: getMunicipioByCode(code)?.name ?? code,
+    codigoMunicipio: code,
+    hasData: false,
+    year: latestYear,
+    urbano: 0,
+    rural: 0,
+    hombres: 0,
+    mujeres: 0,
+    total: 0,
+    years,
+  }
+}
+
+/**
+ * Reads normalized population for the requested municipios. With no codes
+ * (the default), returns the three study-area municipalities' full DANE
+ * breakdown. With codes, returns DANE data for any that are study-area
+ * municipios and an honest `hasData: false` placeholder for the rest, so a
+ * nationally-selected municipio never shows fabricated or borrowed figures.
+ */
+export async function getMunicipioPopulations(municipioCodes?: string[]): Promise<MunicipioPopulation[]> {
   const latestYear = AVAILABLE_YEARS[AVAILABLE_YEARS.length - 1]
 
-  return MUNICIPIOS.map((name) => {
-    const entry = (daneProjections.municipios as Record<string, { codigoMunicipio: string; years: Record<string, YearPopulation> }>)[
-      name
-    ]
+  if (!municipioCodes || municipioCodes.length === 0) {
+    return MUNICIPIOS.map((name) => buildFromDane(name, latestYear))
+  }
 
-    const years = Object.fromEntries(
-      AVAILABLE_YEARS.map((y) => [y, entry.years[String(y)]]),
-    ) as Record<AvailableYear, YearPopulation>
-    const latest = years[latestYear]
-
-    return {
-      municipio: name,
-      codigoMunicipio: entry.codigoMunicipio,
-      year: latestYear,
-      urbano: latest.urbano,
-      rural: latest.rural,
-      hombres: latest.hombres,
-      mujeres: latest.mujeres,
-      total: latest.total,
-      years,
-    }
+  return municipioCodes.map((code) => {
+    const studyName = STUDY_AREA_BY_CODE.get(code)
+    return studyName ? buildFromDane(studyName, latestYear) : buildEmpty(code, latestYear)
   })
 }
