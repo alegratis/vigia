@@ -36,7 +36,7 @@ const STEPS: GuideStep[] = [
     simple:
       "En la barra lateral del panel principal, la tarjeta de población te muestra cuánta gente vive en el municipio seleccionado, separada por año, si vive en el pueblo o en el campo, y si son hombres o mujeres. Cambia el municipio con el selector de ubicación y las cifras se actualizan solas.",
     technical:
-      "Los números vienen de las proyecciones poblacionales del DANE (2019–2026) y se cruzan en el momento con la señal de monitoreo en vivo de cada amenaza, para saber quién está más expuesto y dónde. El desglose oficial existe por ahora solo para algunos municipios; para el resto se muestran los modelos de amenaza por vereda, sin cifras de población fabricadas.",
+      "Los números vienen de las proyecciones poblacionales del DANE (2020–2035, actualización post-COVID del CNPV 2018) y se cruzan en el momento con la señal de monitoreo en vivo de cada amenaza, para saber quién está más expuesto y dónde. El desglose urbano/rural y por sexo existe para todos los municipios del país; los modelos de amenaza por vereda se muestran para el municipio seleccionado.",
     image: {
       src: "/images/docs/demografia.png",
       alt: "Tarjeta de población en la barra lateral mostrando población urbana y rural y por sexo del municipio seleccionado",

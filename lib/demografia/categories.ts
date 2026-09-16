@@ -5,7 +5,7 @@
  * categories with their fixed identity colors (each maps to a token defined
  * in globals.css).
  *
- * This list must stay in sync with lib/demografia/data/dane-projections-2018-2026.json
+ * This list must stay in sync with lib/demografia/data/dane-projections-national.json
  * (the source of truth, read server-side in lib/demografia/dane.ts) since this
  * file has to stay import-safe for client components.
  */
@@ -23,8 +23,17 @@ export function normalizeMunicipioName(raw: string): string {
   return match ?? raw
 }
 
-export const AVAILABLE_YEARS = [2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026] as const
+export const AVAILABLE_YEARS = [
+  2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030, 2031, 2032, 2033, 2034, 2035,
+] as const
 export type AvailableYear = (typeof AVAILABLE_YEARS)[number]
+
+/**
+ * Year the population panels open on: the most recent non-projected year in
+ * DANE's series, rather than the far 2035 endpoint. Kept within
+ * AVAILABLE_YEARS so it's always a valid toggle value.
+ */
+export const DEFAULT_YEAR: AvailableYear = 2026
 
 export type DemografiaCategoryKey = "urbano" | "rural" | "hombres" | "mujeres"
 

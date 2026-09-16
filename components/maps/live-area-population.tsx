@@ -13,6 +13,7 @@ import { pointsInBounds, type MapBounds } from "@/lib/map-bounds"
 import { formatNumber, formatShare } from "@/lib/demografia/ui"
 import {
   AVAILABLE_YEARS,
+  DEFAULT_YEAR,
   DEMOGRAFIA_CATEGORY_GROUPS,
   categoriesInGroup,
   getCategoryValue,
@@ -50,7 +51,7 @@ interface LiveAreaPopulationProps {
   className?: string
 }
 
-const LATEST_YEAR = AVAILABLE_YEARS[AVAILABLE_YEARS.length - 1]
+
 
 /**
  * Cross-references the current qgis2web map viewport (received via
@@ -78,7 +79,7 @@ export function LiveAreaPopulation({
     { revalidateOnFocus: false },
   )
 
-  const [year, setYear] = useState<AvailableYear>(LATEST_YEAR)
+  const [year, setYear] = useState<AvailableYear>(DEFAULT_YEAR)
 
   if (isLoading || !data) {
     return <Skeleton className={cn("h-[420px] max-h-[60vh] rounded-xl", className)} />
@@ -151,9 +152,8 @@ export function LiveAreaPopulation({
           <div className="rounded-lg border border-border bg-muted/30 p-4 text-sm">
             <p className="font-medium text-foreground">{noDataLabel}</p>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              El desglose de población DANE (urbano/rural y por sexo) está disponible por ahora solo
-              para algunos municipios. Los modelos de amenaza por vereda sí se calculan para el
-              municipio seleccionado.
+              No se encontró una serie de población DANE para este código de municipio. Los modelos
+              de amenaza por vereda sí se calculan para el municipio seleccionado.
             </p>
           </div>
         )}

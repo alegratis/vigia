@@ -1,36 +1,34 @@
 import "server-only"
 
-import daneProjections from "./data/dane-projections-2018-2026.json"
+import daneProjections from "./data/dane-projections-national.json"
 import { getMunicipioByCode, DEFAULT_MUNICIPIO_CODE } from "@/lib/lugares/registry"
 
 /**
- * DANE municipal population for the three study-area municipalities.
+ * DANE municipal population for every municipality in Colombia.
  *
- * Previously this fetched the open dataset "Distribución Poblacional Del
- * Valle Del Cauca" on datos.gov.co (Socrata resource 4wbc-urmu) live. That
- * resource's rows were last updated in December 2021 and only ever
- * published urbano/rural/hombres/mujeres columns for 2018-2020 — refetching
- * it daily could never surface anything newer, it was simply frozen.
+ * Source: DANE's official "Proyecciones de población municipal por área,
+ * sexo y edad" workbook (CNPV 2018, post-COVID-19 update), which covers
+ * 2020-2035 for all 1,122 municipios. DANE publishes it only as a single
+ * ~70 MB national Excel workbook with no per-municipio API, so it was
+ * downloaded once and reduced — server-side, at build time — to the compact
+ * per-municipio urbano/rural/hombres/mujeres/total series checked in at
+ * ./data/dane-projections-national.json. This module reads that JSON: no
+ * network call, no staleness risk, and real figures for any municipio the
+ * user selects rather than the three-municipio study-area extract this
+ * previously shipped.
  *
- * DANE's own municipal population series is far more current (its
- * "Proyecciones y retroproyecciones de poblacion municipal" workbook, last
- * republished 2025-07-30, covers 2018-2042 using the post-2018-census
- * cohort-component model), but it is only published as a single ~930 MB
- * national Excel workbook with no per-municipality API. So this file was
- * downloaded once, and the Sevilla/Caicedonia/Zarzal rows through 2026 were
- * extracted into ./data/dane-projections-2018-2026.json, checked in below.
- * That JSON is what this module reads — no network call, no staleness risk
- * from an abandoned live endpoint.
+ * To refresh when DANE republishes: re-run the extraction (download the
+ * workbook at DANE_SOURCE_URL, sum the per-sex age columns — Hombres and
+ * Mujeres — per municipio/year for the Cabecera, Centros Poblados y Rural
+ * Disperso, and Total area rows) and overwrite the JSON.
  */
-
-export const MUNICIPIOS = ["Sevilla", "Caicedonia", "Zarzal"] as const
 
 export const DANE_SOURCE = daneProjections.source
 export const DANE_SOURCE_URL = daneProjections.sourceUrl
 
-/** Years extracted from the DANE projections workbook. */
+/** Years extracted from the DANE projections workbook (2020-2035). */
 export const AVAILABLE_YEARS = daneProjections.extractedYears.map((y) => Number(y)) as readonly number[]
-export type AvailableYear = (typeof AVAILABLE_YEARS)[number]
+export type AvailableYear = number
 
 export interface YearPopulation {
   urbano: number
@@ -44,11 +42,10 @@ export interface MunicipioPopulation {
   municipio: string
   codigoMunicipio: string
   /**
-   * False for a nationally-selected municipio that isn't one of the three
-   * study-area municipalities: DANE's urbano/rural/sex breakdown is only
-   * checked in for those three (the national series exists solely as a
-   * multi-hundred-MB Excel workbook with no per-municipio API). Rather than
-   * fabricate figures, every value is zeroed and the UI shows "sin datos".
+   * True whenever DANE has a series for this municipio — i.e. every real
+   * DIVIPOLA municipio. Kept as a field (rather than assumed) so the UI can
+   * still show an honest placeholder for an unknown/invalid code instead of
+   * fabricated figures.
    */
   hasData: boolean
   /** Most recent year available; the top-level fields below mirror it. */
@@ -62,27 +59,22 @@ export interface MunicipioPopulation {
   years: Record<AvailableYear, YearPopulation>
 }
 
-type DaneEntry = { codigoMunicipio: string; years: Record<string, YearPopulation> }
+type DaneEntry = { nombre: string; years: Record<string, YearPopulation> }
 const DANE_MUNICIPIOS = daneProjections.municipios as Record<string, DaneEntry>
 
-/** Study-area municipios indexed by DIVIPOLA code, for selection-aware lookup. */
-const STUDY_AREA_BY_CODE = new Map(
-  MUNICIPIOS.map((name) => [DANE_MUNICIPIOS[name].codigoMunicipio, name] as const),
-)
-
+const LATEST_YEAR = AVAILABLE_YEARS[AVAILABLE_YEARS.length - 1]
 const EMPTY_YEAR: YearPopulation = { urbano: 0, rural: 0, hombres: 0, mujeres: 0, total: 0 }
 
-function buildFromDane(name: string, latestYear: AvailableYear): MunicipioPopulation {
-  const entry = DANE_MUNICIPIOS[name]
+function buildFromDane(code: string, entry: DaneEntry): MunicipioPopulation {
   const years = Object.fromEntries(
-    AVAILABLE_YEARS.map((y) => [y, entry.years[String(y)]]),
+    AVAILABLE_YEARS.map((y) => [y, entry.years[String(y)] ?? EMPTY_YEAR]),
   ) as Record<AvailableYear, YearPopulation>
-  const latest = years[latestYear]
+  const latest = years[LATEST_YEAR]
   return {
-    municipio: name,
-    codigoMunicipio: entry.codigoMunicipio,
+    municipio: getMunicipioByCode(code)?.name ?? entry.nombre,
+    codigoMunicipio: code,
     hasData: true,
-    year: latestYear,
+    year: LATEST_YEAR,
     urbano: latest.urbano,
     rural: latest.rural,
     hombres: latest.hombres,
@@ -92,7 +84,7 @@ function buildFromDane(name: string, latestYear: AvailableYear): MunicipioPopula
   }
 }
 
-function buildEmpty(code: string, latestYear: AvailableYear): MunicipioPopulation {
+function buildEmpty(code: string): MunicipioPopulation {
   const years = Object.fromEntries(AVAILABLE_YEARS.map((y) => [y, EMPTY_YEAR])) as Record<
     AvailableYear,
     YearPopulation
@@ -101,7 +93,7 @@ function buildEmpty(code: string, latestYear: AvailableYear): MunicipioPopulatio
     municipio: getMunicipioByCode(code)?.name ?? code,
     codigoMunicipio: code,
     hasData: false,
-    year: latestYear,
+    year: LATEST_YEAR,
     urbano: 0,
     rural: 0,
     hombres: 0,
@@ -112,19 +104,16 @@ function buildEmpty(code: string, latestYear: AvailableYear): MunicipioPopulatio
 }
 
 /**
- * Reads normalized population for the requested municipios. With no codes it
- * defaults to Sevilla (the app's home municipio). For each code it returns
- * the full DANE breakdown when that municipio is one of the three with
- * checked-in data (Sevilla, Caicedonia, Zarzal), and an honest
- * `hasData: false` placeholder otherwise, so a nationally-selected municipio
- * never shows fabricated or borrowed figures.
+ * Reads normalized DANE population for the requested municipios. With no
+ * codes it defaults to Sevilla (the app's home municipio). Every real
+ * DIVIPOLA code resolves to its full urbano/rural/hombres/mujeres series;
+ * an unknown code falls back to an honest `hasData: false` placeholder.
  */
 export async function getMunicipioPopulations(municipioCodes?: string[]): Promise<MunicipioPopulation[]> {
-  const latestYear = AVAILABLE_YEARS[AVAILABLE_YEARS.length - 1]
   const codes = municipioCodes && municipioCodes.length > 0 ? municipioCodes : [DEFAULT_MUNICIPIO_CODE]
 
   return codes.map((code) => {
-    const studyName = STUDY_AREA_BY_CODE.get(code)
-    return studyName ? buildFromDane(studyName, latestYear) : buildEmpty(code, latestYear)
+    const entry = DANE_MUNICIPIOS[code]
+    return entry ? buildFromDane(code, entry) : buildEmpty(code)
   })
 }
