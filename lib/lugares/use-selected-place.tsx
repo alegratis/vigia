@@ -1,12 +1,15 @@
 "use client"
 
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react"
+import { DEFAULT_MUNICIPIO_CODE } from "./registry"
 import { resolveRegion, type Region } from "./region"
 
 interface SelectedPlaceValue {
-  /** Selected municipio code, or null for the study-area default. */
+  /** Selected municipio code, or null before an explicit choice (resolves to the Sevilla default). */
   municipioCode: string | null
-  /** Region derived from the selection (codes, framing, label). */
+  /** The effective municipio code actually in use — never null (falls back to Sevilla). */
+  effectiveCode: string
+  /** Region derived from the selection (code, framing, label). */
   region: Region
   setMunicipioCode: (code: string | null) => void
 }
@@ -18,7 +21,7 @@ const SelectedPlaceContext = createContext<SelectedPlaceValue | null>(null)
  * (`?mun=<code>`) with history.replaceState — no navigation, so maps and
  * SWR hooks re-derive their region without a full page reload. Provided
  * around the hazard workspace; consumers elsewhere (e.g. the exposición
- * popup) fall back to the study-area default via `useSelectedPlace`.
+ * popup) fall back to the Sevilla default via `useSelectedPlace`.
  */
 export function SelectedPlaceProvider({
   children,
@@ -38,27 +41,29 @@ export function SelectedPlaceProvider({
     window.history.replaceState(null, "", url.toString())
   }, [])
 
-  const region = useMemo(() => resolveRegion(municipioCode), [municipioCode])
+  const effectiveCode = municipioCode ?? DEFAULT_MUNICIPIO_CODE
+  const region = useMemo(() => resolveRegion(effectiveCode), [effectiveCode])
 
   const value = useMemo<SelectedPlaceValue>(
-    () => ({ municipioCode, region, setMunicipioCode }),
-    [municipioCode, region, setMunicipioCode],
+    () => ({ municipioCode, effectiveCode, region, setMunicipioCode }),
+    [municipioCode, effectiveCode, region, setMunicipioCode],
   )
 
   return <SelectedPlaceContext.Provider value={value}>{children}</SelectedPlaceContext.Provider>
 }
 
-const STUDY_AREA_FALLBACK: SelectedPlaceValue = {
+const DEFAULT_FALLBACK: SelectedPlaceValue = {
   municipioCode: null,
-  region: resolveRegion(null),
+  effectiveCode: DEFAULT_MUNICIPIO_CODE,
+  region: resolveRegion(DEFAULT_MUNICIPIO_CODE),
   setMunicipioCode: () => {},
 }
 
 /**
  * Reads the selected place. Non-throwing on purpose: components rendered
  * outside a provider (the exposición popup route) transparently get the
- * study-area default rather than crashing.
+ * Sevilla default rather than crashing.
  */
 export function useSelectedPlace(): SelectedPlaceValue {
-  return useContext(SelectedPlaceContext) ?? STUDY_AREA_FALLBACK
+  return useContext(SelectedPlaceContext) ?? DEFAULT_FALLBACK
 }

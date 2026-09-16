@@ -73,7 +73,7 @@ export function DeslizamientosPanelContent({
         <p className="text-xs text-muted-foreground">
           El panel de población de la izquierda sigue leyendo el índice{" "}
           <code className="text-foreground">VIGIA_Amenaza_IS</code> de RED LabOT directamente, con su propia
-          clasificación — solo cubre Sevilla y Caicedonia. Activa la capa de humedad del suelo (NASA SMAP) para
+          clasificación, disponible solo en las veredas donde RED LabOT publicó su zonificación. Activa la capa de humedad del suelo (NASA SMAP) para
           contrastar la señal de disparo del modelo propio, o la capa de sitios críticos para ver puntos de daño
           vial verificados en campo (hundimientos, derrumbes, erosión, grietas de tracción) del levantamiento de
           2019 de la Secretaría de Infraestructura del Valle del Cauca — un complemento puntual e histórico, no

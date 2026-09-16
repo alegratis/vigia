@@ -9,12 +9,11 @@ import { useSelectedPlace } from "@/lib/lugares/use-selected-place"
 export { MUNICIPIOS }
 
 /**
- * The municipio names to show for a region: the three study-area names for
- * the default, or the selected municipio's name nationally. Shared by the
- * toggle hook and the toggle panel so both stay in sync with the selection.
+ * The municipio name(s) to show for a region — the selected municipio.
+ * Shared by the toggle hook and the toggle panel so both stay in sync with
+ * the selection.
  */
 export function municipioNamesForRegion(region: Region): string[] {
-  if (region.isStudyArea) return [...MUNICIPIOS]
   return region.codes.map((c) => getMunicipioByCode(c)?.name).filter((n): n is string => Boolean(n))
 }
 

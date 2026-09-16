@@ -27,13 +27,13 @@ const FACTORS = [
     label: "1. Zonificación oficial",
     weight: "50% del puntaje",
     detail:
-      "Clase de la capa pública susceptibilidad_inundaciones (ArcGIS Online), por punto-en-polígono sobre el centroide de la vereda. Es la única evidencia oficial directa, pero solo cubre el área zonificada de Sevilla y Caicedonia — ninguna vereda de Zarzal tiene esta cobertura.",
+      "Clase de la capa pública susceptibilidad_inundaciones (ArcGIS Online), por punto-en-polígono sobre el centroide de la vereda. Es la única evidencia oficial directa, pero solo existe donde hay zonificación oficial publicada; las veredas sin esa cobertura se apoyan en los otros dos factores.",
   },
   {
     label: "2. Cercanía a una quebrada o río",
     weight: "30% del puntaje",
     detail:
-      "Distancia real punto-a-segmento (no al vértice más cercano) hasta la traza de quebrada o río más próxima de la capa pública de hidrografía (19 cauces con nombre). Deja de influir a partir de 1 km. Es el único factor que llega a Zarzal.",
+      "Distancia real punto-a-segmento (no al vértice más cercano) hasta la traza de quebrada o río más próxima de la capa pública de hidrografía. Deja de influir a partir de 1 km. Es el factor con la cobertura más amplia, disponible incluso donde no hay zonificación oficial.",
   },
   {
     label: "3. Planicie del terreno",
@@ -94,8 +94,8 @@ export function FloodModelPanel({ className, selectedVereda, onClearSelection }:
         </h3>
         <p className="text-xs leading-relaxed text-muted-foreground">
           El color de cada vereda en la capa &quot;Modelo propio de inundación&quot; no viene de un índice
-          publicado — lo calcula esta misma app, combinando los tres factores de abajo, para extender la
-          zonificación oficial a las tres municipios, incluido Zarzal.{" "}
+          publicado —           lo calcula esta misma app, combinando los tres factores de abajo, para extender la
+          zonificación oficial a las veredas que no la tienen.{" "}
           <a href="/documentacion#metodologia" className="text-primary underline-offset-2 hover:underline">
             Ver metodología completa
           </a>

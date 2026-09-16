@@ -113,20 +113,14 @@ export function LiveAreaPopulation({
             ? `Vereda: ${selectedVereda.properties.nombre}`
             : selectedMunicipio
               ? `Selección: ${selectedMunicipio}`
-              : "Población en el encuadre actual"}
+              : `Población — ${region.municipioName}`}
         </h3>
         <p className="text-xs leading-relaxed text-muted-foreground">
           {selectedVereda
             ? `Vereda dentro de ${selectedVereda.properties.municipio}. El desglose urbano/rural y por sexo de abajo es del municipio (DANE); la vereda solo aporta un total propio. Haz clic en \u201cVer todo\u201d para volver al encuadre.`
-              : selectedMunicipio
-                ? "Zona seleccionada en el mapa. Haz clic en \u201cVer todo\u201d para volver al encuadre."
-                : !region.isStudyArea
-                  ? `Municipio seleccionado: ${region.label}.`
-                  : namesInView
-                    ? `Municipios visibles: ${namesInView.join(", ")}.`
-                : bounds
-                  ? "Ningún centroide municipal cae dentro del encuadre actual; se muestran los tres municipios de referencia."
-                  : "Mueve el mapa publicado para filtrar por el área visible. Por ahora se muestran los tres municipios de referencia."}
+            : selectedMunicipio
+              ? "Zona seleccionada en el mapa. Haz clic en \u201cVer todo\u201d para volver al encuadre."
+              : `Proyecciones de población DANE para ${region.label}.`}
         </p>
       </CardHeader>
       <CardContent className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto py-4">
@@ -158,8 +152,8 @@ export function LiveAreaPopulation({
             <p className="font-medium text-foreground">{noDataLabel}</p>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
               El desglose de población DANE (urbano/rural y por sexo) está disponible por ahora solo
-              para los municipios del área de estudio (Sevilla, Caicedonia y Zarzal). Los modelos de
-              amenaza por vereda sí se calculan para el municipio seleccionado.
+              para algunos municipios. Los modelos de amenaza por vereda sí se calculan para el
+              municipio seleccionado.
             </p>
           </div>
         )}
@@ -213,7 +207,7 @@ export function LiveAreaPopulation({
               <p className="text-xs text-muted-foreground">
                 {selectedVereda.properties.poblacion != null
                   ? "Suma de la grilla poblacional de RED LabOT dentro de los límites de la vereda; no incluye desglose urbano/rural ni por sexo, que solo existe a nivel municipal (DANE)."
-                  : "Esta vereda no tiene cobertura en la grilla de RED LabOT (por ejemplo, en Zarzal), así que no hay un dato de población propio para ella."}
+                  : "Esta vereda no tiene cobertura en la grilla de RED LabOT, así que no hay un dato de población propio para ella."}
               </p>
             </div>
           )}

@@ -1,7 +1,7 @@
 import "server-only"
 
 import daneProjections from "./data/dane-projections-2018-2026.json"
-import { getMunicipioByCode } from "@/lib/lugares/registry"
+import { getMunicipioByCode, DEFAULT_MUNICIPIO_CODE } from "@/lib/lugares/registry"
 
 /**
  * DANE municipal population for the three study-area municipalities.
@@ -112,20 +112,18 @@ function buildEmpty(code: string, latestYear: AvailableYear): MunicipioPopulatio
 }
 
 /**
- * Reads normalized population for the requested municipios. With no codes
- * (the default), returns the three study-area municipalities' full DANE
- * breakdown. With codes, returns DANE data for any that are study-area
- * municipios and an honest `hasData: false` placeholder for the rest, so a
- * nationally-selected municipio never shows fabricated or borrowed figures.
+ * Reads normalized population for the requested municipios. With no codes it
+ * defaults to Sevilla (the app's home municipio). For each code it returns
+ * the full DANE breakdown when that municipio is one of the three with
+ * checked-in data (Sevilla, Caicedonia, Zarzal), and an honest
+ * `hasData: false` placeholder otherwise, so a nationally-selected municipio
+ * never shows fabricated or borrowed figures.
  */
 export async function getMunicipioPopulations(municipioCodes?: string[]): Promise<MunicipioPopulation[]> {
   const latestYear = AVAILABLE_YEARS[AVAILABLE_YEARS.length - 1]
+  const codes = municipioCodes && municipioCodes.length > 0 ? municipioCodes : [DEFAULT_MUNICIPIO_CODE]
 
-  if (!municipioCodes || municipioCodes.length === 0) {
-    return MUNICIPIOS.map((name) => buildFromDane(name, latestYear))
-  }
-
-  return municipioCodes.map((code) => {
+  return codes.map((code) => {
     const studyName = STUDY_AREA_BY_CODE.get(code)
     return studyName ? buildFromDane(studyName, latestYear) : buildEmpty(code, latestYear)
   })

@@ -245,7 +245,7 @@ function DetectionsTable({ detections }: { detections: FiresResponse["detections
           <Flame className="size-6 text-muted-foreground" aria-hidden="true" />
           <p className="font-medium">Sin focos activos</p>
           <p className="max-w-md text-sm text-muted-foreground">
-            No se detectaron focos de calor en el área de estudio para el periodo
+            No se detectaron focos de calor en el área seleccionada para el periodo
             seleccionado.
           </p>
         </CardContent>

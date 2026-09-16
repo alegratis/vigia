@@ -52,11 +52,11 @@ const FEATURES = [
     ],
   },
   {
-    title: "Demografía",
-    tags: ["Sevilla", "Caicedonia", "Zarzal"],
+    title: "Población",
+    tags: ["Por municipio"],
     items: [
-      "Población proyectada del DANE (2018–2042) por municipio, con desagregación urbano/rural y hombres/mujeres.",
-      "Cruce con el peor nivel de amenaza por deslizamiento registrado en cada municipio.",
+      "Población proyectada del DANE (2018–2042) del municipio seleccionado, con desagregación urbano/rural y hombres/mujeres, en la barra lateral del panel principal.",
+      "Se actualiza al cambiar de municipio; cuando no existe desglose oficial para el municipio elegido, se indica explícitamente en lugar de mostrar cifras fabricadas.",
     ],
   },
   {

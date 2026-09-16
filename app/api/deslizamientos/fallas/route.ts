@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server"
 import { getFaultTraces } from "@/lib/deslizamientos/faults"
+import { resolveRegion } from "@/lib/lugares/region"
+import { arcgisEnvelope } from "@/lib/lugares/geo-bbox"
 import type { FaultsErrorResponse, FaultsResponse } from "@/lib/deslizamientos/fault-types"
 
-export async function GET() {
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url)
+  const region = resolveRegion(searchParams.get("municipio"))
+
   try {
-    const traces = await getFaultTraces()
+    const traces = await getFaultTraces(arcgisEnvelope(region.bounds))
     const body: FaultsResponse = {
       generatedAt: new Date().toISOString(),
       traces,

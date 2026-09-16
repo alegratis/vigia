@@ -44,6 +44,7 @@ import "server-only"
  * susceptibility rating the way the RED LabOT layer was.
  */
 
+import { boundsFromPoints, overpassBbox, arcgisEnvelope } from "@/lib/lugares/geo-bbox"
 import { getSlopeForCentroids } from "./elevation"
 import { getRoadVertices, nearestRoadDistanceKm } from "./road-proximity"
 import { getFaultTraces, nearestFaultDistanceKm } from "./faults"
@@ -128,11 +129,17 @@ export async function computeVeredaHazard(
   const result = new Map<string, VeredaHazardResult>()
   if (centroids.length === 0) return result
 
+  // Scope the OSM/ArcGIS inputs to the bounding box around whatever
+  // municipio's vereda centroids are being scored, so the model works
+  // anywhere in the country rather than only the original study area.
+  const bounds = boundsFromPoints(centroids)
+  const roadBbox = overpassBbox(bounds)
+  const envelope = arcgisEnvelope(bounds)
   const [slopes, roadVertices, faultTraces, landslideRecords, rainfallTriggers] = await Promise.all([
     getSlopeForCentroids(centroids).catch(() => null),
-    getRoadVertices().catch(() => null),
-    getFaultTraces().catch(() => null),
-    getLandslideRecords().catch(() => null),
+    getRoadVertices(roadBbox).catch(() => null),
+    getFaultTraces(envelope).catch(() => null),
+    getLandslideRecords(envelope).catch(() => null),
     computeRainfallTriggerBatch(centroids, 12).catch(() => null),
   ])
 

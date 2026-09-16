@@ -22,9 +22,6 @@ import "server-only"
 const FEATURE_SERVER_URL =
   "https://services1.arcgis.com/Og2nrTKe5bptW02d/arcgis/rest/services/Inventario_de_movimientos_en_masa/FeatureServer/0/query"
 
-/** Same AOI the other hazard-model sources use, as an ArcGIS envelope: minLon,minLat,maxLon,maxLat. */
-const AOI_ENVELOPE = "-76.06,3.88,-75.72,4.44"
-
 export interface LandslideRecord {
   id: string
   lat: number
@@ -41,17 +38,18 @@ interface RawFeature {
 }
 
 /**
- * Fetches every historical mass-movement record intersecting the study-
- * area AOI. Cached for 30 days — same reasoning as faults.ts: this is a
- * static historical inventory, not a live feed, so it's safe to reuse
- * across both the hazard model's factor and the optional map layer
- * without re-fetching per request.
+ * Fetches every historical mass-movement record intersecting the given
+ * ArcGIS envelope (the selected municipio's bbox —
+ * `minLon,minLat,maxLon,maxLat`). Cached for 30 days per envelope — same
+ * reasoning as faults.ts: this is a static historical inventory, not a live
+ * feed, so it's safe to reuse across both the hazard model's factor and the
+ * optional map layer without re-fetching per request.
  */
-export async function getLandslideRecords(): Promise<LandslideRecord[]> {
+export async function getLandslideRecords(envelope: string): Promise<LandslideRecord[]> {
   const params = new URLSearchParams({
     where: "1=1",
     outFields: "FID,TIPO,SUBTIPO",
-    geometry: AOI_ENVELOPE,
+    geometry: envelope,
     geometryType: "esriGeometryEnvelope",
     inSR: "4326",
     spatialRel: "esriSpatialRelIntersects",

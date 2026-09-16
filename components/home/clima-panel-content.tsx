@@ -195,8 +195,8 @@ export function ClimaPanelContent({
             Open-Meteo
           </a>{" "}
           (temperatura, código de estado del tiempo WMO y pronóstico a 7 días, a partir de modelos numéricos de
-          pronóstico del tiempo, no de observación directa). A diferencia de la mayoría de las capas, esta cubre Zarzal
-          con el mismo detalle que Sevilla y Caicedonia. Haz clic sobre cualquier vereda para ver su pronóstico completo.
+          pronóstico del tiempo, no de observación directa). Esta capa está disponible con el mismo detalle para
+          cualquier municipio del país. Haz clic sobre cualquier vereda para ver su pronóstico completo.
         </p>
         <BackToTopButton targetRef={mapRef} />
       </div>

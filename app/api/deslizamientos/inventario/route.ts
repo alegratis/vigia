@@ -1,13 +1,18 @@
 import { NextResponse } from "next/server"
 import { getLandslideRecords } from "@/lib/deslizamientos/landslide-inventory"
+import { resolveRegion } from "@/lib/lugares/region"
+import { arcgisEnvelope } from "@/lib/lugares/geo-bbox"
 import type {
   LandslideInventoryErrorResponse,
   LandslideInventoryResponse,
 } from "@/lib/deslizamientos/landslide-inventory-types"
 
-export async function GET() {
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url)
+  const region = resolveRegion(searchParams.get("municipio"))
+
   try {
-    const records = await getLandslideRecords()
+    const records = await getLandslideRecords(arcgisEnvelope(region.bounds))
     const body: LandslideInventoryResponse = {
       generatedAt: new Date().toISOString(),
       records,

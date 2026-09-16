@@ -34,12 +34,12 @@ const STEPS: GuideStep[] = [
     number: 2,
     title: "Descubre cuánta gente vive en riesgo",
     simple:
-      "Arriba a la derecha hay un enlace llamado \"Demografía\". Ábrelo y verás cuántas personas viven en Sevilla, Caicedonia y Zarzal, separadas por año, si viven en el pueblo o en el campo, y si son hombres o mujeres. También te dice qué tan grave es cada amenaza en cada municipio en este momento.",
+      "En la barra lateral del panel principal, la tarjeta de población te muestra cuánta gente vive en el municipio seleccionado, separada por año, si vive en el pueblo o en el campo, y si son hombres o mujeres. Cambia el municipio con el selector de ubicación y las cifras se actualizan solas.",
     technical:
-      "Los números vienen de las proyecciones poblacionales del DANE (2019–2026) y se cruzan en el momento con la señal de monitoreo en vivo de cada amenaza, para saber quién está más expuesto y dónde. Esta vista se abre en una ventana propia sin barra de navegador, para no interrumpir lo que tenías abierto en el mapa principal.",
+      "Los números vienen de las proyecciones poblacionales del DANE (2019–2026) y se cruzan en el momento con la señal de monitoreo en vivo de cada amenaza, para saber quién está más expuesto y dónde. El desglose oficial existe por ahora solo para algunos municipios; para el resto se muestran los modelos de amenaza por vereda, sin cifras de población fabricadas.",
     image: {
       src: "/images/docs/demografia.png",
-      alt: "Ventana de demografía mostrando población urbana y rural, un gráfico por municipio y tarjetas de Sevilla, Caicedonia y Zarzal",
+      alt: "Tarjeta de población en la barra lateral mostrando población urbana y rural y por sexo del municipio seleccionado",
       width: 1180,
       height: 980,
     },

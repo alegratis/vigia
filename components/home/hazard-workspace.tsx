@@ -5,7 +5,7 @@ import Image from "next/image"
 import { ArrowRight, Activity, CloudRain, CloudSun, Droplets, Flame, Mountain, ShieldAlert, type LucideIcon } from "lucide-react"
 import { CategoryPanel } from "@/components/home/category-panel"
 import { PlaceSelector } from "@/components/home/place-selector"
-import { SelectedPlaceProvider } from "@/lib/lugares/use-selected-place"
+import { SelectedPlaceProvider, useSelectedPlace } from "@/lib/lugares/use-selected-place"
 import { DeslizamientosPanelContent } from "@/components/home/deslizamientos-panel-content"
 import { InundacionesPanelContent } from "@/components/home/inundaciones-panel-content"
 import { IncendiosPanelContent } from "@/components/home/incendios-panel-content"
@@ -61,6 +61,18 @@ export function HazardWorkspace({
   initialCategory: string
   initialMunicipio?: string | null
 }) {
+  // Provider on the outside so every hook below — including the OSM
+  // infrastructure fetch and the exposición CTA — reads the selected
+  // municipio rather than the Sevilla fallback.
+  return (
+    <SelectedPlaceProvider initialCode={initialMunicipio}>
+      <HazardWorkspaceInner initialCategory={initialCategory} />
+    </SelectedPlaceProvider>
+  )
+}
+
+function HazardWorkspaceInner({ initialCategory }: { initialCategory: string }) {
+  const { effectiveCode } = useSelectedPlace()
   const [activeSlug, setActiveSlug] = useState(initialCategory)
   const [bounds, setBounds] = useState<MapBounds | null>(null)
   const [selectedMunicipio, setSelectedMunicipio] = useState<string | null>(null)
@@ -105,7 +117,6 @@ export function HazardWorkspace({
   }
 
   return (
-    <SelectedPlaceProvider initialCode={initialMunicipio}>
     <main
       id="main-content"
       tabIndex={-1}
@@ -156,8 +167,8 @@ export function HazardWorkspace({
             <h1 className="sr-only">Vigía</h1>
             <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
               Observación satelital e inteligencia geoespacial para anticipar
-              amenazas y fortalecer la respuesta ante emergencias en Sevilla,
-              Caicedonia y Zarzal.
+              amenazas y fortalecer la respuesta ante emergencias en cualquier
+              municipio de Colombia.
             </p>
           </div>
 
@@ -189,7 +200,9 @@ export function HazardWorkspace({
 
         <button
           type="button"
-          onClick={() => openInfoPopup("/exposicion/popup", "vigia-exposicion", { width: 1180, height: 980 })}
+          onClick={() =>
+            openInfoPopup(`/exposicion/popup?mun=${effectiveCode}`, "vigia-exposicion", { width: 1180, height: 980 })
+          }
           className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-md bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
           Conoce tu nivel de exposición
@@ -302,6 +315,5 @@ export function HazardWorkspace({
         })}
       </div>
     </main>
-    </SelectedPlaceProvider>
   )
 }

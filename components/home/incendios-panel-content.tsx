@@ -75,15 +75,15 @@ export function IncendiosPanelContent({
           </a>{" "}
           (Centro Común de Investigación de la UE). Focos activos de MODIS y VIIRS: NASA FIRMS.
           Haz clic sobre cualquier zona para ver su municipio, vereda y nivel de amenaza. Esta
-          zonificación no cubre Zarzal; la categoría{" "}
+          zonificación oficial no cubre todas las veredas; la categoría{" "}
           <a
             href="/?categoria=precipitacion"
             className="underline underline-offset-2 hover:text-foreground"
           >
             Precipitación
           </a>{" "}
-          sí ofrece un dato de contexto (lluvia acumulada por vereda) para los tres municipios,
-          incluido Zarzal — más lluvia acumulada suele significar menor riesgo de incendio.
+          sí ofrece un dato de contexto (lluvia acumulada por vereda) para cualquier municipio —
+          más lluvia acumulada suele significar menor riesgo de incendio.
         </p>
         <BackToTopButton targetRef={mapRef} />
       </div>

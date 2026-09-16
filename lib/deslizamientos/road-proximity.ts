@@ -3,28 +3,31 @@ import "server-only"
 /**
  * Road proximity — the second half of the self-computed hazard model's
  * static terrain-susceptibility factor (see hazard-model.ts) — from
- * OpenStreetMap's road network, fetched once for the whole AOI via the same
- * Overpass client (mirrors, headers, `out geom`-friendly types) already
- * used for the "Infraestructura por categoría" points in lib/osm/overpass.ts.
- * Road cuts destabilize slopes by removing lateral support, so distance to
- * the nearest road is one of the five static predictors in NASA's LHASA v1
- * global susceptibility map (Stanley & Kirschbaum, 2017).
+ * OpenStreetMap's road network, fetched once per scored municipio (via a
+ * bbox around its vereda centroids) using the same Overpass client (mirrors,
+ * headers, `out geom`-friendly types) already used for the "Infraestructura
+ * por categoría" points in lib/osm/overpass.ts. Road cuts destabilize slopes
+ * by removing lateral support, so distance to the nearest road is one of the
+ * five static predictors in NASA's LHASA v1 global susceptibility map
+ * (Stanley & Kirschbaum, 2017).
  */
 
-import { queryOverpass, AOI_BBOX } from "@/lib/osm/overpass"
+import { queryOverpass } from "@/lib/osm/overpass"
 
-const ROAD_QUERY = `
-  [out:json][timeout:25];
-  way["highway"~"^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|track|path)$"](${AOI_BBOX});
-  out geom;
-`.trim()
+function buildRoadQuery(bbox: string): string {
+  return `
+    [out:json][timeout:25];
+    way["highway"~"^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|track|path)$"](${bbox});
+    out geom;
+  `.trim()
+}
 
 /**
- * Fetches every road-way vertex in the AOI (not just endpoints) — the
- * shared Overpass client already caches this for 6 hours.
+ * Fetches every road-way vertex in the given bounding box (not just
+ * endpoints) — the shared Overpass client caches this for 6 hours per bbox.
  */
-export async function getRoadVertices(): Promise<Array<{ lat: number; lon: number }>> {
-  const json = await queryOverpass(ROAD_QUERY)
+export async function getRoadVertices(bbox: string): Promise<Array<{ lat: number; lon: number }>> {
+  const json = await queryOverpass(buildRoadQuery(bbox))
   const vertices: Array<{ lat: number; lon: number }> = []
   for (const el of json.elements) {
     if (el.geometry) vertices.push(...el.geometry)

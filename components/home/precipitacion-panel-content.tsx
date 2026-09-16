@@ -96,8 +96,8 @@ export function PrecipitacionPanelContent({
           >
             IDEAM
           </a>{" "}
-          (lecturas cada 10 min, más precisas pero solo cerca de Zarzal y Bugalagrande;
-          las demás veredas quedan sin cobertura). Modo pronóstico: lluvia prevista por
+          (lecturas cada 10 min, más precisas pero solo cerca de las pocas estaciones
+          automáticas disponibles; las demás veredas quedan sin cobertura). Modo pronóstico: lluvia prevista por
           vereda a 7 o 14 días de{" "}
           <a
             href="https://open-meteo.com"
@@ -108,9 +108,9 @@ export function PrecipitacionPanelContent({
             Open-Meteo
           </a>{" "}
           (modelos numéricos de pronóstico del tiempo, no observación directa). Capa
-          satelital de tasa de precipitación: GPM IMERG vía NASA GIBS. A diferencia de las
-          demás capas de amenaza, esta cubre Zarzal con el mismo detalle que Sevilla y
-          Caicedonia. Los umbrales de nivel son un criterio simple de referencia, no un
+          satelital de tasa de precipitación: GPM IMERG vía NASA GIBS. Esta capa está
+          disponible con el mismo detalle para cualquier municipio del país. Los umbrales
+          de nivel son un criterio simple de referencia, no un
           modelo de amenaza calibrado. Haz clic sobre cualquier vereda para ver su detalle
           y actualizar el histograma de lluvia normal mensual que aparece arriba.
         </p>

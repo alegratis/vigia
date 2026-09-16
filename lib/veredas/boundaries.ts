@@ -34,11 +34,11 @@ const ZONA_URBANA_QUERY_URL =
   "https://portalgis.dane.gov.co/mparcgis/rest/services/Hosted/Serv_ZonaUrbana_MGN_2025/FeatureServer/1/query"
 
 /**
- * DIVIPOLA municipio codes for the default study area: Caicedonia, Sevilla,
- * Zarzal. Callers can pass any other municipio code(s) to fetch boundaries
- * elsewhere in the country (national rollout); this is only the fallback.
+ * Default municipio when a caller passes none: Sevilla (Valle del Cauca),
+ * the app's home municipio. Any other municipio code(s) can be passed to
+ * fetch boundaries elsewhere in the country.
  */
-const STUDY_AREA_MUNICIPIO_CODES = ["76122", "76736", "76895"]
+const DEFAULT_MUNICIPIO_CODES = ["76736"]
 
 // Static admin boundaries change essentially never — cache both sources a week.
 const REVALIDATE_SECONDS = 604800
@@ -145,7 +145,7 @@ async function fetchCascosUrbanos(municipioCodes: string[]): Promise<VeredaBound
  * DIVIPOLA codes to fetch any other municipio(s) nationwide.
  */
 export async function getVeredaBoundaries(
-  municipioCodes: string[] = STUDY_AREA_MUNICIPIO_CODES,
+  municipioCodes: string[] = DEFAULT_MUNICIPIO_CODES,
 ): Promise<VeredaBoundary[]> {
   const [veredas, cascosUrbanos] = await Promise.all([
     fetchVeredasRurales(municipioCodes),

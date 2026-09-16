@@ -43,7 +43,7 @@ export function SismologiaPanelContent({
           Mapa interactivo de actividad sísmica, con epicentros en vivo de la Red Sismológica
           Nacional de Colombia (SGC) y del Servicio Geológico de Estados Unidos (USGS), el catálogo
           histórico del Servicio Geológico Colombiano (SGC), más un resumen opcional de reportes
-          comunitarios de daños en Sevilla.
+          comunitarios de daños, donde existan.
         </p>
         <SismologiaLiveMapLoader
           className="relative isolate h-full w-full"
@@ -99,7 +99,7 @@ export function SismologiaPanelContent({
             Observatorio Sismológico del Suroccidente (OSSO/Univalle)
           </a>{" "}
           publica boletines propios sin un servicio de datos abierto; se referencia aquí como fuente
-          adicional. Los reportes de daños de Sevilla provienen de un formulario de campo comunitario
+          adicional. Los reportes comunitarios de daños, donde existen, provienen de un formulario de campo
           (Survey123) agregado por barrio — sin verificar, y sin exponer direcciones ni cifras de
           heridos o fallecidos por hogar. Esta categoría no tiene una zonificación de amenaza sísmica
           por vereda publicada; el aporte al riesgo compuesto se calcula por distancia a los

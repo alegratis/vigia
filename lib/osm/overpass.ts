@@ -7,10 +7,11 @@ import "server-only"
  * demographics panel, same open-data pattern as the ArcGIS/GWIS/GIBS
  * sources already in use elsewhere in the app.
  *
- * The whole study-area AOI is queried once here and cached for 6 hours —
- * never re-queried per map pan/zoom, since Overpass's public instance is
- * shared and rate-limited. Viewport filtering happens client-side instead
- * (lib/map-bounds.ts's `pointsInBounds`, against this same cached list).
+ * The selected municipio's bounding box is queried once here and cached for
+ * 6 hours per bbox — never re-queried per map pan/zoom, since Overpass's
+ * public instance is shared and rate-limited. Viewport filtering happens
+ * client-side instead (lib/map-bounds.ts's `pointsInBounds`, against this
+ * same cached list).
  *
  * Docs: https://wiki.openstreetmap.org/wiki/Overpass_API
  */
@@ -29,9 +30,6 @@ const OVERPASS_URLS = [
   "https://overpass.kumi.systems/api/interpreter",
   "https://overpass.openstreetmap.ru/api/interpreter",
 ]
-
-/** Same AOI bounding box the live hazard maps fit to: south,west,north,east. */
-export const AOI_BBOX = "3.88,-76.06,4.44,-75.72"
 
 const HEALTH_AMENITIES = [
   "hospital",
@@ -75,15 +73,15 @@ const AMENITY_VALUES = [
   ...BUSINESS_AMENITIES,
 ].join("|")
 
-function buildQuery(): string {
+function buildQuery(bbox: string): string {
   return `
     [out:json][timeout:25];
     (
-      nwr["shop"](${AOI_BBOX});
-      nwr["office"](${AOI_BBOX});
-      nwr["craft"](${AOI_BBOX});
-      nwr["amenity"~"^(${AMENITY_VALUES})$"](${AOI_BBOX});
-      nwr["healthcare"](${AOI_BBOX});
+      nwr["shop"](${bbox});
+      nwr["office"](${bbox});
+      nwr["craft"](${bbox});
+      nwr["amenity"~"^(${AMENITY_VALUES})$"](${bbox});
+      nwr["healthcare"](${bbox});
     );
     out center tags;
   `.trim()
@@ -185,13 +183,13 @@ export async function queryOverpass(query: string): Promise<OverpassResponse> {
 
 /**
  * Fetches and classifies every business/health/financial/government/social
- * point of interest in the study area. Ways and relations resolve to a
- * single centroid via Overpass's `out center` (no polygon geometry needed
- * for a point count). Elements matching none of the five categories are
- * dropped.
+ * point of interest in the given bounding box (the selected municipio).
+ * Ways and relations resolve to a single centroid via Overpass's
+ * `out center` (no polygon geometry needed for a point count). Elements
+ * matching none of the five categories are dropped.
  */
-export async function getInfrastructurePoints(): Promise<OsmPoint[]> {
-  const json = await queryOverpass(buildQuery())
+export async function getInfrastructurePoints(bbox: string): Promise<OsmPoint[]> {
+  const json = await queryOverpass(buildQuery(bbox))
 
   const points: OsmPoint[] = []
   for (const el of json.elements) {
