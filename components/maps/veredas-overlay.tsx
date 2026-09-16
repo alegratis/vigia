@@ -8,6 +8,7 @@ import { useVeredas } from "@/lib/veredas/use-veredas"
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import type { VeredaFeature } from "@/lib/veredas/api-types"
 import { floodSusceptibilityColorToken } from "@/lib/inundaciones/levels"
+import { fireLevelColorToken } from "@/lib/incendios/levels"
 import { seismicExposureColorToken, seismicExposureLevel } from "@/lib/sismologia/levels"
 import { isMunicipioActive } from "@/lib/veredas/municipio-toggles"
 
@@ -39,7 +40,7 @@ interface VeredasOverlayProps {
    * inundaciones map passes `"inundaciones"` when it colors veredas by
    * this app's own flood model instead of a neutral outline.
    */
-  hazardKind?: "deslizamientos" | "inundaciones" | "sismologia"
+  hazardKind?: "deslizamientos" | "inundaciones" | "sismologia" | "incendios"
   /**
    * Whether a click on a vereda polygon stops the map's own click layer
    * from also firing underneath it — the deslizamientos/incendios maps
@@ -216,6 +217,25 @@ export function VeredasOverlay({
                       ? `Con zonificación oficial: ${props.floodZoningLevel ?? "—"}`
                       : "Sin zonificación oficial — solo modelo propio"}
                   </span>
+                )}
+                {colorForFeature && hazardKind === "incendios" && props.fireWeatherLevel && (
+                  <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span
+                      style={{
+                        display: "inline-block",
+                        width: 9,
+                        height: 9,
+                        borderRadius: "50%",
+                        flexShrink: 0,
+                        backgroundColor: fireLevelColorToken(props.fireWeatherLevel),
+                      }}
+                    />
+                    Clima de incendio (modelo propio): {props.fireWeatherLevel}
+                    {props.fireWeatherScoreAvg != null && ` (${props.fireWeatherScoreAvg.toFixed(2)})`}
+                  </span>
+                )}
+                {colorForFeature && hazardKind === "incendios" && !props.fireWeatherLevel && (
+                  <span style={{ color: "#888" }}>Sin datos meteorológicos para el modelo</span>
                 )}
                 {colorForFeature && hazardKind === "sismologia" && props.seismicScoreAvg != null && (
                   <span style={{ display: "flex", alignItems: "center", gap: 6 }}>

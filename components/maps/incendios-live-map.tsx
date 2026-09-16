@@ -266,6 +266,7 @@ function IncendiosLiveMapImpl({
   const [showViirs, setShowViirs] = useState(true)
   const [showSentinel3, setShowSentinel3] = useState(false)
   const [showVeredas, setShowVeredas] = useState(false)
+  const [showFireWeather, setShowFireWeather] = useState(false)
   const [showLandCover, setShowLandCover] = useState(false)
   const [showSettlement, setShowSettlement] = useState(false)
   const [showProtectedAreas, setShowProtectedAreas] = useState(false)
@@ -441,7 +442,20 @@ function IncendiosLiveMapImpl({
             }
           />
         )}
-        <VeredasOverlay enabled={showVeredas} onSelect={onVeredaSelect} activeMunicipios={activeMunicipios} />
+        <VeredasOverlay
+          enabled={showVeredas || showFireWeather}
+          hazardKind={showFireWeather ? "incendios" : "deslizamientos"}
+          colorForFeature={
+            showFireWeather
+              ? (feature) =>
+                  feature.properties.fireWeatherLevel
+                    ? resolveCssColor(fireLevelColorToken(feature.properties.fireWeatherLevel))
+                    : "transparent"
+              : undefined
+          }
+          onSelect={onVeredaSelect}
+          activeMunicipios={activeMunicipios}
+        />
         {showSentinel3 && (
           <WMSTileLayer
             url={GWIS_WMS_URL}
@@ -619,6 +633,17 @@ function IncendiosLiveMapImpl({
               className="size-3.5 accent-primary"
             />
             Límites veredales
+          </label>
+        </div>
+        <div className="border-t border-border pt-1.5">
+          <label className="flex items-center gap-2 font-medium text-foreground">
+            <input
+              type="checkbox"
+              checked={showFireWeather}
+              onChange={(e) => setShowFireWeather(e.target.checked)}
+              className="size-3.5 accent-primary"
+            />
+            Clima de incendio por vereda (modelo propio)
           </label>
         </div>
       </div>
