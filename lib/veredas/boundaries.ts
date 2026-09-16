@@ -33,8 +33,12 @@ const VEREDAS_QUERY_URL = "https://ags.esri.co/arcgis/rest/services/DatosAbierto
 const ZONA_URBANA_QUERY_URL =
   "https://portalgis.dane.gov.co/mparcgis/rest/services/Hosted/Serv_ZonaUrbana_MGN_2025/FeatureServer/1/query"
 
-/** DIVIPOLA municipio codes for the study area: Caicedonia, Sevilla, Zarzal. */
-const MUNICIPIO_CODES = ["76122", "76736", "76895"]
+/**
+ * DIVIPOLA municipio codes for the default study area: Caicedonia, Sevilla,
+ * Zarzal. Callers can pass any other municipio code(s) to fetch boundaries
+ * elsewhere in the country (national rollout); this is only the fallback.
+ */
+const STUDY_AREA_MUNICIPIO_CODES = ["76122", "76736", "76895"]
 
 // Static admin boundaries change essentially never — cache both sources a week.
 const REVALIDATE_SECONDS = 604800
@@ -89,8 +93,8 @@ async function queryArcgis(url: string, where: string, outFields: string): Promi
   return data.features ?? []
 }
 
-async function fetchVeredasRurales(): Promise<VeredaBoundary[]> {
-  const where = `DPTOMPIO IN (${MUNICIPIO_CODES.map((c) => `'${c}'`).join(",")})`
+async function fetchVeredasRurales(municipioCodes: string[]): Promise<VeredaBoundary[]> {
+  const where = `DPTOMPIO IN (${municipioCodes.map((c) => `'${c}'`).join(",")})`
   const features = await queryArcgis(VEREDAS_QUERY_URL, where, "NOMBRE_VER,NOMB_MPIO,CODIGO_VER,DPTOMPIO")
 
   return features
@@ -108,13 +112,13 @@ async function fetchVeredasRurales(): Promise<VeredaBoundary[]> {
     })
 }
 
-async function fetchCascosUrbanos(): Promise<VeredaBoundary[]> {
+async function fetchCascosUrbanos(municipioCodes: string[]): Promise<VeredaBoundary[]> {
   // DANE's WAF 500s on a `where` clause combining the IN(...) list with an
   // `clas_ccdgo = '1'` equality check (false-positive injection filter) —
-  // fetch every zona urbana feature for the study area's municipios instead
+  // fetch every zona urbana feature for the requested municipios instead
   // and filter to class 1 ("Cabecera municipal", as opposed to 2 "Centro
   // Poblado") client-side.
-  const where = `mpio_cdpmp IN (${MUNICIPIO_CODES.map((c) => `'${c}'`).join(",")})`
+  const where = `mpio_cdpmp IN (${municipioCodes.map((c) => `'${c}'`).join(",")})`
   const features = await queryArcgis(
     ZONA_URBANA_QUERY_URL,
     where,
@@ -137,9 +141,15 @@ async function fetchCascosUrbanos(): Promise<VeredaBoundary[]> {
 
 /**
  * Fetches every rural vereda plus one "Casco Urbano" pseudo-vereda per
- * municipio for the study area.
+ * municipio. Defaults to the three-municipio study area; pass explicit
+ * DIVIPOLA codes to fetch any other municipio(s) nationwide.
  */
-export async function getVeredaBoundaries(): Promise<VeredaBoundary[]> {
-  const [veredas, cascosUrbanos] = await Promise.all([fetchVeredasRurales(), fetchCascosUrbanos()])
+export async function getVeredaBoundaries(
+  municipioCodes: string[] = STUDY_AREA_MUNICIPIO_CODES,
+): Promise<VeredaBoundary[]> {
+  const [veredas, cascosUrbanos] = await Promise.all([
+    fetchVeredasRurales(municipioCodes),
+    fetchCascosUrbanos(municipioCodes),
+  ])
   return [...veredas, ...cascosUrbanos]
 }

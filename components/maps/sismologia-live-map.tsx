@@ -13,6 +13,7 @@ import {
 import type { LatLngBoundsExpression } from "leaflet"
 import "leaflet/dist/leaflet.css"
 import { BasemapTileLayer } from "@/components/maps/basemap-tile-layer"
+import { RegionRecenter } from "@/components/maps/region-recenter"
 import { VeredasOverlay } from "@/components/maps/veredas-overlay"
 import { MunicipioTogglePanel, type MunicipioRiskSummary } from "@/components/maps/municipio-toggle-panel"
 import { useVeredas } from "@/lib/veredas/use-veredas"
@@ -303,6 +304,7 @@ function SismologiaLiveMapImpl({
         className="h-full w-full"
       >
         <ZoomControl position="topright" />
+        <RegionRecenter />
         <AttributionControl position="bottomright" prefix="Leaflet" />
         <BasemapTileLayer />
         <VeredasOverlay

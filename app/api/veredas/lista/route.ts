@@ -1,14 +1,16 @@
 import { NextResponse } from "next/server"
 import { getVeredaList } from "@/lib/veredas/list"
+import { parseMunicipioCodes } from "@/lib/veredas/parse-municipio-param"
 import type { VeredaListErrorResponse, VeredaListResponse } from "@/lib/veredas/list-api-types"
 
 // Boundary fetch is cached a week (see lib/veredas/boundaries.ts), but a
 // cold cache still means two upstream ArcGIS queries.
 export const maxDuration = 30
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const veredas = await getVeredaList()
+    const municipioCodes = parseMunicipioCodes(new URL(request.url).searchParams.get("municipio"))
+    const veredas = await getVeredaList(municipioCodes)
     const body: VeredaListResponse = {
       generatedAt: new Date().toISOString(),
       veredas,

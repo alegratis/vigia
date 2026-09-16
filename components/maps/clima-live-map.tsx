@@ -16,6 +16,7 @@ import L from "leaflet"
 import { BasemapTileLayer } from "./basemap-tile-layer"
 import type { Layer, LatLngBoundsExpression, LeafletMouseEvent, PathOptions } from "leaflet"
 import "leaflet/dist/leaflet.css"
+import { RegionRecenter } from "@/components/maps/region-recenter"
 import { Loader2 } from "lucide-react"
 import useSWR from "swr"
 import {
@@ -267,6 +268,7 @@ function ClimaLiveMapImpl({
         className="h-full w-full"
       >
         <ZoomControl position="topright" />
+        <RegionRecenter />
         <AttributionControl position="bottomright" prefix="Leaflet" />
         <BasemapTileLayer />
         {data?.veredas && colorsReady && (

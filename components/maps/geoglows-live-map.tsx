@@ -19,6 +19,7 @@ import {
 import type { Layer, LatLngBoundsExpression, LeafletMouseEvent, PathOptions, WMSParams } from "leaflet"
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
+import { RegionRecenter } from "@/components/maps/region-recenter"
 import { ExternalLink, Loader2 } from "lucide-react"
 import { BasemapTileLayer } from "@/components/maps/basemap-tile-layer"
 import useSWR from "swr"
@@ -532,6 +533,7 @@ function GeoglowsLiveMapImpl({
         attributionControl={false}
       >
         <ZoomControl position="topright" />
+        <RegionRecenter />
         <AttributionControl position="bottomright" prefix="Leaflet" />
         <BasemapTileLayer />
         {showSusceptibility && susceptibility?.polygons && resolvedColors && (

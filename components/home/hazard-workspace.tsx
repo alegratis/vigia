@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import Image from "next/image"
 import { ArrowRight, Activity, CloudRain, CloudSun, Droplets, Flame, Mountain, ShieldAlert, type LucideIcon } from "lucide-react"
 import { CategoryPanel } from "@/components/home/category-panel"
+import { PlaceSelector } from "@/components/home/place-selector"
+import { SelectedPlaceProvider } from "@/lib/lugares/use-selected-place"
 import { DeslizamientosPanelContent } from "@/components/home/deslizamientos-panel-content"
 import { InundacionesPanelContent } from "@/components/home/inundaciones-panel-content"
 import { IncendiosPanelContent } from "@/components/home/incendios-panel-content"
@@ -52,7 +54,13 @@ const CATEGORY_BASIS: Record<string, { basis: "urbano" | "rural"; basisLabel: st
  * already turned on. Whichever category is active also drives the
  * sidebar's demographics card via onBoundsChange/onZoneSelect.
  */
-export function HazardWorkspace({ initialCategory }: { initialCategory: string }) {
+export function HazardWorkspace({
+  initialCategory,
+  initialMunicipio = null,
+}: {
+  initialCategory: string
+  initialMunicipio?: string | null
+}) {
   const [activeSlug, setActiveSlug] = useState(initialCategory)
   const [bounds, setBounds] = useState<MapBounds | null>(null)
   const [selectedMunicipio, setSelectedMunicipio] = useState<string | null>(null)
@@ -97,6 +105,7 @@ export function HazardWorkspace({ initialCategory }: { initialCategory: string }
   }
 
   return (
+    <SelectedPlaceProvider initialCode={initialMunicipio}>
     <main
       id="main-content"
       tabIndex={-1}
@@ -186,6 +195,8 @@ export function HazardWorkspace({ initialCategory }: { initialCategory: string }
           Conoce tu nivel de exposición
           <ArrowRight className="size-4" aria-hidden="true" />
         </button>
+
+        <PlaceSelector className="shrink-0 rounded-lg border border-border bg-background/50 p-4" />
 
         <div aria-live="polite" className="shrink-0">
           <LiveAreaPopulation
@@ -291,5 +302,6 @@ export function HazardWorkspace({ initialCategory }: { initialCategory: string }
         })}
       </div>
     </main>
+    </SelectedPlaceProvider>
   )
 }

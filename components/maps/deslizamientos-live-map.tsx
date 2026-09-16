@@ -16,6 +16,7 @@ import {
 } from "react-leaflet"
 import type { LatLngBoundsExpression, WMSParams } from "leaflet"
 import "leaflet/dist/leaflet.css"
+import { RegionRecenter } from "@/components/maps/region-recenter"
 import { Loader2 } from "lucide-react"
 import { SUSCEPTIBILITY_LEVELS, SUSCEPTIBILITY_LEVEL_STYLES, levelColorToken } from "@/lib/deslizamientos/levels"
 import { resolveCssColor } from "@/lib/resolve-css-color"
@@ -456,6 +457,7 @@ function DeslizamientosLiveMapImpl({
         className="h-full w-full"
       >
         <ZoomControl position="topright" />
+        <RegionRecenter />
         <AttributionControl position="bottomright" prefix="Leaflet" />
         <BasemapTileLayer />
         {showSoilMoisture && (

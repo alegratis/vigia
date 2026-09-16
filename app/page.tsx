@@ -5,10 +5,11 @@ import { mapModels } from "@/lib/maps"
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ categoria?: string }>
+  searchParams: Promise<{ categoria?: string; mun?: string }>
 }) {
-  const { categoria } = await searchParams
+  const { categoria, mun } = await searchParams
   const initialCategory = mapModels.some((m) => m.slug === categoria) ? categoria! : mapModels[0].slug
+  const initialMunicipio = typeof mun === "string" && /^\d{5}$/.test(mun) ? mun : null
 
   return (
     // `h-screen` (a fixed 100vh) is desktop-only, matching `lg:overflow-hidden` below: that pairing is what
@@ -21,7 +22,7 @@ export default async function Page({
     // just lets the map row size itself off its own explicit heights instead of being squeezed.
     <div className="flex min-h-screen flex-col lg:h-screen lg:overflow-hidden">
       <HomeTopBar />
-      <HazardWorkspace initialCategory={initialCategory} />
+      <HazardWorkspace initialCategory={initialCategory} initialMunicipio={initialMunicipio} />
     </div>
   )
 }

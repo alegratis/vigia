@@ -15,6 +15,7 @@ import {
 } from "react-leaflet"
 import type { Layer, LatLngBoundsExpression, LeafletMouseEvent, PathOptions, WMSParams } from "leaflet"
 import "leaflet/dist/leaflet.css"
+import { RegionRecenter } from "@/components/maps/region-recenter"
 import { Loader2 } from "lucide-react"
 import useSWR from "swr"
 import { BasemapTileLayer } from "@/components/maps/basemap-tile-layer"
@@ -370,6 +371,7 @@ function IncendiosLiveMapImpl({
         className="h-full w-full"
       >
         <ZoomControl position="topright" />
+        <RegionRecenter />
         <AttributionControl position="bottomright" prefix="Leaflet" />
         <BasemapTileLayer />
         {showForecast && (

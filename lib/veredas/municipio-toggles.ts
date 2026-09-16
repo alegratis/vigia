@@ -1,41 +1,69 @@
 "use client"
 
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { MUNICIPIOS, normalizeMunicipioName } from "@/lib/demografia/categories"
+import { getMunicipioByCode } from "@/lib/lugares/registry"
+import type { Region } from "@/lib/lugares/region"
+import { useSelectedPlace } from "@/lib/lugares/use-selected-place"
 
 export { MUNICIPIOS }
 
 /**
- * Per-map municipality highlight state, shared by every hazard map. Sevilla
- * starts on, Caicedonia and Zarzal start off — toggling one highlights that
- * municipality's veredas and surfaces its risk factors, leaving the others
- * drawn but dimmed (see `isMunicipioActive` + the overlays' dimmed styling).
+ * The municipio names to show for a region: the three study-area names for
+ * the default, or the selected municipio's name nationally. Shared by the
+ * toggle hook and the toggle panel so both stay in sync with the selection.
  */
-export const DEFAULT_ACTIVE_MUNICIPIOS: Record<string, boolean> = {
-  Sevilla: true,
-  Caicedonia: false,
-  Zarzal: false,
+export function municipioNamesForRegion(region: Region): string[] {
+  if (region.isStudyArea) return [...MUNICIPIOS]
+  return region.codes.map((c) => getMunicipioByCode(c)?.name).filter((n): n is string => Boolean(n))
+}
+
+/** Initial toggle state for a municipio set: the first one on, the rest off. */
+function initActive(municipios: string[]): Record<string, boolean> {
+  const state: Record<string, boolean> = {}
+  municipios.forEach((m, i) => {
+    state[m] = i === 0
+  })
+  return state
 }
 
 export interface MunicipioToggleState {
   /** Per-municipio on/off map, keyed by the canonical title-case name. */
   active: Record<string, boolean>
-  /** The subset of MUNICIPIOS currently toggled on, in MUNICIPIOS order. */
+  /** The subset of the region's municipios currently toggled on. */
   activeMunicipios: string[]
+  /** The municipios available to toggle for the current selection. */
+  municipios: string[]
   toggle: (municipio: string) => void
 }
 
-/** Independent on/off toggles for each study-area municipality (Sevilla default on). */
+/**
+ * Independent on/off toggles for the selected region's municipios. For the
+ * study-area default this is Sevilla (on) plus Caicedonia and Zarzal (off),
+ * matching the previous behavior; nationally it is just the selected
+ * municipio. The toggle state resets whenever the selection changes.
+ */
 export function useMunicipioToggles(): MunicipioToggleState {
-  const [active, setActive] = useState<Record<string, boolean>>(() => ({ ...DEFAULT_ACTIVE_MUNICIPIOS }))
+  const { region } = useSelectedPlace()
+  const municipios = useMemo(() => municipioNamesForRegion(region), [region])
+  const key = municipios.join("|")
+
+  const [active, setActive] = useState<Record<string, boolean>>(() => initActive(municipios))
+
+  // Reset toggles when the selected place changes which municipios exist.
+  useEffect(() => {
+    setActive(initActive(municipios))
+    // `key` is the stable string form of `municipios`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key])
 
   const toggle = useCallback((municipio: string) => {
     setActive((prev) => ({ ...prev, [municipio]: !prev[municipio] }))
   }, [])
 
-  const activeMunicipios = useMemo(() => MUNICIPIOS.filter((m) => active[m]), [active])
+  const activeMunicipios = useMemo(() => municipios.filter((m) => active[m]), [municipios, active])
 
-  return { active, activeMunicipios, toggle }
+  return { active, activeMunicipios, municipios, toggle }
 }
 
 /**

@@ -11,8 +11,8 @@ import type { VeredaListEntry } from "./list-api-types"
  * municipio/vereda picker only needs to list names and fit/outline a map
  * to a boundary, not point-in-polygon test ~11,800 susceptibility points.
  */
-export async function getVeredaList(): Promise<VeredaListEntry[]> {
-  const boundaries = await getVeredaBoundaries()
+export async function getVeredaList(municipioCodes?: string[]): Promise<VeredaListEntry[]> {
+  const boundaries = await getVeredaBoundaries(municipioCodes)
 
   return boundaries
     .map((boundary) => {

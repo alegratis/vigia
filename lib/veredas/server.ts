@@ -10,8 +10,8 @@ import type { VeredasFeatureCollection } from "./api-types"
  * susceptibility and sitios-críticos data onto them, and zips the two into
  * one FeatureCollection ready to render as a choropleth overlay.
  */
-export async function getVeredas(): Promise<VeredasFeatureCollection> {
-  const boundaries = await getVeredaBoundaries()
+export async function getVeredas(municipioCodes?: string[]): Promise<VeredasFeatureCollection> {
+  const boundaries = await getVeredaBoundaries(municipioCodes)
   const aggregates = await aggregateVeredas(boundaries)
 
   const features: VeredasFeatureCollection["features"] = boundaries.map((boundary) => {

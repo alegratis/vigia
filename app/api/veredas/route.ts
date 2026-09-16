@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { getVeredas } from "@/lib/veredas/server"
+import { parseMunicipioCodes } from "@/lib/veredas/parse-municipio-param"
 import type { VeredasErrorResponse, VeredasResponse } from "@/lib/veredas/api-types"
 
 // A cold cache means decoding boundaries, point-in-polygon testing ~11,800
@@ -12,9 +13,10 @@ import type { VeredasErrorResponse, VeredasResponse } from "@/lib/veredas/api-ty
 // only the very first request per cache window pays the full cost.
 export const maxDuration = 60
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const veredas = await getVeredas()
+    const municipioCodes = parseMunicipioCodes(new URL(request.url).searchParams.get("municipio"))
+    const veredas = await getVeredas(municipioCodes)
     const body: VeredasResponse = {
       generatedAt: new Date().toISOString(),
       veredas,

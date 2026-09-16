@@ -13,6 +13,7 @@ import {
 } from "react-leaflet"
 import type { LatLngBoundsExpression, WMSParams } from "leaflet"
 import "leaflet/dist/leaflet.css"
+import { RegionRecenter } from "@/components/maps/region-recenter"
 import { Loader2 } from "lucide-react"
 import { COMPOUND_LEVELS, compoundLevelColorToken } from "@/lib/riesgo-compuesto/levels"
 import { resolveCssColor } from "@/lib/resolve-css-color"
@@ -167,6 +168,7 @@ function CompoundLiveMapImpl({
         className="h-full w-full"
       >
         <ZoomControl position="topright" />
+        <RegionRecenter />
         <AttributionControl position="bottomright" prefix="Leaflet" />
         <BasemapTileLayer />
         {showSettlement && (

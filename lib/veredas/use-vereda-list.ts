@@ -1,6 +1,8 @@
 "use client"
 
 import useSWR from "swr"
+import { regionQuery } from "@/lib/lugares/region"
+import { useSelectedPlace } from "@/lib/lugares/use-selected-place"
 import type { VeredaListResponse } from "./list-api-types"
 
 const fetcher = async (url: string): Promise<VeredaListResponse> => {
@@ -11,13 +13,17 @@ const fetcher = async (url: string): Promise<VeredaListResponse> => {
 
 /**
  * Fetches the lightweight municipio/vereda index for the "Conoce tu nivel
- * de exposición" picker. Always enabled (unlike useVeredas, which gates a
- * much heavier full-aggregation fetch behind a map toggle) since this is
- * the first thing the popup needs to render its dropdowns.
+ * de exposición" picker, scoped to the selected municipio (study area by
+ * default). Always enabled (unlike useVeredas, which gates a much heavier
+ * full-aggregation fetch behind a map toggle) since this is the first thing
+ * the popup needs to render its dropdowns.
  */
 export function useVeredaList() {
-  const { data, error, isLoading } = useSWR<VeredaListResponse>("/api/veredas/lista", fetcher, {
-    revalidateOnFocus: false,
-  })
+  const { region } = useSelectedPlace()
+  const { data, error, isLoading } = useSWR<VeredaListResponse>(
+    `/api/veredas/lista${regionQuery(region)}`,
+    fetcher,
+    { revalidateOnFocus: false },
+  )
   return { veredas: data?.veredas ?? null, error, isLoading }
 }
