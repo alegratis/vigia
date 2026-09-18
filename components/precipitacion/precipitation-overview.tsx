@@ -40,7 +40,7 @@ interface MunicipioSummary {
 }
 
 export function PrecipitationOverview() {
-  const [mode, setMode] = useState<PrecipitacionMode>("historico")
+  const [mode, setMode] = useState<PrecipitacionMode>("pronostico")
   const [windowDays, setWindowDays] = useState<number>(7)
   const [fuente, setFuente] = useState<PrecipitacionFuente>("power")
   const windowOptions = mode === "pronostico" ? FORECAST_WINDOW_OPTIONS : ACCUMULATION_WINDOW_OPTIONS

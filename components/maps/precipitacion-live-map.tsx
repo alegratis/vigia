@@ -164,7 +164,7 @@ function PrecipitacionLiveMapImpl({
   osmPoints?: OsmPoint[]
   className?: string
 }) {
-  const [mode, setMode] = useState<PrecipitacionMode>("historico")
+  const [mode, setMode] = useState<PrecipitacionMode>("pronostico")
   const [windowDays, setWindowDays] = useState<number>(7)
   const [fuente, setFuente] = useState<PrecipitacionFuente>("power")
 
