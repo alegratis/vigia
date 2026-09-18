@@ -425,4 +425,44 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /*
+   * Cross-browser "auto-hide" scrollbars: the thumb stays invisible until
+   * the scrollable area is hovered (which also covers wheel-scrolling,
+   * since the cursor has to be over the element to do that). Firefox gets
+   * this natively via scrollbar-width once the OS is set to overlay
+   * scrollbars; scrollbar-width: thin is the closest CSS can force there.
+   * Chromium/WebKit have no CSS-level overlay-scrollbar mode, so the
+   * ::-webkit-scrollbar-thumb hover toggle below is what actually
+   * reproduces the "hidden until hover" look on Chrome, Edge, and Safari.
+   */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+
+  *:hover {
+    scrollbar-color: var(--muted-foreground) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: transparent;
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  *:hover::-webkit-scrollbar-thumb {
+    background-color: var(--muted-foreground);
+    background-clip: content-box;
+  }
 }
