@@ -47,6 +47,8 @@ import { OsmLegend } from "@/components/maps/osm-legend"
 import { VeredasOverlay } from "@/components/maps/veredas-overlay"
 import { MunicipioTogglePanel, type MunicipioRiskSummary } from "@/components/maps/municipio-toggle-panel"
 import { useMunicipioToggles, isMunicipioActive } from "@/lib/veredas/municipio-toggles"
+import { useVeredas } from "@/lib/veredas/use-veredas"
+import { summarizeByMunicipio } from "@/lib/veredas/municipio-summary"
 import { WmsLegendChip } from "@/components/maps/wms-legend-chip"
 import type { IncendiosAmenazaResponse } from "@/lib/incendios/api-types"
 import type { FireDetection, FiresResponse } from "@/lib/firms/api-types"
@@ -108,7 +110,7 @@ function BoundsSync({ onBoundsChange }: BoundsSyncProps) {
   return null
 }
 
-function ThreatLegend() {
+function ThreatLegend({ title }: { title: string }) {
   const [colors, setColors] = useState<string[] | null>(null)
 
   useEffect(() => {
@@ -117,7 +119,7 @@ function ThreatLegend() {
 
   return (
     <div className="pointer-events-none absolute bottom-3 left-3 z-[400] rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
-      <p className="mb-1.5 font-medium text-foreground">Amenaza por incendios forestales</p>
+      <p className="mb-1.5 font-medium text-foreground">{title}</p>
       <ul className="flex flex-col gap-1">
         {FIRE_THREAT_LEVELS.map((level, i) => (
           <li key={level} className="flex items-center gap-2 text-muted-foreground">
@@ -198,16 +200,21 @@ function ProtectedAreasLegend() {
 }
 
 /**
- * Live forest-fire threat map: renders the public `AmenazaIncendios`
- * polygons published on ArcGIS Online (by vereda), with optional overlays
- * for GWIS/Copernicus EFFIS's Fire Weather Index (FWI) forecast, active
- * fires by sensor (MODIS and VIIRS as NASA FIRMS points, Sentinel-3 as a
- * GWIS WMS tile — see lib/incendios/gwis.ts), and vereda boundaries with a
- * population/infrastructure summary (shared with the deslizamientos map,
- * see components/maps/veredas-overlay.tsx). Click a zone for its
- * municipality, vereda and threat level, or turn on "Límites veredales"
- * and click a vereda boundary to narrow the shared sidebar's population
- * card down to it (same mechanism the deslizamientos map uses).
+ * Live forest-fire threat map: colors every vereda by this app's own
+ * forest-fire hazard model (slope + road proximity + NASA FIRMS
+ * historical recurrence + today's Fire Weather Index — see
+ * lib/incendios/hazard-model.ts), on by default and covering all three
+ * municipios including Zarzal. The public `AmenazaIncendios` polygons
+ * published on ArcGIS Online — a static 2014 PBOT land-use zoning, only
+ * covering Sevilla and Caicedonia — are kept as an optional
+ * "Zonificación oficial" reference toggle, off by default. Optional
+ * overlays add GWIS/Copernicus EFFIS's Fire Weather Index (FWI) forecast
+ * and active fires by sensor (MODIS and VIIRS as NASA FIRMS points,
+ * Sentinel-3 as a GWIS WMS tile — see lib/incendios/gwis.ts). Click a
+ * vereda (own model) or zone (official zoning) for its detail, or click
+ * a vereda while "Modelo propio de incendios forestales" is on to narrow
+ * the shared sidebar's population card and the FireModelPanel down to it
+ * (same mechanism the deslizamientos map uses).
  */
 function IncendiosLiveMapImpl({
   onBoundsChange,
@@ -218,8 +225,8 @@ function IncendiosLiveMapImpl({
 }: {
   onBoundsChange?: (bounds: MapBounds) => void
   onZoneSelect?: (municipio: string) => void
-  /** Called with the clicked vereda's feature when "Límites veredales" is on. */
-  onVeredaSelect?: (feature: VeredaFeature) => void
+  /** Called with the clicked vereda's feature when "Modelo propio de incendios forestales" is on, or `null` to clear the selection (see FireModelPanel's "Ver todo"). */
+  onVeredaSelect?: (feature: VeredaFeature | null) => void
   /** OSM infrastructure points for the categories currently toggled on. */
   osmPoints?: OsmPoint[]
   className?: string
@@ -229,28 +236,23 @@ function IncendiosLiveMapImpl({
   })
   const osmColors = useOsmCategoryColors()
   const { active: activeMunicipiosMap, activeMunicipios, toggle: toggleMunicipio } = useMunicipioToggles()
+  // Fetched here (as well as inside VeredasOverlay) to drive the municipality
+  // risk panel off this app's own fire model rather than AmenazaIncendios'
+  // Sevilla/Caicedonia-only coverage; the shared SWR key dedupes so this adds
+  // no second request.
+  const { veredas } = useVeredas(true)
 
   const municipioSummaries = useMemo<MunicipioRiskSummary[]>(() => {
-    if (!data?.polygons) return []
-    const byMunicipio = new Map<string, Record<string, number>>()
-    for (const feature of (data.polygons as unknown as GeoJSON.FeatureCollection).features) {
-      const rawMunicipio = feature.properties?.NOMB_MPIO as string | undefined
-      const level = feature.properties?.Amenaza_Label as string | undefined
-      if (!rawMunicipio || !level) continue
-      const municipio = normalizeMunicipioName(rawMunicipio)
-      const counts = byMunicipio.get(municipio) ?? {}
-      counts[level] = (counts[level] ?? 0) + 1
-      byMunicipio.set(municipio, counts)
-    }
-    return Array.from(byMunicipio.entries()).map(([municipio, counts]) => ({
-      municipio,
-      items: FIRE_THREAT_LEVELS.filter((level) => (counts[level] ?? 0) > 0).map((level) => ({
+    if (!veredas) return []
+    return summarizeByMunicipio(veredas).map((s) => ({
+      municipio: s.municipio,
+      items: FIRE_THREAT_LEVELS.filter((level) => s.fireLevelCounts[level] > 0).map((level) => ({
         label: level,
-        value: `${counts[level]}`,
+        value: `${s.fireLevelCounts[level]}`,
         colorToken: fireLevelColorToken(level),
       })),
     }))
-  }, [data])
+  }, [veredas])
 
   const [resolvedColors, setResolvedColors] = useState<Record<string, string> | null>(null)
   const [showForecast, setShowForecast] = useState(true)
@@ -264,7 +266,11 @@ function IncendiosLiveMapImpl({
   const [showModis, setShowModis] = useState(false)
   const [showViirs, setShowViirs] = useState(true)
   const [showSentinel3, setShowSentinel3] = useState(false)
-  const [showVeredas, setShowVeredas] = useState(false)
+  // Own model on by default — the vereda-colored layer is now this map's
+  // primary hazard surface; AmenazaIncendios (below) is demoted to an
+  // optional reference toggle, off by default.
+  const [showFireModel, setShowFireModel] = useState(true)
+  const [showOfficialZoning, setShowOfficialZoning] = useState(false)
   const [showLandCover, setShowLandCover] = useState(false)
   const [showSettlement, setShowSettlement] = useState(false)
   const [showProtectedAreas, setShowProtectedAreas] = useState(false)
@@ -357,6 +363,14 @@ function IncendiosLiveMapImpl({
     [resolvedColors, activeMunicipios],
   )
 
+  // This app's own forest-fire model (lib/incendios/hazard-model.ts) is
+  // deliberately scored onto AmenazaIncendios' own 4-level vocabulary, so
+  // it reuses the same resolved colors above rather than a second palette.
+  const veredaFireColor = useCallback(
+    (feature: VeredaFeature) => (feature.properties.fireLevel && resolvedColors?.[feature.properties.fireLevel]) || "var(--muted-foreground)",
+    [resolvedColors],
+  )
+
   return (
     <div className={className ?? "relative isolate h-full min-h-[420px] w-full overflow-hidden rounded-xl border border-border"}>
       <MapContainer
@@ -389,7 +403,7 @@ function IncendiosLiveMapImpl({
             }
           />
         )}
-        {data?.polygons && resolvedColors && (
+        {showOfficialZoning && data?.polygons && resolvedColors && (
           <GeoJSON
             key={geoJsonKey}
             data={data.polygons as unknown as GeoJSON.GeoJsonObject}
@@ -439,7 +453,13 @@ function IncendiosLiveMapImpl({
             }
           />
         )}
-        <VeredasOverlay enabled={showVeredas} onSelect={onVeredaSelect} activeMunicipios={activeMunicipios} />
+        <VeredasOverlay
+          enabled={showFireModel}
+          onSelect={onVeredaSelect}
+          colorForFeature={veredaFireColor}
+          hazardKind="incendios"
+          activeMunicipios={activeMunicipios}
+        />
         {showSentinel3 && (
           <WMSTileLayer
             url={GWIS_WMS_URL}
@@ -612,11 +632,20 @@ function IncendiosLiveMapImpl({
           <label className="flex items-center gap-2 font-medium text-foreground">
             <input
               type="checkbox"
-              checked={showVeredas}
-              onChange={(e) => setShowVeredas(e.target.checked)}
+              checked={showFireModel}
+              onChange={(e) => setShowFireModel(e.target.checked)}
               className="size-3.5 accent-primary"
             />
-            Límites veredales
+            Modelo propio de incendios forestales (por vereda, incluye Zarzal)
+          </label>
+          <label className="flex items-center gap-2 font-medium text-foreground">
+            <input
+              type="checkbox"
+              checked={showOfficialZoning}
+              onChange={(e) => setShowOfficialZoning(e.target.checked)}
+              className="size-3.5 accent-primary"
+            />
+            Zonificación oficial (PBOT 2014, Sevilla/Caicedonia)
           </label>
         </div>
       </div>
@@ -631,7 +660,17 @@ function IncendiosLiveMapImpl({
           <span className="text-sm text-destructive">No se pudo cargar la capa.</span>
         </Popup>
       )}
-      <ThreatLegend />
+      {(showFireModel || showOfficialZoning) && (
+        <ThreatLegend
+          title={
+            showFireModel && showOfficialZoning
+              ? "Amenaza por incendios (modelo propio y zonificación oficial)"
+              : showFireModel
+                ? "Amenaza por incendios forestales (modelo propio, por vereda)"
+                : "Amenaza por incendios forestales (zonificación oficial, PBOT 2014)"
+          }
+        />
+      )}
       <div className="absolute right-3 top-16 z-[400] max-w-[200px]">
         <OsmLegend points={osmPoints ?? []} />
       </div>
@@ -639,7 +678,7 @@ function IncendiosLiveMapImpl({
         active={activeMunicipiosMap}
         onToggle={toggleMunicipio}
         summaries={municipioSummaries}
-        riskTitle="Amenaza de incendio (veredas por nivel)"
+        riskTitle="Amenaza de incendio (modelo propio, veredas por nivel)"
       />
       {(showForecast || needsFirms || showSentinel3 || showLandCover || showSettlement || showProtectedAreas) && (
         <div className="absolute bottom-3 right-3 z-[400] flex flex-col items-end gap-2">

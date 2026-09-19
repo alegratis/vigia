@@ -6,10 +6,8 @@ import "server-only"
  * no per-category server file is modified:
  *
  * - `getVeredaBoundaries()` + `aggregateVeredas()` (lib/veredas/*) already
- *   give the deslizamientos and inundaciones (own model) hazard levels/
- *   scores, plus every demographics field, per vereda.
- * - `joinFireThreatToVeredas()` (this category's own new join) resolves
- *   incendios at the same centroids.
+ *   give the deslizamientos, inundaciones and incendios (own models)
+ *   hazard levels/scores, plus every demographics field, per vereda.
  * - `getPrecipitacionAmenaza()` (lib/precipitacion/server.ts), run once
  *   in its existing 7-day/NASA POWER historical mode, resolves
  *   precipitación at the same vereda granularity it already supports.
@@ -29,7 +27,6 @@ import { aggregateVeredas } from "@/lib/veredas/aggregate"
 import { getPrecipitacionAmenaza } from "@/lib/precipitacion/server"
 import { isPrecipitationLevel } from "@/lib/precipitacion/levels"
 import { getSeismicExposureByVereda } from "@/lib/sismologia/exposure-score"
-import { joinFireThreatToVeredas } from "./incendios-join"
 import { computeCompoundVeredaRisk } from "./compound-model"
 import { actionTierFor } from "./levels"
 import { buildNarrative } from "./narrative"
@@ -47,10 +44,7 @@ export async function getRiesgoCompuestoVeredas(): Promise<CompoundFeatureCollec
     const [lon, lat] = centroid(multiPolygon(b.polygons)).geometry.coordinates
     return { codigoVereda: b.codigoVereda, lat, lon }
   })
-  const [fireByVereda, seismicByVereda] = await Promise.all([
-    joinFireThreatToVeredas(centroids),
-    getSeismicExposureByVereda(centroids),
-  ])
+  const seismicByVereda = await getSeismicExposureByVereda(centroids)
 
   const precipByVereda = new Map(
     precipitacion.veredas.features.map((f) => [f.properties.codigoVereda, f.properties]),
@@ -58,7 +52,6 @@ export async function getRiesgoCompuestoVeredas(): Promise<CompoundFeatureCollec
 
   const features: CompoundFeatureCollection["features"] = boundaries.map((boundary) => {
     const agg = aggregates.get(boundary.codigoVereda) ?? null
-    const fireLevel = fireByVereda.get(boundary.codigoVereda) ?? null
     const precip = precipByVereda.get(boundary.codigoVereda) ?? null
     const precipLevel = precip?.nivel != null && isPrecipitationLevel(precip.nivel) ? precip.nivel : null
     const seismic = seismicByVereda.get(boundary.codigoVereda) ?? null
@@ -66,7 +59,7 @@ export async function getRiesgoCompuestoVeredas(): Promise<CompoundFeatureCollec
     const { compoundLevel, compoundScore, dominantHazard, subHazards } = computeCompoundVeredaRisk({
       deslizamientos: { level: agg?.dominantLevel ?? null, score: agg?.isScoreAvg ?? null },
       inundaciones: { level: agg?.floodLevel ?? null, score: agg?.floodScoreAvg ?? null },
-      incendios: { level: fireLevel },
+      incendios: { level: agg?.fireLevel ?? null, score: agg?.fireScoreAvg ?? null },
       precipitacion: { level: precipLevel, accumulatedMm: precip?.acumuladoMm ?? null },
       sismologia: { score: seismic?.score ?? null },
     })
@@ -78,6 +71,8 @@ export async function getRiesgoCompuestoVeredas(): Promise<CompoundFeatureCollec
         sub.detail = `Pendiente: ${agg.slopeDeg.toFixed(1)}°`
       } else if (sub.hazard === "inundaciones" && agg?.floodStreamDistanceKm != null) {
         sub.detail = `Quebrada más cercana: ${agg.floodStreamDistanceKm.toFixed(2)} km`
+      } else if (sub.hazard === "incendios" && agg?.fireFwi != null) {
+        sub.detail = `FWI hoy: ${agg.fireFwi.toFixed(1)}${agg.fireHistoryCount != null ? ` · Focos históricos: ${agg.fireHistoryCount}` : ""}`
       } else if (sub.hazard === "precipitacion" && precip?.acumuladoMm != null) {
         sub.detail = `Acumulado 7 días: ${precip.acumuladoMm.toFixed(1)} mm`
       } else if (sub.hazard === "sismologia" && seismic?.nearestEventKm != null) {

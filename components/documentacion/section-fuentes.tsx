@@ -57,14 +57,48 @@ const GROUPS: SourceGroup[] = [
         actualizacion: "Inventario histórico estático; la app la relee cada 30 días",
       },
       {
-        nombre: "Amenaza por incendios forestales",
+        nombre: "Amenaza por incendios forestales (zonificación oficial)",
         publicador: "RED LabOT",
-        descripcion: "Polígonos de amenaza por incendio forestal, por vereda rural.",
+        descripcion:
+          "Polígonos de amenaza por incendio forestal, por vereda rural — digitalización estática del plan de uso del suelo (PBOT) 2014 de cada municipio, sin un modelo computacional detrás. Ya no colorea el mapa de incendios por sí sola (ver el modelo propio, abajo); queda como capa opcional independiente (\"Zonificación oficial\"), apagada por defecto.",
         url: "https://services8.arcgis.com/UYEK9SUzH1am9mbk/arcgis/rest/services/AmenazaIncendios/FeatureServer",
         acceso: "ArcGIS FeatureServer",
         licencia: "Datos abiertos, sin autenticación",
         cobertura: "Sevilla, Caicedonia",
         actualizacion: "Capa estática; la app la relee cada hora",
+      },
+      {
+        nombre: "Modelo propio de amenaza por incendios forestales",
+        publicador: "Vigía (cálculo propio, sobre el Sistema Canadiense de Índices Forestales de Incendio)",
+        descripcion:
+          "Combina pendiente y cercanía a vías (reutilizadas del modelo propio de deslizamiento), recurrencia histórica de focos de NASA FIRMS (ver la ficha siguiente) y el Índice Meteorológico de Incendio (FWI) de hoy (ver la ficha siguiente), calculado en el centroide de cada vereda. Reemplaza a AmenazaIncendios como fuente del color del mapa de incendios y extiende la cobertura a los tres municipios, incluido Zarzal, que esa capa nunca cubrió. Ver la sección \"Metodología\" más abajo para el detalle completo, paso a paso.",
+        url: "https://firms.modaps.eosdis.nasa.gov/api/",
+        acceso: "Cálculo propio sobre APIs REST abiertas",
+        licencia: "N/A — calculado por la app a partir de fuentes abiertas",
+        cobertura: "Sevilla, Caicedonia, Zarzal (~69 centroides de vereda)",
+        actualizacion: "Pendiente y vías reutilizadas del modelo de deslizamiento; recurrencia histórica cada 6 horas; FWI cada hora",
+      },
+      {
+        nombre: "Recurrencia histórica de focos activos (VIIRS)",
+        publicador: "NASA FIRMS (LANCE, EOSDIS)",
+        descripcion:
+          "Detecciones VIIRS_SNPP_NRT (375 m) de los últimos 150 días, obtenidas paginando el mismo endpoint area/csv usado para la capa en vivo \"Focos activos\" en bloques de 5 días (el límite de esta clave de mapa). Usada como el factor de mayor peso (60% del factor estático) del modelo propio de amenaza por incendios: evidencia directa de dónde ha ardido antes, en vez de un indicio indirecto.",
+        url: "https://firms.modaps.eosdis.nasa.gov/api/",
+        acceso: "API CSV (requiere clave gratuita)",
+        licencia: "Datos públicos de la NASA",
+        cobertura: "Global (recortada al área de estudio)",
+        actualizacion: "La app cachea cada ventana de 5 días por 6 horas",
+      },
+      {
+        nombre: "Índice Meteorológico de Incendio (FWI), calculado por esta app",
+        publicador: "Vigía (implementación propia del sistema del Servicio Forestal de Canadá)",
+        descripcion:
+          "Las ecuaciones estándar del Sistema Canadiense de Índices Forestales de Incendio (Van Wagner, 1987; Van Wagner y Pickett, 1985) — las mismas detrás de la capa de pronóstico FWI de Copernicus GWIS/EFFIS ya disponible en el mapa — calculadas de forma independiente a partir de temperatura, humedad, viento y lluvia diaria de los últimos 60 días por centroide (archivo histórico de Open-Meteo), en vez de leídas de esa capa: su WMS es solo de teselas, sin consulta por punto (GetCapabilities la marca queryable=\"0\").",
+        url: "https://open-meteo.com/en/docs/historical-weather-api",
+        acceso: "Cálculo propio sobre la API de archivo histórico de Open-Meteo",
+        licencia: "N/A — calculado por la app a partir de datos abiertos",
+        cobertura: "Sevilla, Caicedonia, Zarzal (~69 centroides de vereda)",
+        actualizacion: "Diaria, con 60 días de arranque por centroide; la app cachea 1 hora",
       },
       {
         nombre: "Susceptibilidad a inundaciones",

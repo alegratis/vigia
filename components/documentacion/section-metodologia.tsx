@@ -150,15 +150,72 @@ const FLOOD_CACHES = [
   { fuente: "Pendiente / planicie", ttl: "reutilizada", motivo: "es el mismo valor ya cacheado por el modelo de deslizamiento" },
 ]
 
+const FIRE_STEPS: Step[] = [
+  {
+    title: "1. Pendiente y cercanía a la vía más cercana (reutilizadas)",
+    entrada: "Los mismos valores de pendiente y distancia a la vía más cercana ya calculados por el modelo de amenaza por deslizamiento (pasos 1 y 2 de esa metodología), en el mismo centroide.",
+    proceso: [
+      "No se vuelve a consultar la API de elevación ni Overpass: se reutilizan directamente los resultados ya calculados para ese centroide.",
+      "pendiente_score = min(1, pendiente° / 45) — mismo tope de 45° que el modelo de deslizamiento: terreno más empinado propaga el fuego más rápido.",
+      "vía_score = max(0, 1 − distancia_km / 1) — mismo radio de influencia de 1 km. La mayoría de los incendios forestales en Colombia son de origen humano (quemas agrícolas, fuego escapado), así que la cercanía a una vía es un indicio real de riesgo de ignición, no solo de propagación.",
+    ],
+  },
+  {
+    title: "2. Recurrencia histórica de incendios",
+    entrada: "Detecciones activas VIIRS (375 m, fuente VIIRS_SNPP_NRT) de NASA FIRMS, paginadas hacia atrás en bloques de 5 días (el límite de la clave de este mapa) para cubrir una ventana de 150 días.",
+    proceso: [
+      "Se pagina el endpoint area/csv de FIRMS con su parámetro de fecha final, retrocediendo en bloques de 5 días hasta cubrir 150 días — hasta 30 solicitudes con concurrencia limitada (5 a la vez) en vez de una sola consulta.",
+      "Para cada centroide se cuentan las detecciones dentro de 2 km, en toda la ventana de 150 días.",
+      "El conteo se convierte a un puntaje 0–1 que satura en 3 detecciones o más: recurrencia_score = min(1, focos / 3).",
+    ],
+    nota: "Es evidencia directa de dónde ha ardido antes, no un indicio geomorfológico indirecto como los otros dos factores estáticos — por eso recibe el mayor peso del factor estático (60%), el mismo rol que cumple el inventario histórico de movimientos en masa en el modelo de deslizamiento.",
+  },
+  {
+    title: "3. Factor estático combinado",
+    entrada: "Los tres puntajes anteriores.",
+    proceso: [
+      "Promedio ponderado: factor_estático = (pendiente_score × 0.25 + vía_score × 0.15 + recurrencia_score × 0.6) / peso_total.",
+      "Si alguno de los tres factores no se pudo calcular para una vereda, el peso se renormaliza sobre los que sí estén disponibles.",
+    ],
+  },
+  {
+    title: "4. Índice Meteorológico de Incendio (FWI) de hoy",
+    entrada: "Temperatura máxima, humedad relativa mínima, viento máximo y lluvia diaria de los últimos 60 días por centroide, de la API de archivo histórico de Open-Meteo (misma fuente que el disparador de lluvia del modelo de deslizamiento).",
+    proceso: [
+      "Se calculan los tres códigos de humedad de combustible del Sistema Canadiense de Índices Forestales de Incendio (Van Wagner, 1987) día por día, en orden, arrancando desde los valores estándar de primavera del Servicio Forestal de Canadá (FFMC=85, DMC=6, DC=15): el Código de Humedad de Combustibles Finos (FFMC), el Código de Humedad de la Hojarasca (DMC) y el Código de Sequía (DC) — cada uno depende recursivamente del valor del día anterior.",
+      "60 días de \"arranque\" antes de leer el valor de hoy — necesarios para que el DC (el código de decaimiento más lento) converja desde su valor inicial arbitrario, ya que este sistema no publica un valor de arranque propio para el trópico ecuatorial.",
+      "Con los códigos de hoy ya calculados, se obtiene el Índice de Propagación Inicial (ISI, de FFMC y viento) y el Índice de Combustible Disponible (BUI, de DMC y DC), y con ambos el Índice Meteorológico de Incendio (FWI) final — las mismas ecuaciones, con los mismos números de ecuación y las mismas constantes, que la implementación de referencia en R del Servicio Forestal de Canadá (paquete cffdrs).",
+      "El FWI se normaliza a un puntaje 0–1 que satura en FWI = 30 — el límite de la clase \"Extremo\" del sistema original de Van Wagner: fwi_score = min(1, FWI / 30).",
+    ],
+    nota: "Es la misma familia de ecuaciones detrás de la capa de pronóstico FWI de Copernicus GWIS/EFFIS ya disponible como superposición en este mapa — pero esa capa WMS no permite extraer un valor por punto (su GetCapabilities la marca queryable=\"0\", la misma limitación que ya tiene su capa de cobertura del suelo), así que este factor calcula las mismas ecuaciones de forma independiente a partir de datos meteorológicos crudos, en vez de leer el resultado de GWIS.",
+  },
+  {
+    title: "5. Puntaje final y nivel de amenaza",
+    entrada: "El factor estático (paso 3) y el FWI de hoy (paso 4).",
+    proceso: [
+      "Puntaje final = (factor_estático × 0.6 + fwi_score × 0.4) / peso_total, con la misma renormalización de pesos si alguno de los dos factores falló.",
+      "El puntaje 0–1 resultante se traduce al mismo vocabulario de 4 niveles que ya usaba la capa oficial AmenazaIncendios (Muy bajo < 0.25, Bajo < 0.5, Medio < 0.75, Alto ≥ 0.75) y a los mismos tokens de color — sin introducir un quinto nivel ni nuevas variables CSS.",
+      "Se calcula una sola vez por centroide de vereda (~69 en total entre Sevilla, Caicedonia y Zarzal) al resolver /api/veredas.",
+    ],
+    nota: "Si absolutamente ningún factor resolvió para una vereda, el resultado es nulo en todos los campos — nunca un puntaje inventado.",
+  },
+]
+
+const FIRE_CACHES = [
+  { fuente: "Pendiente / vía (reutilizadas)", ttl: "reutilizada", motivo: "mismo caché ya pagado por el modelo de deslizamiento" },
+  { fuente: "Recurrencia histórica (NASA FIRMS)", ttl: "6 horas", motivo: "una ventana pasada de detecciones no cambia una vez publicada" },
+  { fuente: "Meteorología / FWI", ttl: "1 hora", motivo: "los días más recientes se revisan con nuevas observaciones" },
+]
+
 const COMPOUND_STEPS: Step[] = [
   {
     title: "1. Normalización de cada amenaza a 0–1",
     entrada:
-      "Los cinco modelos de amenaza que esta app ya calcula por vereda: deslizamientos, inundaciones y sismología (cada uno con su propio puntaje 0–1 continuo) e incendios forestales y precipitación (cada uno solo con un nivel de 4 categorías, sin puntaje continuo propio).",
+      "Los cinco modelos de amenaza que esta app ya calcula por vereda: deslizamientos, inundaciones, incendios forestales y sismología (cada uno con su propio puntaje 0–1 continuo) y precipitación (solo con un nivel de 4 categorías, sin puntaje continuo propio).",
     proceso: [
-      "Deslizamientos e inundaciones: se reutiliza directamente el puntaje 0–1 ya calculado por cada modelo — nunca se recalcula.",
-      "Incendios (AmenazaIncendios, 4 niveles: Muy bajo/Bajo/Medio/Alto) y precipitación (4 niveles: Bajo/Moderado/Alto/Muy alto): sin puntaje continuo publicado, se usa el índice ordinal del nivel sobre el total de niveles como puntaje sustituto — la misma técnica que el modelo de inundación ya usa para traducir la clase de zonificación oficial a un puntaje.",
-      "Incendios se resuelve en el mismo centroide de vereda que los otros cuatro, mediante un nuevo cruce punto-en-polígono contra la capa AmenazaIncendios (lib/riesgo-compuesto/incendios-join.ts) — un archivo nuevo, no una modificación al mapa de incendios existente.",
+      "Deslizamientos, inundaciones e incendios: se reutiliza directamente el puntaje 0–1 ya calculado por cada modelo propio — nunca se recalcula.",
+      "Precipitación (4 niveles: Bajo/Moderado/Alto/Muy alto): sin puntaje continuo publicado, se usa el índice ordinal del nivel sobre el total de niveles como puntaje sustituto — la misma técnica que el modelo de inundación ya usa para traducir la clase de zonificación oficial a un puntaje.",
+      "Incendios se resuelve en el mismo centroide de vereda que los otros cuatro directamente desde aggregateVeredas() (lib/veredas/aggregate.ts), que ya calcula el modelo propio de incendios junto con los de deslizamiento e inundación — no hace falta un cruce aparte contra ninguna capa oficial.",
       "Precipitación reutiliza /api/precipitacion/amenaza en su modo histórico de 7 días con NASA POWER, ya calculado por vereda.",
       "Sismología: sin zonificación por vereda publicada, se calcula un puntaje propio de exposición por decaimiento espacial desde los epicentros de USGS (en vivo) y SGC (histórico) — ver lib/sismologia/exposure-score.ts.",
     ],
@@ -417,12 +474,120 @@ export function SectionMetodologia() {
 
       <div className="flex flex-col gap-2 border-t border-border pt-6">
         <div className="flex flex-wrap items-center gap-2">
+          <h2 className="text-2xl font-semibold tracking-tight">Metodología: modelo propio de amenaza por incendios forestales</h2>
+          <Badge variant="outline">Cálculo propio, no un índice oficial</Badge>
+        </div>
+        <p className="max-w-3xl text-pretty leading-relaxed text-muted-foreground">
+          El color del mapa de incendios ya no proviene de la zonificación oficial (PBOT 2014,
+          `AmenazaIncendios`) — a diferencia de las capas de zonificación que sí siguen aportando al modelo
+          de deslizamiento y de inundación, esa capa es una digitalización estática de un plan de uso del
+          suelo de 2014, sin ningún modelo computacional detrás que replicar. En su lugar, esta sección
+          documenta el modelo propio que esta misma app calcula: pendiente y cercanía a vías (reutilizadas
+          del modelo de deslizamiento), recurrencia histórica de NASA FIRMS y el Índice Meteorológico de
+          Incendio (FWI) de hoy, calculado con las ecuaciones estándar del Sistema Canadiense de Índices
+          Forestales de Incendio (Van Wagner, 1987) — el mismo sistema detrás de la capa de pronóstico FWI
+          de Copernicus GWIS/EFFIS ya disponible en el mapa, pero calculado aquí de forma independiente a
+          partir de datos meteorológicos crudos.
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-4">
+        {FIRE_STEPS.map((step) => (
+          <Card key={step.title}>
+            <CardHeader>
+              <CardTitle className="text-base">{step.title}</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Entrada</p>
+                <p className="mt-1 text-pretty text-sm leading-relaxed text-foreground">{step.entrada}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Procesamiento</p>
+                <ul className="mt-1 flex flex-col gap-1.5 text-sm leading-relaxed text-muted-foreground">
+                  {step.proceso.map((line) => (
+                    <li key={line} className="flex gap-2">
+                      <span className="mt-2 size-1 shrink-0 rounded-full bg-muted-foreground" aria-hidden="true" />
+                      <span className="text-pretty">{line}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              {step.nota && (
+                <p className="rounded-md bg-muted/50 p-2.5 text-pretty text-xs leading-relaxed text-muted-foreground">
+                  {step.nota}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <h3 className="text-lg font-semibold tracking-tight">Caché por factor</h3>
+        <dl className="grid grid-cols-1 gap-2 rounded-lg bg-muted/50 p-3 text-xs sm:grid-cols-3">
+          {FIRE_CACHES.map((c) => (
+            <div key={c.fuente}>
+              <dt className="font-medium text-foreground">{c.fuente}</dt>
+              <dd className="mt-0.5 text-muted-foreground">
+                {c.ttl} — {c.motivo}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+
+      <div className="flex flex-col gap-2 border-t border-border pt-4">
+        <h3 className="text-lg font-semibold tracking-tight">Qué no es este modelo</h3>
+        <ul className="flex flex-col gap-1.5 text-sm leading-relaxed text-muted-foreground">
+          <li className="flex gap-2">
+            <span className="mt-2 size-1 shrink-0 rounded-full bg-muted-foreground" aria-hidden="true" />
+            <span className="text-pretty">
+              No es una calibración validada contra incendios ocurridos en la zona — los pesos y umbrales
+              (0.25/0.15/0.6, 0.6/0.4, 45°, 1 km, 2 km, 3 detecciones, FWI = 30, 60 días de arranque) son
+              elegidos por criterio propio siguiendo la misma estructura de factor estático + disparador
+              dinámico que el modelo de deslizamiento, no ajustados con datos locales de incendios ocurridos.
+            </span>
+          </li>
+          <li className="flex gap-2">
+            <span className="mt-2 size-1 shrink-0 rounded-full bg-muted-foreground" aria-hidden="true" />
+            <span className="text-pretty">
+              Las ecuaciones del FWI en sí no son una invención de esta app — son el sistema estándar
+              publicado por el Servicio Forestal de Canadá (Van Wagner, 1987), transcritas ecuación por
+              ecuación desde la implementación de referencia en R (paquete cffdrs). Lo que sí es propio de
+              esta app es calcularlas aquí, en vez de leerlas de la capa WMS de GWIS/EFFIS (que no permite
+              extraer un valor por punto), y los 60 días de arranque elegidos para esta latitud ecuatorial,
+              para los que el sistema no publica un valor de referencia.
+            </span>
+          </li>
+          <li className="flex gap-2">
+            <span className="mt-2 size-1 shrink-0 rounded-full bg-muted-foreground" aria-hidden="true" />
+            <span className="text-pretty">
+              La ventana de recurrencia histórica (150 días, solo VIIRS_SNPP_NRT) es una muestra de
+              detecciones activas recientes, no un catálogo completo de todo incendio ocurrido alguna vez
+              en la zona — un incendio anterior a esa ventana, o detectado solo por otro satélite, no cuenta
+              hacia este factor.
+            </span>
+          </li>
+          <li className="flex gap-2">
+            <span className="mt-2 size-1 shrink-0 rounded-full bg-muted-foreground" aria-hidden="true" />
+            <span className="text-pretty">
+              Se calcula en el centroide de cada vereda, no en una grilla densa — un solo valor de FWI y un
+              solo conteo de recurrencia representan a toda la vereda.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div className="flex flex-col gap-2 border-t border-border pt-6">
+        <div className="flex flex-wrap items-center gap-2">
           <h2 className="text-2xl font-semibold tracking-tight">Metodología: riesgo compuesto (multiamenaza)</h2>
           <Badge variant="outline">Cálculo propio, no un índice oficial</Badge>
         </div>
         <p className="max-w-3xl text-pretty leading-relaxed text-muted-foreground">
           La capa &quot;Riesgo compuesto&quot; combina las cinco amenazas que esta app ya modela por
-          vereda —deslizamientos, inundaciones (modelo propio), incendios forestales, precipitación y
+          vereda —deslizamientos, inundaciones (modelo propio), incendios forestales (modelo propio),
+          precipitación y
           sismología— en una sola evaluación, siguiendo dos enfoques ya usados en la práctica internacional
           en vez de inventar
           uno nuevo: la doctrina de la OMM/GDACS de que &quot;la amenaza más alta gobierna&quot; para el
@@ -515,9 +680,10 @@ export function SectionMetodologia() {
           <li className="flex gap-2">
             <span className="mt-2 size-1 shrink-0 rounded-full bg-muted-foreground" aria-hidden="true" />
             <span className="text-pretty">
-              Incendios y precipitación no tienen un puntaje continuo propio publicado, así que su
-              contribución al puntaje compuesto es una aproximación ordinal (índice de nivel entre los
-              niveles totales), no una medida continua nativa como sí lo son deslizamientos e inundaciones.
+              Precipitación no tiene un puntaje continuo propio publicado, así que su contribución al
+              puntaje compuesto es una aproximación ordinal (índice de nivel entre los niveles totales), a
+              diferencia de deslizamientos, inundaciones e incendios, que sí aportan una medida continua
+              nativa de su propio modelo.
             </span>
           </li>
         </ul>

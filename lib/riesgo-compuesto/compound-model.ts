@@ -16,12 +16,15 @@ import "server-only"
  * - Inundaciones (own model): `hazard-model.ts`'s own 0–1 `floodScoreAvg`
  *   (already higher = worse, per its own `zoningLevelToScore` convention)
  *   — used as-is.
- * - Incendios: no continuous score exists (the `AmenazaIncendios` layer
- *   only publishes a 4-tier label) — its ordinal index over
- *   `FIRE_THREAT_LEVELS` (Muy bajo=0 … Alto=1, i.e. index/(n-1)) stands in
- *   for a score, the same technique `zoningLevelToScore` already uses in
- *   the flood model for a level-only input.
- * - Precipitación: same technique, over `PRECIPITATION_LEVELS`.
+ * - Incendios (own model): `hazard-model.ts`'s own 0–1 `fireScoreAvg`
+ *   (slope + road proximity + FIRMS historical recurrence + today's FWI)
+ *   — used as-is, the same "already continuous, use directly" treatment
+ *   as deslizamientos/inundaciones. Before this model existed, incendios
+ *   had no continuous score (the `AmenazaIncendios` layer only publishes
+ *   a 4-tier label) and stood in with an ordinal index over
+ *   `FIRE_THREAT_LEVELS` — the technique `zoningLevelToScore` still uses
+ *   in the flood model, and still used below for precipitación.
+ * - Precipitación: same ordinal-index technique, over `PRECIPITATION_LEVELS`.
  * - Sismología: unlike the other four, there is no published per-vereda
  *   seismic zonation to join against — `exposure-score.ts`'s own 0–1
  *   distance-decay score (higher = closer to/stronger nearby seismic
@@ -29,7 +32,7 @@ import "server-only"
  *   treatment as deslizamientos/inundaciones.
  */
 
-import { FIRE_THREAT_LEVELS, type FireThreatLevel } from "@/lib/incendios/levels"
+import type { FireThreatLevel } from "@/lib/incendios/levels"
 import { PRECIPITATION_LEVELS, type PrecipitationLevel } from "@/lib/precipitacion/levels"
 import type { SusceptibilityLevel } from "@/lib/deslizamientos/levels"
 import type { FloodSusceptibilityLevel } from "@/lib/inundaciones/levels"
@@ -49,7 +52,7 @@ function ordinalScore<T extends string>(levels: readonly T[], value: T | null): 
 export interface CompoundModelInput {
   deslizamientos: { level: SusceptibilityLevel | null; score: number | null }
   inundaciones: { level: FloodSusceptibilityLevel | null; score: number | null }
-  incendios: { level: FireThreatLevel | null }
+  incendios: { level: FireThreatLevel | null; score: number | null }
   precipitacion: { level: PrecipitationLevel | null; accumulatedMm: number | null }
   sismologia: { score: number | null }
 }
@@ -82,7 +85,7 @@ const HAZARD_LABELS: Record<HazardName, string> = {
 export function computeCompoundVeredaRisk(input: CompoundModelInput): CompoundModelResult {
   const deslizamientosNorm = input.deslizamientos.score
   const inundacionesNorm = input.inundaciones.score
-  const incendiosNorm = ordinalScore(FIRE_THREAT_LEVELS, input.incendios.level)
+  const incendiosNorm = input.incendios.score
   const precipitacionNorm = ordinalScore(PRECIPITATION_LEVELS, input.precipitacion.level)
   const sismologiaNorm = input.sismologia.score
 

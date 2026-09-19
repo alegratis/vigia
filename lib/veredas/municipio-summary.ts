@@ -14,6 +14,7 @@
 
 import { SUSCEPTIBILITY_LEVELS, type SusceptibilityLevel } from "@/lib/deslizamientos/levels"
 import { FLOOD_SUSCEPTIBILITY_LEVELS, type FloodSusceptibilityLevel } from "@/lib/inundaciones/levels"
+import { FIRE_THREAT_LEVELS, type FireThreatLevel } from "@/lib/incendios/levels"
 import type { VeredaFeature, VeredasFeatureCollection } from "./api-types"
 
 export interface MunicipioHazardSummary {
@@ -37,6 +38,13 @@ export interface MunicipioHazardSummary {
   floodLevelCounts: Record<FloodSusceptibilityLevel, number>
   /** How many of this municipio's veredas fall inside the official zoning layer's coverage — 0 for Zarzal. */
   floodZoningCoverage: { covered: number; total: number }
+
+  /** Forest-fire hazard model averages — see lib/incendios/hazard-model.ts. */
+  fireScoreAvg: number | null
+  fireHistoryCountAvg: number | null
+  fireFwiAvg: number | null
+  /** Count of veredas at each fire hazard level, in FIRE_THREAT_LEVELS order. */
+  fireLevelCounts: Record<FireThreatLevel, number>
 }
 
 function average(values: (number | null)[]): number | null {
@@ -114,6 +122,15 @@ export function summarizeByMunicipio(veredas: VeredasFeatureCollection): Municip
         if (level && level in floodLevelCounts) floodLevelCounts[level as FloodSusceptibilityLevel]++
       }
 
+      const fireLevelCounts = Object.fromEntries(FIRE_THREAT_LEVELS.map((l) => [l, 0])) as Record<
+        FireThreatLevel,
+        number
+      >
+      for (const f of features) {
+        const level = f.properties.fireLevel
+        if (level && level in fireLevelCounts) fireLevelCounts[level as FireThreatLevel]++
+      }
+
       return {
         municipio,
         totalVeredas: features.length,
@@ -132,6 +149,10 @@ export function summarizeByMunicipio(veredas: VeredasFeatureCollection): Municip
           covered: features.filter((f) => f.properties.floodZoningCovered).length,
           total: features.length,
         },
+        fireScoreAvg: average(features.map((f) => f.properties.fireScoreAvg)),
+        fireHistoryCountAvg: average(features.map((f) => f.properties.fireHistoryCount)),
+        fireFwiAvg: average(features.map((f) => f.properties.fireFwi)),
+        fireLevelCounts,
       }
     })
     .sort((a, b) => a.municipio.localeCompare(b.municipio, "es"))

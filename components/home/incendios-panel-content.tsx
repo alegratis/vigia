@@ -5,6 +5,7 @@ import { IncendiosLiveMapLoader } from "@/components/maps/incendios-live-map-loa
 import { ScrollHintButton } from "@/components/home/scroll-hint-button"
 import { BackToTopButton } from "@/components/home/back-to-top-button"
 import { FireOverview } from "@/components/fires/fire-overview"
+import { FireModelPanel } from "@/components/incendios/fire-model-panel"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
 import type { VeredaFeature } from "@/lib/veredas/api-types"
@@ -14,23 +15,31 @@ interface IncendiosPanelContentProps {
   onBoundsChange?: (bounds: MapBounds) => void
   /** Bubbles a clicked zone's municipio up to the shared sidebar card. */
   onZoneSelect?: (municipio: string) => void
-  /** Bubbles a clicked vereda (via the map's "Límites veredales" overlay) up to the shared sidebar card. */
-  onVeredaSelect?: (feature: VeredaFeature) => void
+  /** Bubbles a clicked vereda (via the map's "Modelo propio de incendios forestales" overlay) up to the shared sidebar card, or `null` to clear the selection (see FireModelPanel's "Ver todo"). */
+  onVeredaSelect?: (feature: VeredaFeature | null) => void
   /** OSM infrastructure points, filtered to the categories toggled on in the sidebar. */
   activeOsmPoints: OsmPoint[]
+  /** Lifted up so FireModelPanel and the workspace's shared sidebar card can both narrow down to whatever vereda is clicked on the map. */
+  selectedVereda: VeredaFeature | null
 }
 
 /**
  * Expanded incendios panel for the homepage workspace: the fire-threat map
- * fills the full first fold; its source caption scrolls in below.
- * Demographics and infrastructure toggles live in the workspace's shared
- * sidebar, fed by onBoundsChange/onZoneSelect/onVeredaSelect.
+ * fills the full first fold; below it, sections run data-first,
+ * methodology-last: NASA FIRMS active-fire overview, then this app's own
+ * vereda-level fire model breakdown (FireModelPanel — mirrors the
+ * inundaciones map's FloodModelPanel), which explains *how* the "Modelo
+ * propio de incendios forestales" map layer above is calculated.
+ * FireModelPanel shares the map's `selectedVereda`. Demographics and
+ * infrastructure toggles live in the workspace's shared sidebar, fed by
+ * onBoundsChange/onZoneSelect/onVeredaSelect.
  */
 export function IncendiosPanelContent({
   onBoundsChange,
   onZoneSelect,
   onVeredaSelect,
   activeOsmPoints,
+  selectedVereda,
 }: IncendiosPanelContentProps) {
   const captionRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<HTMLDivElement>(null)
@@ -57,14 +66,21 @@ export function IncendiosPanelContent({
         />
         <ScrollHintButton targetRef={captionRef} label="Ver focos activos NASA FIRMS" />
       </div>
-      <div ref={captionRef} className="flex flex-col gap-6 p-4 sm:p-6">
+      <div ref={captionRef} className="flex flex-col gap-8 p-4 sm:p-6">
         <div aria-live="polite">
           <FireOverview />
         </div>
+        <div aria-live="polite">
+          <FireModelPanel selectedVereda={selectedVereda} onClearSelection={() => onVeredaSelect?.(null)} />
+        </div>
         <p className="text-xs text-muted-foreground">
-          Amenaza por vereda: capa pública <code className="text-foreground">AmenazaIncendios</code>,
-          publicada en ArcGIS Online. Pronóstico FWI y focos activos de Sentinel-3: servicio
-          abierto{" "}
+          Amenaza por vereda (modelo propio): pendiente y cercanía a vías (reutilizadas del modelo de
+          deslizamiento), recurrencia histórica de focos de NASA FIRMS y el Índice Meteorológico de Incendio
+          (FWI) de hoy, calculado con las ecuaciones estándar del Sistema Canadiense a partir de datos
+          meteorológicos históricos de Open-Meteo. Zonificación oficial (opcional, capa{" "}
+          <code className="text-foreground">AmenazaIncendios</code>): plan de uso del suelo (PBOT) 2014,
+          publicada en ArcGIS Online, solo Sevilla y Caicedonia. Pronóstico FWI en vivo y focos activos de
+          Sentinel-3: servicio abierto{" "}
           <a
             href="https://gwis.jrc.ec.europa.eu"
             target="_blank"
@@ -73,17 +89,15 @@ export function IncendiosPanelContent({
           >
             GWIS / Copernicus EFFIS
           </a>{" "}
-          (Centro Común de Investigación de la UE). Focos activos de MODIS y VIIRS: NASA FIRMS.
-          Haz clic sobre cualquier zona para ver su municipio, vereda y nivel de amenaza. Esta
-          zonificación no cubre Zarzal; la categoría{" "}
+          (Centro Común de Investigación de la UE). Focos activos de MODIS y VIIRS: NASA FIRMS. El modelo
+          propio cubre los tres municipios, incluido Zarzal; la categoría{" "}
           <a
             href="/?categoria=precipitacion"
             className="underline underline-offset-2 hover:text-foreground"
           >
             Precipitación
           </a>{" "}
-          sí ofrece un dato de contexto (lluvia acumulada por vereda) para los tres municipios,
-          incluido Zarzal — más lluvia acumulada suele significar menor riesgo de incendio.
+          también ofrece un dato de contexto (lluvia acumulada por vereda) para los tres municipios.
         </p>
         <BackToTopButton targetRef={mapRef} />
       </div>
