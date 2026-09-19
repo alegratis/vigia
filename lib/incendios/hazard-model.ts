@@ -2,9 +2,10 @@ import "server-only"
 
 /**
  * Self-computed forest-fire hazard model, replacing RED LabOT's
- * `AmenazaIncendios` layer as the source for the incendios map's vereda
- * coloring (that layer is demoted to an optional "Zonificación oficial"
- * reference toggle — see components/maps/incendios-live-map.tsx). Unlike
+ * `AmenazaIncendios` layer as the sole source for the incendios map's
+ * vereda coloring (that layer is no longer surfaced on the incendios map
+ * at all — see components/maps/incendios-live-map.tsx; it's still exposed
+ * separately for the exposicion map). Unlike
  * the deslizamientos/inundaciones layers this one is replacing,
  * `AmenazaIncendios` has no computational model underneath it to
  * reverse-engineer: it's a static digitization of each municipio's 2014

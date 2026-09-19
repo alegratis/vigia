@@ -60,7 +60,7 @@ const GROUPS: SourceGroup[] = [
         nombre: "Amenaza por incendios forestales (zonificación oficial)",
         publicador: "RED LabOT",
         descripcion:
-          "Polígonos de amenaza por incendio forestal, por vereda rural — digitalización estática del plan de uso del suelo (PBOT) 2014 de cada municipio, sin un modelo computacional detrás. Ya no colorea el mapa de incendios por sí sola (ver el modelo propio, abajo); queda como capa opcional independiente (\"Zonificación oficial\"), apagada por defecto.",
+          "Polígonos de amenaza por incendio forestal, por vereda rural — digitalización estática del plan de uso del suelo (PBOT) 2014 de cada municipio, sin un modelo computacional detrás. Ya no se muestra en el mapa de incendios (ver el modelo propio, abajo, que la reemplaza como única fuente del color); sigue disponible como capa de referencia en el mapa de exposición.",
         url: "https://services8.arcgis.com/UYEK9SUzH1am9mbk/arcgis/rest/services/AmenazaIncendios/FeatureServer",
         acceso: "ArcGIS FeatureServer",
         licencia: "Datos abiertos, sin autenticación",

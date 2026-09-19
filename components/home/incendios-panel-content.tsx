@@ -74,13 +74,11 @@ export function IncendiosPanelContent({
           <FireModelPanel selectedVereda={selectedVereda} onClearSelection={() => onVeredaSelect?.(null)} />
         </div>
         <p className="text-xs text-muted-foreground">
-          Amenaza por vereda (modelo propio): pendiente y cercanía a vías (reutilizadas del modelo de
-          deslizamiento), recurrencia histórica de focos de NASA FIRMS y el Índice Meteorológico de Incendio
-          (FWI) de hoy, calculado con las ecuaciones estándar del Sistema Canadiense a partir de datos
-          meteorológicos históricos de Open-Meteo. Zonificación oficial (opcional, capa{" "}
-          <code className="text-foreground">AmenazaIncendios</code>): plan de uso del suelo (PBOT) 2014,
-          publicada en ArcGIS Online, solo Sevilla y Caicedonia. Pronóstico FWI en vivo y focos activos de
-          Sentinel-3: servicio abierto{" "}
+          Amenaza por vereda (modelo propio, única fuente del color de este mapa): pendiente y cercanía a vías
+          (reutilizadas del modelo de deslizamiento), recurrencia histórica de focos de las cuatro fuentes de
+          NASA FIRMS y el Índice Meteorológico de Incendio (FWI) de hoy, calculado con las ecuaciones estándar
+          del Sistema Canadiense a partir de datos meteorológicos históricos de Open-Meteo. Pronóstico FWI en
+          vivo y focos activos de Sentinel-3: servicio abierto{" "}
           <a
             href="https://gwis.jrc.ec.europa.eu"
             target="_blank"
