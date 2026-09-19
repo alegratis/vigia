@@ -79,10 +79,10 @@ const GROUPS: SourceGroup[] = [
         actualizacion: "Pendiente y vías reutilizadas del modelo de deslizamiento; recurrencia histórica cada 6 horas; FWI cada hora",
       },
       {
-        nombre: "Recurrencia histórica de focos activos (VIIRS)",
+        nombre: "Recurrencia histórica de focos activos (VIIRS + MODIS)",
         publicador: "NASA FIRMS (LANCE, EOSDIS)",
         descripcion:
-          "Detecciones VIIRS_SNPP_NRT (375 m) de los últimos 150 días, obtenidas paginando el mismo endpoint area/csv usado para la capa en vivo \"Focos activos\" en bloques de 5 días (el límite de esta clave de mapa). Usada como el factor de mayor peso (60% del factor estático) del modelo propio de amenaza por incendios: evidencia directa de dónde ha ardido antes, en vez de un indicio indirecto.",
+          "Detecciones de las cuatro fuentes FIRMS (VIIRS_SNPP_NRT, VIIRS_NOAA20_NRT, VIIRS_NOAA21_NRT y MODIS_NRT — las mismas que la capa en vivo \"Focos activos\" ofrece) de los últimos 150 días, obtenidas paginando el mismo endpoint area/csv en bloques de 5 días por fuente (el límite de esta clave de mapa), y deduplicadas entre plataformas de la misma familia de sensor antes de contar. Usada como el factor de mayor peso (60% del factor estático) del modelo propio de amenaza por incendios: evidencia directa de dónde ha ardido antes, en vez de un indicio indirecto.",
         url: "https://firms.modaps.eosdis.nasa.gov/api/",
         acceso: "API CSV (requiere clave gratuita)",
         licencia: "Datos públicos de la NASA",

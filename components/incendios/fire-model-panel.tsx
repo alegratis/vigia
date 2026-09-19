@@ -29,7 +29,7 @@ const FACTORS = [
     label: "2. Recurrencia histórica de incendios (NASA FIRMS)",
     weight: "60% del puntaje",
     detail:
-      "Detecciones VIIRS (375 m) dentro de 2 km del centroide, en los últimos 150 días, contando focos hasta un tope de 3 (recurrencia_score = min(1, focos / 3)). Es evidencia directa de dónde ha ardido antes, no un indicio indirecto como los otros dos factores estáticos — por eso recibe el mayor peso del factor estático, el mismo rol que cumple el inventario histórico de movimientos en masa en el modelo de deslizamiento.",
+      "Detecciones de las cuatro fuentes FIRMS que también alimentan la capa en vivo (VIIRS_SNPP, VIIRS_NOAA20, VIIRS_NOAA21 y MODIS) dentro de 2 km del centroide, en los últimos 150 días, contando focos hasta un tope de 3 (recurrencia_score = min(1, focos / 3)). Es evidencia directa de dónde ha ardido antes, no un indicio indirecto como los otros dos factores estáticos — por eso recibe el mayor peso del factor estático, el mismo rol que cumple el inventario histórico de movimientos en masa en el modelo de deslizamiento.",
   },
   {
     label: "3. Índice Meteorológico de Incendio (FWI) de hoy",

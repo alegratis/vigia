@@ -263,7 +263,11 @@ function IncendiosLiveMapImpl({
   // layer picker: MODIS and VIIRS come from NASA FIRMS as geolocated points
   // (rich popups); Sentinel-3 has no FIRMS source, so it renders as a GWIS
   // WMS raster tile instead (see GWIS_S3_HOTSPOT_LAYER above).
-  const [showModis, setShowModis] = useState(false)
+  // Both FIRMS point sensors on by default — the model's historical
+  // recurrence factor now counts detections from both (see
+  // lib/incendios/fire-history.ts), so the live layer defaults to
+  // showing the same full picture rather than hiding MODIS.
+  const [showModis, setShowModis] = useState(true)
   const [showViirs, setShowViirs] = useState(true)
   const [showSentinel3, setShowSentinel3] = useState(false)
   // Own model on by default — the vereda-colored layer is now this map's

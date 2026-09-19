@@ -162,9 +162,10 @@ const FIRE_STEPS: Step[] = [
   },
   {
     title: "2. Recurrencia histórica de incendios",
-    entrada: "Detecciones activas VIIRS (375 m, fuente VIIRS_SNPP_NRT) de NASA FIRMS, paginadas hacia atrás en bloques de 5 días (el límite de la clave de este mapa) para cubrir una ventana de 150 días.",
+      entrada: "Detecciones activas de las cuatro fuentes FIRMS de NASA (VIIRS_SNPP_NRT, VIIRS_NOAA20_NRT, VIIRS_NOAA21_NRT y MODIS_NRT — las mismas que la capa en vivo \"Focos activos\" ofrece), paginadas hacia atrás en bloques de 5 días (el límite de la clave de este mapa) para cubrir una ventana de 150 días.",
     proceso: [
-      "Se pagina el endpoint area/csv de FIRMS con su parámetro de fecha final, retrocediendo en bloques de 5 días hasta cubrir 150 días — hasta 30 solicitudes con concurrencia limitada (5 a la vez) en vez de una sola consulta.",
+      "Se pagina el endpoint area/csv de FIRMS con su parámetro de fecha final para cada una de las cuatro fuentes, retrocediendo en bloques de 5 días hasta cubrir 150 días — hasta 120 solicitudes (4 fuentes × ~30 bloques) con concurrencia limitada (8 a la vez) en vez de una sola consulta.",
+      "Detecciones repetidas de plataformas VIIRS distintas sobre el mismo punto y día se deduplican antes de contar, para no inflar la recurrencia por cobertura multisatélite de un mismo incendio.",
       "Para cada centroide se cuentan las detecciones dentro de 2 km, en toda la ventana de 150 días.",
       "El conteo se convierte a un puntaje 0–1 que satura en 3 detecciones o más: recurrencia_score = min(1, focos / 3).",
     ],
@@ -563,10 +564,10 @@ export function SectionMetodologia() {
           <li className="flex gap-2">
             <span className="mt-2 size-1 shrink-0 rounded-full bg-muted-foreground" aria-hidden="true" />
             <span className="text-pretty">
-              La ventana de recurrencia histórica (150 días, solo VIIRS_SNPP_NRT) es una muestra de
+              La ventana de recurrencia histórica (150 días, las cuatro fuentes FIRMS) es una muestra de
               detecciones activas recientes, no un catálogo completo de todo incendio ocurrido alguna vez
-              en la zona — un incendio anterior a esa ventana, o detectado solo por otro satélite, no cuenta
-              hacia este factor.
+              en la zona — un incendio anterior a esa ventana, o demasiado pequeño/breve para cualquiera
+              de los sensores satelitales de FIRMS, no cuenta hacia este factor.
             </span>
           </li>
           <li className="flex gap-2">
