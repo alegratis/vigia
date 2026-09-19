@@ -8,6 +8,7 @@ import { useVeredas } from "@/lib/veredas/use-veredas"
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import type { VeredaFeature } from "@/lib/veredas/api-types"
 import { floodSusceptibilityColorToken } from "@/lib/inundaciones/levels"
+import { fireLevelColorToken } from "@/lib/incendios/levels"
 import { seismicExposureColorToken, seismicExposureLevel } from "@/lib/sismologia/levels"
 import { isMunicipioActive } from "@/lib/veredas/municipio-toggles"
 
@@ -37,9 +38,10 @@ interface VeredasOverlayProps {
    * population/infrastructure summary. Defaults to the landslide model
    * (the overlay's original, and still most common, use). The
    * inundaciones map passes `"inundaciones"` when it colors veredas by
-   * this app's own flood model instead of a neutral outline.
+   * this app's own flood model instead of a neutral outline. The
+   * incendios map passes `"incendios"` for its own forest-fire model.
    */
-  hazardKind?: "deslizamientos" | "inundaciones" | "sismologia"
+  hazardKind?: "deslizamientos" | "inundaciones" | "sismologia" | "incendios"
   /**
    * Whether a click on a vereda polygon stops the map's own click layer
    * from also firing underneath it — the deslizamientos/incendios maps
@@ -70,7 +72,8 @@ interface VeredasOverlayProps {
  * deslizamientos map (colored by its own landslide hazard model) and
  * reused on the inundaciones map (colored by its own flood hazard model —
  * `hazardKind="inundaciones"`, see lib/inundaciones/hazard-model.ts) and
- * as a neutral outline reference layer on incendios.
+ * the incendios map (colored by its own forest-fire hazard model —
+ * `hazardKind="incendios"`, see lib/incendios/hazard-model.ts).
  */
 export function VeredasOverlay({
   enabled,
@@ -217,6 +220,38 @@ export function VeredasOverlay({
                       : "Sin zonificación oficial — solo modelo propio"}
                   </span>
                 )}
+                {colorForFeature && hazardKind === "incendios" && props.fireLevel && (
+                  <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span
+                      style={{
+                        display: "inline-block",
+                        width: 9,
+                        height: 9,
+                        borderRadius: "50%",
+                        flexShrink: 0,
+                        backgroundColor: fireLevelColorToken(props.fireLevel),
+                      }}
+                    />
+                    Amenaza de incendio (modelo propio): {props.fireLevel}
+                    {props.fireScoreAvg != null && ` (${props.fireScoreAvg.toFixed(2)})`}
+                  </span>
+                )}
+                {colorForFeature && hazardKind === "incendios" && !props.fireLevel && (
+                  <span style={{ color: "#888" }}>Sin datos del modelo de incendio</span>
+                )}
+                {colorForFeature &&
+                  hazardKind === "incendios" &&
+                  (props.slopeDeg != null || props.roadDistanceKm != null || props.fireHistoryCount != null || props.fireFwi != null) && (
+                    <span style={{ color: "#888" }}>
+                      {props.slopeDeg != null && `Pendiente: ${props.slopeDeg.toFixed(1)}°`}
+                      {props.slopeDeg != null && (props.roadDistanceKm != null || props.fireHistoryCount != null || props.fireFwi != null) && " · "}
+                      {props.roadDistanceKm != null && `Vía más cercana: ${props.roadDistanceKm.toFixed(2)} km`}
+                      {props.roadDistanceKm != null && (props.fireHistoryCount != null || props.fireFwi != null) && " · "}
+                      {props.fireHistoryCount != null && `Focos históricos cercanos: ${props.fireHistoryCount}`}
+                      {props.fireHistoryCount != null && props.fireFwi != null && " · "}
+                      {props.fireFwi != null && `FWI hoy: ${props.fireFwi.toFixed(1)}`}
+                    </span>
+                  )}
                 {colorForFeature && hazardKind === "sismologia" && props.seismicScoreAvg != null && (
                   <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <span

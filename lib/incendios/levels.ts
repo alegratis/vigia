@@ -1,7 +1,10 @@
 /**
- * Shared, client-safe metadata for the forest-fire threat levels
- * (`Amenaza_Label`) published in the `AmenazaIncendios` ArcGIS Online layer
- * (see lib/incendios/client.ts). Only four levels appear in the source data
+ * Shared, client-safe metadata for the forest-fire threat levels. Originally
+ * just the `Amenaza_Label` values published in the `AmenazaIncendios` ArcGIS
+ * Online layer (see lib/incendios/client.ts); this app's own self-computed
+ * hazard model (see hazard-model.ts) is scored onto the same 4-level
+ * vocabulary and reuses these same styles, rather than introducing a new
+ * scale or new CSS color tokens. Only four levels appear in the source data
  * across its whole coverage — there is no "Muy alto" tier, unlike the
  * five-level deslizamientos scale. No server imports.
  */

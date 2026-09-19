@@ -10,6 +10,7 @@
  */
 
 import type { FloodSusceptibilityLevel } from "@/lib/inundaciones/levels"
+import type { FireThreatLevel } from "@/lib/incendios/levels"
 
 export interface VeredaProperties {
   /** DIVIPOLA vereda code (departamento+municipio+vereda), e.g. "76895002" — or a synthetic "<mpio-code>-urbano" id for the Casco Urbano pseudo-vereda. */
@@ -55,6 +56,21 @@ export interface VeredaProperties {
   floodZoningLevel: FloodSusceptibilityLevel | null
   /** Whether this centroid falls inside the official zoning layer's coverage at all — `false` for every vereda in Zarzal. */
   floodZoningCovered: boolean
+
+  /**
+   * Final 0–1 composite score from this app's own forest-fire hazard
+   * model (slope + road proximity, both reused from the landslide model,
+   * plus NASA FIRMS historical fire recurrence and today's Fire Weather
+   * Index — see lib/incendios/hazard-model.ts), computed at this
+   * vereda's centroid. Covers all three municipios, including Zarzal.
+   */
+  fireScoreAvg: number | null
+  /** Fire hazard level from the same model, mapped onto AmenazaIncendios' own 4-level vocabulary. */
+  fireLevel: FireThreatLevel | null
+  /** Historical VIIRS detections within the recurrence factor's radius at this centroid. */
+  fireHistoryCount: number | null
+  /** Today's Fire Weather Index (Canadian FWI System) at this centroid. */
+  fireFwi: number | null
 
   /**
    * 0–1 seismic exposure score at this vereda's centroid — a distance-decay

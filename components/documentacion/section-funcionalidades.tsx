@@ -25,11 +25,11 @@ const FEATURES = [
   },
   {
     title: "Incendios",
-    tags: ["Sevilla", "Caicedonia"],
+    tags: ["Sevilla", "Caicedonia", "Zarzal"],
     items: [
-      "Polígonos de amenaza por incendio forestal, por vereda.",
+      "Mapa de amenaza por vereda coloreado únicamente por un modelo propio: pendiente y cercanía a vías (reutilizadas del modelo de deslizamiento), recurrencia histórica de focos de las cuatro fuentes de NASA FIRMS y el Índice Meteorológico de Incendio (FWI) de hoy, calculado con las ecuaciones estándar del Sistema Canadiense de Índices Forestales de Incendio. Calculado en las ~69 veredas de los tres municipios, incluida Zarzal — la zonificación oficial (PBOT 2014) ya no colorea este mapa.",
       "Índice de riesgo de incendio (FWI) en vivo de Copernicus GWIS/EFFIS, con selector de día de pronóstico.",
-      "Detecciones activas de incendio (satélites VIIRS) de NASA FIRMS, con radio de búsqueda configurable.",
+      "Detecciones activas de incendio (satélites VIIRS y MODIS) de NASA FIRMS, con radio de búsqueda configurable.",
     ],
   },
   {

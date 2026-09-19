@@ -42,6 +42,13 @@ import "server-only"
  * all three municipios including Zarzal. It reuses each centroid's
  * `slopeDeg` already computed by `computeVeredaHazard` above, rather than
  * re-fetching elevation a second time for the same point.
+ *
+ * A fifth source, same pattern again: this app's own forest-fire hazard
+ * model (lib/incendios/hazard-model.ts — slope + road proximity + NASA
+ * FIRMS historical fire recurrence + today's Fire Weather Index), also
+ * covering all three municipios. It reuses each centroid's `slopeDeg`
+ * *and* `roadDistanceKm` already computed by `computeVeredaHazard`
+ * above, rather than re-fetching elevation or Overpass a second time.
  */
 
 import { booleanPointInPolygon } from "@turf/boolean-point-in-polygon"
@@ -53,6 +60,8 @@ import { computeVeredaHazard } from "@/lib/deslizamientos/hazard-model"
 import type { SusceptibilityLevel } from "@/lib/deslizamientos/levels"
 import { computeVeredaFloodHazard } from "@/lib/inundaciones/hazard-model"
 import type { FloodSusceptibilityLevel } from "@/lib/inundaciones/levels"
+import { computeVeredaFireHazard } from "@/lib/incendios/hazard-model"
+import type { FireThreatLevel } from "@/lib/incendios/levels"
 import { getSeismicExposureByVereda } from "@/lib/sismologia/exposure-score"
 import type { VeredaBoundary } from "./boundaries"
 
@@ -78,6 +87,14 @@ export interface VeredaAggregate {
   /** Official zoning class at this centroid, or `null` outside the zoning layer's coverage (every vereda in Zarzal). */
   floodZoningLevel: FloodSusceptibilityLevel | null
   floodZoningCovered: boolean
+
+  /** Final 0–1 composite score from this app's own forest-fire hazard model — see lib/incendios/hazard-model.ts. */
+  fireScoreAvg: number | null
+  fireLevel: FireThreatLevel | null
+  /** Historical VIIRS detections within the recurrence factor's radius at this vereda's centroid. */
+  fireHistoryCount: number | null
+  /** Today's Fire Weather Index at this vereda's centroid. */
+  fireFwi: number | null
 
   /** 0–1 seismic exposure score at this vereda's centroid — see lib/sismologia/exposure-score.ts. Never `null`: seismic exposure is regional, so a vereda far from every known epicenter simply scores near 0. */
   seismicScoreAvg: number | null
@@ -149,7 +166,18 @@ export async function aggregateVeredas(
     ...c,
     slopeDeg: hazardByVereda.get(c.codigoVereda)?.slopeDeg ?? null,
   }))
-  const floodHazardByVereda = await computeVeredaFloodHazard(floodCentroids)
+  // Fire centroids reuse both slope and road distance from the landslide
+  // hazard result — neither elevation nor Overpass is fetched a second
+  // time for the same point.
+  const fireCentroids = centroids.map((c) => ({
+    ...c,
+    slopeDeg: hazardByVereda.get(c.codigoVereda)?.slopeDeg ?? null,
+    roadDistanceKm: hazardByVereda.get(c.codigoVereda)?.roadDistanceKm ?? null,
+  }))
+  const [floodHazardByVereda, fireHazardByVereda] = await Promise.all([
+    computeVeredaFloodHazard(floodCentroids),
+    computeVeredaFireHazard(fireCentroids),
+  ])
 
   const pointsByMunicipio = new Map<string, typeof susceptibilityPoints>()
   for (const p of susceptibilityPoints) {
@@ -172,6 +200,7 @@ export async function aggregateVeredas(
     const poly = multiPolygon(boundary.polygons)
     const hazard = hazardByVereda.get(boundary.codigoVereda) ?? null
     const floodHazard = floodHazardByVereda.get(boundary.codigoVereda) ?? null
+    const fireHazard = fireHazardByVereda.get(boundary.codigoVereda) ?? null
 
     const candidatePoints = pointsByMunicipio.get(boundary.municipio) ?? []
     const insidePoints = candidatePoints.filter(
@@ -197,6 +226,10 @@ export async function aggregateVeredas(
         floodStreamDistanceKm: floodHazard?.streamDistanceKm ?? null,
         floodZoningLevel: floodHazard?.zoningLevel ?? null,
         floodZoningCovered: floodHazard?.zoningCovered ?? false,
+        fireScoreAvg: fireHazard?.score ?? null,
+        fireLevel: fireHazard?.level ?? null,
+        fireHistoryCount: fireHazard?.historyCount ?? null,
+        fireFwi: fireHazard?.fwi ?? null,
         seismicScoreAvg: seismicByVereda.get(boundary.codigoVereda)?.score ?? null,
         seismicNearestEventKm: seismicByVereda.get(boundary.codigoVereda)?.nearestEventKm ?? null,
         seismicNearestMagnitude: seismicByVereda.get(boundary.codigoVereda)?.nearestEventMagnitude ?? null,
@@ -244,6 +277,10 @@ export async function aggregateVeredas(
       floodStreamDistanceKm: floodHazard?.streamDistanceKm ?? null,
       floodZoningLevel: floodHazard?.zoningLevel ?? null,
       floodZoningCovered: floodHazard?.zoningCovered ?? false,
+      fireScoreAvg: fireHazard?.score ?? null,
+      fireLevel: fireHazard?.level ?? null,
+      fireHistoryCount: fireHazard?.historyCount ?? null,
+      fireFwi: fireHazard?.fwi ?? null,
       seismicScoreAvg: seismicByVereda.get(boundary.codigoVereda)?.score ?? null,
       seismicNearestEventKm: seismicByVereda.get(boundary.codigoVereda)?.nearestEventKm ?? null,
       seismicNearestMagnitude: seismicByVereda.get(boundary.codigoVereda)?.nearestEventMagnitude ?? null,
