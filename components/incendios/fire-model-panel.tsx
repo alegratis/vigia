@@ -86,9 +86,9 @@ export function FireModelPanel({ className, selectedVereda, onClearSelection }: 
           Cómo se calcula la amenaza por incendio forestal
         </h3>
         <p className="text-xs leading-relaxed text-muted-foreground">
-          El color de cada vereda en la capa &quot;Modelo propio de incendios forestales&quot; no viene de la
-          zonificación oficial (PBOT 2014) — lo calcula esta misma app, combinando los tres factores de abajo,
-          para cubrir las tres municipios, incluido Zarzal, que la zonificación oficial nunca cubrió.{" "}
+          El color de cada vereda en la capa &quot;Modelo propio de incendios forestales&quot; lo calcula esta
+          misma app, combinando los tres factores de abajo, para cubrir los tres municipios, incluido
+          Zarzal.{" "}
           <a href="/documentacion#metodologia" className="text-primary underline-offset-2 hover:underline">
             Ver metodología completa
           </a>
