@@ -16,13 +16,13 @@ import daneProjections from "./data/dane-projections-2018-2026.json"
  * republished 2025-07-30, covers 2018-2042 using the post-2018-census
  * cohort-component model), but it is only published as a single ~930 MB
  * national Excel workbook with no per-municipality API. So this file was
- * downloaded once, and the Sevilla/Caicedonia/Zarzal rows through 2026 were
- * extracted into ./data/dane-projections-2018-2026.json, checked in below.
- * That JSON is what this module reads — no network call, no staleness risk
- * from an abandoned live endpoint.
+ * downloaded once, and the Sevilla/Caicedonia/Zarzal/Roldanillo rows through
+ * 2026 were extracted into ./data/dane-projections-2018-2026.json, checked
+ * in below. That JSON is what this module reads — no network call, no
+ * staleness risk from an abandoned live endpoint.
  */
 
-export const MUNICIPIOS = ["Sevilla", "Caicedonia", "Zarzal"] as const
+export const MUNICIPIOS = ["Sevilla", "Caicedonia", "Zarzal", "Roldanillo"] as const
 
 export const DANE_SOURCE = daneProjections.source
 export const DANE_SOURCE_URL = daneProjections.sourceUrl

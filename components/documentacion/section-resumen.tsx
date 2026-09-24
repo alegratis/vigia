@@ -5,8 +5,8 @@ export function SectionResumen() {
     <section id="resumen" className="flex flex-col gap-4 scroll-mt-24">
       <h2 className="text-2xl font-semibold tracking-tight">Resumen</h2>
       <p className="text-pretty leading-relaxed text-muted-foreground">
-        Vigía es una plataforma de código abierto para la evaluación y gestión de riesgos en tres
-        municipios del Valle del Cauca, Colombia: Sevilla, Caicedonia y Zarzal. Cruza amenazas
+        Vigía es una plataforma de código abierto para la evaluación y gestión de riesgos en cuatro
+        municipios del Valle del Cauca, Colombia: Sevilla, Caicedonia, Zarzal y Roldanillo. Cruza amenazas
         naturales de deslizamiento, inundación e incendio forestal con la población y la
         infraestructura crítica expuestas, combinando índices de amenaza estáticos con pronósticos
         y monitoreo en vivo de fuentes abiertas.

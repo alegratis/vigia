@@ -1,6 +1,6 @@
 # Vigía
 
-**Vigía** es una plataforma de código abierto para la evaluación y gestión de riesgos de desastres a escala municipal y veredal, enfocada en los municipios de **Sevilla, Caicedonia y Zarzal** (Valle del Cauca, Colombia).
+**Vigía** es una plataforma de código abierto para la evaluación y gestión de riesgos de desastres a escala municipal y veredal, enfocada en los municipios de **Sevilla, Caicedonia, Zarzal y Roldanillo** (Valle del Cauca, Colombia).
 
 Reúne pronósticos, catálogos históricos y sensores satelitales de múltiples fuentes públicas en una sola lectura por vereda, para ayudar a anticipar dónde actuar antes de que una amenaza se convierta en emergencia. Cada modelo cruza la amenaza con la densidad de población para estimar la exposición humana en cada nivel.
 
@@ -20,7 +20,7 @@ La plataforma organiza la información en siete mapas interactivos, seleccionabl
 | **Sismología** | `sismologia` | Epicentros en vivo e históricos, con exposición sísmica por distancia. | USGS, Servicio Geológico Colombiano |
 | **Riesgo compuesto** | `riesgo-compuesto` | Combina los cinco modelos propios en una sola evaluación por vereda (gobierna el nivel más alto). | Modelos internos |
 
-Todas las capas cubren Sevilla y Caicedonia; Precipitación y Clima extienden el mismo detalle a Zarzal.
+Todas las capas cubren Sevilla y Caicedonia; Precipitación y Clima extienden el mismo detalle a Zarzal y Roldanillo.
 
 ## Arquitectura
 

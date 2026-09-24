@@ -18,8 +18,8 @@ export interface SelectedVereda {
   municipio: string
 }
 
-/** The three municipios in the study area, selectable as a "whole territory" average. */
-const MUNICIPIOS = ["Sevilla", "Zarzal", "Caicedonia"] as const
+/** The four municipios in the study area, selectable as a "whole territory" average. */
+const MUNICIPIOS = ["Sevilla", "Zarzal", "Caicedonia", "Roldanillo"] as const
 type Municipio = (typeof MUNICIPIOS)[number]
 
 interface ClimatologyChartProps {

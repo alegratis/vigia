@@ -4,9 +4,9 @@ import { Badge } from "@/components/ui/badge"
 const FEATURES = [
   {
     title: "Deslizamientos",
-    tags: ["Sevilla", "Caicedonia", "Zarzal"],
+    tags: ["Sevilla", "Caicedonia", "Zarzal", "Roldanillo"],
     items: [
-      "Mapa de amenaza por vereda coloreado por un modelo propio inspirado en LHASA (NASA): pendiente del terreno, proximidad a vías y proximidad a una falla geológica (SGC) como susceptibilidad estática, ajustada por un disparador de lluvia reciente frente a su normal histórica. Calculado en las 55 veredas de los tres municipios, incluida Zarzal.",
+      "Mapa de amenaza por vereda coloreado por un modelo propio inspirado en LHASA (NASA): pendiente del terreno, proximidad a vías y proximidad a una falla geológica (SGC) como susceptibilidad estática, ajustada por un disparador de lluvia reciente frente a su normal histórica. Calculado en las veredas de los cuatro municipios, incluidos Zarzal y Roldanillo.",
       "Población, escuelas, hospitales, farmacias e infraestructura crítica expuestas por nivel de amenaza (RED LabOT, Sevilla y Caicedonia), independiente del color del mapa.",
       "Capa opcional de fallas geológicas del SGC (líneas), la misma fuente que alimenta el factor de proximidad a fallas del modelo — mostrada como referencia visual, no como un cálculo aparte.",
       "Superposición de pronóstico de humedad del suelo de raíz (NASA SMAP L4), actualizada cada 3–4 días.",
@@ -15,45 +15,45 @@ const FEATURES = [
   },
   {
     title: "Inundaciones",
-    tags: ["Sevilla", "Caicedonia", "Zarzal"],
+    tags: ["Sevilla", "Caicedonia", "Zarzal", "Roldanillo"],
     items: [
       "Polígonos de susceptibilidad estática a inundación por zona (RED LabOT) — solo cubre el área zonificada de Sevilla y Caicedonia.",
-      "Mapa de amenaza por vereda coloreado por un modelo propio de inundación: zonificación oficial (donde exista), distancia a la quebrada o río más próximo y planicie del terreno (pendiente reutilizada del modelo de deslizamiento). Calculado en las 69 veredas de los tres municipios, incluida Zarzal — la única capa de amenaza por inundación con esa cobertura.",
+      "Mapa de amenaza por vereda coloreado por un modelo propio de inundación: zonificación oficial (donde exista), distancia a la quebrada o río más próximo y planicie del terreno (pendiente reutilizada del modelo de deslizamiento). Calculado en las 89 veredas de los cuatro municipios, incluidos Zarzal y Roldanillo — la única capa de amenaza por inundación con esa cobertura.",
       "Pronóstico de caudal en vivo de GEOGLOWS, evaluado contra períodos de retorno calculados localmente (ajuste de Gumbel) sobre el registro retrospectivo del tramo de río más cercano.",
       "Superposición de tasa de precipitación en vivo (NASA GPM IMERG, actualizada cada ~30 minutos).",
     ],
   },
   {
     title: "Incendios",
-    tags: ["Sevilla", "Caicedonia", "Zarzal"],
+    tags: ["Sevilla", "Caicedonia", "Zarzal", "Roldanillo"],
     items: [
-      "Mapa de amenaza por vereda coloreado únicamente por un modelo propio: pendiente y cercanía a vías (reutilizadas del modelo de deslizamiento), recurrencia histórica de focos de las cuatro fuentes de NASA FIRMS y el Índice Meteorológico de Incendio (FWI) de hoy, calculado con las ecuaciones estándar del Sistema Canadiense de Índices Forestales de Incendio. Calculado en las ~69 veredas de los tres municipios, incluida Zarzal — la zonificación oficial (PBOT 2014) ya no colorea este mapa.",
+      "Mapa de amenaza por vereda coloreado únicamente por un modelo propio: pendiente y cercanía a vías (reutilizadas del modelo de deslizamiento), recurrencia histórica de focos de las cuatro fuentes de NASA FIRMS y el Índice Meteorológico de Incendio (FWI) de hoy, calculado con las ecuaciones estándar del Sistema Canadiense de Índices Forestales de Incendio. Calculado en las ~89 veredas de los cuatro municipios, incluidos Zarzal y Roldanillo.",
       "Índice de riesgo de incendio (FWI) en vivo de Copernicus GWIS/EFFIS, con selector de día de pronóstico.",
       "Detecciones activas de incendio (satélites VIIRS y MODIS) de NASA FIRMS, con radio de búsqueda configurable.",
     ],
   },
   {
     title: "Precipitación",
-    tags: ["Sevilla", "Caicedonia", "Zarzal"],
+    tags: ["Sevilla", "Caicedonia", "Zarzal", "Roldanillo"],
     items: [
-      "Lluvia acumulada de los últimos 7 días con dato válido, por vereda, calculada a partir del punto diario de NASA POWER (reanálisis MERRA-2/GEOS-IT). Es la única capa de amenaza con la misma cobertura en Zarzal que en Sevilla y Caicedonia.",
+      "Lluvia acumulada de los últimos 7 días con dato válido, por vereda, calculada a partir del punto diario de NASA POWER (reanálisis MERRA-2/GEOS-IT). Es la única capa de amenaza con la misma cobertura en Zarzal y Roldanillo que en Sevilla y Caicedonia.",
       "Superposición de tasa de precipitación en vivo (NASA GPM IMERG, la misma capa satelital que ofrece el mapa de inundaciones).",
       "Niveles de referencia (Bajo/Moderado/Alto/Muy alto) por umbrales simples de acumulación, no un modelo de amenaza calibrado.",
     ],
   },
   {
     title: "Clima",
-    tags: ["Sevilla", "Caicedonia", "Zarzal"],
+    tags: ["Sevilla", "Caicedonia", "Zarzal", "Roldanillo"],
     items: [
       "Reporte meteorológico convencional por vereda con datos de Open-Meteo (modelos numéricos de pronóstico, no observación directa): temperatura actual, sensación térmica y estado del cielo (despejado, nublado, lluvia o tormenta), con la vereda coloreada por su banda de temperatura.",
       "Un marcador de condiciones actuales por municipio, en su cabecera, con temperatura y glifo del estado del tiempo.",
-      "Al hacer clic en una vereda: su pronóstico a 7 días (máx/mín, estado del cielo y probabilidad de lluvia) y una breve perspectiva de racha seca. Cubre los tres municipios con el mismo detalle, incluida Zarzal.",
+      "Al hacer clic en una vereda: su pronóstico a 7 días (máx/mín, estado del cielo y probabilidad de lluvia) y una breve perspectiva de racha seca. Cubre los cuatro municipios con el mismo detalle, incluidos Zarzal y Roldanillo.",
       "No es una capa de amenaza y no entra en el riesgo compuesto: es información meteorológica de referencia.",
     ],
   },
   {
     title: "Demografía",
-    tags: ["Sevilla", "Caicedonia", "Zarzal"],
+    tags: ["Sevilla", "Caicedonia", "Zarzal", "Roldanillo"],
     items: [
       "Población proyectada del DANE (2018–2042) por municipio, con desagregación urbano/rural y hombres/mujeres.",
       "Cruce con el peor nivel de amenaza por deslizamiento registrado en cada municipio.",

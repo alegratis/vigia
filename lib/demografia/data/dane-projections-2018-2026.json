@@ -216,6 +216,74 @@
           "total": 43993
         }
       }
+    },
+    "Roldanillo": {
+      "codigoMunicipio": "76622",
+      "years": {
+        "2018": {
+          "urbano": 27615,
+          "rural": 9178,
+          "hombres": 17498,
+          "mujeres": 19295,
+          "total": 36793
+        },
+        "2019": {
+          "urbano": 28192,
+          "rural": 9030,
+          "hombres": 17691,
+          "mujeres": 19531,
+          "total": 37222
+        },
+        "2020": {
+          "urbano": 28775,
+          "rural": 8911,
+          "hombres": 17896,
+          "mujeres": 19790,
+          "total": 37686
+        },
+        "2021": {
+          "urbano": 29078,
+          "rural": 8880,
+          "hombres": 18005,
+          "mujeres": 19953,
+          "total": 37958
+        },
+        "2022": {
+          "urbano": 29302,
+          "rural": 8833,
+          "hombres": 18088,
+          "mujeres": 20047,
+          "total": 38135
+        },
+        "2023": {
+          "urbano": 29489,
+          "rural": 8766,
+          "hombres": 18129,
+          "mujeres": 20126,
+          "total": 38255
+        },
+        "2024": {
+          "urbano": 29728,
+          "rural": 8715,
+          "hombres": 18202,
+          "mujeres": 20241,
+          "total": 38443
+        },
+        "2025": {
+          "urbano": 29926,
+          "rural": 8651,
+          "hombres": 18266,
+          "mujeres": 20311,
+          "total": 38577
+        },
+        "2026": {
+          "urbano": 30066,
+          "rural": 8573,
+          "hombres": 18280,
+          "mujeres": 20359,
+          "total": 38639
+        }
+      }
     }
   }
 }

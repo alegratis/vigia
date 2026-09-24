@@ -7,7 +7,7 @@ export { MUNICIPIOS }
 
 /**
  * Per-map municipality highlight state, shared by every hazard map. Sevilla
- * starts on, Caicedonia and Zarzal start off — toggling one highlights that
+ * starts on, the rest start off — toggling one highlights that
  * municipality's veredas and surfaces its risk factors, leaving the others
  * drawn but dimmed (see `isMunicipioActive` + the overlays' dimmed styling).
  */
@@ -15,6 +15,7 @@ export const DEFAULT_ACTIVE_MUNICIPIOS: Record<string, boolean> = {
   Sevilla: true,
   Caicedonia: false,
   Zarzal: false,
+  Roldanillo: false,
 }
 
 export interface MunicipioToggleState {

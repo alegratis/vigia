@@ -95,7 +95,7 @@ export function FloodModelPanel({ className, selectedVereda, onClearSelection }:
         <p className="text-xs leading-relaxed text-muted-foreground">
           El color de cada vereda en la capa &quot;Modelo propio de inundación&quot; no viene de un índice
           publicado — lo calcula esta misma app, combinando los tres factores de abajo, para extender la
-          zonificación oficial a las tres municipios, incluido Zarzal.{" "}
+          zonificación oficial a los cuatro municipios, incluidos Zarzal y Roldanillo.{" "}
           <a href="/documentacion#metodologia" className="text-primary underline-offset-2 hover:underline">
             Ver metodología completa
           </a>

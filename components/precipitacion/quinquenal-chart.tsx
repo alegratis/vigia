@@ -14,7 +14,7 @@ import type { ClimatologiaQuinquenalResponse } from "@/lib/precipitacion/api-typ
 import type { SelectedVereda } from "@/components/precipitacion/climatology-chart"
 
 /** The three municipios in the study area, selectable as a "whole territory" average. */
-const MUNICIPIOS = ["Sevilla", "Zarzal", "Caicedonia"] as const
+const MUNICIPIOS = ["Sevilla", "Zarzal", "Caicedonia", "Roldanillo"] as const
 type Municipio = (typeof MUNICIPIOS)[number]
 
 interface QuinquenalChartProps {

@@ -113,8 +113,8 @@ export function LiveAreaPopulation({
               : namesInView
                 ? `Municipios visibles: ${namesInView.join(", ")}.`
                 : bounds
-                  ? "Ningún centroide municipal cae dentro del encuadre actual; se muestran los tres municipios de referencia."
-                  : "Mueve el mapa publicado para filtrar por el área visible. Por ahora se muestran los tres municipios de referencia."}
+                  ? "Ningún centroide municipal cae dentro del encuadre actual; se muestran los cuatro municipios de referencia."
+                  : "Mueve el mapa publicado para filtrar por el área visible. Por ahora se muestran los cuatro municipios de referencia."}
         </p>
       </CardHeader>
       <CardContent className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto py-4">

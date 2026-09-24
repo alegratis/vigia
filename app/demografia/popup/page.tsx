@@ -21,9 +21,9 @@ export default function DemografiaPopupPage() {
           Conoce tu nivel de exposición
         </h1>
         <p className="mt-1 max-w-2xl text-pretty text-sm leading-relaxed text-muted-foreground">
-          Población de Sevilla, Caicedonia y Zarzal según el DANE, cruzada con
-          la señal de monitoreo en vivo de cada amenaza para estimar quién
-          está más expuesto y dónde.
+          Población de Sevilla, Caicedonia, Zarzal y Roldanillo según el
+          DANE, cruzada con la señal de monitoreo en vivo de cada amenaza para
+          estimar quién está más expuesto y dónde.
         </p>
       </header>
       <main id="main-content" tabIndex={-1} className="flex-1 px-4 py-6 focus-visible:outline-none sm:px-6">

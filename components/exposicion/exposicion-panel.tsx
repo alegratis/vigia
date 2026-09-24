@@ -8,7 +8,7 @@ import { Spinner } from "@/components/ui/spinner"
 import { useVeredaList } from "@/lib/veredas/use-vereda-list"
 import { ExposicionMapLoader } from "@/components/maps/exposicion-map-loader"
 
-const MUNICIPIOS = ["Sevilla", "Caicedonia", "Zarzal"]
+const MUNICIPIOS = ["Sevilla", "Caicedonia", "Zarzal", "Roldanillo"]
 
 /**
  * Municipio → vereda picker for the "Conoce tu nivel de exposición" popup
