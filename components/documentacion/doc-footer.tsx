@@ -1,4 +1,5 @@
 import Image from "next/image"
+import { AlejandroPinoLogo } from "@/components/brand/alejandro-pino-logo"
 
 export function DocFooter() {
   const year = new Date().getFullYear()
@@ -49,6 +50,7 @@ export function DocFooter() {
               className="hidden h-9 w-auto dark:block"
             />
           </a>
+          <AlejandroPinoLogo className="h-9" />
         </div>
         <p className="max-w-md text-pretty text-sm text-muted-foreground">
           Plataforma de uso público y gratuito &middot; Datos de RED LabOT, GEOGLOWS, NASA
