@@ -1,15 +1,17 @@
 import { cn } from "@/lib/utils"
 
 /**
- * Personal brand mark for Alejandro Pino — GIS / geospatial systems.
+ * Personal brand mark for Alejandro Pino — technical direction, software
+ * development, and GIS systems at RED LabOT.
  *
  * The glyph reads as a geodetic benchmark / total-station reticle: an
  * accuracy ring broken by one open reading, four survey ticks, and a fixed
- * coordinate point at the center. It's built entirely from strokes and a
- * single 48x48 viewBox with no raster assets, so it scales cleanly from a
- * small footer credit up to a large standalone lockup and survives any
- * future re-theme since it inherits `currentColor` instead of baking in a
- * fixed palette.
+ * coordinate point at the center — a nod to the GIS/spatial-data work this
+ * app itself is built on. It's built entirely from strokes and a single
+ * 48x48 viewBox with no raster assets, so it scales cleanly from a small
+ * footer credit up to a large standalone lockup and survives any future
+ * re-theme since it inherits `currentColor` instead of baking in a fixed
+ * palette.
  */
 export function AlejandroPinoMark({ className }: { className?: string }) {
   return (
@@ -57,8 +59,8 @@ export function AlejandroPinoLogo({
       <AlejandroPinoMark className={cn("h-8 w-8 shrink-0", markClassName)} />
       <div className="flex flex-col items-start leading-none">
         <span className="text-sm font-semibold tracking-wide">ALEJANDRO PINO</span>
-        <span className="text-[10px] font-medium tracking-[0.2em] text-muted-foreground">
-          SIG &middot; GEOESPACIAL
+        <span className="text-[10px] font-medium tracking-[0.2em] text-muted-foreground whitespace-nowrap">
+          {"SIG & DESARROLLO"}
         </span>
       </div>
     </div>
