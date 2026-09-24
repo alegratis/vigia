@@ -97,7 +97,13 @@ async function queryMonthlyRanges(
   })
   if (!res.ok) throw new Error(`IDEAM climatología query failed (${res.status})`)
   const data = await res.json()
+  // ArcGIS Server reports failures two different ways depending on where it fails: a well-formed
+  // request that errors during execution comes back as `{ error: { message } }`, but the whole
+  // server being unreachable (e.g. "Could not access any server machines") comes back as
+  // `{ status: "error", messages: [...] }` instead — both need to fail loud rather than be read as
+  // "zero features found here".
   if (data.error) throw new Error(`IDEAM climatología query error: ${data.error.message ?? JSON.stringify(data.error)}`)
+  if (data.status === "error") throw new Error(`IDEAM climatología query error: ${data.messages?.join("; ") ?? "servidor no disponible"}`)
 
   const byMonth = new Map<number, RangeEstimate>()
   for (const feature of data.features ?? []) {
@@ -158,6 +164,7 @@ export async function getMonthlyClimatologyBatch(
   concurrency = 6,
 ): Promise<Array<MonthlyClimatologyPoint[] | null>> {
   const results: Array<MonthlyClimatologyPoint[] | null> = new Array(points.length).fill(null)
+  let lastError: unknown = null
   let cursor = 0
 
   async function worker() {
@@ -166,12 +173,22 @@ export async function getMonthlyClimatologyBatch(
       const p = points[index]
       try {
         results[index] = await getMonthlyClimatology(p.lon, p.lat)
-      } catch {
+      } catch (err) {
+        // A caught error here means the query itself failed (network/server error), not that
+        // IDEAM's raster simply has no polygon at this point — that "not found" case resolves
+        // normally to an all-null MonthlyClimatologyPoint[], never a thrown error. Swallowing a
+        // single point's failure keeps one bad centroid from blocking the whole municipio
+        // average, but if every point in the batch fails the same way (e.g. IDEAM's ArcGIS
+        // Server is down entirely), that's an outage, not "no data here" — surfaced below.
+        lastError = err
         results[index] = null
       }
     }
   }
 
   await Promise.all(Array.from({ length: Math.min(concurrency, points.length) }, worker))
+  if (points.length > 0 && results.every((r) => r === null)) {
+    throw lastError instanceof Error ? lastError : new Error("IDEAM climatología no disponible.")
+  }
   return results
 }

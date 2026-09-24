@@ -20,6 +20,7 @@ import { mapModels, type MapModel } from "@/lib/maps"
 import type { MapBounds } from "@/lib/map-bounds"
 import type { VeredaFeature } from "@/lib/veredas/api-types"
 import { openInfoPopup } from "@/lib/open-info-popup"
+import { AlejandroPinoLogo } from "@/components/brand/alejandro-pino-logo"
 
 const hazardIcons: Record<string, LucideIcon> = {
   deslizamientos: Mountain,
@@ -175,6 +176,7 @@ export function HazardWorkspace({ initialCategory }: { initialCategory: string }
                 className="hidden h-5 w-auto dark:block"
               />
             </a>
+            <AlejandroPinoLogo className="h-6" />
           </div>
         </div>
 
