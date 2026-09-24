@@ -87,8 +87,8 @@ export function FireModelPanel({ className, selectedVereda, onClearSelection }: 
         </h3>
         <p className="text-xs leading-relaxed text-muted-foreground">
           El color de cada vereda en la capa &quot;Modelo propio de incendios forestales&quot; lo calcula esta
-          misma app, combinando los tres factores de abajo, para cubrir los tres municipios, incluido
-          Zarzal.{" "}
+          misma app, combinando los tres factores de abajo, para cubrir los cuatro municipios, incluidos
+          Zarzal y Roldanillo.{" "}
           <a href="/documentacion#metodologia" className="text-primary underline-offset-2 hover:underline">
             Ver metodología completa
           </a>

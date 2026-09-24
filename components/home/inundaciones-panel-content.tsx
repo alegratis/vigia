@@ -87,9 +87,9 @@ export function InundacionesPanelContent({
           GlobalWaterModel_Medium). Susceptibilidad a inundación: capa pública{" "}
           <code className="text-foreground">susceptibilidad_inundaciones</code>, publicada en
           ArcGIS Online. Haz clic sobre cualquier tramo del río o zona para ver su detalle. Esta
-          zonificación oficial no cubre Zarzal; activa la capa &quot;Modelo propio de
+          zonificación oficial no cubre Zarzal ni Roldanillo; activa la capa &quot;Modelo propio de
           inundación&quot; en el mapa para ver una amenaza por vereda calculada por esta misma
-          app en los tres municipios, incluido Zarzal (ver el panel &quot;Cómo se calcula la
+          app en los cuatro municipios, incluidos Zarzal y Roldanillo (ver el panel &quot;Cómo se calcula la
           amenaza por inundación&quot; arriba). La categoría{" "}
           <a
             href="/?categoria=precipitacion"

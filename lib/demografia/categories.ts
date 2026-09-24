@@ -1,5 +1,5 @@
 /**
- * Shared, client-safe constants for the demographics filters: the three
+ * Shared, client-safe constants for the demographics filters: the four
  * study-area municipalities, the years extracted from DANE's municipal
  * population projections, and the four urbano/rural/hombres/mujeres
  * categories with their fixed identity colors (each maps to a token defined
@@ -10,12 +10,12 @@
  * file has to stay import-safe for client components.
  */
 
-export const MUNICIPIOS = ["Sevilla", "Caicedonia", "Zarzal"] as const
+export const MUNICIPIOS = ["Sevilla", "Caicedonia", "Zarzal", "Roldanillo"] as const
 
 /**
  * Case-insensitively matches a raw municipio name (e.g. ArcGIS-cased
  * "SEVILLA") to its canonical, title-case form used by the DANE population
- * data. Falls back to the raw string if it doesn't match one of the three
+ * data. Falls back to the raw string if it doesn't match one of the four
  * study-area municipalities.
  */
 export function normalizeMunicipioName(raw: string): string {

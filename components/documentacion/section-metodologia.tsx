@@ -38,7 +38,7 @@ const STEPS: Step[] = [
     entrada:
       "Trazas de falla del Servicio Geológico Colombiano (SGC), capa \"Fallas\" del Atlas Geológico de Colombia, publicada como un FeatureServer de ArcGIS público y sin autenticación (tipo de falla y nombre por traza).",
     proceso: [
-      "Una sola consulta por toda el área de estudio (envolvente de las tres municipalidades) recupera cada traza de falla que la intersecta, con su geometría completa de vértices (esri JSON \"paths\") — no solo sus extremos.",
+      "Una sola consulta por toda el área de estudio (envolvente de las cuatro municipalidades) recupera cada traza de falla que la intersecta, con su geometría completa de vértices (esri JSON \"paths\") — no solo sus extremos.",
       "Para cada centroide se calcula la distancia real punto-a-segmento (no al vértice más cercano) contra cada segmento de cada traza, proyectando localmente a kilómetros alrededor de la latitud del punto: se toma el mínimo sobre todos los segmentos de todas las trazas.",
       "El puntaje decrece linealmente con la distancia y llega a 0 al superar 2 km: falla_score = max(0, 1 − distancia_km / 2).",
     ],
@@ -50,7 +50,7 @@ const STEPS: Step[] = [
     entrada:
       "Inventario nacional de movimientos en masa del SGC (derivado de SIMMA), 55 puntos dentro del área de estudio, cada uno con tipo y subtipo (deslizamiento, caída, flujo, reptación, deformación gravitacional) pero sin fecha de ocurrencia confiable.",
     proceso: [
-      "Una sola consulta por toda el área de estudio recupera cada punto del inventario que cae dentro de la envolvente de las tres municipalidades.",
+      "Una sola consulta por toda el área de estudio recupera cada punto del inventario que cae dentro de la envolvente de las cuatro municipalidades.",
       "Para cada centroide se calcula la distancia Haversine al punto más cercano de todo el inventario recuperado — a diferencia de las fallas, cada registro aquí es un evento puntual, no una traza continua, así que no hace falta la distancia punto-a-segmento.",
       "El puntaje decrece linealmente con la distancia y llega a 0 al superar 2 km: histórico_score = max(0, 1 − distancia_km / 2).",
     ],
@@ -82,7 +82,7 @@ const STEPS: Step[] = [
     proceso: [
       "Puntaje final = (factor_estático × 0.6 + disparador_score × 0.4) / peso_total, con la misma renormalización de pesos si alguno de los dos factores falló.",
       "El puntaje 0–1 resultante se traduce al esquema de 5 niveles ya usado en toda la plataforma: Muy bajo (< 0.2), Bajo (< 0.4), Medio (< 0.6), Alto (< 0.8), Muy alto (≥ 0.8).",
-      "Se calcula una sola vez por centroide de vereda (~55 en total entre Sevilla, Caicedonia y Zarzal) al resolver /api/veredas, no por punto de grilla.",
+      "Se calcula una sola vez por centroide de vereda (~55 en total entre Sevilla, Caicedonia, Zarzal y Roldanillo) al resolver /api/veredas, no por punto de grilla.",
     ],
     nota: "Si absolutamente ningún factor resolvió para una vereda, el resultado es nulo en todos los campos — nunca un puntaje inventado — siguiendo la misma convención de \"sin datos\" que ya usaba la integración de RED LabOT para Zarzal.",
   },
@@ -137,7 +137,7 @@ const FLOOD_STEPS: Step[] = [
       "Promedio ponderado: puntaje_final = (zonificación_score × 0.5 + quebrada_score × 0.3 + planicie_score × 0.2) / peso_total.",
       "Si la zonificación oficial no resolvió para una vereda (fuera de su cobertura, o si el propio factor de zonificación falló al cargar), el peso se renormaliza sobre los otros dos — nunca se descarta la vereda entera solo por no tener zonificación oficial.",
       "El puntaje 0–1 resultante se traduce al mismo vocabulario de 5 niveles que ya usa la zonificación oficial (Muy alta/Alta/Moderada/Baja/Muy baja), en vez de inventar una escala nueva.",
-      "Se calcula una sola vez por centroide de vereda (69 en total entre Sevilla, Caicedonia y Zarzal, incluyendo los cascos urbanos) al resolver /api/veredas.",
+      "Se calcula una sola vez por centroide de vereda (89 en total entre Sevilla, Caicedonia, Zarzal y Roldanillo, incluyendo los cascos urbanos) al resolver /api/veredas.",
     ],
     nota:
       "Ninguna vereda queda sin puntaje: incluso sin zonificación oficial, los otros dos factores por sí solos ya producen un resultado no degenerado en toda vereda de Zarzal — es la extensión de cobertura que motivó este modelo.",
@@ -196,7 +196,7 @@ const FIRE_STEPS: Step[] = [
     proceso: [
       "Puntaje final = (factor_estático × 0.6 + fwi_score × 0.4) / peso_total, con la misma renormalización de pesos si alguno de los dos factores falló.",
       "El puntaje 0–1 resultante se traduce al mismo vocabulario de 4 niveles que ya usaba la capa oficial AmenazaIncendios (Muy bajo < 0.25, Bajo < 0.5, Medio < 0.75, Alto ≥ 0.75) y a los mismos tokens de color — sin introducir un quinto nivel ni nuevas variables CSS.",
-      "Se calcula una sola vez por centroide de vereda (~69 en total entre Sevilla, Caicedonia y Zarzal) al resolver /api/veredas.",
+      "Se calcula una sola vez por centroide de vereda (~89 en total entre Sevilla, Caicedonia, Zarzal y Roldanillo) al resolver /api/veredas.",
     ],
     nota: "Si absolutamente ningún factor resolvió para una vereda, el resultado es nulo en todos los campos — nunca un puntaje inventado.",
   },
@@ -379,8 +379,8 @@ export function SectionMetodologia() {
         </div>
         <p className="max-w-3xl text-pretty leading-relaxed text-muted-foreground">
           La capa &quot;Modelo propio de inundación&quot; del mapa de inundaciones extiende la zonificación
-          oficial de RED LabOT —que solo cubre el área zonificada de Sevilla y Caicedonia— a los tres
-          municipios, incluido Zarzal, calculando un puntaje propio por vereda. La zonificación oficial no
+          oficial de RED LabOT —que solo cubre el área zonificada de Sevilla y Caicedonia— a los cuatro
+          municipios, incluidos Zarzal y Roldanillo, calculando un puntaje propio por vereda. La zonificación oficial no
           se descarta: es, al contrario, el insumo de mayor peso del modelo, donde tiene cobertura.
         </p>
       </div>

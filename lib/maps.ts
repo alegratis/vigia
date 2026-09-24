@@ -47,7 +47,7 @@ export const mapModels: MapModel[] = [
     title: "Incendios",
     hook: "Detectamos señales tempranas de incendios para actuar antes de que el fuego se propague.",
     description:
-      "Monitoreamos de forma continua los focos de calor detectados por los sensores satelitales VIIRS de NASA FIRMS alrededor de Sevilla, Caicedonia y Zarzal, generando alertas que fortalecen la prevención y la respuesta en el territorio.",
+      "Monitoreamos de forma continua los focos de calor detectados por los sensores satelitales VIIRS de NASA FIRMS alrededor de Sevilla, Caicedonia, Zarzal y Roldanillo, generando alertas que fortalecen la prevención y la respuesta en el territorio.",
     image: "/images/incendios-map.png",
     imageAlt:
       "Mapa de detección de incendios con focos de calor sobre terreno montañoso boscoso",
@@ -58,7 +58,7 @@ export const mapModels: MapModel[] = [
   {
     slug: "precipitacion",
     title: "Precipitación",
-    hook: "Seguimos la lluvia acumulada vereda por vereda, la única capa con el mismo detalle en Sevilla, Caicedonia y Zarzal.",
+    hook: "Seguimos la lluvia acumulada vereda por vereda, la única capa con el mismo detalle en Sevilla, Caicedonia, Zarzal y Roldanillo.",
     description:
       "Calculamos la lluvia acumulada de los últimos días con datos de NASA POWER para cada vereda, y la cruzamos con la tasa de precipitación satelital GPM IMERG en tiempo casi real, aportando contexto para anticipar tanto inundaciones como incendios.",
     image: "/images/precipitacion-map.png",

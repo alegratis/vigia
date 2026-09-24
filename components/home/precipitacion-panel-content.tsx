@@ -26,7 +26,7 @@ interface PrecipitacionPanelContentProps {
  * Expanded precipitación panel for the homepage workspace: the vereda
  * rainfall-accumulation map fills the full first fold; its source caption
  * scrolls in below. This is the only hazard category with full coverage
- * of all three municipios, including Zarzal — see lib/precipitacion/server.ts.
+ * of all four municipios, including Zarzal and Roldanillo — see lib/precipitacion/server.ts.
  * Demographics and infrastructure toggles live in the workspace's shared
  * sidebar, fed by onBoundsChange/onZoneSelect/onVeredaFeatureSelect.
  */
@@ -109,8 +109,8 @@ export function PrecipitacionPanelContent({
           </a>{" "}
           (modelos numéricos de pronóstico del tiempo, no observación directa). Capa
           satelital de tasa de precipitación: GPM IMERG vía NASA GIBS. A diferencia de las
-          demás capas de amenaza, esta cubre Zarzal con el mismo detalle que Sevilla y
-          Caicedonia. Los umbrales de nivel son un criterio simple de referencia, no un
+  demás capas de amenaza, esta cubre Zarzal y Roldanillo con el mismo detalle que Sevilla y
+  Caicedonia. Los umbrales de nivel son un criterio simple de referencia, no un
           modelo de amenaza calibrado. Haz clic sobre cualquier vereda para ver su detalle
           y actualizar el histograma de lluvia normal mensual que aparece arriba.
         </p>

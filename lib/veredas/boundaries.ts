@@ -5,7 +5,8 @@ import { normalizeVeredaNombre } from "./name-corrections"
 
 /**
  * Fetches vereda (sub-municipal) administrative boundaries for the study
- * area — Caicedonia, Sevilla and Zarzal — from two ArcGIS REST sources:
+ * area — Caicedonia, Sevilla, Zarzal and Roldanillo — from two ArcGIS REST
+ * sources:
  *
  * - Esri Colombia's "Veredas de Colombia" Datos Abiertos layer
  *   (ags.esri.co) for the rural veredas themselves. This replaced an
@@ -33,8 +34,8 @@ const VEREDAS_QUERY_URL = "https://ags.esri.co/arcgis/rest/services/DatosAbierto
 const ZONA_URBANA_QUERY_URL =
   "https://portalgis.dane.gov.co/mparcgis/rest/services/Hosted/Serv_ZonaUrbana_MGN_2025/FeatureServer/1/query"
 
-/** DIVIPOLA municipio codes for the study area: Caicedonia, Sevilla, Zarzal. */
-const MUNICIPIO_CODES = ["76122", "76736", "76895"]
+/** DIVIPOLA municipio codes for the study area: Caicedonia, Sevilla, Zarzal, Roldanillo. */
+const MUNICIPIO_CODES = ["76122", "76736", "76895", "76622"]
 
 // Static admin boundaries change essentially never — cache both sources a week.
 const REVALIDATE_SECONDS = 604800

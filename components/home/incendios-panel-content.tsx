@@ -88,14 +88,14 @@ export function IncendiosPanelContent({
             GWIS / Copernicus EFFIS
           </a>{" "}
           (Centro Común de Investigación de la UE). Focos activos de MODIS y VIIRS: NASA FIRMS. El modelo
-          propio cubre los tres municipios, incluido Zarzal; la categoría{" "}
+          propio cubre los cuatro municipios, incluidos Zarzal y Roldanillo; la categoría{" "}
           <a
             href="/?categoria=precipitacion"
             className="underline underline-offset-2 hover:text-foreground"
           >
             Precipitación
           </a>{" "}
-          también ofrece un dato de contexto (lluvia acumulada por vereda) para los tres municipios.
+          también ofrece un dato de contexto (lluvia acumulada por vereda) para los cuatro municipios.
         </p>
         <BackToTopButton targetRef={mapRef} />
       </div>

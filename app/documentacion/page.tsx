@@ -12,7 +12,7 @@ import { SectionLicencias } from "@/components/documentacion/section-licencias"
 export const metadata = {
   title: "Documentación | Vigía",
   description:
-    "Guía de uso, funcionalidades, fuentes de datos, arquitectura y licencias de código abierto de Vigía, la plataforma de evaluación de riesgos de Sevilla, Caicedonia y Zarzal.",
+    "Guía de uso, funcionalidades, fuentes de datos, arquitectura y licencias de código abierto de Vigía, la plataforma de evaluación de riesgos de Sevilla, Caicedonia, Zarzal y Roldanillo.",
 }
 
 /**

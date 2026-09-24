@@ -25,7 +25,7 @@ import { getSgcEvents } from "./sgc"
 import { getSgcLiveEvents, SGC_LIVE_WINDOW_DAYS } from "./sgc-live"
 import type { SeismicEvent, SismologiaEventosResponse } from "./api-types"
 
-/** Same AOI used by the other hazard maps (Sevilla/Caicedonia/Zarzal), padded to catch nearby regional events that still influence exposure. */
+/** Same AOI used by the other hazard maps (Sevilla/Caicedonia/Zarzal/Roldanillo), padded to catch nearby regional events that still influence exposure. */
 export const SISMOLOGIA_BBOX: Bbox = { south: 3.4, west: -76.6, north: 5.2, east: -75.2 }
 
 const USGS_WINDOW_DAYS = 90

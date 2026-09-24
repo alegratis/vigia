@@ -16,7 +16,7 @@ const GROUPS: SourceGroup[] = [
         nombre: "Índice de susceptibilidad a deslizamientos",
         publicador: "RED LabOT",
         descripcion:
-          "~11.721 puntos con nivel de susceptibilidad, puntaje y conteos de población y de infraestructura crítica (escuelas, hospitales, farmacias) por punto. Ya no colorea el mapa de deslizamientos (ver el modelo propio, abajo); sigue siendo la fuente de los conteos de población e infraestructura del panel de exposición por nivel de amenaza. Cubre Sevilla y Caicedonia; Zarzal no tiene registros por estar en el valle plano.",
+          "~11.721 puntos con nivel de susceptibilidad, puntaje y conteos de población y de infraestructura crítica (escuelas, hospitales, farmacias) por punto. Ya no colorea el mapa de deslizamientos (ver el modelo propio, abajo); sigue siendo la fuente de los conteos de población e infraestructura del panel de exposición por nivel de amenaza. Cubre Sevilla y Caicedonia; Zarzal y Roldanillo no tienen registros por estar en el valle plano.",
         url: "https://services8.arcgis.com/UYEK9SUzH1am9mbk/arcgis/rest/services/VIGIA_Amenaza_IS_Puntos/FeatureServer",
         acceso: "ArcGIS FeatureServer",
         licencia: "Datos abiertos, sin autenticación",
@@ -31,7 +31,7 @@ const GROUPS: SourceGroup[] = [
         url: "https://open-meteo.com/en/docs/elevation-api",
         acceso: "Cálculo propio sobre APIs REST abiertas",
         licencia: "N/A — calculado por la app a partir de fuentes abiertas",
-        cobertura: "Sevilla, Caicedonia, Zarzal (~55 centroides de vereda)",
+        cobertura: "Sevilla, Caicedonia, Zarzal, Roldanillo (~55 centroides de vereda)",
         actualizacion: "Pendiente y vías cambian poco (cache de 30 días y 6 horas); lluvia recalculada cada hora",
       },
       {
@@ -71,11 +71,11 @@ const GROUPS: SourceGroup[] = [
         nombre: "Modelo propio de amenaza por incendios forestales",
         publicador: "Vigía (cálculo propio, sobre el Sistema Canadiense de Índices Forestales de Incendio)",
         descripcion:
-          "Combina pendiente y cercanía a vías (reutilizadas del modelo propio de deslizamiento), recurrencia histórica de focos de NASA FIRMS (ver la ficha siguiente) y el Índice Meteorológico de Incendio (FWI) de hoy (ver la ficha siguiente), calculado en el centroide de cada vereda. Reemplaza a AmenazaIncendios como fuente del color del mapa de incendios y extiende la cobertura a los tres municipios, incluido Zarzal, que esa capa nunca cubrió. Ver la sección \"Metodología\" más abajo para el detalle completo, paso a paso.",
+          "Combina pendiente y cercanía a vías (reutilizadas del modelo propio de deslizamiento), recurrencia histórica de focos de NASA FIRMS (ver la ficha siguiente) y el Índice Meteorológico de Incendio (FWI) de hoy (ver la ficha siguiente), calculado en el centroide de cada vereda. Reemplaza a AmenazaIncendios como fuente del color del mapa de incendios y extiende la cobertura a los cuatro municipios, incluidos Zarzal y Roldanillo, que esa capa nunca cubrió. Ver la sección \"Metodología\" más abajo para el detalle completo, paso a paso.",
         url: "https://firms.modaps.eosdis.nasa.gov/api/",
         acceso: "Cálculo propio sobre APIs REST abiertas",
         licencia: "N/A — calculado por la app a partir de fuentes abiertas",
-        cobertura: "Sevilla, Caicedonia, Zarzal (~69 centroides de vereda)",
+        cobertura: "Sevilla, Caicedonia, Zarzal, Roldanillo (~89 centroides de vereda)",
         actualizacion: "Pendiente y vías reutilizadas del modelo de deslizamiento; recurrencia histórica cada 6 horas; FWI cada hora",
       },
       {
@@ -97,7 +97,7 @@ const GROUPS: SourceGroup[] = [
         url: "https://open-meteo.com/en/docs/historical-weather-api",
         acceso: "Cálculo propio sobre la API de archivo histórico de Open-Meteo",
         licencia: "N/A — calculado por la app a partir de datos abiertos",
-        cobertura: "Sevilla, Caicedonia, Zarzal (~69 centroides de vereda)",
+        cobertura: "Sevilla, Caicedonia, Zarzal, Roldanillo (~89 centroides de vereda)",
         actualizacion: "Diaria, con 60 días de arranque por centroide; la app cachea 1 hora",
       },
       {
@@ -115,11 +115,11 @@ const GROUPS: SourceGroup[] = [
         nombre: "Modelo propio de amenaza por inundación",
         publicador: "Vigía (cálculo propio)",
         descripcion:
-          "Combina la clase de zonificación oficial (donde exista, 50%), distancia a la quebrada o río más próximo (capa pública de hidrografía, ver la ficha siguiente, 30%) y planicie del terreno —reutilizando la pendiente ya calculada por el modelo de amenaza por deslizamiento, 20%—, calculado en el centroide de cada vereda. Extiende la zonificación oficial a los tres municipios, incluido Zarzal, con nivel de detalle por vereda. Ver la sección \"Metodología\" más abajo para el detalle completo, paso a paso.",
+          "Combina la clase de zonificación oficial (donde exista, 50%), distancia a la quebrada o río más próximo (capa pública de hidrografía, ver la ficha siguiente, 30%) y planicie del terreno —reutilizando la pendiente ya calculada por el modelo de amenaza por deslizamiento, 20%—, calculado en el centroide de cada vereda. Extiende la zonificación oficial a los cuatro municipios, incluidos Zarzal y Roldanillo, con nivel de detalle por vereda. Ver la sección \"Metodología\" más abajo para el detalle completo, paso a paso.",
         url: "https://services8.arcgis.com/UYEK9SUzH1am9mbk/arcgis/rest/services/Quebradas/FeatureServer",
         acceso: "Cálculo propio sobre capas ArcGIS abiertas",
         licencia: "N/A — calculado por la app a partir de fuentes abiertas",
-        cobertura: "Sevilla, Caicedonia, Zarzal (69 centroides de vereda)",
+        cobertura: "Sevilla, Caicedonia, Zarzal, Roldanillo (89 centroides de vereda)",
         actualizacion: "Zonificación e hidrografía cambian poco (cache de 1 hora y 30 días); pendiente reutilizada del modelo de deslizamiento",
       },
       {
@@ -130,7 +130,7 @@ const GROUPS: SourceGroup[] = [
         url: "https://services8.arcgis.com/UYEK9SUzH1am9mbk/arcgis/rest/services/Quebradas/FeatureServer",
         acceso: "ArcGIS FeatureServer",
         licencia: "Datos abiertos, sin autenticación",
-        cobertura: "Sevilla, Caicedonia, Zarzal",
+        cobertura: "Sevilla, Caicedonia, Zarzal, Roldanillo",
         actualizacion: "Hidrografía estática; la app la relee cada 30 días",
       },
       {
@@ -141,7 +141,7 @@ const GROUPS: SourceGroup[] = [
         url: "https://infraestructura.valledelcauca.gov.co/server/rest/services",
         acceso: "ArcGIS Server (REST)",
         licencia: "Datos abiertos, sin autenticación",
-        cobertura: "Sevilla, Caicedonia, Zarzal",
+        cobertura: "Sevilla, Caicedonia, Zarzal, Roldanillo",
         actualizacion: "Levantamiento único; releído cada 24 h",
       },
     ],
@@ -232,7 +232,7 @@ const GROUPS: SourceGroup[] = [
         url: "https://open-meteo.com/en/docs",
         acceso: "API REST (JSON)",
         licencia: "Uso no comercial gratuito, sin clave",
-        cobertura: "Global (recortada al área de estudio; Sevilla, Caicedonia, Zarzal)",
+        cobertura: "Global (recortada al área de estudio; Sevilla, Caicedonia, Zarzal, Roldanillo)",
         actualizacion: "Actualizado cada hora; la app cachea 3 horas",
       },
       {
@@ -255,11 +255,11 @@ const GROUPS: SourceGroup[] = [
         nombre: "Proyecciones de población municipal",
         publicador: "DANE",
         descripcion:
-          "Proyecciones y retroproyecciones de población municipal 2018–2042 (modelo cohorte-componente post-censo 2018). Publicado solo como un libro de cálculo nacional de ~930 MB sin API por municipio, así que las filas de Sevilla, Caicedonia y Zarzal se extrajeron una vez y se versionan como JSON estático en el repositorio.",
+          "Proyecciones y retroproyecciones de población municipal 2018–2042 (modelo cohorte-componente post-censo 2018). Publicado solo como un libro de cálculo nacional de ~930 MB sin API por municipio, así que las filas de Sevilla, Caicedonia, Zarzal y Roldanillo se extrajeron una vez y se versionan como JSON estático en el repositorio.",
         url: "https://www.dane.gov.co/index.php/estadisticas-por-tema/demografia-y-poblacion/proyecciones-de-poblacion",
         acceso: "Descarga estática (Excel), extraída a JSON",
         licencia: "Datos abiertos del Estado colombiano",
-        cobertura: "Sevilla, Caicedonia, Zarzal",
+        cobertura: "Sevilla, Caicedonia, Zarzal, Roldanillo",
         actualizacion: "Última publicación: 2025-07-30; sin llamada de red en la app",
       },
       {
@@ -270,7 +270,7 @@ const GROUPS: SourceGroup[] = [
         url: "https://portalgis.dane.gov.co/mparcgis/rest/services/Hosted/Serv_ZonaUrbana_MGN_2025/FeatureServer",
         acceso: "ArcGIS FeatureServer",
         licencia: "Datos abiertos del Estado colombiano",
-        cobertura: "Sevilla, Caicedonia, Zarzal",
+        cobertura: "Sevilla, Caicedonia, Zarzal, Roldanillo",
         actualizacion: "Límites administrativos estáticos; releído cada semana",
       },
       {
@@ -280,7 +280,7 @@ const GROUPS: SourceGroup[] = [
         url: "https://datosabiertos-esri-colombia.opendata.arcgis.com/datasets/esri-colombia::veredas-de-colombia",
         acceso: "ArcGIS FeatureServer",
         licencia: "Datos abiertos, sin autenticación",
-        cobertura: "Sevilla, Caicedonia, Zarzal",
+        cobertura: "Sevilla, Caicedonia, Zarzal, Roldanillo",
         actualizacion: "Límites administrativos estáticos; releído cada semana",
       },
     ],
@@ -297,7 +297,7 @@ const GROUPS: SourceGroup[] = [
         url: "https://wiki.openstreetmap.org/wiki/Overpass_API",
         acceso: "API Overpass (POST)",
         licencia: "Open Database License (ODbL) — © colaboradores de OpenStreetMap",
-        cobertura: "Sevilla, Caicedonia, Zarzal",
+        cobertura: "Sevilla, Caicedonia, Zarzal, Roldanillo",
         actualizacion: "Consultada cada 6 horas",
       },
     ],
@@ -315,7 +315,7 @@ const GROUPS: SourceGroup[] = [
         url: "https://www.sgc.gov.co/sismos",
         acceso: "Feed GeoJSON público, sin clave",
         licencia: "Datos abiertos del Estado colombiano",
-        cobertura: "Colombia (y eventos mundiales significativos), filtrado a la región de Sevilla/Caicedonia/Zarzal",
+        cobertura: "Colombia (y eventos mundiales significativos), filtrado a la región de Sevilla/Caicedonia/Zarzal/Roldanillo",
         actualizacion: "Consultado cada 5 minutos",
       },
       {
@@ -326,7 +326,7 @@ const GROUPS: SourceGroup[] = [
         url: "https://earthquake.usgs.gov/fdsnws/event/1/",
         acceso: "API REST pública (GeoJSON), sin clave",
         licencia: "Dominio público (USGS)",
-        cobertura: "Global, filtrado a la región de Sevilla/Caicedonia/Zarzal",
+        cobertura: "Global, filtrado a la región de Sevilla/Caicedonia/Zarzal/Roldanillo",
         actualizacion: "Consultado cada 5 minutos",
       },
       {
@@ -337,7 +337,7 @@ const GROUPS: SourceGroup[] = [
         url: "http://geoportal.sgc.gov.co/arcgis/rest/services/catalogo_sismos/catalogo_de_sismos_2/FeatureServer",
         acceso: "ArcGIS FeatureServer",
         licencia: "Datos abiertos del Estado colombiano",
-        cobertura: "Colombia, filtrado a la región de Sevilla/Caicedonia/Zarzal",
+        cobertura: "Colombia, filtrado a la región de Sevilla/Caicedonia/Zarzal/Roldanillo",
         actualizacion: "Consultado una vez al día",
       },
       {
@@ -366,7 +366,7 @@ const GROUPS: SourceGroup[] = [
         url: "/documentacion#metodologia",
         acceso: "Cálculo propio, composición de las cinco categorías existentes",
         licencia: "N/A — calculado por la app a partir de sus propios modelos",
-        cobertura: "Sevilla, Caicedonia, Zarzal (~55 centroides de vereda)",
+        cobertura: "Sevilla, Caicedonia, Zarzal, Roldanillo (~55 centroides de vereda)",
         actualizacion: "Hereda el caché de cada insumo (30 días / 6 horas / 1 hora / 3 horas / 5 min-1 día)",
       },
     ],

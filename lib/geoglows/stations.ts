@@ -1,9 +1,9 @@
 /**
  * Monitored river reaches for the priority study area: Valle del Cauca,
- * around Sevilla, Caicedonia and Zarzal. Reach IDs were resolved from the
- * GEOGLOWS v2 `getriverid` endpoint and validated against live forecast flow
- * magnitudes so each station points at a flood-relevant channel rather than a
- * minor tributary.
+ * around Sevilla, Caicedonia, Zarzal and Roldanillo. Reach IDs were resolved
+ * from the GEOGLOWS v2 `getriverid` endpoint and validated against live
+ * forecast flow magnitudes so each station points at a flood-relevant
+ * channel rather than a minor tributary.
  *
  * The backend is fully general (any lat/lon or reach id can be assessed), but
  * these named stations are the default watch list for the flood section.
@@ -97,6 +97,17 @@ export const STATIONS: Station[] = [
     lon: -75.92,
     note: "Cuerpo de agua menor en la vertiente alta de Sevilla que alimenta los cauces del corredor.",
   },
+  {
+    slug: "cauca-roldanillo",
+    reachId: 610233836,
+    name: "Río Cauca — Roldanillo",
+    river: "Río Cauca",
+    municipality: "Roldanillo",
+    department: DEPARTMENT,
+    lat: 4.4126,
+    lon: -76.1546,
+    note: "Cauce principal del valle junto al casco urbano de Roldanillo; misma amenaza de inundación por desborde que en Zarzal.",
+  },
 ]
 
 export function getStationBySlug(slug: string): Station | undefined {
@@ -108,7 +119,7 @@ export function getStationByReachId(reachId: number): Station | undefined {
 }
 
 /**
- * Each of the three municipios has one "main channel" station (the river
+ * Each of the four municipios has one "main channel" station (the river
  * that actually crosses or borders the municipal seat) plus, for Sevilla
  * and Caicedonia, one or two smaller tributary stations. This is the
  * representative station for the permanent per-municipio flood summary
@@ -119,6 +130,7 @@ export const MUNICIPIO_PRIMARY_STATION_SLUG: Record<string, string> = {
   Zarzal: "cauca-zarzal",
   Sevilla: "la-vieja-sevilla",
   Caicedonia: "caicedonia",
+  Roldanillo: "cauca-roldanillo",
 }
 
 /** The three municipios in municipio-primary-station order, each with its full station list. */

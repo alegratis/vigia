@@ -148,7 +148,7 @@ export function HazardWorkspace({ initialCategory }: { initialCategory: string }
             <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
               Observación satelital e inteligencia geoespacial para anticipar
               amenazas y fortalecer la respuesta ante emergencias en Sevilla,
-              Caicedonia y Zarzal.
+              Caicedonia, Zarzal y Roldanillo.
             </p>
           </div>
 
