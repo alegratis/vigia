@@ -176,6 +176,7 @@ export function HazardWorkspace({ initialCategory }: { initialCategory: string }
                 className="hidden h-5 w-auto dark:block"
               />
             </a>
+            <div className="h-px w-8 bg-border" aria-hidden="true" />
             <AlejandroPinoLogo className="h-6" />
           </div>
         </div>

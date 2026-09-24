@@ -50,6 +50,7 @@ export function DocFooter() {
               className="hidden h-9 w-auto dark:block"
             />
           </a>
+          <div className="h-9 w-px bg-border" aria-hidden="true" />
           <AlejandroPinoLogo className="h-9" />
         </div>
         <p className="max-w-md text-pretty text-sm text-muted-foreground">
