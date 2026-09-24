@@ -60,7 +60,7 @@ export function AlejandroPinoLogo({
       <div className="flex flex-col items-start leading-none">
         <span className="text-sm font-semibold tracking-wide">ALEJANDRO PINO</span>
         <span className="text-[10px] font-medium tracking-[0.2em] text-muted-foreground whitespace-nowrap">
-          {"SIG & DESARROLLO"}
+          {"SIG - DESARROLLO"}
         </span>
       </div>
     </div>
