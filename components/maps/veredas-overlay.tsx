@@ -7,10 +7,8 @@ import type { LatLngExpression, LeafletMouseEvent, Path } from "leaflet"
 import { useVeredas } from "@/lib/veredas/use-veredas"
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import type { VeredaFeature } from "@/lib/veredas/api-types"
-import { floodSusceptibilityColorToken } from "@/lib/inundaciones/levels"
-import { fireLevelColorToken } from "@/lib/incendios/levels"
-import { seismicExposureColorToken, seismicExposureLevel } from "@/lib/sismologia/levels"
 import { isMunicipioActive } from "@/lib/veredas/municipio-toggles"
+import { VeredaPopupContent } from "@/components/maps/vereda-popup-content"
 
 /** Converts a vereda's GeoJSON `[lon, lat]` MultiPolygon rings to Leaflet's `[lat, lon]` order. */
 function veredaPositions(coordinates: number[][][][]): LatLngExpression[][][] {
@@ -160,150 +158,7 @@ export function VeredasOverlay({
             }}
           >
             <Popup>
-              <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
-                <strong>{props.nombre}</strong>
-                <span>{props.municipio}</span>
-                {colorForFeature && hazardKind === "deslizamientos" && props.dominantLevel && (
-                  <span>
-                    Amenaza (modelo propio): {props.dominantLevel}
-                    {props.isScoreAvg != null && ` (${props.isScoreAvg.toFixed(2)})`}
-                  </span>
-                )}
-                {colorForFeature && hazardKind === "deslizamientos" && !props.dominantLevel && (
-                  <span style={{ color: "#888" }}>Sin datos del modelo de amenaza</span>
-                )}
-                {colorForFeature &&
-                  hazardKind === "deslizamientos" &&
-                  (props.slopeDeg != null ||
-                    props.roadDistanceKm != null ||
-                    props.faultDistanceKm != null ||
-                    props.historyDistanceKm != null ||
-                    props.rainfallRatio != null) && (
-                    <span style={{ color: "#888" }}>
-                      {props.slopeDeg != null && `Pendiente: ${props.slopeDeg.toFixed(1)}°`}
-                      {props.slopeDeg != null &&
-                        (props.roadDistanceKm != null ||
-                          props.faultDistanceKm != null ||
-                          props.historyDistanceKm != null ||
-                          props.rainfallRatio != null) &&
-                        " · "}
-                      {props.roadDistanceKm != null && `Vía más cercana: ${props.roadDistanceKm.toFixed(2)} km`}
-                      {props.roadDistanceKm != null &&
-                        (props.faultDistanceKm != null ||
-                          props.historyDistanceKm != null ||
-                          props.rainfallRatio != null) &&
-                        " · "}
-                      {props.faultDistanceKm != null && `Falla más cercana: ${props.faultDistanceKm.toFixed(2)} km`}
-                      {props.faultDistanceKm != null &&
-                        (props.historyDistanceKm != null || props.rainfallRatio != null) &&
-                        " · "}
-                      {props.historyDistanceKm != null &&
-                        `Movimiento histórico más cercano: ${props.historyDistanceKm.toFixed(2)} km`}
-                      {props.historyDistanceKm != null && props.rainfallRatio != null && " · "}
-                      {props.rainfallRatio != null && `Lluvia vs. histórico: ${(props.rainfallRatio * 100).toFixed(0)}%`}
-                    </span>
-                  )}
-                {colorForFeature && hazardKind === "inundaciones" && props.floodLevel && (
-                  <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span
-                      style={{
-                        display: "inline-block",
-                        width: 9,
-                        height: 9,
-                        borderRadius: "50%",
-                        flexShrink: 0,
-                        backgroundColor: floodSusceptibilityColorToken(props.floodLevel),
-                      }}
-                    />
-                    Nivel de alerta (modelo propio): {props.floodLevel}
-                    {props.floodScoreAvg != null && ` (${props.floodScoreAvg.toFixed(2)})`}
-                  </span>
-                )}
-                {colorForFeature && hazardKind === "inundaciones" && !props.floodLevel && (
-                  <span style={{ color: "#888" }}>Sin datos del modelo de inundación</span>
-                )}
-                {colorForFeature &&
-                  hazardKind === "inundaciones" &&
-                  (props.floodStreamDistanceKm != null || props.slopeDeg != null) && (
-                    <span style={{ color: "#888" }}>
-                      {props.floodStreamDistanceKm != null &&
-                        `Quebrada más cercana: ${props.floodStreamDistanceKm.toFixed(2)} km`}
-                      {props.floodStreamDistanceKm != null && props.slopeDeg != null && " · "}
-                      {props.slopeDeg != null && `Pendiente: ${props.slopeDeg.toFixed(1)}°`}
-                    </span>
-                  )}
-                {colorForFeature && hazardKind === "inundaciones" && (
-                  <span style={{ color: "#888" }}>
-                    {props.floodZoningCovered
-                      ? `Con zonificación oficial: ${props.floodZoningLevel ?? "—"}`
-                      : "Sin zonificación oficial — solo modelo propio"}
-                  </span>
-                )}
-                {colorForFeature && hazardKind === "incendios" && props.fireLevel && (
-                  <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span
-                      style={{
-                        display: "inline-block",
-                        width: 9,
-                        height: 9,
-                        borderRadius: "50%",
-                        flexShrink: 0,
-                        backgroundColor: fireLevelColorToken(props.fireLevel),
-                      }}
-                    />
-                    Amenaza de incendio (modelo propio): {props.fireLevel}
-                    {props.fireScoreAvg != null && ` (${props.fireScoreAvg.toFixed(2)})`}
-                  </span>
-                )}
-                {colorForFeature && hazardKind === "incendios" && !props.fireLevel && (
-                  <span style={{ color: "#888" }}>Sin datos del modelo de incendio</span>
-                )}
-                {colorForFeature &&
-                  hazardKind === "incendios" &&
-                  (props.slopeDeg != null || props.roadDistanceKm != null || props.fireHistoryCount != null || props.fireFwi != null) && (
-                    <span style={{ color: "#888" }}>
-                      {props.slopeDeg != null && `Pendiente: ${props.slopeDeg.toFixed(1)}°`}
-                      {props.slopeDeg != null && (props.roadDistanceKm != null || props.fireHistoryCount != null || props.fireFwi != null) && " · "}
-                      {props.roadDistanceKm != null && `Vía más cercana: ${props.roadDistanceKm.toFixed(2)} km`}
-                      {props.roadDistanceKm != null && (props.fireHistoryCount != null || props.fireFwi != null) && " · "}
-                      {props.fireHistoryCount != null && `Focos históricos cercanos: ${props.fireHistoryCount}`}
-                      {props.fireHistoryCount != null && props.fireFwi != null && " · "}
-                      {props.fireFwi != null && `FWI hoy: ${props.fireFwi.toFixed(1)}`}
-                    </span>
-                  )}
-                {colorForFeature && hazardKind === "sismologia" && props.seismicScoreAvg != null && (
-                  <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span
-                      style={{
-                        display: "inline-block",
-                        width: 9,
-                        height: 9,
-                        borderRadius: "50%",
-                        flexShrink: 0,
-                        backgroundColor: seismicExposureColorToken(props.seismicScoreAvg),
-                      }}
-                    />
-                    Exposición sísmica (modelo propio): {seismicExposureLevel(props.seismicScoreAvg)} (
-                    {props.seismicScoreAvg.toFixed(2)})
-                  </span>
-                )}
-                {colorForFeature && hazardKind === "sismologia" && props.seismicNearestEventKm != null && (
-                  <span style={{ color: "#888" }}>
-                    Epicentro más cercano: {props.seismicNearestEventKm.toFixed(1)} km
-                    {props.seismicNearestMagnitude != null && ` · M ${props.seismicNearestMagnitude.toFixed(1)}`}
-                  </span>
-                )}
-                <span>
-                  Población estimada:{" "}
-                  {props.poblacion != null ? Math.round(props.poblacion).toLocaleString("es-CO") : "—"}
-                </span>
-                <span>
-                  Escuelas: {props.escuelas ?? "—"} · Hospitales: {props.hospitales ?? "—"} · Farmacias:{" "}
-                  {props.farmacias ?? "—"}
-                </span>
-                <span>Infraestructura crítica: {props.infraestructuraCritica ?? "—"}</span>
-                <span>Sitios críticos (2019): {props.sitiosCriticos}</span>
-              </div>
+              <VeredaPopupContent feature={feature} hazardKind={hazardKind} colored={!!colorForFeature} />
             </Popup>
           </Polygon>
         )
