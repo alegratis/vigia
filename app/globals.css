@@ -471,6 +471,21 @@
   border-radius: var(--radius-lg);
 }
 
+/*
+ * Same entrance polish as the Leaflet popup rules above, mirrored onto
+ * MapLibre's popup DOM classes for the MapLibre spike map
+ * (deslizamientos-live-map.tsx) — keeps both renderers' popups feeling
+ * identical while the migration is in progress.
+ */
+.maplibregl-popup {
+  animation: leaflet-popup-in 0.16s ease-out;
+  transform-origin: bottom center;
+}
+
+.maplibregl-popup-content {
+  border-radius: var(--radius-lg);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

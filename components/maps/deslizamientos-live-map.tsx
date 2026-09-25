@@ -1,21 +1,26 @@
 "use client"
 
-import { Fragment, useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
-import {
-  AttributionControl,
-  CircleMarker,
-  MapContainer,
-  Polyline,
-  TileLayer,
-  Tooltip,
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { useTheme } from "next-themes"
+import Map, {
+  Source,
+  Layer,
   Popup,
-  WMSTileLayer,
-  ZoomControl,
-  useMap,
-  useMapEvents,
-} from "react-leaflet"
-import type { LatLngBoundsExpression, WMSParams } from "leaflet"
-import "leaflet/dist/leaflet.css"
+  NavigationControl,
+  AttributionControl,
+  type MapRef,
+  type MapLayerMouseEvent,
+} from "react-map-gl/maplibre"
+import { setWorkerUrl } from "maplibre-gl"
+import "maplibre-gl/dist/maplibre-gl.css"
+
+// Turbopack rewrites maplibre-gl's internal `import.meta.url`-based worker
+// resolution into a blob URL, which breaks the worker's own relative asset
+// resolution. Pointing at a self-hosted copy of the worker script sidesteps
+// that bundler-specific failure mode.
+if (typeof window !== "undefined") {
+  setWorkerUrl("/maplibre-gl-worker.mjs")
+}
 import { Loader2, Droplets, AlertTriangle, Route, History, Trees, Building2, ShieldCheck } from "lucide-react"
 import { MapControlRail, RailSection, RailToggleRow } from "@/components/maps/map-control-rail"
 import { SUSCEPTIBILITY_LEVELS, SUSCEPTIBILITY_LEVEL_STYLES, levelColorToken } from "@/lib/deslizamientos/levels"
@@ -29,7 +34,8 @@ import {
   GWIS_PROTECTED_AREAS_LAYER,
   GWIS_PROTECTED_AREAS_LEGEND_URL,
 } from "@/lib/demografia/gwis-context-layers"
-import { BasemapTileLayer } from "@/components/maps/basemap-tile-layer"
+import { maplibreBasemapStyle } from "@/lib/maps/maplibre-basemap-style"
+import { wmsRasterSource } from "@/lib/maps/wms-raster-source"
 import { getOsmCategory } from "@/lib/osm/categories"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
 import { OsmLegend } from "@/components/maps/osm-legend"
@@ -42,56 +48,39 @@ import {
 } from "@/lib/deslizamientos/critical-sites-types"
 import { useFaults } from "@/lib/deslizamientos/use-faults"
 import { useLandslideInventory } from "@/lib/deslizamientos/use-landslide-inventory"
-import { VeredasOverlay } from "@/components/maps/veredas-overlay"
-import { FlyToMunicipio } from "@/components/maps/fly-to-municipio"
+import { VeredaPopupContent } from "@/components/maps/vereda-popup-content"
 import { MunicipioTogglePanelContent, type MunicipioRiskSummary } from "@/components/maps/municipio-toggle-panel"
 import { useVeredas } from "@/lib/veredas/use-veredas"
-import { useMunicipioToggles } from "@/lib/veredas/municipio-toggles"
+import { useMunicipioToggles, isMunicipioActive } from "@/lib/veredas/municipio-toggles"
 import { summarizeByMunicipio } from "@/lib/veredas/municipio-summary"
-import type { VeredaFeature } from "@/lib/veredas/api-types"
+import { boundsForActiveMunicipios } from "@/lib/veredas/municipio-bounds"
+import type { VeredaFeature, VeredaProperties } from "@/lib/veredas/api-types"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
 
-// Fallback center if bounds-fitting is unavailable — the midpoint of AOI_BOUNDS below.
-const AOI_CENTER: [number, number] = [4.16, -75.89]
-
 /**
- * Frames Sevilla and Caicedonia's full susceptibility extent (queried live
- * from the ArcGIS layer's envelope, west/south/east/north = -76.04/3.90/
- * -75.74/4.42, with a small margin). The map previously used a fixed center
- * pinned to the extent's northern edge, which showed only the northern
- * sliver of Sevilla and cropped out the rural, mountainous south where most
- * of the susceptibility zones sit.
+ * MapLibre GL spike: this is the first map ported off Leaflet/react-leaflet
+ * (see v0_plans/grand-method.md, Phase 3) — driven by upcoming 3D map
+ * graphs (at-risk population, socio-demographics, calculated risk) that
+ * Leaflet has no path to but MapLibre's `fill-extrusion`/terrain support
+ * does. Every other hazard map stays on Leaflet until this one is
+ * reviewed. No hazard data/model/API logic changed — purely a
+ * rendering-layer swap, same default export/props as before so
+ * `deslizamientos-live-map-loader.tsx` needs no changes.
  */
-const AOI_BOUNDS: LatLngBoundsExpression = [
-  [3.88, -76.06],
-  [4.44, -75.72],
+
+// MapLibre bounds are `[[west, south], [east, north]]` — the same AOI
+// framing the Leaflet version used ([[south,west],[north,east]] there),
+// reordered for `initialViewState.bounds`.
+const AOI_BOUNDS: [[number, number], [number, number]] = [
+  [-76.06, 3.88],
+  [-75.72, 4.44],
 ]
 
-interface BoundsSyncProps {
-  onBoundsChange: (bounds: MapBounds) => void
-}
-
-function BoundsSync({ onBoundsChange }: BoundsSyncProps) {
-  const map = useMap()
-
-  const sync = useCallback(() => {
-    const b = map.getBounds()
-    onBoundsChange({
-      north: b.getNorth(),
-      south: b.getSouth(),
-      east: b.getEast(),
-      west: b.getWest(),
-    })
-  }, [map, onBoundsChange])
-
-  useEffect(() => {
-    sync()
-  }, [sync])
-
-  useMapEvents({ moveend: sync, zoomend: sync, resize: sync })
-
-  return null
+interface PopupInfo {
+  longitude: number
+  latitude: number
+  content: ReactNode
 }
 
 /** Susceptibility color-scale rows, rendered inside the shared MapControlRail. */
@@ -225,10 +214,14 @@ function DeslizamientosLiveMapImpl({
   osmPoints?: OsmPoint[]
   className?: string
 }) {
+  const mapRef = useRef<MapRef>(null)
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === "dark"
+  const mapStyle = useMemo(() => maplibreBasemapStyle(isDark), [isDark])
+
   const osmColors = useOsmCategoryColors()
   // Always enabled now that vereda shading is this map's primary layer, not
-  // an opt-in overlay — VeredasOverlay's own useVeredas(true) call below
-  // dedupes against this same SWR key, so this doesn't add a second request.
+  // an opt-in overlay.
   const { veredas, error: veredasError, isLoading: veredasLoading } = useVeredas(true)
   const { active: activeMunicipiosMap, activeMunicipios, toggle: toggleMunicipio } = useMunicipioToggles()
 
@@ -259,6 +252,8 @@ function DeslizamientosLiveMapImpl({
   const [faultLineColor, setFaultLineColor] = useState<string | null>(null)
   const [historyColor, setHistoryColor] = useState<string | null>(null)
   const [criticalSiteColors, setCriticalSiteColors] = useState<Record<number, string> | null>(null)
+  const [popupInfo, setPopupInfo] = useState<PopupInfo | null>(null)
+  const [cursor, setCursor] = useState<string>("")
 
   useEffect(() => {
     const entries = SUSCEPTIBILITY_LEVELS.map(
@@ -268,13 +263,6 @@ function DeslizamientosLiveMapImpl({
     setNoDataColor(resolveCssColor("var(--muted-foreground)"))
     setFaultLineColor(resolveCssColor("var(--fault-line)"))
     setHistoryColor(resolveCssColor("var(--historical-event)"))
-    // Canvas's 2D context can't resolve `var(--token)` strings the way DOM/CSS
-    // can — `severityColorToken()` returning a raw CSS variable reference
-    // straight into `pathOptions.fillColor` silently no-ops on
-    // `ctx.fillStyle`, which is why the map's dots didn't match this same
-    // severity scale's swatches in the legend (those render via a real DOM
-    // `<span>`, where `var(...)` resolves fine). Resolve to actual color
-    // values up front, same as every other overlay color above.
     setCriticalSiteColors(
       Object.fromEntries(
         CRITICAL_SITE_SEVERITIES.map((severity) => [
@@ -290,207 +278,421 @@ function DeslizamientosLiveMapImpl({
     [resolvedColors],
   )
 
-  const veredaColor = useCallback(
-    (feature: VeredaFeature) => {
-      const level = feature.properties.dominantLevel
-      return level ? colorForLevel(level) : noDataColor ?? "var(--muted-foreground)"
+  // GeoJSON source for the vereda choropleth — each feature carries a
+  // precomputed `__fillColor`/`__dimmed` style, since MapLibre paint
+  // expressions can only read feature properties, not call arbitrary JS.
+  const veredasGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
+    if (!veredas || !resolvedColors || !noDataColor) return { type: "FeatureCollection", features: [] }
+    return {
+      type: "FeatureCollection",
+      features: veredas.features.map((feature) => {
+        const active = isMunicipioActive(feature.properties.municipio, activeMunicipios)
+        const level = feature.properties.dominantLevel
+        const hazardColor = level ? colorForLevel(level) : noDataColor
+        return {
+          type: "Feature",
+          id: feature.id,
+          properties: {
+            ...feature.properties,
+            __fillColor: active ? hazardColor : noDataColor,
+            __fillOpacity: active ? 0.6 : 0.12,
+            __lineColor: active ? "#ffffff" : noDataColor,
+            __lineOpacity: active ? 0.9 : 0.3,
+            __lineWidth: 1,
+          },
+          geometry: {
+            type: "MultiPolygon",
+            coordinates: feature.geometry.coordinates,
+          },
+        }
+      }),
+    }
+  }, [veredas, activeMunicipios, colorForLevel, noDataColor])
+
+  const faultsGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
+    if (!faultTraces) return { type: "FeatureCollection", features: [] }
+    return {
+      type: "FeatureCollection",
+      features: faultTraces.flatMap((trace) =>
+        trace.paths.map((path, i) => ({
+          type: "Feature" as const,
+          id: `${trace.id}-${i}`,
+          properties: { nombre: trace.nombre, tipo: trace.tipo },
+          geometry: { type: "LineString" as const, coordinates: path },
+        })),
+      ),
+    }
+  }, [faultTraces])
+
+  const criticalSitesGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
+    if (!criticalSites || !criticalSiteColors) return { type: "FeatureCollection", features: [] }
+    return {
+      type: "FeatureCollection",
+      features: criticalSites.map((site) => ({
+        type: "Feature" as const,
+        id: site.id,
+        properties: { ...site, __color: criticalSiteColors[site.severidad] ?? noDataColor ?? "#888" },
+        geometry: { type: "Point" as const, coordinates: [site.lon, site.lat] },
+      })),
+    }
+  }, [criticalSites, criticalSiteColors, noDataColor])
+
+  const historyGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
+    if (!historyRecords || !historyColor) return { type: "FeatureCollection", features: [] }
+    return {
+      type: "FeatureCollection",
+      features: historyRecords.map((record) => ({
+        type: "Feature" as const,
+        id: record.id,
+        properties: { ...record, __color: historyColor },
+        geometry: { type: "Point" as const, coordinates: [record.lon, record.lat] },
+      })),
+    }
+  }, [historyRecords, historyColor])
+
+  const osmGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
+    if (!osmPoints || !osmColors) return { type: "FeatureCollection", features: [] }
+    return {
+      type: "FeatureCollection",
+      features: osmPoints.map((p) => ({
+        type: "Feature" as const,
+        id: p.id,
+        properties: { ...p, __color: osmColors[p.category] },
+        geometry: { type: "Point" as const, coordinates: [p.lon, p.lat] },
+      })),
+    }
+  }, [osmPoints, osmColors])
+
+  const landCoverSource = useMemo(() => wmsRasterSource(GWIS_WMS_URL, GWIS_LANDCOVER_LAYER), [])
+  const settlementSource = useMemo(() => wmsRasterSource(GWIS_WMS_URL, GWIS_SETTLEMENT_LAYER), [])
+  const protectedAreasSource = useMemo(() => wmsRasterSource(GWIS_WMS_URL, GWIS_PROTECTED_AREAS_LAYER), [])
+
+  const interactiveLayerIds = useMemo(() => {
+    const ids = ["veredas-fill"]
+    if (showCriticalSites) ids.push("critical-sites")
+    if (showHistory) ids.push("history-points")
+    if (osmPoints && osmPoints.length > 0) ids.push("osm-points")
+    if (showFaults) ids.push("faults-hit")
+    return ids
+  }, [showCriticalSites, showHistory, osmPoints, showFaults])
+
+  const hoveredVeredaId = useRef<string | number | null>(null)
+
+  const clearVeredaHover = useCallback(() => {
+    const map = mapRef.current?.getMap()
+    if (map && hoveredVeredaId.current != null) {
+      map.setFeatureState({ source: "veredas-source", id: hoveredVeredaId.current }, { hover: false })
+    }
+    hoveredVeredaId.current = null
+  }, [])
+
+  const handleMouseMove = useCallback(
+    (e: MapLayerMouseEvent) => {
+      const veredaFeature = e.features?.find((f) => f.layer.id === "veredas-fill")
+      const map = mapRef.current?.getMap()
+      if (!map) return
+      if (veredaFeature?.id === hoveredVeredaId.current) return
+      clearVeredaHover()
+      if (veredaFeature?.id != null) {
+        map.setFeatureState({ source: "veredas-source", id: veredaFeature.id }, { hover: true })
+        hoveredVeredaId.current = veredaFeature.id
+      }
     },
-    [colorForLevel, noDataColor],
+    [clearVeredaHover],
   )
+
+  const handleMapClick = useCallback(
+    (e: MapLayerMouseEvent) => {
+      const feature = e.features?.[0]
+      if (!feature) {
+        setPopupInfo(null)
+        return
+      }
+      const { lng, lat } = e.lngLat
+      if (feature.layer.id === "veredas-fill") {
+        const props = feature.properties as unknown as VeredaProperties
+        const veredaFeature = { properties: props } as VeredaFeature
+        setPopupInfo({
+          longitude: lng,
+          latitude: lat,
+          content: <VeredaPopupContent feature={veredaFeature} hazardKind="deslizamientos" colored />,
+        })
+        onVeredaSelect?.(veredaFeature)
+        return
+      }
+      if (feature.layer.id === "critical-sites") {
+        const props = feature.properties as {
+          tipo: number
+          municipio: string
+          severidad: 1 | 2 | 3 | 4
+          observaciones: string | null
+          fecha: string | null
+        }
+        setPopupInfo({
+          longitude: lng,
+          latitude: lat,
+          content: (
+            <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
+              <strong>{tipoLabel(props.tipo)}</strong>
+              <span>{props.municipio}</span>
+              <span>{CRITICAL_SITE_SEVERITY_STYLES[props.severidad]?.label ?? "—"}</span>
+              {props.observaciones && <span>{props.observaciones}</span>}
+              {props.fecha && <span style={{ color: "#888" }}>Registrado: {props.fecha}</span>}
+            </div>
+          ),
+        })
+        return
+      }
+      if (feature.layer.id === "history-points") {
+        const props = feature.properties as { tipo: string | null; subtipo: string | null }
+        setPopupInfo({
+          longitude: lng,
+          latitude: lat,
+          content: (
+            <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
+              <strong>{props.tipo ?? "Movimiento sin tipo"}</strong>
+              <span>{props.subtipo ?? "Subtipo no especificado"}</span>
+              <span style={{ color: "#888" }}>
+                Inventario de movimientos en masa, Servicio Geológico Colombiano (SGC) — sin fecha registrada
+              </span>
+            </div>
+          ),
+        })
+        return
+      }
+      if (feature.layer.id === "osm-points") {
+        const props = feature.properties as OsmPoint
+        setPopupInfo({
+          longitude: lng,
+          latitude: lat,
+          content: (
+            <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
+              <strong>{props.name ?? getOsmCategory(props.category).label}</strong>
+              <span>{getOsmCategory(props.category).label}</span>
+            </div>
+          ),
+        })
+        return
+      }
+      if (feature.layer.id === "faults-hit") {
+        const props = feature.properties as { nombre: string | null; tipo: string | null }
+        setPopupInfo({
+          longitude: lng,
+          latitude: lat,
+          content: (
+            <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
+              <strong>{props.nombre ?? "Falla sin nombre"}</strong>
+              <span>{props.tipo ?? "Tipo no especificado"}</span>
+              <span style={{ color: "#888" }}>Servicio Geológico Colombiano (SGC)</span>
+            </div>
+          ),
+        })
+      }
+    },
+    [onVeredaSelect],
+  )
+
+  const syncBounds = useCallback(() => {
+    if (!onBoundsChange) return
+    const map = mapRef.current?.getMap()
+    const b = map?.getBounds()
+    if (!b) return
+    onBoundsChange({ north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() })
+  }, [onBoundsChange])
+
+  // Flies the map to frame whichever municipios are toggled on in the
+  // rail's "Municipios" section — skips the first render (the map already
+  // opens framed on the full AOI via `initialViewState.bounds`) and skips
+  // an "every municipio active" selection.
+  const isFirstMunicipioRender = useRef(true)
+  const previousMunicipioKey = useRef(activeMunicipios.join("|"))
+  useEffect(() => {
+    const key = activeMunicipios.join("|")
+    if (isFirstMunicipioRender.current) {
+      isFirstMunicipioRender.current = false
+      previousMunicipioKey.current = key
+      return
+    }
+    if (key === previousMunicipioKey.current) return
+    previousMunicipioKey.current = key
+
+    const bounds = boundsForActiveMunicipios(veredas, activeMunicipios) as
+      | [[number, number], [number, number]]
+      | null
+    if (!bounds) return
+    const map = mapRef.current?.getMap()
+    if (!map) return
+    const [[south, west], [north, east]] = bounds
+    map.fitBounds(
+      [
+        [west, south],
+        [east, north],
+      ],
+      { padding: 48, duration: 900, maxZoom: 14 },
+    )
+  }, [veredas, activeMunicipios])
 
   return (
     <div className={className ?? "relative isolate h-full min-h-[420px] w-full overflow-hidden rounded-xl border border-border"}>
-      <MapContainer
-        center={AOI_CENTER}
-        zoom={11}
+      <Map
+        ref={mapRef}
+        initialViewState={{ bounds: AOI_BOUNDS }}
         minZoom={9}
         maxZoom={16}
-        bounds={AOI_BOUNDS}
-        zoomControl={false}
+        mapStyle={mapStyle}
         attributionControl={false}
-        preferCanvas
-        className="h-full w-full"
+        cursor={cursor}
+        interactiveLayerIds={interactiveLayerIds}
+        onLoad={syncBounds}
+        onMoveEnd={syncBounds}
+        onZoomEnd={syncBounds}
+        onMouseMove={handleMouseMove}
+        onMouseEnter={() => setCursor("pointer")}
+        onMouseLeave={() => {
+          setCursor("")
+          clearVeredaHover()
+        }}
+        onClick={handleMapClick}
+        style={{ width: "100%", height: "100%" }}
       >
-        <ZoomControl position="topright" />
-        <AttributionControl position="bottomright" prefix="Leaflet" />
-        <BasemapTileLayer />
+        <NavigationControl position="top-right" />
+        <AttributionControl position="bottom-right" customAttribution="MapLibre © OpenStreetMap / Esri" compact />
+
         {showSoilMoisture && (
-          <TileLayer
-            attribution="NASA GIBS / SMAP"
-            url={SMAP_TILE_URL}
-            opacity={0.6}
-            maxNativeZoom={6}
-          />
+          <Source id="soil-moisture" type="raster" tiles={[SMAP_TILE_URL]} tileSize={256} maxzoom={6}>
+            <Layer id="soil-moisture" type="raster" paint={{ "raster-opacity": 0.6 }} />
+          </Source>
         )}
         {showLandCover && (
-          <WMSTileLayer
-            url={GWIS_WMS_URL}
-            opacity={0.55}
-            params={
-              {
-                layers: GWIS_LANDCOVER_LAYER,
-                format: "image/png",
-                transparent: true,
-                version: "1.1.1",
-              } as WMSParams
-            }
-          />
+          <Source id="land-cover-source" type="raster" tiles={landCoverSource.tiles} tileSize={landCoverSource.tileSize}>
+            <Layer id="land-cover" type="raster" paint={{ "raster-opacity": 0.55 }} />
+          </Source>
         )}
         {showSettlement && (
-          <WMSTileLayer
-            url={GWIS_WMS_URL}
-            opacity={0.7}
-            params={
-              {
-                layers: GWIS_SETTLEMENT_LAYER,
-                format: "image/png",
-                transparent: true,
-                version: "1.1.1",
-              } as WMSParams
-            }
-          />
+          <Source
+            id="settlement-source"
+            type="raster"
+            tiles={settlementSource.tiles}
+            tileSize={settlementSource.tileSize}
+          >
+            <Layer id="settlement" type="raster" paint={{ "raster-opacity": 0.7 }} />
+          </Source>
         )}
         {showProtectedAreas && (
-          <WMSTileLayer
-            url={GWIS_WMS_URL}
-            opacity={0.6}
-            params={
-              {
-                layers: GWIS_PROTECTED_AREAS_LAYER,
-                format: "image/png",
-                transparent: true,
-                version: "1.1.1",
-              } as WMSParams
-            }
-          />
+          <Source
+            id="protected-areas-source"
+            type="raster"
+            tiles={protectedAreasSource.tiles}
+            tileSize={protectedAreasSource.tileSize}
+          >
+            <Layer id="protected-areas" type="raster" paint={{ "raster-opacity": 0.6 }} />
+          </Source>
         )}
-        {resolvedColors && noDataColor && (
-          <VeredasOverlay
-            enabled
-            colorForFeature={veredaColor}
-            onSelect={onVeredaSelect}
-            activeMunicipios={activeMunicipios}
+
+        <Source id="veredas-source" type="geojson" data={veredasGeoJson}>
+          <Layer
+            id="veredas-fill"
+            type="fill"
+            paint={{ "fill-color": ["get", "__fillColor"], "fill-opacity": ["get", "__fillOpacity"] }}
           />
+          <Layer
+            id="veredas-line"
+            type="line"
+            paint={{
+              "line-color": ["get", "__lineColor"],
+              "line-opacity": ["get", "__lineOpacity"],
+              "line-width": [
+                "case",
+                ["boolean", ["feature-state", "hover"], false],
+                ["+", ["get", "__lineWidth"], 1.5],
+                ["get", "__lineWidth"],
+              ],
+            }}
+          />
+        </Source>
+
+        {showFaults && (
+          <Source id="faults-source" type="geojson" data={faultsGeoJson}>
+            <Layer
+              id="faults-line"
+              type="line"
+              paint={{ "line-color": faultLineColor ?? "#888", "line-width": 2, "line-dasharray": [6, 4] }}
+            />
+            {/*
+             * A thin dashed line's clickable area is only ~1px wide, so
+             * clicks land on the vereda polygon underneath almost every
+             * time. This invisible, much wider companion layer carries the
+             * actual click interaction (registered via `interactiveLayerIds`
+             * above) while the thin dashed layer stays purely decorative.
+             */}
+            <Layer
+              id="faults-hit"
+              type="line"
+              paint={{ "line-color": faultLineColor ?? "#888", "line-width": 18, "line-opacity": 0 }}
+            />
+          </Source>
         )}
-        {showFaults &&
-          faultLineColor &&
-          faultTraces?.map((trace) =>
-            trace.paths.map((path, i) => {
-              const positions = path.map(([lon, lat]) => [lat, lon] as [number, number])
-              return (
-                <Fragment key={`${trace.id}-${i}`}>
-                  {/*
-                   * A thin dashed line's clickable area (its `weight`, per
-                   * Leaflet's canvas hit-testing) is only ~1px wide, so
-                   * clicks land on the vereda polygon underneath almost
-                   * every time. This invisible, much wider companion line
-                   * carries the actual interaction — click opens the popup,
-                   * hover shows the sticky tooltip — while the thin dashed
-                   * line below stays purely decorative (`interactive:
-                   * false`, so it can't compete for the same click/hover).
-                   */}
-                  <Polyline
-                    key={`${trace.id}-${i}-hit`}
-                    positions={positions}
-                    pathOptions={{ color: faultLineColor, weight: 18, opacity: 0 }}
-                  >
-                    <Tooltip sticky>{trace.nombre ?? "Falla sin nombre"}</Tooltip>
-                    <Popup>
-                      <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
-                        <strong>{trace.nombre ?? "Falla sin nombre"}</strong>
-                        <span>{trace.tipo ?? "Tipo no especificado"}</span>
-                        <span style={{ color: "#888" }}>Servicio Geológico Colombiano (SGC)</span>
-                      </div>
-                    </Popup>
-                  </Polyline>
-                  <Polyline
-                    key={`${trace.id}-${i}-line`}
-                    positions={positions}
-                    pathOptions={{
-                      color: faultLineColor,
-                      weight: 2,
-                      dashArray: "6 4",
-                      interactive: false,
-                    }}
-                  />
-                </Fragment>
-              )
-            }),
-          )}
-        {showCriticalSites &&
-          criticalSiteColors &&
-          criticalSites?.map((site) => (
-            <CircleMarker
-              key={site.id}
-              center={[site.lat, site.lon]}
-              radius={5}
-              pathOptions={{
-                color: "#fff",
-                weight: 1,
-                fillColor: criticalSiteColors[site.severidad] ?? noDataColor ?? "#888",
-                fillOpacity: 0.9,
+
+        {showCriticalSites && (
+          <Source id="critical-sites-source" type="geojson" data={criticalSitesGeoJson}>
+            <Layer
+              id="critical-sites"
+              type="circle"
+              paint={{
+                "circle-radius": 5,
+                "circle-color": ["get", "__color"],
+                "circle-stroke-color": "#ffffff",
+                "circle-stroke-width": 1,
+                "circle-opacity": 0.9,
               }}
-            >
-              <Popup>
-                <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
-                  <strong>{tipoLabel(site.tipo)}</strong>
-                  <span>{site.municipio}</span>
-                  <span>{CRITICAL_SITE_SEVERITY_STYLES[site.severidad as 1 | 2 | 3 | 4]?.label ?? "—"}</span>
-                  {site.observaciones && <span>{site.observaciones}</span>}
-                  {site.fecha && <span style={{ color: "#888" }}>Registrado: {site.fecha}</span>}
-                </div>
-              </Popup>
-            </CircleMarker>
-          ))}
-        {showHistory &&
-          historyColor &&
-          historyRecords?.map((record) => (
-            <CircleMarker
-              key={record.id}
-              center={[record.lat, record.lon]}
-              radius={5}
-              pathOptions={{
-                color: "#fff",
-                weight: 1,
-                fillColor: historyColor,
-                fillOpacity: 0.9,
+            />
+          </Source>
+        )}
+
+        {showHistory && (
+          <Source id="history-source" type="geojson" data={historyGeoJson}>
+            <Layer
+              id="history-points"
+              type="circle"
+              paint={{
+                "circle-radius": 5,
+                "circle-color": ["get", "__color"],
+                "circle-stroke-color": "#ffffff",
+                "circle-stroke-width": 1,
+                "circle-opacity": 0.9,
               }}
-            >
-              <Popup>
-                <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
-                  <strong>{record.tipo ?? "Movimiento sin tipo"}</strong>
-                  <span>{record.subtipo ?? "Subtipo no especificado"}</span>
-                  <span style={{ color: "#888" }}>
-                    Inventario de movimientos en masa, Servicio Geológico Colombiano (SGC) — sin fecha registrada
-                  </span>
-                </div>
-              </Popup>
-            </CircleMarker>
-          ))}
-        {osmColors &&
-          osmPoints?.map((p) => (
-            <CircleMarker
-              key={p.id}
-              center={[p.lat, p.lon]}
-              radius={5}
-              pathOptions={{
-                color: "#fff",
-                weight: 1,
-                fillColor: osmColors[p.category],
-                fillOpacity: 0.9,
+            />
+          </Source>
+        )}
+
+        {osmPoints && osmPoints.length > 0 && (
+          <Source id="osm-source" type="geojson" data={osmGeoJson}>
+            <Layer
+              id="osm-points"
+              type="circle"
+              paint={{
+                "circle-radius": 5,
+                "circle-color": ["get", "__color"],
+                "circle-stroke-color": "#ffffff",
+                "circle-stroke-width": 1,
+                "circle-opacity": 0.9,
               }}
-            >
-              <Popup>
-                <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
-                  <strong>{p.name ?? getOsmCategory(p.category).label}</strong>
-                  <span>{getOsmCategory(p.category).label}</span>
-                </div>
-              </Popup>
-            </CircleMarker>
-          ))}
-        {onBoundsChange && <BoundsSync onBoundsChange={onBoundsChange} />}
-        <FlyToMunicipio veredas={veredas} activeMunicipios={activeMunicipios} />
-      </MapContainer>
+            />
+          </Source>
+        )}
+
+        {popupInfo && (
+          <Popup
+            longitude={popupInfo.longitude}
+            latitude={popupInfo.latitude}
+            onClose={() => setPopupInfo(null)}
+            closeOnClick={false}
+            anchor="bottom"
+          >
+            {popupInfo.content}
+          </Popup>
+        )}
+      </Map>
       {veredasLoading && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-background/60">
           <Loader2 className="size-6 animate-spin text-muted-foreground" aria-hidden="true" />
@@ -584,6 +786,7 @@ function DeslizamientosLiveMapImpl({
   )
 }
 
-// Leaflet touches `window` at module load time, so this component is always
-// consumed through DeslizamientosLiveMapLoader (next/dynamic, ssr: false).
+// MapLibre (like Leaflet) touches `window` at module load time, so this
+// component is always consumed through DeslizamientosLiveMapLoader
+// (next/dynamic, ssr: false).
 export default DeslizamientosLiveMapImpl
