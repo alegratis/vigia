@@ -13,6 +13,11 @@ import { buildExportUrl, type LatLngBounds } from "@/lib/geoglows/live-map"
  * re-fetches the image server-side and re-serves it from this app's own
  * origin instead.
  */
+// Upper bound on the requested raster size. The exposición popup only ever
+// rasterizes its own on-screen map (well under 4K), so anything past this is
+// either a bug or an attempt to make this proxy do expensive upstream work.
+const MAX_DIMENSION_PX = 4096
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const north = Number(searchParams.get("north"))
@@ -24,6 +29,17 @@ export async function GET(request: NextRequest) {
 
   if (![north, south, east, west, width, height].every(Number.isFinite)) {
     return NextResponse.json({ error: "Parámetros de exportación inválidos." }, { status: 400 })
+  }
+
+  if (
+    width <= 0 ||
+    height <= 0 ||
+    width > MAX_DIMENSION_PX ||
+    height > MAX_DIMENSION_PX ||
+    !Number.isInteger(width) ||
+    !Number.isInteger(height)
+  ) {
+    return NextResponse.json({ error: "Dimensiones de exportación inválidas." }, { status: 400 })
   }
 
   const bounds: LatLngBounds = { north, south, east, west }

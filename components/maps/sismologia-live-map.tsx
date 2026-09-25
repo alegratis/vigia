@@ -1,29 +1,36 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
-import {
-  AttributionControl,
-  CircleMarker,
-  MapContainer,
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { useTheme } from "next-themes"
+import Map, {
+  Source,
+  Layer,
   Popup,
-  ZoomControl,
-  useMap,
-  useMapEvents,
-} from "react-leaflet"
-import type { LatLngBoundsExpression } from "leaflet"
-import "leaflet/dist/leaflet.css"
+  NavigationControl,
+  AttributionControl,
+  type MapRef,
+  type MapLayerMouseEvent,
+} from "react-map-gl/maplibre"
+import { setWorkerUrl } from "maplibre-gl"
+import "maplibre-gl/dist/maplibre-gl.css"
+
+// See deslizamientos-live-map.tsx for why this self-hosted worker override
+// is needed under Turbopack.
+if (typeof window !== "undefined") {
+  setWorkerUrl("/maplibre-gl-worker.mjs")
+}
 import { Activity, Radio, History, LandPlot, FileWarning } from "lucide-react"
-import { BasemapTileLayer } from "@/components/maps/basemap-tile-layer"
-import { VeredasOverlay } from "@/components/maps/veredas-overlay"
-import { FlyToMunicipio } from "@/components/maps/fly-to-municipio"
+import { VeredaPopupContent } from "@/components/maps/vereda-popup-content"
 import { MunicipioTogglePanelContent, type MunicipioRiskSummary } from "@/components/maps/municipio-toggle-panel"
 import { MapControlRail, RailSection, RailToggleRow } from "@/components/maps/map-control-rail"
 import { useVeredas } from "@/lib/veredas/use-veredas"
-import { useMunicipioToggles } from "@/lib/veredas/municipio-toggles"
+import { useMunicipioToggles, isMunicipioActive } from "@/lib/veredas/municipio-toggles"
+import { boundsForActiveMunicipios } from "@/lib/veredas/municipio-bounds"
 import { summarizeExposureByMunicipio } from "@/lib/veredas/municipio-summary"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
 import { getOsmCategory } from "@/lib/osm/categories"
 import { resolveCssColor } from "@/lib/resolve-css-color"
+import { maplibreBasemapStyle } from "@/lib/maps/maplibre-basemap-style"
 import { useSismologiaDanos, useSismologiaEventos } from "@/lib/sismologia/use-sismologia"
 import {
   SEISMIC_MAGNITUDE_LEVELS,
@@ -38,14 +45,18 @@ import {
 import type { SeismicEvent } from "@/lib/sismologia/api-types"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
-import type { VeredaFeature } from "@/lib/veredas/api-types"
+import type { VeredaFeature, VeredaProperties } from "@/lib/veredas/api-types"
+
+/**
+ * MapLibre GL port (see v0_plans/grand-method.md, Phase 3) — follows the
+ * deslizamientos spike's patterns. No hazard data/model/API logic changed.
+ */
 
 // Same AOI viewport as the other hazard maps — the server-side query bbox (lib/sismologia/server.ts)
 // is padded wider than this to catch nearby regional events that still influence exposure.
-const AOI_CENTER: [number, number] = [4.28, -75.9]
-const AOI_BOUNDS: LatLngBoundsExpression = [
-  [3.88, -76.06],
-  [4.44, -75.72],
+const AOI_BOUNDS: [[number, number], [number, number]] = [
+  [-76.06, 3.88],
+  [-75.72, 4.44],
 ]
 
 function formatDateTime(iso: string): string {
@@ -78,36 +89,21 @@ const TIME_WINDOWS: { value: TimeWindow; label: string }[] = [
 ]
 
 /** Distinct marker styling per source: SGC live solid (primary), USGS hollow ring, SGC historical dashed. */
-function SOURCE_STYLE(source: SeismicEvent["source"], color: string) {
+function sourcePaint(source: SeismicEvent["source"], color: string) {
   switch (source) {
     case "sgc-live":
-      return { color: "#fff", weight: 1, fillColor: color, fillOpacity: 0.85 }
+      return { strokeColor: "#ffffff", strokeWidth: 1, fillColor: color, fillOpacity: 0.85 }
     case "usgs":
-      return { color, weight: 2, fillColor: color, fillOpacity: 0.35 }
+      return { strokeColor: color, strokeWidth: 2, fillColor: color, fillOpacity: 0.35 }
     case "sgc":
-      return { color, weight: 2, fillColor: color, fillOpacity: 0.15, dashArray: "2 3" }
+      return { strokeColor: color, strokeWidth: 2, fillColor: color, fillOpacity: 0.15 }
   }
 }
 
-interface BoundsSyncProps {
-  onBoundsChange: (bounds: MapBounds) => void
-}
-
-function BoundsSync({ onBoundsChange }: BoundsSyncProps) {
-  const map = useMap()
-
-  const sync = useCallback(() => {
-    const b = map.getBounds()
-    onBoundsChange({ north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() })
-  }, [map, onBoundsChange])
-
-  useEffect(() => {
-    sync()
-  }, [sync])
-
-  useMapEvents({ moveend: sync, zoomend: sync, resize: sync })
-
-  return null
+interface PopupInfo {
+  longitude: number
+  latitude: number
+  content: ReactNode
 }
 
 function MagnitudeLegend() {
@@ -216,11 +212,16 @@ function SismologiaLiveMapImpl({
   osmPoints?: OsmPoint[]
   className?: string
 }) {
+  const mapRef = useRef<MapRef>(null)
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === "dark"
+  const mapStyle = useMemo(() => maplibreBasemapStyle(isDark), [isDark])
+
   const { data } = useSismologiaEventos()
   const osmColors = useOsmCategoryColors()
   const { active: activeMunicipiosMap, activeMunicipios, toggle: toggleMunicipio } = useMunicipioToggles()
   // Fetched to drive the municipality highlight + risk panel; the shared SWR
-  // key dedupes against VeredasOverlay's own fetch below.
+  // key dedupes against the vereda fill layer's own fetch below.
   const { veredas } = useVeredas(true)
 
   const municipioSummaries = useMemo<MunicipioRiskSummary[]>(() => {
@@ -249,6 +250,8 @@ function SismologiaLiveMapImpl({
   const [resolvedColors, setResolvedColors] = useState<Record<string, string> | null>(null)
   const [exposureColors, setExposureColors] = useState<Record<SeismicExposureLevel, string> | null>(null)
   const [noDataColor, setNoDataColor] = useState<string | null>(null)
+  const [popupInfo, setPopupInfo] = useState<PopupInfo | null>(null)
+  const [cursor, setCursor] = useState<string>("")
 
   useEffect(() => {
     const entries = SEISMIC_MAGNITUDE_LEVELS.map(
@@ -263,19 +266,6 @@ function SismologiaLiveMapImpl({
     setNoDataColor(resolveCssColor("var(--muted-foreground)"))
   }, [])
 
-  // Shades each vereda by its 0–1 seismic exposure score (the same
-  // distance-decay model that feeds the compound-risk map), mirroring how
-  // the deslizamientos and inundaciones maps shade their veredas — so this
-  // map's polygons carry hazard color instead of rendering as bare outlines.
-  const veredaColor = useCallback(
-    (feature: VeredaFeature) => {
-      const score = feature.properties.seismicScoreAvg
-      if (score == null || !exposureColors) return noDataColor ?? "var(--muted-foreground)"
-      return exposureColors[seismicExposureLevel(score)]
-    },
-    [exposureColors, noDataColor],
-  )
-
   const visibleEvents = useMemo(() => {
     if (!data) return []
     // Draw order = array order: historical (bottom), USGS, then SGC live on top.
@@ -289,77 +279,251 @@ function SismologiaLiveMapImpl({
     return list.filter((event) => new Date(event.time).getTime() >= cutoff)
   }, [data, showSgcLive, showUsgs, showSgc, timeWindow])
 
+  // Shades each vereda by its 0–1 seismic exposure score (the same
+  // distance-decay model that feeds the compound-risk map), mirroring how
+  // the deslizamientos and inundaciones maps shade their veredas.
+  const veredasGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
+    if (!veredas || !showVeredas || !exposureColors || !noDataColor) return { type: "FeatureCollection", features: [] }
+    return {
+      type: "FeatureCollection",
+      features: veredas.features.map((feature) => {
+        const active = isMunicipioActive(feature.properties.municipio, activeMunicipios)
+        const score = feature.properties.seismicScoreAvg
+        const hazardColor = score != null ? exposureColors[seismicExposureLevel(score)] : noDataColor
+        return {
+          type: "Feature",
+          id: feature.id,
+          properties: {
+            ...feature.properties,
+            __fillColor: active ? hazardColor : noDataColor,
+            __fillOpacity: active ? 0.6 : 0.12,
+            __lineColor: active ? "#ffffff" : noDataColor,
+            __lineOpacity: active ? 0.9 : 0.3,
+          },
+          geometry: {
+            type: "MultiPolygon",
+            coordinates: feature.geometry.coordinates,
+          },
+        }
+      }),
+    }
+  }, [veredas, showVeredas, exposureColors, noDataColor, activeMunicipios])
+
+  const eventsGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
+    if (!resolvedColors) return { type: "FeatureCollection", features: [] }
+    return {
+      type: "FeatureCollection",
+      features: visibleEvents.map((event) => {
+        const color = resolvedColors[magnitudeLevel(event.magnitude)]
+        const paint = sourcePaint(event.source, color)
+        return {
+          type: "Feature",
+          id: event.id,
+          properties: { ...event, __radius: magnitudeRadius(event.magnitude), ...paint },
+          geometry: { type: "Point", coordinates: [event.lon, event.lat] },
+        }
+      }),
+    }
+  }, [visibleEvents, resolvedColors])
+
+  const osmGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
+    if (!osmPoints || !osmColors) return { type: "FeatureCollection", features: [] }
+    return {
+      type: "FeatureCollection",
+      features: osmPoints.map((p) => ({
+        type: "Feature",
+        id: p.id,
+        properties: { ...p, __color: osmColors[p.category] },
+        geometry: { type: "Point", coordinates: [p.lon, p.lat] },
+      })),
+    }
+  }, [osmPoints, osmColors])
+
+  const interactiveLayerIds = useMemo(() => {
+    const ids: string[] = []
+    if (showVeredas) ids.push("veredas-fill")
+    ids.push("seismic-events")
+    if (osmPoints && osmPoints.length > 0) ids.push("osm-points")
+    return ids
+  }, [showVeredas, osmPoints])
+
+  const handleMapClick = useCallback(
+    (e: MapLayerMouseEvent) => {
+      const { lng, lat } = e.lngLat
+      const eventFeature = e.features?.find((f) => f.layer.id === "seismic-events")
+      if (eventFeature) {
+        const props = eventFeature.properties as unknown as SeismicEvent
+        setPopupInfo({
+          longitude: lng,
+          latitude: lat,
+          content: (
+            <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
+              <strong>M {props.magnitude.toFixed(1)}</strong>
+              <span>{props.place ?? "Catálogo histórico SGC"}</span>
+              <span>{formatDateTime(props.time)}</span>
+              {props.depthKm != null && <span>Profundidad: {props.depthKm.toFixed(1)} km</span>}
+              <span>Fuente: {SOURCE_LABEL[props.source]}</span>
+              {props.source === "sgc-live" && props.reviewStatus && (
+                <span>Revisión: {props.reviewStatus === "manual" ? "manual (analista)" : "automática"}</span>
+              )}
+            </div>
+          ),
+        })
+        return
+      }
+      const osmFeature = e.features?.find((f) => f.layer.id === "osm-points")
+      if (osmFeature) {
+        const props = osmFeature.properties as unknown as OsmPoint
+        setPopupInfo({
+          longitude: lng,
+          latitude: lat,
+          content: (
+            <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
+              <strong>{props.name ?? getOsmCategory(props.category).label}</strong>
+              <span>{getOsmCategory(props.category).label}</span>
+            </div>
+          ),
+        })
+        return
+      }
+      const veredaFeature = e.features?.find((f) => f.layer.id === "veredas-fill")
+      if (veredaFeature) {
+        const props = veredaFeature.properties as unknown as VeredaProperties
+        const feature = { properties: props } as VeredaFeature
+        setPopupInfo({
+          longitude: lng,
+          latitude: lat,
+          content: <VeredaPopupContent feature={feature} hazardKind="sismologia" colored />,
+        })
+        onVeredaSelect?.(feature)
+        return
+      }
+      setPopupInfo(null)
+    },
+    [onVeredaSelect],
+  )
+
+  const syncBounds = useCallback(() => {
+    if (!onBoundsChange) return
+    const map = mapRef.current?.getMap()
+    const b = map?.getBounds()
+    if (!b) return
+    onBoundsChange({ north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() })
+  }, [onBoundsChange])
+
+  const isFirstMunicipioRender = useRef(true)
+  const previousMunicipioKey = useRef(activeMunicipios.join("|"))
+  useEffect(() => {
+    const key = activeMunicipios.join("|")
+    if (isFirstMunicipioRender.current) {
+      isFirstMunicipioRender.current = false
+      previousMunicipioKey.current = key
+      return
+    }
+    if (key === previousMunicipioKey.current) return
+    previousMunicipioKey.current = key
+
+    const bounds = boundsForActiveMunicipios(veredas, activeMunicipios) as
+      | [[number, number], [number, number]]
+      | null
+    if (!bounds) return
+    const map = mapRef.current?.getMap()
+    if (!map) return
+    const [[south, west], [north, east]] = bounds
+    map.fitBounds(
+      [
+        [west, south],
+        [east, north],
+      ],
+      { padding: 48, duration: 900, maxZoom: 14 },
+    )
+  }, [veredas, activeMunicipios])
+
   return (
     <div
       className={
         className ?? "relative isolate h-full min-h-[420px] w-full overflow-hidden rounded-xl border border-border"
       }
     >
-      <MapContainer
-        center={AOI_CENTER}
-        zoom={9}
+      <Map
+        ref={mapRef}
+        initialViewState={{ bounds: AOI_BOUNDS }}
         minZoom={7}
         maxZoom={16}
-        bounds={AOI_BOUNDS}
-        zoomControl={false}
+        mapStyle={mapStyle}
         attributionControl={false}
-        className="h-full w-full"
+        cursor={cursor}
+        interactiveLayerIds={interactiveLayerIds}
+        onLoad={syncBounds}
+        onMoveEnd={syncBounds}
+        onZoomEnd={syncBounds}
+        onMouseEnter={() => setCursor("pointer")}
+        onMouseLeave={() => setCursor("")}
+        onClick={handleMapClick}
+        style={{ width: "100%", height: "100%" }}
       >
-        <ZoomControl position="topright" />
-        <AttributionControl position="bottomright" prefix="Leaflet" />
-        <BasemapTileLayer />
-        <VeredasOverlay
-          enabled={showVeredas}
-          colorForFeature={exposureColors && noDataColor ? veredaColor : undefined}
-          hazardKind="sismologia"
-          onSelect={onVeredaSelect}
-          activeMunicipios={activeMunicipios}
-        />
-        {resolvedColors &&
-          visibleEvents.map((event) => {
-            const color = resolvedColors[magnitudeLevel(event.magnitude)]
-            const style = SOURCE_STYLE(event.source, color)
-            return (
-              <CircleMarker
-                key={event.id}
-                center={[event.lat, event.lon]}
-                radius={magnitudeRadius(event.magnitude)}
-                pathOptions={style}
-              >
-                <Popup>
-                  <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
-                    <strong>M {event.magnitude.toFixed(1)}</strong>
-                    <span>{event.place ?? "Catálogo histórico SGC"}</span>
-                    <span>{formatDateTime(event.time)}</span>
-                    {event.depthKm != null && <span>Profundidad: {event.depthKm.toFixed(1)} km</span>}
-                    <span>Fuente: {SOURCE_LABEL[event.source]}</span>
-                    {event.source === "sgc-live" && event.reviewStatus && (
-                      <span>Revisión: {event.reviewStatus === "manual" ? "manual (analista)" : "automática"}</span>
-                    )}
-                  </div>
-                </Popup>
-              </CircleMarker>
-            )
-          })}
-        {osmColors &&
-          osmPoints?.map((p) => (
-            <CircleMarker
-              key={p.id}
-              center={[p.lat, p.lon]}
-              radius={5}
-              pathOptions={{ color: "#fff", weight: 1, fillColor: osmColors[p.category], fillOpacity: 0.9 }}
-            >
-              <Popup>
-                <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
-                  <strong>{p.name ?? getOsmCategory(p.category).label}</strong>
-                  <span>{getOsmCategory(p.category).label}</span>
-                </div>
-              </Popup>
-            </CircleMarker>
-          ))}
-        {onBoundsChange && <BoundsSync onBoundsChange={onBoundsChange} />}
-        <FlyToMunicipio veredas={veredas} activeMunicipios={activeMunicipios} />
-      </MapContainer>
+        <NavigationControl position="top-left" />
+        <AttributionControl position="bottom-left" customAttribution="MapLibre © OpenStreetMap / CARTO" compact />
+
+        {showVeredas && (
+          <Source id="veredas-source" type="geojson" data={veredasGeoJson}>
+            <Layer
+              id="veredas-fill"
+              type="fill"
+              paint={{ "fill-color": ["get", "__fillColor"], "fill-opacity": ["get", "__fillOpacity"] }}
+            />
+            <Layer
+              id="veredas-line"
+              type="line"
+              paint={{ "line-color": ["get", "__lineColor"], "line-opacity": ["get", "__lineOpacity"], "line-width": 1 }}
+            />
+          </Source>
+        )}
+
+        {resolvedColors && (
+          <Source id="seismic-events-source" type="geojson" data={eventsGeoJson}>
+            <Layer
+              id="seismic-events"
+              type="circle"
+              paint={{
+                "circle-radius": ["get", "__radius"],
+                "circle-color": ["get", "fillColor"],
+                "circle-opacity": ["get", "fillOpacity"],
+                "circle-stroke-color": ["get", "strokeColor"],
+                "circle-stroke-width": ["get", "strokeWidth"],
+              }}
+            />
+          </Source>
+        )}
+
+        {osmPoints && osmPoints.length > 0 && (
+          <Source id="osm-source" type="geojson" data={osmGeoJson}>
+            <Layer
+              id="osm-points"
+              type="circle"
+              paint={{
+                "circle-radius": 5,
+                "circle-color": ["get", "__color"],
+                "circle-stroke-color": "#ffffff",
+                "circle-stroke-width": 1,
+                "circle-opacity": 0.9,
+              }}
+            />
+          </Source>
+        )}
+
+        {popupInfo && (
+          <Popup
+            longitude={popupInfo.longitude}
+            latitude={popupInfo.latitude}
+            onClose={() => setPopupInfo(null)}
+            closeOnClick={false}
+            anchor="bottom"
+          >
+            {popupInfo.content}
+          </Popup>
+        )}
+      </Map>
 
       <MapControlRail>
         <RailSection title="Municipios" first>
@@ -414,4 +578,6 @@ function SismologiaLiveMapImpl({
   )
 }
 
+// MapLibre touches `window` at module load time, so this component is
+// always consumed through a next/dynamic loader with ssr: false.
 export default SismologiaLiveMapImpl

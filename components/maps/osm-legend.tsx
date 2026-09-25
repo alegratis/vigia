@@ -4,6 +4,7 @@ import { useMemo } from "react"
 import { getOsmCategory, type OsmCategoryKey } from "@/lib/osm/categories"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
 import type { OsmPoint } from "@/lib/osm/api-types"
+import { cn } from "@/lib/utils"
 
 /**
  * On-map legend for the OpenStreetMap infrastructure markers. The category
@@ -13,7 +14,16 @@ import type { OsmPoint } from "@/lib/osm/api-types"
  * five-category list — it only ever names colors that are actually on
  * screen, and disappears entirely when no category is toggled on.
  */
-export function OsmLegend({ points }: { points: OsmPoint[] }) {
+export function OsmLegend({
+  points,
+  /** Drops the standalone card chrome for maps that instead render this
+   *  inside MapControlRail's "Leyenda activa" section, which already
+   *  supplies the card surface. */
+  bare = false,
+}: {
+  points: OsmPoint[]
+  bare?: boolean
+}) {
   const colors = useOsmCategoryColors()
 
   const activeKeys = useMemo(() => {
@@ -25,8 +35,12 @@ export function OsmLegend({ points }: { points: OsmPoint[] }) {
   if (activeKeys.length === 0) return null
 
   return (
-    <div className="pointer-events-none rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
-      <p className="mb-1.5 font-medium text-foreground">Infraestructura (OpenStreetMap)</p>
+    <div
+      className={cn(
+        !bare && "pointer-events-none rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur",
+      )}
+    >
+      <p className={cn("font-medium text-foreground", !bare && "mb-1.5")}>Infraestructura (OpenStreetMap)</p>
       <ul className="flex flex-col gap-1">
         {activeKeys.map((key) => {
           const category = getOsmCategory(key)

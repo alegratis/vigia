@@ -1,24 +1,25 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import {
-  AttributionControl,
-  CircleMarker,
-  MapContainer,
-  TileLayer,
-  ImageOverlay,
-  GeoJSON,
-  Marker,
-  Pane,
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { useTheme } from "next-themes"
+import Map, {
+  Source,
+  Layer,
   Popup,
-  WMSTileLayer,
-  ZoomControl,
-  useMap,
-  useMapEvents,
-} from "react-leaflet"
-import type { Layer, LatLngBoundsExpression, LeafletMouseEvent, PathOptions, WMSParams } from "leaflet"
-import L from "leaflet"
-import "leaflet/dist/leaflet.css"
+  NavigationControl,
+  AttributionControl,
+  type MapRef,
+  type MapLayerMouseEvent,
+} from "react-map-gl/maplibre"
+import { setWorkerUrl } from "maplibre-gl"
+import "maplibre-gl/dist/maplibre-gl.css"
+
+// See deslizamientos-live-map.tsx for why this self-hosted worker override
+// is needed under Turbopack.
+if (typeof window !== "undefined") {
+  setWorkerUrl("/maplibre-gl-worker.mjs")
+}
+import useSWR from "swr"
 import {
   ExternalLink,
   Loader2,
@@ -29,11 +30,9 @@ import {
   Building2,
   ShieldCheck,
 } from "lucide-react"
-import { BasemapTileLayer } from "@/components/maps/basemap-tile-layer"
-import useSWR from "swr"
+import { MapControlRail, RailSection, RailToggleRow } from "@/components/maps/map-control-rail"
 import {
   AOI_BOUNDS,
-  AOI_CENTER,
   buildExportUrl,
   identifyReach,
   returnPeriodColor,
@@ -52,13 +51,13 @@ import { REFERENCE_POINTS } from "@/lib/firms/area"
 import { getOsmCategory } from "@/lib/osm/categories"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
 import { OsmLegend } from "@/components/maps/osm-legend"
-import { VeredasOverlay } from "@/components/maps/veredas-overlay"
-import { FlyToMunicipio } from "@/components/maps/fly-to-municipio"
 import { MunicipioTogglePanelContent, type MunicipioRiskSummary } from "@/components/maps/municipio-toggle-panel"
-import { MapControlRail, RailSection, RailToggleRow } from "@/components/maps/map-control-rail"
 import { useVeredas } from "@/lib/veredas/use-veredas"
-import { useMunicipioToggles } from "@/lib/veredas/municipio-toggles"
+import { useMunicipioToggles, isMunicipioActive } from "@/lib/veredas/municipio-toggles"
 import { summarizeByMunicipio } from "@/lib/veredas/municipio-summary"
+import { boundsForActiveMunicipios } from "@/lib/veredas/municipio-bounds"
+import { maplibreBasemapStyle } from "@/lib/maps/maplibre-basemap-style"
+import { wmsRasterSource } from "@/lib/maps/wms-raster-source"
 import { WmsLegendChip } from "@/components/maps/wms-legend-chip"
 import { GWIS_WMS_URL } from "@/lib/incendios/gwis"
 import {
@@ -72,168 +71,34 @@ import type {
   InundacionesSusceptibilidadResponse,
 } from "@/lib/inundaciones/api-types"
 import type { OsmPoint } from "@/lib/osm/api-types"
-import type { VeredaFeature } from "@/lib/veredas/api-types"
+import type { VeredaFeature, VeredaProperties } from "@/lib/veredas/api-types"
 
-function toLatLngBounds(b: LatLngBounds): LatLngBoundsExpression {
-  return [
-    [b.south, b.west],
-    [b.north, b.east],
-  ]
-}
+/**
+ * MapLibre GL port (see v0_plans/grand-method.md, Phase 3) — follows the
+ * deslizamientos spike's patterns exactly: native GeoJSON sources/layers in
+ * place of `VeredasOverlay`/react-leaflet vector layers, a MapLibre `image`
+ * source in place of Leaflet's `ImageOverlay` for the GEOGLOWS reach
+ * raster, and a single `onClick` priority chain in place of Leaflet's
+ * per-layer `eventHandlers` + `L.DomEvent.stopPropagation`. No hazard
+ * data/model/API logic changed.
+ */
 
-const susceptibilityFetcher = async (url: string): Promise<InundacionesSusceptibilidadResponse> => {
-  const res = await fetch(url)
-  if (!res.ok) throw new Error("No se pudo cargar la capa de susceptibilidad a inundaciones")
-  return res.json()
-}
-
-const quebradasFetcher = async (url: string): Promise<InundacionesQuebradasResponse> => {
-  const res = await fetch(url)
-  if (!res.ok) throw new Error("No se pudo cargar la capa de quebradas y ríos")
-  return res.json()
-}
+const AOI_BOUNDS_ML: [[number, number], [number, number]] = [
+  [AOI_BOUNDS.west, AOI_BOUNDS.south],
+  [AOI_BOUNDS.east, AOI_BOUNDS.north],
+]
 
 /**
  * Names singled out for a thicker, brighter line and their own popup
  * emphasis — Río Totoro (GEOGLOWS rivid 610330643) and Quebrada San José,
  * both specifically asked about when this layer was added.
  */
-const HIGHLIGHTED_STREAM_NAMES = new Set(["Río Totoro", "Quebrada San José"])
+const HIGHLIGHTED_STREAM_NAMES = ["Río Totoro", "Quebrada San José"]
 
-const stationIcon = L.divIcon({
-  className: "",
-  html: `<span style="display:block;width:12px;height:12px;border-radius:9999px;background:#fff;border:2px solid #1e3a8a;box-shadow:0 0 0 2px rgba(0,0,0,0.25)"></span>`,
-  iconSize: [12, 12],
-  iconAnchor: [6, 6],
-})
-
-interface OverlaySyncProps {
-  onBoundsChange: (bounds: MapBounds) => void
-  onOverlayChange: (bounds: LatLngBounds, width: number, height: number) => void
-}
-
-/** Tracks the map viewport and reports it both as an export overlay request and to the shared bounds contract. */
-function OverlaySync({ onBoundsChange, onOverlayChange }: OverlaySyncProps) {
-  const map = useMap()
-
-  const sync = useCallback(() => {
-    const b = map.getBounds()
-    const size = map.getSize()
-    const bounds: LatLngBounds = {
-      north: b.getNorth(),
-      south: b.getSouth(),
-      east: b.getEast(),
-      west: b.getWest(),
-    }
-    onOverlayChange(bounds, size.x, size.y)
-    onBoundsChange(bounds)
-  }, [map, onBoundsChange, onOverlayChange])
-
-  useEffect(() => {
-    sync()
-  }, [sync])
-
-  useMapEvents({
-    moveend: sync,
-    zoomend: sync,
-    resize: sync,
-  })
-
-  return null
-}
-
-/**
- * Listens for map clicks and queries GEOGLOWS' identify endpoint for the
- * reach under the cursor — gated behind `enabled` (the "Consultar río al
- * hacer clic" toggle). The GEOGLOWS raster has no real transparent gaps:
- * its identify service answers for *any* lat/lng, "no reach here" included,
- * so this handler unconditionally wins every map click it's attached to —
- * there's no z-order trick that makes a vereda or quebrada polygon "more
- * clickable" underneath it. `enabled` is the only thing that decides
- * whether this layer participates in a click at all; the image overlay
- * itself always keeps rendering as a plain graphic regardless.
- */
-function ReachClickLayer({ enabled }: { enabled: boolean }) {
-  const map = useMap()
-  const [popup, setPopup] = useState<{ lat: number; lon: number; loading: boolean; info: ReachInfo | null; error: string | null } | null>(
-    null,
-  )
-
-  useEffect(() => {
-    if (!enabled) setPopup(null)
-  }, [enabled])
-
-  useMapEvents(
-    enabled
-      ? {
-          click: async (e) => {
-            const { lat, lng } = e.latlng
-            setPopup({ lat, lon: lng, loading: true, info: null, error: null })
-            const b = map.getBounds()
-            const size = map.getSize()
-            try {
-              const info = await identifyReach(
-                lat,
-                lng,
-                { north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() },
-                size.x,
-                size.y,
-              )
-              setPopup({ lat, lon: lng, loading: false, info, error: info ? null : "no-reach" })
-            } catch {
-              setPopup({ lat, lon: lng, loading: false, info: null, error: "network" })
-            }
-          },
-        }
-      : {},
-  )
-
-  if (!popup) return null
-
-  return (
-    <Popup position={[popup.lat, popup.lon]} eventHandlers={{ remove: () => setPopup(null) }}>
-      <div className="flex min-w-48 flex-col gap-1.5 text-sm">
-        {popup.loading && (
-          <span className="flex items-center gap-2 text-muted-foreground">
-            <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-            Consultando GEOGLOWS…
-          </span>
-        )}
-        {!popup.loading && popup.error === "no-reach" && (
-          <span className="text-muted-foreground">Sin tramo de río en este punto.</span>
-        )}
-        {!popup.loading && popup.error === "network" && (
-          <span className="text-destructive">No se pudo consultar el servicio.</span>
-        )}
-        {!popup.loading && popup.info && (
-          <>
-            <span className="flex items-center gap-2 font-semibold">
-              <span
-                className="size-2.5 shrink-0 rounded-full"
-                style={{ backgroundColor: returnPeriodColor(popup.info.returnPeriod) }}
-                aria-hidden="true"
-              />
-              {returnPeriodLabel(popup.info.returnPeriod)}
-            </span>
-            {popup.info.meanFlowCms != null && (
-              <span>Caudal medio: {formatFlow(popup.info.meanFlowCms)}</span>
-            )}
-            {popup.info.strahlerOrder != null && (
-              <span className="text-muted-foreground">
-                Orden de Strahler: {popup.info.strahlerOrder}
-              </span>
-            )}
-            {popup.info.forecastTimestamp && (
-              <span className="text-xs text-muted-foreground">
-                Pronóstico: {popup.info.forecastTimestamp}
-              </span>
-            )}
-            <span className="text-xs text-muted-foreground">Fuente: GEOGLOWS / Esri Living Atlas</span>
-          </>
-        )}
-      </div>
-    </Popup>
-  )
+interface PopupInfo {
+  longitude: number
+  latitude: number
+  content: ReactNode
 }
 
 function ReturnPeriodLegend() {
@@ -252,8 +117,8 @@ function ReturnPeriodLegend() {
   }, [])
 
   return (
-    <div className="pointer-events-none absolute bottom-3 left-3 z-[400] rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
-      <p className="mb-1.5 font-medium text-foreground">Periodo de retorno (río, en vivo)</p>
+    <div className="flex flex-col gap-1">
+      <p className="font-medium text-foreground">Periodo de retorno (río, en vivo)</p>
       <ul className="flex flex-col gap-1">
         {legend.map((l, i) => (
           <li key={l.value} className="flex items-center gap-2 text-muted-foreground">
@@ -272,9 +137,8 @@ function ReturnPeriodLegend() {
 
 /**
  * Legend for the flood hazard color scale — shared by the official zoning
- * layer and this app's own vereda-level flood model, since both are
- * deliberately scored onto the same 5-level vocabulary (see
- * lib/inundaciones/hazard-model.ts). Shown while either layer is on.
+ * layer and this app's own vereda-level flood model (see
+ * lib/inundaciones/hazard-model.ts).
  */
 function SusceptibilityLegend({ title }: { title: string }) {
   const [colors, setColors] = useState<string[] | null>(null)
@@ -286,8 +150,8 @@ function SusceptibilityLegend({ title }: { title: string }) {
   }, [])
 
   return (
-    <div className="pointer-events-none absolute bottom-3 right-3 z-[400] rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
-      <p className="mb-1.5 font-medium text-foreground">{title}</p>
+    <div className="flex flex-col gap-1">
+      <p className="font-medium text-foreground">{title}</p>
       <ul className="flex flex-col gap-1">
         {FLOOD_SUSCEPTIBILITY_LEVELS.map((level, i) => (
           <li key={level} className="flex items-center gap-2 text-muted-foreground">
@@ -305,59 +169,45 @@ function SusceptibilityLegend({ title }: { title: string }) {
 }
 
 function SettlementLegend() {
-  return (
-    <WmsLegendChip
-      src={GWIS_SETTLEMENT_LEGEND_URL}
-      alt="Leyenda de asentamientos humanos (GHSL Built-Up)"
-    />
-  )
+  return <WmsLegendChip src={GWIS_SETTLEMENT_LEGEND_URL} alt="Leyenda de asentamientos humanos (GHSL Built-Up)" />
 }
 
 function ProtectedAreasLegend() {
-  return (
-    <WmsLegendChip
-      src={GWIS_PROTECTED_AREAS_LEGEND_URL}
-      alt="Leyenda de áreas protegidas (WDPA)"
-    />
-  )
+  return <WmsLegendChip src={GWIS_PROTECTED_AREAS_LEGEND_URL} alt="Leyenda de áreas protegidas (WDPA)" />
+}
+
+const susceptibilityFetcher = async (url: string): Promise<InundacionesSusceptibilidadResponse> => {
+  const res = await fetch(url)
+  if (!res.ok) throw new Error("No se pudo cargar la capa de susceptibilidad a inundaciones")
+  return res.json()
+}
+
+const quebradasFetcher = async (url: string): Promise<InundacionesQuebradasResponse> => {
+  const res = await fetch(url)
+  if (!res.ok) throw new Error("No se pudo cargar la capa de quebradas y ríos")
+  return res.json()
 }
 
 /**
  * Live GEOGLOWS flood map: renders their published ArcGIS Living Atlas
- * "GlobalWaterModel_Medium" layer directly over OpenStreetMap, centered on
- * the study area, plus the static flood-susceptibility zoning
- * (`susceptibilidad_inundaciones`, see lib/inundaciones/client.ts) and
- * vereda boundaries — colored by this app's own flood hazard model (see
- * lib/inundaciones/hazard-model.ts), same "Límites veredales" toggle
- * pattern the deslizamientos map uses for its own landslide model — as
- * toggleable layers underneath. The official zoning layer only covers
- * Sevilla/Caicedonia's zoned extent; the vereda layer's own model reaches
- * all three municipios, including Zarzal, and both can be on at once
- * (zoning underneath, the model's vereda coloring on top). This app's own
- * model is the default-on layer (the official zoning starts off, since
- * it's a secondary, narrower-coverage reference) — click any reach for
- * its live GEOGLOWS forecast attributes, any susceptibility zone for its
- * official threat level, or a vereda boundary for its own model's factors
- * — which also narrows the shared sidebar's population card down to it
- * (same mechanism the deslizamientos map uses).
+ * "GlobalWaterModel_Medium" layer over the basemap, centered on the study
+ * area, plus the static flood-susceptibility zoning and vereda boundaries
+ * colored by this app's own flood hazard model, as toggleable layers
+ * underneath. This app's own model is the default-on layer; click any
+ * reach for its live GEOGLOWS forecast attributes, any susceptibility zone
+ * for its official threat level, or a vereda boundary to narrow the shared
+ * sidebar's population card to it.
  *
- * The GEOGLOWS river layer sits in its own high-zIndex pane so it's
- * always drawn on top of the zoning/vereda fills, and the vereda overlay
- * is given `blockMapClick={false}` here (unlike the deslizamientos map's
- * default) so a click on a vereda still reaches `ReachClickLayer`'s
- * generic map click underneath instead of being swallowed by the vereda
- * polygon's own popup — the vereda's own summary stays available through
- * the sidebar narrowing instead.
- *
- * That underlying map click only queries GEOGLOWS when "Consultar río al
- * hacer clic" is on (off by default). GEOGLOWS' identify endpoint has no
- * real transparent gaps — it answers "no reach here" for literally any
- * lat/lng — so leaving it always-on would mean it wins every click,
- * vereda and quebrada clicks included, no matter how z-order is
- * arranged. With it off, the raster still renders as a plain graphic
- * (see `ReachClickLayer`'s doc); turning it on lets a click both query
- * the river *and* still narrow the sidebar to a vereda underneath, since
- * `blockMapClick={false}` never stopped that propagation.
+ * Click priority (in place of Leaflet's per-layer `stopPropagation`):
+ * susceptibility zone / quebrada / station / OSM point clicks each own the
+ * click and never trigger a GEOGLOWS reach lookup underneath. A vereda
+ * click narrows the sidebar (like the other hazard maps) but — since
+ * GEOGLOWS' identify endpoint answers for literally any lat/lng, unlike a
+ * vector feature — still *also* falls through to the reach lookup when
+ * "Consultar río al hacer clic" is on, matching the Leaflet version's
+ * `blockMapClick={false}` behavior. A vereda click never opens its own
+ * popup here; its summary surfaces through the sidebar narrowing instead,
+ * same accepted simplification as the deslizamientos spike.
  */
 function GeoglowsLiveMapImpl({
   onBoundsChange,
@@ -374,28 +224,27 @@ function GeoglowsLiveMapImpl({
   osmPoints?: OsmPoint[]
   className?: string
 }) {
-  const [overlay, setOverlay] = useState<{ bounds: LatLngBounds; width: number; height: number } | null>(
-    null,
-  )
-  const containerRef = useRef<HTMLDivElement>(null)
+  const mapRef = useRef<MapRef>(null)
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === "dark"
+  const mapStyle = useMemo(() => maplibreBasemapStyle(isDark), [isDark])
+
+  const [overlay, setOverlay] = useState<{ bounds: LatLngBounds; width: number; height: number } | null>(null)
   const [showSusceptibility, setShowSusceptibility] = useState(false)
   const [showPrecipitation, setShowPrecipitation] = useState(false)
   const [showVeredas, setShowVeredas] = useState(true)
   const [showQuebradas, setShowQuebradas] = useState(false)
   const [showSettlement, setShowSettlement] = useState(false)
   const [showProtectedAreas, setShowProtectedAreas] = useState(false)
-  // Off by default: our own model is the default click target (see module
-  // doc above). GEOGLOWS' identify endpoint answers for any lat/lng, so
-  // leaving this always-on would mean every click — including one meant
-  // for a vereda or quebrada underneath — gets swallowed by the river
-  // layer's own popup instead. The raster graphic itself still always
-  // renders; this only gates whether clicks query it.
+  // Off by default — see module doc: GEOGLOWS' identify endpoint answers
+  // for any lat/lng, so leaving this always-on would mean every click
+  // (vereda/quebrada included) also fires a reach lookup.
   const [queryReachOnClick, setQueryReachOnClick] = useState(false)
   const [selectedStation, setSelectedStation] = useState<Station | null>(null)
+  const [popupInfo, setPopupInfo] = useState<PopupInfo | null>(null)
+  const [cursor, setCursor] = useState<string>("")
   const osmColors = useOsmCategoryColors()
   const { active: activeMunicipiosMap, activeMunicipios, toggle: toggleMunicipio } = useMunicipioToggles()
-  // Fetched here (as well as inside VeredasOverlay) to drive the municipality
-  // risk panel; the shared SWR key dedupes so this adds no second request.
   const { veredas } = useVeredas(true)
 
   const municipioSummaries = useMemo<MunicipioRiskSummary[]>(() => {
@@ -423,238 +272,453 @@ function GeoglowsLiveMapImpl({
   )
 
   const [resolvedColors, setResolvedColors] = useState<Record<string, string> | null>(null)
+  const [noDataColor, setNoDataColor] = useState<string | null>(null)
   useEffect(() => {
     const entries = FLOOD_SUSCEPTIBILITY_LEVELS.map(
       (level) => [level, resolveCssColor(floodSusceptibilityColorToken(level))] as const,
     )
     setResolvedColors(Object.fromEntries(entries))
+    setNoDataColor(resolveCssColor("var(--muted-foreground)"))
   }, [])
 
-  const susceptibilityStyle = useCallback(
-    (feature?: GeoJSON.Feature): PathOptions => {
-      const level = feature?.properties?.descripcio as string | undefined
-      const color = (level && resolvedColors?.[level]) || "var(--muted-foreground)"
-      return {
-        color,
-        weight: 1,
-        fillColor: color,
-        fillOpacity: 0.45,
-      }
-    },
-    [resolvedColors],
-  )
-
-  // Reuses the same resolved zoning-level colors above — this app's own
-  // flood hazard model (lib/inundaciones/hazard-model.ts) is deliberately
-  // scored onto the zoning layer's own 5-level vocabulary, so one palette
-  // covers both.
-  const veredaFloodColor = useCallback(
-    (feature: VeredaFeature): string => {
-      const level = feature.properties.floodLevel
-      return (level && resolvedColors?.[level]) || "var(--muted-foreground)"
-    },
-    [resolvedColors],
-  )
-
-  const onEachSusceptibilityFeature = useCallback(
-    (feature: GeoJSON.Feature, layer: Layer) => {
-      const nivel = feature.properties?.descripcio as string | undefined
-      layer.bindPopup(
-        `<div style="font-size:13px;display:flex;flex-direction:column;gap:2px">
-        <strong>Susceptibilidad a inundación</strong>
-        <span>${nivel ?? "—"}</span>
-      </div>`,
-      )
-      layer.on("mouseover", (e: LeafletMouseEvent) => {
-        ;(e.target as Layer & { setStyle: (s: PathOptions) => void }).setStyle({ fillOpacity: 0.7 })
-      })
-      layer.on("mouseout", (e: LeafletMouseEvent) => {
-        ;(e.target as Layer & { setStyle: (s: PathOptions) => void }).setStyle({ fillOpacity: 0.45 })
-      })
-      // Stop the click from bubbling to the map's own click handler (ReachClickLayer),
-      // which would otherwise fire its GEOGLOWS reach lookup on every zone click and
-      // steal the popup — Leaflet only keeps one open per map.
-      layer.on("click", (e: LeafletMouseEvent) => {
-        L.DomEvent.stopPropagation(e)
-        // The zone itself carries no municipio field, only a threat level —
-        // resolve the closest of the three reference points to the click
-        // instead, same approach as the nearby-fire tagging in FIRMS.
-        const nearest = nearestPoint(e.latlng.lat, e.latlng.lng, REFERENCE_POINTS)
-        if (nearest) onZoneSelect?.(nearest.name)
-      })
-    },
-    [onZoneSelect],
-  )
-
-  // Re-key the GeoJSON layer once colors resolve so Leaflet re-applies `style` per feature.
-  const susceptibilityGeoJsonKey = useMemo(
-    () => (resolvedColors ? "resolved" : "pending"),
-    [resolvedColors],
-  )
-
-  const quebradaStyle = useCallback((feature?: GeoJSON.Feature): PathOptions => {
-    const nombre = feature?.properties?.nombre as string | undefined
-    const highlighted = nombre ? HIGHLIGHTED_STREAM_NAMES.has(nombre) : false
+  const veredasGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
+    if (!veredas || !resolvedColors || !noDataColor) return { type: "FeatureCollection", features: [] }
     return {
-      color: highlighted ? "#38bdf8" : "#0ea5e9",
-      weight: highlighted ? 4 : 2,
-      opacity: highlighted ? 1 : 0.75,
+      type: "FeatureCollection",
+      features: veredas.features.map((feature) => {
+        const active = isMunicipioActive(feature.properties.municipio, activeMunicipios)
+        const level = feature.properties.floodLevel
+        const hazardColor = (level && resolvedColors[level]) || noDataColor
+        return {
+          type: "Feature",
+          id: feature.id,
+          properties: {
+            ...feature.properties,
+            __fillColor: active ? hazardColor : noDataColor,
+            __fillOpacity: active ? 0.5 : 0.1,
+            __lineColor: active ? "#ffffff" : noDataColor,
+            __lineOpacity: active ? 0.8 : 0.25,
+          },
+          geometry: { type: "MultiPolygon", coordinates: feature.geometry.coordinates },
+        }
+      }),
     }
-  }, [])
+  }, [veredas, activeMunicipios, resolvedColors, noDataColor])
 
-  const onEachQuebradaFeature = useCallback((feature: GeoJSON.Feature, layer: Layer) => {
-    const nombre = feature.properties?.nombre as string | undefined
-    const source = feature.properties?.source as string | undefined
-    layer.bindPopup(
-      `<div style="font-size:13px;display:flex;flex-direction:column;gap:2px">
-        <strong>${nombre ?? "Quebrada / río"}</strong>
-        <span>${source === "osm" ? "Fuente: OpenStreetMap" : "Fuente: capa Quebradas (ArcGIS)"}</span>
-      </div>`,
-    )
-    // Same guard as the susceptibility zones: stop this popup click from
-    // also firing ReachClickLayer's GEOGLOWS reach lookup underneath it.
-    layer.on("click", (e: LeafletMouseEvent) => {
-      L.DomEvent.stopPropagation(e)
-    })
-  }, [])
+  const susceptibilityGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
+    if (!susceptibility?.polygons || !resolvedColors) return { type: "FeatureCollection", features: [] }
+    return {
+      type: "FeatureCollection",
+      features: susceptibility.polygons.features.map((feature, i) => {
+        const nivel = feature.properties?.descripcio as string | undefined
+        const color = (nivel && resolvedColors[nivel]) || noDataColor || "#888"
+        return {
+          type: "Feature",
+          id: `susceptibilidad-${i}`,
+          properties: { ...feature.properties, __color: color },
+          geometry: feature.geometry,
+        }
+      }),
+    } as GeoJSON.FeatureCollection
+  }, [susceptibility, resolvedColors, noDataColor])
 
-  const handleOverlayChange = useCallback((bounds: LatLngBounds, width: number, height: number) => {
-    setOverlay({ bounds, width, height })
-  }, [])
+  const quebradasGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
+    if (!quebradas?.lines) return { type: "FeatureCollection", features: [] }
+    return {
+      type: "FeatureCollection",
+      features: quebradas.lines.features.map((feature, i) => ({
+        type: "Feature",
+        id: `quebrada-${i}`,
+        properties: feature.properties,
+        geometry: feature.geometry,
+      })),
+    } as GeoJSON.FeatureCollection
+  }, [quebradas])
+
+  const stationsGeoJson = useMemo<GeoJSON.FeatureCollection>(
+    () => ({
+      type: "FeatureCollection",
+      features: STATIONS.map((s) => ({
+        type: "Feature",
+        id: s.slug,
+        properties: { slug: s.slug },
+        geometry: { type: "Point", coordinates: [s.lon, s.lat] },
+      })),
+    }),
+    [],
+  )
+
+  const osmGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
+    if (!osmPoints || !osmColors) return { type: "FeatureCollection", features: [] }
+    return {
+      type: "FeatureCollection",
+      features: osmPoints.map((p) => ({
+        type: "Feature",
+        id: p.id,
+        properties: { ...p, __color: osmColors[p.category] },
+        geometry: { type: "Point", coordinates: [p.lon, p.lat] },
+      })),
+    }
+  }, [osmPoints, osmColors])
+
+  const settlementSource = useMemo(() => wmsRasterSource(GWIS_WMS_URL, GWIS_SETTLEMENT_LAYER), [])
+  const protectedAreasSource = useMemo(() => wmsRasterSource(GWIS_WMS_URL, GWIS_PROTECTED_AREAS_LAYER), [])
 
   const overlayUrl = useMemo(() => {
     if (!overlay) return null
     return buildExportUrl(overlay.bounds, overlay.width, overlay.height)
   }, [overlay])
 
-  return (
-    <div
-      ref={containerRef}
-      className={className ?? "relative isolate h-full min-h-[420px] w-full overflow-hidden rounded-xl border border-border"}
-    >
-      <MapContainer
-        center={AOI_CENTER}
-        zoom={11}
-        minZoom={6}
-        maxZoom={16}
-        className="h-full w-full"
-        bounds={toLatLngBounds(AOI_BOUNDS)}
-        zoomControl={false}
-        attributionControl={false}
-      >
-        <ZoomControl position="topright" />
-        <AttributionControl position="bottomright" prefix="Leaflet" />
-        <BasemapTileLayer />
-        {showSusceptibility && susceptibility?.polygons && resolvedColors && (
-          <GeoJSON
-            key={susceptibilityGeoJsonKey}
-            data={susceptibility.polygons as unknown as GeoJSON.GeoJsonObject}
-            style={susceptibilityStyle}
-            onEachFeature={onEachSusceptibilityFeature}
-          />
-        )}
-        {showPrecipitation && (
-          <TileLayer attribution="NASA GIBS / IMERG" url={IMERG_TILE_URL} opacity={0.6} maxNativeZoom={6} />
-        )}
-        {showSettlement && (
-          <WMSTileLayer
-            url={GWIS_WMS_URL}
-            opacity={0.7}
-            params={
-              {
-                layers: GWIS_SETTLEMENT_LAYER,
-                format: "image/png",
-                transparent: true,
-                version: "1.1.1",
-              } as WMSParams
-            }
-          />
-        )}
-        {showProtectedAreas && (
-          <WMSTileLayer
-            url={GWIS_WMS_URL}
-            opacity={0.6}
-            params={
-              {
-                layers: GWIS_PROTECTED_AREAS_LAYER,
-                format: "image/png",
-                transparent: true,
-                version: "1.1.1",
-              } as WMSParams
-            }
-          />
-        )}
-        <VeredasOverlay
-          enabled={showVeredas}
-          onSelect={onVeredaSelect}
-          colorForFeature={veredaFloodColor}
-          hazardKind="inundaciones"
-          blockMapClick={false}
-          activeMunicipios={activeMunicipios}
-        />
-        {showQuebradas && quebradas?.lines && (
-          <GeoJSON
-            key={`quebradas-${quebradas.generatedAt}`}
-            data={quebradas.lines as unknown as GeoJSON.GeoJsonObject}
-            style={quebradaStyle}
-            onEachFeature={onEachQuebradaFeature}
-          />
-        )}
-        <Pane name="geoglows-reach-pane" style={{ zIndex: 450 }}>
-          {overlayUrl && overlay && (
-            <ImageOverlay url={overlayUrl} bounds={toLatLngBounds(overlay.bounds)} opacity={0.9} />
-          )}
-        </Pane>
-        {STATIONS.map((s) => (
-          <Marker key={s.slug} position={[s.lat, s.lon]} icon={stationIcon}>
-            <Popup>
+  const reachImageCoordinates = useMemo<[[number, number], [number, number], [number, number], [number, number]] | null>(() => {
+    if (!overlay) return null
+    const { north, south, east, west } = overlay.bounds
+    return [
+      [west, north],
+      [east, north],
+      [east, south],
+      [west, south],
+    ]
+  }, [overlay])
+
+  const interactiveLayerIds = useMemo(() => {
+    const ids: string[] = []
+    if (showSusceptibility) ids.push("susceptibility-fill")
+    if (showQuebradas) ids.push("quebradas-hit")
+    ids.push("stations")
+    if (osmPoints && osmPoints.length > 0) ids.push("osm-points")
+    if (showVeredas) ids.push("veredas-fill")
+    return ids
+  }, [showSusceptibility, showQuebradas, osmPoints, showVeredas])
+
+  const runReachIdentify = useCallback(
+    async (lng: number, lat: number) => {
+      const map = mapRef.current?.getMap()
+      if (!map) return
+      const b = map.getBounds()
+      const size = map.getCanvas()
+      setPopupInfo({
+        longitude: lng,
+        latitude: lat,
+        content: (
+          <div className="flex min-w-48 flex-col gap-1.5 text-sm">
+            <span className="flex items-center gap-2 text-muted-foreground">
+              <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+              Consultando GEOGLOWS…
+            </span>
+          </div>
+        ),
+      })
+      let info: ReachInfo | null = null
+      let error: "no-reach" | "network" | null = null
+      try {
+        info = await identifyReach(
+          lat,
+          lng,
+          { north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() },
+          size.width,
+          size.height,
+        )
+        if (!info) error = "no-reach"
+      } catch {
+        error = "network"
+      }
+      setPopupInfo({
+        longitude: lng,
+        latitude: lat,
+        content: (
+          <div className="flex min-w-48 flex-col gap-1.5 text-sm">
+            {error === "no-reach" && <span className="text-muted-foreground">Sin tramo de río en este punto.</span>}
+            {error === "network" && <span className="text-destructive">No se pudo consultar el servicio.</span>}
+            {info && (
+              <>
+                <span className="flex items-center gap-2 font-semibold">
+                  <span
+                    className="size-2.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: returnPeriodColor(info.returnPeriod) }}
+                    aria-hidden="true"
+                  />
+                  {returnPeriodLabel(info.returnPeriod)}
+                </span>
+                {info.meanFlowCms != null && <span>Caudal medio: {formatFlow(info.meanFlowCms)}</span>}
+                {info.strahlerOrder != null && (
+                  <span className="text-muted-foreground">Orden de Strahler: {info.strahlerOrder}</span>
+                )}
+                {info.forecastTimestamp && (
+                  <span className="text-xs text-muted-foreground">Pronóstico: {info.forecastTimestamp}</span>
+                )}
+                <span className="text-xs text-muted-foreground">Fuente: GEOGLOWS / Esri Living Atlas</span>
+              </>
+            )}
+          </div>
+        ),
+      })
+    },
+    [],
+  )
+
+  const handleMapClick = useCallback(
+    (e: MapLayerMouseEvent) => {
+      const { lng, lat } = e.lngLat
+      const susceptibilityFeature = e.features?.find((f) => f.layer.id === "susceptibility-fill")
+      if (susceptibilityFeature) {
+        const nivel = susceptibilityFeature.properties?.descripcio as string | undefined
+        setPopupInfo({
+          longitude: lng,
+          latitude: lat,
+          content: (
+            <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
+              <strong>Susceptibilidad a inundación</strong>
+              <span>{nivel ?? "—"}</span>
+            </div>
+          ),
+        })
+        const nearest = nearestPoint(lat, lng, REFERENCE_POINTS)
+        if (nearest) onZoneSelect?.(nearest.name)
+        return
+      }
+      const quebradaFeature = e.features?.find((f) => f.layer.id === "quebradas-hit")
+      if (quebradaFeature) {
+        const nombre = quebradaFeature.properties?.nombre as string | undefined
+        const source = quebradaFeature.properties?.source as string | undefined
+        setPopupInfo({
+          longitude: lng,
+          latitude: lat,
+          content: (
+            <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
+              <strong>{nombre ?? "Quebrada / río"}</strong>
+              <span>{source === "osm" ? "Fuente: OpenStreetMap" : "Fuente: capa Quebradas (ArcGIS)"}</span>
+            </div>
+          ),
+        })
+        return
+      }
+      const stationFeature = e.features?.find((f) => f.layer.id === "stations")
+      if (stationFeature) {
+        const slug = stationFeature.properties?.slug as string
+        const station = STATIONS.find((s) => s.slug === slug)
+        if (station) {
+          setPopupInfo({
+            longitude: lng,
+            latitude: lat,
+            content: (
               <div className="flex flex-col gap-1 text-sm">
-                <span className="font-semibold">{s.name}</span>
-                <span className="text-muted-foreground">{s.municipality}</span>
+                <span className="font-semibold">{station.name}</span>
+                <span className="text-muted-foreground">{station.municipality}</span>
                 <button
                   type="button"
-                  onClick={() => setSelectedStation(s)}
+                  onClick={() => setSelectedStation(station)}
                   className="mt-1 text-left text-xs font-medium text-primary underline-offset-2 hover:underline"
                 >
                   Ver hidrograma completo →
                 </button>
               </div>
-            </Popup>
-          </Marker>
-        ))}
-        {osmColors &&
-          osmPoints?.map((p) => (
-            <CircleMarker
-              key={p.id}
-              center={[p.lat, p.lon]}
-              radius={5}
-              pathOptions={{
-                color: "#fff",
-                weight: 1,
-                fillColor: osmColors[p.category],
-                fillOpacity: 0.9,
-              }}
-              eventHandlers={{
-                // Stop the click from bubbling to the map's own click handler
-                // (ReachClickLayer), which would otherwise also fire its
-                // GEOGLOWS reach lookup underneath this marker's popup.
-                click: (e) => L.DomEvent.stopPropagation(e),
-              }}
-            >
-              <Popup>
-                <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
-                  <strong>{p.name ?? getOsmCategory(p.category).label}</strong>
-                  <span>{getOsmCategory(p.category).label}</span>
-                </div>
-              </Popup>
-            </CircleMarker>
-          ))}
-        <ReachClickLayer enabled={queryReachOnClick} />
-        {onBoundsChange && (
-          <OverlaySync onBoundsChange={onBoundsChange} onOverlayChange={handleOverlayChange} />
+            ),
+          })
+        }
+        return
+      }
+      const osmFeature = e.features?.find((f) => f.layer.id === "osm-points")
+      if (osmFeature) {
+        const props = osmFeature.properties as unknown as OsmPoint
+        setPopupInfo({
+          longitude: lng,
+          latitude: lat,
+          content: (
+            <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
+              <strong>{props.name ?? getOsmCategory(props.category).label}</strong>
+              <span>{getOsmCategory(props.category).label}</span>
+            </div>
+          ),
+        })
+        return
+      }
+      const veredaFeature = e.features?.find((f) => f.layer.id === "veredas-fill")
+      if (veredaFeature) {
+        const props = veredaFeature.properties as unknown as VeredaProperties
+        onVeredaSelect?.({ properties: props } as VeredaFeature)
+        // Falls through: GEOGLOWS' identify endpoint answers for any
+        // lat/lng, so a vereda click still runs the reach lookup below
+        // when enabled — same as the Leaflet version's `blockMapClick={false}`.
+      }
+      if (queryReachOnClick) {
+        runReachIdentify(lng, lat)
+      } else if (!veredaFeature) {
+        setPopupInfo(null)
+      }
+    },
+    [onZoneSelect, onVeredaSelect, queryReachOnClick, runReachIdentify],
+  )
+
+  const syncBounds = useCallback(() => {
+    const map = mapRef.current?.getMap()
+    const b = map?.getBounds()
+    const canvas = map?.getCanvas()
+    if (!b || !canvas) return
+    const bounds: LatLngBounds = { north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() }
+    setOverlay({ bounds, width: canvas.width, height: canvas.height })
+    onBoundsChange?.(bounds)
+  }, [onBoundsChange])
+
+  const isFirstMunicipioRender = useRef(true)
+  const previousMunicipioKey = useRef(activeMunicipios.join("|"))
+  useEffect(() => {
+    const key = activeMunicipios.join("|")
+    if (isFirstMunicipioRender.current) {
+      isFirstMunicipioRender.current = false
+      previousMunicipioKey.current = key
+      return
+    }
+    if (key === previousMunicipioKey.current) return
+    previousMunicipioKey.current = key
+
+    const bounds = boundsForActiveMunicipios(veredas, activeMunicipios) as
+      | [[number, number], [number, number]]
+      | null
+    if (!bounds) return
+    const map = mapRef.current?.getMap()
+    if (!map) return
+    const [[south, west], [north, east]] = bounds
+    map.fitBounds(
+      [
+        [west, south],
+        [east, north],
+      ],
+      { padding: 48, duration: 900, maxZoom: 14 },
+    )
+  }, [veredas, activeMunicipios])
+
+  return (
+    <div className={className ?? "relative isolate h-full min-h-[420px] w-full overflow-hidden rounded-xl border border-border"}>
+      <Map
+        ref={mapRef}
+        initialViewState={{ bounds: AOI_BOUNDS_ML }}
+        minZoom={6}
+        maxZoom={16}
+        mapStyle={mapStyle}
+        attributionControl={false}
+        cursor={cursor}
+        interactiveLayerIds={interactiveLayerIds}
+        onLoad={syncBounds}
+        onMoveEnd={syncBounds}
+        onZoomEnd={syncBounds}
+        onMouseEnter={() => setCursor("pointer")}
+        onMouseLeave={() => setCursor("")}
+        onClick={handleMapClick}
+        style={{ width: "100%", height: "100%" }}
+      >
+        <NavigationControl position="top-left" />
+        <AttributionControl position="bottom-left" customAttribution="MapLibre © OpenStreetMap / CARTO" compact />
+
+        {showSusceptibility && (
+          <Source id="susceptibility-source" type="geojson" data={susceptibilityGeoJson}>
+            <Layer
+              id="susceptibility-fill"
+              type="fill"
+              paint={{ "fill-color": ["get", "__color"], "fill-opacity": 0.45, "fill-outline-color": ["get", "__color"] }}
+            />
+          </Source>
         )}
-        <FlyToMunicipio veredas={veredas} activeMunicipios={activeMunicipios} />
-      </MapContainer>
+
+        {showPrecipitation && (
+          <Source id="precipitation-source" type="raster" tiles={[IMERG_TILE_URL]} tileSize={256} maxzoom={6}>
+            <Layer id="precipitation" type="raster" paint={{ "raster-opacity": 0.6 }} />
+          </Source>
+        )}
+
+        {showSettlement && (
+          <Source id="settlement-source" type="raster" tiles={settlementSource.tiles} tileSize={settlementSource.tileSize}>
+            <Layer id="settlement" type="raster" paint={{ "raster-opacity": 0.7 }} />
+          </Source>
+        )}
+        {showProtectedAreas && (
+          <Source
+            id="protected-areas-source"
+            type="raster"
+            tiles={protectedAreasSource.tiles}
+            tileSize={protectedAreasSource.tileSize}
+          >
+            <Layer id="protected-areas" type="raster" paint={{ "raster-opacity": 0.6 }} />
+          </Source>
+        )}
+
+        {showVeredas && (
+          <Source id="veredas-source" type="geojson" data={veredasGeoJson}>
+            <Layer
+              id="veredas-fill"
+              type="fill"
+              paint={{ "fill-color": ["get", "__fillColor"], "fill-opacity": ["get", "__fillOpacity"] }}
+            />
+            <Layer
+              id="veredas-line"
+              type="line"
+              paint={{ "line-color": ["get", "__lineColor"], "line-opacity": ["get", "__lineOpacity"], "line-width": 1 }}
+            />
+          </Source>
+        )}
+
+        {showQuebradas && (
+          <Source id="quebradas-source" type="geojson" data={quebradasGeoJson}>
+            <Layer
+              id="quebradas-line"
+              type="line"
+              paint={{
+                "line-color": ["match", ["get", "nombre"], HIGHLIGHTED_STREAM_NAMES, "#38bdf8", "#0ea5e9"],
+                "line-width": ["match", ["get", "nombre"], HIGHLIGHTED_STREAM_NAMES, 4, 2],
+                "line-opacity": ["match", ["get", "nombre"], HIGHLIGHTED_STREAM_NAMES, 1, 0.75],
+              }}
+            />
+            {/* Wider invisible companion carries the click hit-target, same trick as the fault lines in the landslide map. */}
+            <Layer id="quebradas-hit" type="line" paint={{ "line-color": "#0ea5e9", "line-width": 14, "line-opacity": 0 }} />
+          </Source>
+        )}
+
+        {reachImageCoordinates && overlayUrl && (
+          <Source id="reach-image-source" type="image" url={overlayUrl} coordinates={reachImageCoordinates}>
+            <Layer id="reach-image" type="raster" paint={{ "raster-opacity": 0.9 }} />
+          </Source>
+        )}
+
+        <Source id="stations-source" type="geojson" data={stationsGeoJson}>
+          <Layer
+            id="stations"
+            type="circle"
+            paint={{
+              "circle-radius": 6,
+              "circle-color": "#ffffff",
+              "circle-stroke-color": "#1e3a8a",
+              "circle-stroke-width": 2,
+            }}
+          />
+        </Source>
+
+        {osmPoints && osmPoints.length > 0 && (
+          <Source id="osm-source" type="geojson" data={osmGeoJson}>
+            <Layer
+              id="osm-points"
+              type="circle"
+              paint={{
+                "circle-radius": 5,
+                "circle-color": ["get", "__color"],
+                "circle-stroke-color": "#ffffff",
+                "circle-stroke-width": 1,
+                "circle-opacity": 0.9,
+              }}
+            />
+          </Source>
+        )}
+
+        {popupInfo && (
+          <Popup
+            longitude={popupInfo.longitude}
+            latitude={popupInfo.latitude}
+            onClose={() => setPopupInfo(null)}
+            closeOnClick={false}
+            anchor="bottom"
+          >
+            {popupInfo.content}
+          </Popup>
+        )}
+      </Map>
 
       {((showSusceptibility && !susceptibility && !susceptibilityError) ||
         (showQuebradas && !quebradas && !quebradasError)) && (
@@ -680,7 +744,6 @@ function GeoglowsLiveMapImpl({
             checked={queryReachOnClick}
             onChange={setQueryReachOnClick}
           />
-          <ReturnPeriodLegend />
         </RailSection>
 
         <RailSection title="Capas">
@@ -713,17 +776,6 @@ function GeoglowsLiveMapImpl({
             checked={showVeredas}
             onChange={setShowVeredas}
           />
-          {(showSusceptibility || showVeredas) && (
-            <SusceptibilityLegend
-              title={
-                showSusceptibility && showVeredas
-                  ? "Susceptibilidad a inundación (zonificación oficial y modelo propio)"
-                  : showSusceptibility
-                    ? "Susceptibilidad a inundación (zonificación oficial)"
-                    : "Amenaza a inundación (modelo propio, por vereda)"
-              }
-            />
-          )}
           <RailToggleRow
             icon={GitBranch}
             label="Quebradas y ríos (clic para nombre)"
@@ -733,7 +785,7 @@ function GeoglowsLiveMapImpl({
         </RailSection>
 
         <RailSection title="Infraestructura (OSM)">
-          <OsmLegend points={osmPoints ?? []} />
+          <OsmLegend points={osmPoints ?? []} bare />
         </RailSection>
 
         <RailSection title="Cobertura y contexto">
@@ -743,15 +795,34 @@ function GeoglowsLiveMapImpl({
             checked={showSettlement}
             onChange={setShowSettlement}
           />
-          {showSettlement && <SettlementLegend />}
           <RailToggleRow
             icon={ShieldCheck}
             label="Áreas protegidas (WDPA)"
             checked={showProtectedAreas}
             onChange={setShowProtectedAreas}
           />
-          {showProtectedAreas && <ProtectedAreasLegend />}
         </RailSection>
+
+        {(showSusceptibility || showVeredas || showSettlement || showProtectedAreas || queryReachOnClick) && (
+          <RailSection title="Leyenda activa">
+            <div className="flex flex-col gap-3">
+              {queryReachOnClick && <ReturnPeriodLegend />}
+              {(showSusceptibility || showVeredas) && (
+                <SusceptibilityLegend
+                  title={
+                    showSusceptibility && showVeredas
+                      ? "Susceptibilidad a inundación (zonificación oficial y modelo propio)"
+                      : showSusceptibility
+                        ? "Susceptibilidad a inundación (zonificación oficial)"
+                        : "Amenaza a inundación (modelo propio, por vereda)"
+                  }
+                />
+              )}
+              {showSettlement && <SettlementLegend />}
+              {showProtectedAreas && <ProtectedAreasLegend />}
+            </div>
+          </RailSection>
+        )}
       </MapControlRail>
 
       <StationDetailDialog
@@ -764,6 +835,6 @@ function GeoglowsLiveMapImpl({
   )
 }
 
-// Leaflet touches `window` at module load time, so this component is always
-// consumed through GeoglowsLiveMapLoader (next/dynamic, ssr: false).
+// MapLibre touches `window` at module load time, so this component is
+// always consumed through GeoglowsLiveMapLoader (next/dynamic, ssr: false).
 export default GeoglowsLiveMapImpl

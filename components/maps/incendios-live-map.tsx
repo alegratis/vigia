@@ -1,28 +1,28 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
-import {
-  AttributionControl,
-  CircleMarker,
-  MapContainer,
-  TileLayer,
-  WMSTileLayer,
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { useTheme } from "next-themes"
+import Map, {
+  Source,
+  Layer,
   Popup,
-  ZoomControl,
-  useMap,
-  useMapEvents,
-} from "react-leaflet"
-import type { LatLngBoundsExpression, WMSParams } from "leaflet"
-import "leaflet/dist/leaflet.css"
+  NavigationControl,
+  AttributionControl,
+  type MapRef,
+  type MapLayerMouseEvent,
+} from "react-map-gl/maplibre"
+import { setWorkerUrl } from "maplibre-gl"
+import "maplibre-gl/dist/maplibre-gl.css"
+
+// See deslizamientos-live-map.tsx for why this self-hosted worker override
+// is needed under Turbopack.
+if (typeof window !== "undefined") {
+  setWorkerUrl("/maplibre-gl-worker.mjs")
+}
 import useSWR from "swr"
 import { CloudSun, Flame, Satellite, Trees, Building2, ShieldCheck, Mountain } from "lucide-react"
-import { BasemapTileLayer } from "@/components/maps/basemap-tile-layer"
 import { MapControlRail, RailSection, RailToggleRow } from "@/components/maps/map-control-rail"
-import {
-  FIRE_THREAT_LEVELS,
-  FIRE_THREAT_LEVEL_STYLES,
-  fireLevelColorToken,
-} from "@/lib/incendios/levels"
+import { FIRE_THREAT_LEVELS, FIRE_THREAT_LEVEL_STYLES, fireLevelColorToken } from "@/lib/incendios/levels"
 import {
   forecastDayOptions,
   GWIS_FWI_LAYER,
@@ -43,17 +43,28 @@ import { CONFIDENCE_STYLES, formatDateTime, formatDistance, formatFrp } from "@/
 import { getOsmCategory } from "@/lib/osm/categories"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
 import { OsmLegend } from "@/components/maps/osm-legend"
-import { VeredasOverlay } from "@/components/maps/veredas-overlay"
-import { FlyToMunicipio } from "@/components/maps/fly-to-municipio"
 import { MunicipioTogglePanelContent, type MunicipioRiskSummary } from "@/components/maps/municipio-toggle-panel"
 import { useMunicipioToggles, isMunicipioActive } from "@/lib/veredas/municipio-toggles"
 import { useVeredas } from "@/lib/veredas/use-veredas"
 import { summarizeByMunicipio } from "@/lib/veredas/municipio-summary"
+import { boundsForActiveMunicipios } from "@/lib/veredas/municipio-bounds"
+import { maplibreBasemapStyle } from "@/lib/maps/maplibre-basemap-style"
+import { wmsRasterSource } from "@/lib/maps/wms-raster-source"
 import { WmsLegendChip } from "@/components/maps/wms-legend-chip"
 import type { FireDetection, FiresResponse } from "@/lib/firms/api-types"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
-import type { VeredaFeature } from "@/lib/veredas/api-types"
+import type { VeredaFeature, VeredaProperties } from "@/lib/veredas/api-types"
+
+/**
+ * MapLibre GL port (see v0_plans/grand-method.md, Phase 3) — follows the
+ * deslizamientos spike's patterns. No hazard data/model/API logic changed.
+ */
+
+const AOI_BOUNDS_ML: [[number, number], [number, number]] = [
+  [-76.06, 3.88],
+  [-75.72, 4.44],
+]
 
 const FIRE_DAY_OPTIONS = [1, 2, 3, 5] as const
 
@@ -68,39 +79,10 @@ function fireRadius(frp: number): number {
   return Math.min(11, Math.max(4, 4 + Math.sqrt(frp) / 2))
 }
 
-// Fallback center if bounds-fitting is unavailable — the midpoint of AOI_BOUNDS below.
-const AOI_CENTER: [number, number] = [4.28, -75.9]
-
-/** Frames Sevilla and Caicedonia's full fire-threat extent, same AOI as the landslide map. */
-const AOI_BOUNDS: LatLngBoundsExpression = [
-  [3.88, -76.06],
-  [4.44, -75.72],
-]
-
-interface BoundsSyncProps {
-  onBoundsChange: (bounds: MapBounds) => void
-}
-
-function BoundsSync({ onBoundsChange }: BoundsSyncProps) {
-  const map = useMap()
-
-  const sync = useCallback(() => {
-    const b = map.getBounds()
-    onBoundsChange({
-      north: b.getNorth(),
-      south: b.getSouth(),
-      east: b.getEast(),
-      west: b.getWest(),
-    })
-  }, [map, onBoundsChange])
-
-  useEffect(() => {
-    sync()
-  }, [sync])
-
-  useMapEvents({ moveend: sync, zoomend: sync, resize: sync })
-
-  return null
+interface PopupInfo {
+  longitude: number
+  latitude: number
+  content: ReactNode
 }
 
 /** Fire-threat color-scale rows, rendered inside the shared MapControlRail. */
@@ -128,9 +110,7 @@ function ThreatLegendList() {
 }
 
 function FwiLegend() {
-  return (
-    <WmsLegendChip src={GWIS_LEGEND_URL} alt="Escala del Índice Meteorológico de Incendio (FWI)" />
-  )
+  return <WmsLegendChip src={GWIS_LEGEND_URL} alt="Escala del Índice Meteorológico de Incendio (FWI)" />
 }
 
 function FireLegend({ colors }: { colors: Record<FireDetection["confidence"], string> | null }) {
@@ -164,49 +144,25 @@ function S3Legend() {
 }
 
 function LandCoverLegend() {
-  return (
-    <WmsLegendChip
-      src={GWIS_LANDCOVER_LEGEND_URL}
-      alt="Escala de cobertura del suelo (MODIS MCD12Q1)"
-    />
-  )
+  return <WmsLegendChip src={GWIS_LANDCOVER_LEGEND_URL} alt="Escala de cobertura del suelo (MODIS MCD12Q1)" />
 }
 
 function SettlementLegend() {
-  return (
-    <WmsLegendChip
-      src={GWIS_SETTLEMENT_LEGEND_URL}
-      alt="Leyenda de asentamientos humanos (GHSL Built-Up)"
-    />
-  )
+  return <WmsLegendChip src={GWIS_SETTLEMENT_LEGEND_URL} alt="Leyenda de asentamientos humanos (GHSL Built-Up)" />
 }
 
 function ProtectedAreasLegend() {
-  return (
-    <WmsLegendChip
-      src={GWIS_PROTECTED_AREAS_LEGEND_URL}
-      alt="Leyenda de áreas protegidas (WDPA)"
-    />
-  )
+  return <WmsLegendChip src={GWIS_PROTECTED_AREAS_LEGEND_URL} alt="Leyenda de áreas protegidas (WDPA)" />
 }
 
 /**
  * Live forest-fire threat map: colors every vereda by this app's own
- * forest-fire hazard model (slope + road proximity + NASA FIRMS
- * historical recurrence + today's Fire Weather Index — see
- * lib/incendios/hazard-model.ts), always on and covering all three
- * municipios including Zarzal. The public `AmenazaIncendios` polygons
- * published on ArcGIS Online — a static 2014 PBOT land-use zoning, only
- * covering Sevilla and Caicedonia — are no longer surfaced on this map at
- * all (this app's own model has superseded it as the hazard source of
- * record); they're still exposed elsewhere, see lib/incendios/api-types.ts
- * and app/api/incendios/amenaza/route.ts, which exposicion-map.tsx still
- * uses. Optional overlays add GWIS/Copernicus EFFIS's Fire Weather Index
- * (FWI) forecast and active fires by sensor (MODIS and VIIRS as NASA
- * FIRMS points, Sentinel-3 as a GWIS WMS tile — see lib/incendios/gwis.ts).
- * Click a vereda for its detail, narrowing the shared sidebar's population
- * card and the FireModelPanel down to it (same mechanism the
- * deslizamientos map uses).
+ * forest-fire hazard model, always on and covering all three municipios.
+ * Optional overlays add GWIS/Copernicus EFFIS's Fire Weather Index (FWI)
+ * forecast and active fires by sensor (MODIS and VIIRS as NASA FIRMS
+ * points, Sentinel-3 as a GWIS WMS raster tile). Click a vereda for its
+ * detail, narrowing the shared sidebar's population card and the
+ * FireModelPanel down to it.
  */
 function IncendiosLiveMapImpl({
   onBoundsChange,
@@ -223,10 +179,13 @@ function IncendiosLiveMapImpl({
   osmPoints?: OsmPoint[]
   className?: string
 }) {
+  const mapRef = useRef<MapRef>(null)
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === "dark"
+  const mapStyle = useMemo(() => maplibreBasemapStyle(isDark), [isDark])
+
   const osmColors = useOsmCategoryColors()
   const { active: activeMunicipiosMap, activeMunicipios, toggle: toggleMunicipio } = useMunicipioToggles()
-  // Fetched here (as well as inside VeredasOverlay) to drive the municipality
-  // risk panel; the shared SWR key dedupes so this adds no second request.
   const { veredas } = useVeredas(true)
 
   const municipioSummaries = useMemo<MunicipioRiskSummary[]>(() => {
@@ -242,50 +201,37 @@ function IncendiosLiveMapImpl({
   }, [veredas])
 
   const [resolvedColors, setResolvedColors] = useState<Record<string, string> | null>(null)
+  const [noDataColor, setNoDataColor] = useState<string | null>(null)
   const [showForecast, setShowForecast] = useState(true)
   const dayOptions = useMemo(() => forecastDayOptions(), [])
   const [selectedDay, setSelectedDay] = useState(dayOptions[0].value)
-
-  // Active fires, broken down by sensor per gwis_current_situation's own
-  // layer picker: MODIS and VIIRS come from NASA FIRMS as geolocated points
-  // (rich popups); Sentinel-3 has no FIRMS source, so it renders as a GWIS
-  // WMS raster tile instead (see GWIS_S3_HOTSPOT_LAYER above).
-  // Both FIRMS point sensors on by default — the model's historical
-  // recurrence factor now counts detections from both (see
-  // lib/incendios/fire-history.ts), so the live layer defaults to
-  // showing the same full picture rather than hiding MODIS.
   const [showModis, setShowModis] = useState(true)
   const [showViirs, setShowViirs] = useState(true)
   const [showSentinel3, setShowSentinel3] = useState(true)
-  // Always on — this app's own model is the map's only hazard-coloring
-  // source now; AmenazaIncendios' static 2014 PBOT zoning is no longer
-  // surfaced here at all (see the component doc comment above).
   const [showFireModel, setShowFireModel] = useState(true)
   const [showLandCover, setShowLandCover] = useState(false)
   const [showSettlement, setShowSettlement] = useState(false)
   const [showProtectedAreas, setShowProtectedAreas] = useState(false)
   const [fireDays, setFireDays] = useState<number>(2)
+  const [popupInfo, setPopupInfo] = useState<PopupInfo | null>(null)
+  const [cursor, setCursor] = useState<string>("")
   const needsFirms = showModis || showViirs
   const { data: firesData } = useSWR<FiresResponse>(
     needsFirms ? `/api/incendios?days=${fireDays}` : null,
     firesFetcher,
     { revalidateOnFocus: false },
   )
-  const [fireColors, setFireColors] = useState<Record<FireDetection["confidence"], string> | null>(
-    null,
-  )
+  const [fireColors, setFireColors] = useState<Record<FireDetection["confidence"], string> | null>(null)
 
   const visibleFires = useMemo(
-    () =>
-      firesData?.detections.filter((d) => (d.sensor === "modis" ? showModis : showViirs)) ?? [],
+    () => firesData?.detections.filter((d) => (d.sensor === "modis" ? showModis : showViirs)) ?? [],
     [firesData, showModis, showViirs],
   )
 
   useEffect(() => {
-    const entries = FIRE_THREAT_LEVELS.map(
-      (level) => [level, resolveCssColor(fireLevelColorToken(level))] as const,
-    )
+    const entries = FIRE_THREAT_LEVELS.map((level) => [level, resolveCssColor(fireLevelColorToken(level))] as const)
     setResolvedColors(Object.fromEntries(entries))
+    setNoDataColor(resolveCssColor("var(--muted-foreground)"))
   }, [])
 
   useEffect(() => {
@@ -295,163 +241,272 @@ function IncendiosLiveMapImpl({
     setFireColors(Object.fromEntries(entries) as Record<FireDetection["confidence"], string>)
   }, [])
 
-  // This app's own forest-fire model (lib/incendios/hazard-model.ts) is
-  // deliberately scored onto AmenazaIncendios' own 4-level vocabulary, so
-  // it reuses the same resolved colors above rather than a second palette.
-  const veredaFireColor = useCallback(
-    (feature: VeredaFeature) => (feature.properties.fireLevel && resolvedColors?.[feature.properties.fireLevel]) || "var(--muted-foreground)",
-    [resolvedColors],
+  const veredasGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
+    if (!veredas || !resolvedColors || !noDataColor) return { type: "FeatureCollection", features: [] }
+    return {
+      type: "FeatureCollection",
+      features: veredas.features.map((feature) => {
+        const active = isMunicipioActive(feature.properties.municipio, activeMunicipios)
+        const level = feature.properties.fireLevel
+        const hazardColor = (level && resolvedColors[level]) || noDataColor
+        return {
+          type: "Feature",
+          id: feature.id,
+          properties: {
+            ...feature.properties,
+            __fillColor: active ? hazardColor : noDataColor,
+            __fillOpacity: active ? 0.55 : 0.12,
+            __lineColor: active ? "#ffffff" : noDataColor,
+            __lineOpacity: active ? 0.85 : 0.3,
+          },
+          geometry: { type: "MultiPolygon", coordinates: feature.geometry.coordinates },
+        }
+      }),
+    }
+  }, [veredas, activeMunicipios, resolvedColors, noDataColor])
+
+  const firesGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
+    if (!fireColors) return { type: "FeatureCollection", features: [] }
+    return {
+      type: "FeatureCollection",
+      features: visibleFires.map((d) => ({
+        type: "Feature",
+        id: d.id,
+        properties: { ...d, __color: fireColors[d.confidence], __radius: fireRadius(d.frp) },
+        geometry: { type: "Point", coordinates: [d.lon, d.lat] },
+      })),
+    }
+  }, [visibleFires, fireColors])
+
+  const osmGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
+    if (!osmPoints || !osmColors) return { type: "FeatureCollection", features: [] }
+    return {
+      type: "FeatureCollection",
+      features: osmPoints.map((p) => ({
+        type: "Feature",
+        id: p.id,
+        properties: { ...p, __color: osmColors[p.category] },
+        geometry: { type: "Point", coordinates: [p.lon, p.lat] },
+      })),
+    }
+  }, [osmPoints, osmColors])
+
+  const forecastSource = useMemo(() => wmsRasterSource(GWIS_WMS_URL, GWIS_FWI_LAYER, { TIME: selectedDay }), [selectedDay])
+  const landCoverSource = useMemo(() => wmsRasterSource(GWIS_WMS_URL, GWIS_LANDCOVER_LAYER), [])
+  const settlementSource = useMemo(() => wmsRasterSource(GWIS_WMS_URL, GWIS_SETTLEMENT_LAYER), [])
+  const protectedAreasSource = useMemo(() => wmsRasterSource(GWIS_WMS_URL, GWIS_PROTECTED_AREAS_LAYER), [])
+  const sentinel3Source = useMemo(() => wmsRasterSource(GWIS_WMS_URL, GWIS_S3_HOTSPOT_LAYER), [])
+
+  const interactiveLayerIds = useMemo(() => {
+    const ids: string[] = []
+    if (showFireModel) ids.push("veredas-fill")
+    if (fireColors && visibleFires.length > 0) ids.push("fires")
+    if (osmPoints && osmPoints.length > 0) ids.push("osm-points")
+    return ids
+  }, [showFireModel, fireColors, visibleFires, osmPoints])
+
+  const handleMapClick = useCallback(
+    (e: MapLayerMouseEvent) => {
+      const { lng, lat } = e.lngLat
+      const fireFeature = e.features?.find((f) => f.layer.id === "fires")
+      if (fireFeature) {
+        const props = fireFeature.properties as unknown as FireDetection
+        setPopupInfo({
+          longitude: lng,
+          latitude: lat,
+          content: (
+            <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
+              <strong>{formatDateTime(props.acquiredAt)}</strong>
+              <span>
+                Cerca de {props.nearest.name} · {formatDistance(props.nearest.distanceKm)}
+              </span>
+              <span>Confianza: {CONFIDENCE_STYLES[props.confidence].label}</span>
+              <span>FRP: {formatFrp(props.frp)}</span>
+              <span>Satélite: {props.satellite}</span>
+            </div>
+          ),
+        })
+        return
+      }
+      const osmFeature = e.features?.find((f) => f.layer.id === "osm-points")
+      if (osmFeature) {
+        const props = osmFeature.properties as unknown as OsmPoint
+        setPopupInfo({
+          longitude: lng,
+          latitude: lat,
+          content: (
+            <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
+              <strong>{props.name ?? getOsmCategory(props.category).label}</strong>
+              <span>{getOsmCategory(props.category).label}</span>
+            </div>
+          ),
+        })
+        return
+      }
+      const veredaFeature = e.features?.find((f) => f.layer.id === "veredas-fill")
+      if (veredaFeature) {
+        const props = veredaFeature.properties as unknown as VeredaProperties
+        onVeredaSelect?.({ properties: props } as VeredaFeature)
+        setPopupInfo(null)
+        return
+      }
+      setPopupInfo(null)
+      onVeredaSelect?.(null)
+    },
+    [onVeredaSelect],
   )
+
+  const syncBounds = useCallback(() => {
+    if (!onBoundsChange) return
+    const map = mapRef.current?.getMap()
+    const b = map?.getBounds()
+    if (!b) return
+    onBoundsChange({ north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() })
+  }, [onBoundsChange])
+
+  const isFirstMunicipioRender = useRef(true)
+  const previousMunicipioKey = useRef(activeMunicipios.join("|"))
+  useEffect(() => {
+    const key = activeMunicipios.join("|")
+    if (isFirstMunicipioRender.current) {
+      isFirstMunicipioRender.current = false
+      previousMunicipioKey.current = key
+      return
+    }
+    if (key === previousMunicipioKey.current) return
+    previousMunicipioKey.current = key
+
+    const bounds = boundsForActiveMunicipios(veredas, activeMunicipios) as
+      | [[number, number], [number, number]]
+      | null
+    if (!bounds) return
+    const map = mapRef.current?.getMap()
+    if (!map) return
+    const [[south, west], [north, east]] = bounds
+    map.fitBounds(
+      [
+        [west, south],
+        [east, north],
+      ],
+      { padding: 48, duration: 900, maxZoom: 14 },
+    )
+  }, [veredas, activeMunicipios])
+
+  void onZoneSelect
 
   return (
     <div className={className ?? "relative isolate h-full min-h-[420px] w-full overflow-hidden rounded-xl border border-border"}>
-      <MapContainer
-        center={AOI_CENTER}
-        zoom={11}
+      <Map
+        ref={mapRef}
+        initialViewState={{ bounds: AOI_BOUNDS_ML }}
         minZoom={9}
         maxZoom={16}
-        bounds={AOI_BOUNDS}
-        zoomControl={false}
+        mapStyle={mapStyle}
         attributionControl={false}
-        className="h-full w-full"
+        cursor={cursor}
+        interactiveLayerIds={interactiveLayerIds}
+        onLoad={syncBounds}
+        onMoveEnd={syncBounds}
+        onZoomEnd={syncBounds}
+        onMouseEnter={() => setCursor("pointer")}
+        onMouseLeave={() => setCursor("")}
+        onClick={handleMapClick}
+        style={{ width: "100%", height: "100%" }}
       >
-        <ZoomControl position="topright" />
-        <AttributionControl position="bottomright" prefix="Leaflet" />
-        <BasemapTileLayer />
+        <NavigationControl position="top-left" />
+        <AttributionControl position="bottom-left" customAttribution="MapLibre © OpenStreetMap / CARTO" compact />
+
         {showForecast && (
-          <WMSTileLayer
-            url={GWIS_WMS_URL}
-            opacity={0.55}
-            // GWIS' forecast TIME parameter isn't part of Leaflet's WMSParams type,
-            // but TileLayer.WMS forwards any extra key straight into the query string.
-            params={
-              {
-                layers: GWIS_FWI_LAYER,
-                format: "image/png",
-                transparent: true,
-                version: "1.1.1",
-                TIME: selectedDay,
-              } as WMSParams
-            }
-          />
+          <Source id="forecast-source" type="raster" tiles={forecastSource.tiles} tileSize={forecastSource.tileSize}>
+            <Layer id="forecast" type="raster" paint={{ "raster-opacity": 0.55 }} />
+          </Source>
         )}
         {showLandCover && (
-          <WMSTileLayer
-            url={GWIS_WMS_URL}
-            opacity={0.55}
-            params={
-              {
-                layers: GWIS_LANDCOVER_LAYER,
-                format: "image/png",
-                transparent: true,
-                version: "1.1.1",
-              } as WMSParams
-            }
-          />
+          <Source id="land-cover-source" type="raster" tiles={landCoverSource.tiles} tileSize={landCoverSource.tileSize}>
+            <Layer id="land-cover" type="raster" paint={{ "raster-opacity": 0.55 }} />
+          </Source>
         )}
         {showSettlement && (
-          <WMSTileLayer
-            url={GWIS_WMS_URL}
-            opacity={0.7}
-            params={
-              {
-                layers: GWIS_SETTLEMENT_LAYER,
-                format: "image/png",
-                transparent: true,
-                version: "1.1.1",
-              } as WMSParams
-            }
-          />
+          <Source id="settlement-source" type="raster" tiles={settlementSource.tiles} tileSize={settlementSource.tileSize}>
+            <Layer id="settlement" type="raster" paint={{ "raster-opacity": 0.7 }} />
+          </Source>
         )}
         {showProtectedAreas && (
-          <WMSTileLayer
-            url={GWIS_WMS_URL}
-            opacity={0.6}
-            params={
-              {
-                layers: GWIS_PROTECTED_AREAS_LAYER,
-                format: "image/png",
-                transparent: true,
-                version: "1.1.1",
-              } as WMSParams
-            }
-          />
+          <Source
+            id="protected-areas-source"
+            type="raster"
+            tiles={protectedAreasSource.tiles}
+            tileSize={protectedAreasSource.tileSize}
+          >
+            <Layer id="protected-areas" type="raster" paint={{ "raster-opacity": 0.6 }} />
+          </Source>
         )}
-        <VeredasOverlay
-          enabled={showFireModel}
-          onSelect={onVeredaSelect}
-          colorForFeature={veredaFireColor}
-          hazardKind="incendios"
-          activeMunicipios={activeMunicipios}
-        />
-        {showSentinel3 && (
-          <WMSTileLayer
-            url={GWIS_WMS_URL}
-            opacity={0.85}
-            params={
-              {
-                layers: GWIS_S3_HOTSPOT_LAYER,
-                format: "image/png",
-                transparent: true,
-                version: "1.1.1",
-              } as WMSParams
-            }
-          />
-        )}
-        {fireColors &&
-          visibleFires.map((d) => (
-            <CircleMarker
-              key={d.id}
-              center={[d.lat, d.lon]}
-              radius={fireRadius(d.frp)}
-              pathOptions={{
-                color: "#fff",
-                weight: 1,
-                fillColor: fireColors[d.confidence],
-                fillOpacity: 0.85,
-              }}
-            >
-              <Popup>
-                <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
-                  <strong>{formatDateTime(d.acquiredAt)}</strong>
-                  <span>
-                    Cerca de {d.nearest.name} · {formatDistance(d.nearest.distanceKm)}
-                  </span>
-                  <span>Confianza: {CONFIDENCE_STYLES[d.confidence].label}</span>
-                  <span>FRP: {formatFrp(d.frp)}</span>
-                  <span>Satélite: {d.satellite}</span>
-                </div>
-              </Popup>
-            </CircleMarker>
-          ))}
-        {osmColors &&
-          osmPoints?.map((p) => (
-            <CircleMarker
-              key={p.id}
-              center={[p.lat, p.lon]}
-              radius={5}
-              pathOptions={{
-                color: "#fff",
-                weight: 1,
-                fillColor: osmColors[p.category],
-                fillOpacity: 0.9,
-              }}
-            >
-              <Popup>
-                <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
-                  <strong>{p.name ?? getOsmCategory(p.category).label}</strong>
-                  <span>{getOsmCategory(p.category).label}</span>
-                </div>
-              </Popup>
-            </CircleMarker>
-          ))}
-        {onBoundsChange && <BoundsSync onBoundsChange={onBoundsChange} />}
-        <FlyToMunicipio veredas={veredas} activeMunicipios={activeMunicipios} />
-      </MapContainer>
 
-      <div className="absolute right-3 top-16 z-[300] max-w-[200px]">
-        <OsmLegend points={osmPoints ?? []} />
-      </div>
+        {showFireModel && (
+          <Source id="veredas-source" type="geojson" data={veredasGeoJson}>
+            <Layer
+              id="veredas-fill"
+              type="fill"
+              paint={{ "fill-color": ["get", "__fillColor"], "fill-opacity": ["get", "__fillOpacity"] }}
+            />
+            <Layer
+              id="veredas-line"
+              type="line"
+              paint={{ "line-color": ["get", "__lineColor"], "line-opacity": ["get", "__lineOpacity"], "line-width": 1 }}
+            />
+          </Source>
+        )}
+
+        {showSentinel3 && (
+          <Source id="sentinel3-source" type="raster" tiles={sentinel3Source.tiles} tileSize={sentinel3Source.tileSize}>
+            <Layer id="sentinel3" type="raster" paint={{ "raster-opacity": 0.85 }} />
+          </Source>
+        )}
+
+        {fireColors && visibleFires.length > 0 && (
+          <Source id="fires-source" type="geojson" data={firesGeoJson}>
+            <Layer
+              id="fires"
+              type="circle"
+              paint={{
+                "circle-radius": ["get", "__radius"],
+                "circle-color": ["get", "__color"],
+                "circle-stroke-color": "#ffffff",
+                "circle-stroke-width": 1,
+                "circle-opacity": 0.85,
+              }}
+            />
+          </Source>
+        )}
+
+        {osmPoints && osmPoints.length > 0 && (
+          <Source id="osm-source" type="geojson" data={osmGeoJson}>
+            <Layer
+              id="osm-points"
+              type="circle"
+              paint={{
+                "circle-radius": 5,
+                "circle-color": ["get", "__color"],
+                "circle-stroke-color": "#ffffff",
+                "circle-stroke-width": 1,
+                "circle-opacity": 0.9,
+              }}
+            />
+          </Source>
+        )}
+
+        {popupInfo && (
+          <Popup
+            longitude={popupInfo.longitude}
+            latitude={popupInfo.latitude}
+            onClose={() => setPopupInfo(null)}
+            closeOnClick={false}
+            anchor="bottom"
+          >
+            {popupInfo.content}
+          </Popup>
+        )}
+      </Map>
 
       <MapControlRail>
         <RailSection title="Municipios" first>
@@ -492,12 +547,7 @@ function IncendiosLiveMapImpl({
           {showForecast && <FwiLegend />}
           <RailToggleRow icon={Flame} label="MODIS" checked={showModis} onChange={setShowModis} />
           <RailToggleRow icon={Flame} label="VIIRS (todas)" checked={showViirs} onChange={setShowViirs} />
-          <RailToggleRow
-            icon={Satellite}
-            label="Sentinel-3"
-            checked={showSentinel3}
-            onChange={setShowSentinel3}
-          />
+          <RailToggleRow icon={Satellite} label="Sentinel-3" checked={showSentinel3} onChange={setShowSentinel3} />
           {needsFirms && (
             <label className="ml-5 flex items-center gap-1.5 text-muted-foreground">
               Periodo
@@ -550,11 +600,17 @@ function IncendiosLiveMapImpl({
             onChange={setShowFireModel}
           />
         </RailSection>
+
+        {osmPoints && osmPoints.length > 0 && (
+          <RailSection title="Infraestructura (OSM)">
+            <OsmLegend points={osmPoints} bare />
+          </RailSection>
+        )}
       </MapControlRail>
     </div>
   )
 }
 
-// Leaflet touches `window` at module load time, so this component is always
-// consumed through IncendiosLiveMapLoader (next/dynamic, ssr: false).
+// MapLibre touches `window` at module load time, so this component is
+// always consumed through IncendiosLiveMapLoader (next/dynamic, ssr: false).
 export default IncendiosLiveMapImpl

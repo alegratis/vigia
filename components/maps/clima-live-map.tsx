@@ -1,21 +1,25 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
-import {
-  AttributionControl,
-  CircleMarker,
-  GeoJSON,
-  MapContainer,
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { useTheme } from "next-themes"
+import MapGL, {
+  Source,
+  Layer,
   Marker,
   Popup,
-  ZoomControl,
-  useMap,
-  useMapEvents,
-} from "react-leaflet"
-import L from "leaflet"
-import { BasemapTileLayer } from "./basemap-tile-layer"
-import type { Layer, LatLngBoundsExpression, LeafletMouseEvent, PathOptions } from "leaflet"
-import "leaflet/dist/leaflet.css"
+  NavigationControl,
+  AttributionControl,
+  type MapRef,
+  type MapLayerMouseEvent,
+} from "react-map-gl/maplibre"
+import { setWorkerUrl } from "maplibre-gl"
+import "maplibre-gl/dist/maplibre-gl.css"
+
+// See deslizamientos-live-map.tsx for why this self-hosted worker override
+// is needed under Turbopack.
+if (typeof window !== "undefined") {
+  setWorkerUrl("/maplibre-gl-worker.mjs")
+}
 import { Loader2, LandPlot } from "lucide-react"
 import useSWR from "swr"
 import {
@@ -31,23 +35,24 @@ import { normalizeMunicipioName } from "@/lib/demografia/categories"
 import { getOsmCategory } from "@/lib/osm/categories"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
 import { OsmLegend } from "@/components/maps/osm-legend"
-import { VeredasOverlay } from "@/components/maps/veredas-overlay"
-import { FlyToMunicipio } from "@/components/maps/fly-to-municipio"
 import { MunicipioTogglePanelContent, type MunicipioRiskSummary } from "@/components/maps/municipio-toggle-panel"
 import { MapControlRail, RailSection, RailToggleRow } from "@/components/maps/map-control-rail"
 import { useVeredas } from "@/lib/veredas/use-veredas"
 import { useMunicipioToggles, isMunicipioActive } from "@/lib/veredas/municipio-toggles"
+import { boundsForActiveMunicipios } from "@/lib/veredas/municipio-bounds"
+import { maplibreBasemapStyle } from "@/lib/maps/maplibre-basemap-style"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
 import type { VeredaFeature } from "@/lib/veredas/api-types"
 
-// Fallback center if bounds-fitting is unavailable — the midpoint of AOI_BOUNDS below.
-const AOI_CENTER: [number, number] = [4.24, -76.0]
+/**
+ * MapLibre GL port (see v0_plans/grand-method.md, Phase 3) — follows the
+ * deslizamientos spike's patterns. No hazard data/model/API logic changed.
+ */
 
-/** Frames all three municipios — matches the precipitación map, the only other layer with full Zarzal coverage. */
-const AOI_BOUNDS: LatLngBoundsExpression = [
-  [3.88, -76.15],
-  [4.44, -75.72],
+const AOI_BOUNDS_ML: [[number, number], [number, number]] = [
+  [-76.15, 3.88],
+  [-75.72, 4.44],
 ]
 
 const fetcher = async (url: string): Promise<ClimaForecastResponse> => {
@@ -56,21 +61,10 @@ const fetcher = async (url: string): Promise<ClimaForecastResponse> => {
   return res.json()
 }
 
-function BoundsSync({ onBoundsChange }: { onBoundsChange: (bounds: MapBounds) => void }) {
-  const map = useMap()
-
-  const sync = useCallback(() => {
-    const b = map.getBounds()
-    onBoundsChange({ north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() })
-  }, [map, onBoundsChange])
-
-  useEffect(() => {
-    sync()
-  }, [sync])
-
-  useMapEvents({ moveend: sync, zoomend: sync, resize: sync })
-
-  return null
+interface PopupInfo {
+  longitude: number
+  latitude: number
+  content: ReactNode
 }
 
 /**
@@ -98,6 +92,11 @@ function ClimaLiveMapImpl({
   osmPoints?: OsmPoint[]
   className?: string
 }) {
+  const mapRef = useRef<MapRef>(null)
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === "dark"
+  const mapStyle = useMemo(() => maplibreBasemapStyle(isDark), [isDark])
+
   const [showVeredas, setShowVeredas] = useState(false)
 
   const { data, error } = useSWR<ClimaForecastResponse>("/api/clima/forecast", fetcher, {
@@ -108,26 +107,31 @@ function ClimaLiveMapImpl({
   const { active: activeMunicipiosMap, activeMunicipios, toggle: toggleMunicipio } = useMunicipioToggles()
 
   const [tempColors, setTempColors] = useState<Record<string, string> | null>(null)
+  const [noDataColor, setNoDataColor] = useState<string | null>(null)
 
   useEffect(() => {
     setTempColors(Object.fromEntries(TEMP_LEVELS.map((l) => [l, resolveCssColor(tempLevelColorToken(l))])))
+    setNoDataColor(resolveCssColor("var(--muted-foreground)"))
   }, [])
 
-  const colorsReady = tempColors
+  const colorsReady = tempColors && noDataColor
 
   const municipioSummaries = useMemo<MunicipioRiskSummary[]>(() => {
     if (!data?.veredas) return []
-    const byMunicipio = new Map<string, Record<string, number>>()
+    // Plain object instead of a `Map` instance: react-map-gl's `MapGL`
+    // export is fine here, but keeping the pattern consistent with the
+    // precipitación map avoids any future accidental shadowing.
+    const byMunicipio: Record<string, Record<string, number>> = {}
     for (const feature of data.veredas.features) {
       const rawMunicipio = feature.properties?.municipio
       const key = feature.properties?.nivelTemp
       if (!rawMunicipio || !key) continue
       const municipio = normalizeMunicipioName(rawMunicipio)
-      const counts = byMunicipio.get(municipio) ?? {}
+      const counts = byMunicipio[municipio] ?? {}
       counts[key] = (counts[key] ?? 0) + 1
-      byMunicipio.set(municipio, counts)
+      byMunicipio[municipio] = counts
     }
-    return Array.from(byMunicipio.entries()).map(([municipio, counts]) => ({
+    return Object.entries(byMunicipio).map(([municipio, counts]) => ({
       municipio,
       items: (TEMP_LEVELS as readonly string[])
         .filter((level) => (counts[level] ?? 0) > 0)
@@ -144,144 +148,233 @@ function ClimaLiveMapImpl({
         m.tempMax != null && m.tempMin != null
           ? `<span style="font-size:10px;font-weight:500;opacity:0.75">${Math.round(m.tempMax)}° / ${Math.round(m.tempMin)}°</span>`
           : ""
-      const icon = L.divIcon({
-        className: "",
-        iconSize: [1, 1],
-        iconAnchor: [0, 0],
-        html: `<div style="transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:2px;pointer-events:none;white-space:nowrap">
+      const html = `<div style="display:flex;flex-direction:column;align-items:center;gap:2px;pointer-events:none;white-space:nowrap">
           <div style="display:flex;align-items:center;gap:5px;padding:4px 9px;border-radius:9999px;background:var(--card);color:var(--foreground);border:1px solid var(--border);box-shadow:0 1px 4px rgba(0,0,0,0.3);font-size:14px;font-weight:700;line-height:1">
             ${glyph}<span>${temp}</span>${range}
           </div>
           <span style="font-size:11px;font-weight:700;color:var(--foreground);text-shadow:0 1px 3px var(--background),0 0 3px var(--background)">${m.municipio}</span>
-        </div>`,
-      })
-      return { municipio: m.municipio, lat: m.lat, lon: m.lon, icon }
+        </div>`
+      return { municipio: m.municipio, lat: m.lat, lon: m.lon, html }
     })
   }, [data])
 
-  const style = useCallback(
-    (feature?: GeoJSON.Feature): PathOptions => {
-      const props = feature?.properties as ClimaVeredaProperties | undefined
-      const municipio = props?.municipio
-      const active = municipio ? isMunicipioActive(municipio, activeMunicipios) : true
-      if (!active) {
-        return { color: "var(--muted-foreground)", weight: 1, opacity: 0.3, fillColor: "var(--muted-foreground)", fillOpacity: 0.06 }
-      }
-      const color = (props?.nivelTemp && tempColors?.[props.nivelTemp]) || "var(--muted-foreground)"
-      return { color, weight: 1, fillColor: color, fillOpacity: props?.nivelTemp ? 0.55 : 0.08 }
-    },
-    [tempColors, activeMunicipios],
-  )
+  const veredasGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
+    if (!data?.veredas || !colorsReady) return { type: "FeatureCollection", features: [] }
+    return {
+      type: "FeatureCollection",
+      features: data.veredas.features.map((feature, i) => {
+        const props = feature.properties as ClimaVeredaProperties
+        const municipio = props?.municipio
+        const active = municipio ? isMunicipioActive(municipio, activeMunicipios) : true
+        const color = (props?.nivelTemp && tempColors?.[props.nivelTemp]) || noDataColor
+        return {
+          type: "Feature",
+          id: i,
+          properties: {
+            ...props,
+            __fillColor: active ? color : noDataColor,
+            __fillOpacity: !active ? 0.06 : props?.nivelTemp ? 0.55 : 0.08,
+            __lineColor: active ? color : noDataColor,
+            __lineOpacity: active ? 1 : 0.3,
+          },
+          geometry: feature.geometry,
+        }
+      }),
+    }
+  }, [data, colorsReady, tempColors, noDataColor, activeMunicipios])
 
-  const onEachFeature = useCallback(
-    (feature: GeoJSON.Feature, layer: Layer) => {
-      const props = feature.properties as ClimaVeredaProperties | undefined
-      if (!props) return
-      const glyph = props.grupoActual ? weatherGlyphSvg(props.grupoActual, { size: 16, esDia: props.esDia }) : ""
-      const condicion = props.grupoActual ? WEATHER_GROUP_LABELS[props.grupoActual] : "Sin dato"
-      const tempActual = props.tempActual != null ? `${Math.round(props.tempActual)}°C` : "—"
-      const sensacionRow =
-        props.sensacionTermica != null
-          ? `<span>Sensación térmica: ${Math.round(props.sensacionTermica)}°C</span>`
-          : ""
-      const rango =
-        props.tempMaxHoy != null && props.tempMinHoy != null
-          ? `${Math.round(props.tempMaxHoy)}° / ${Math.round(props.tempMinHoy)}°`
-          : "—"
-      layer.bindTooltip(
-        `<span style="font-weight:600">${props.nombre}</span> · ${tempActual}`,
-        { direction: "top", opacity: 0.95 },
-      )
-      layer.bindPopup(
-        `<div style="font-size:13px;display:flex;flex-direction:column;gap:3px;min-width:170px">
-          <strong>${props.nombre}</strong>
-          <span>${props.municipio}</span>
-          <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
-            ${glyph}<span style="font-size:18px;font-weight:700">${tempActual}</span>
-          </div>
-          <span>${condicion}</span>
-          ${sensacionRow}
-          <span>Hoy: ${rango}</span>
-          <span>Racha seca prevista: ${props.rachaSeca} día${props.rachaSeca === 1 ? "" : "s"}</span>
-        </div>`,
-      )
+  const osmGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
+    if (!osmPoints || !osmColors) return { type: "FeatureCollection", features: [] }
+    return {
+      type: "FeatureCollection",
+      features: osmPoints.map((p) => ({
+        type: "Feature",
+        id: p.id,
+        properties: { ...p, __color: osmColors[p.category] },
+        geometry: { type: "Point", coordinates: [p.lon, p.lat] },
+      })),
+    }
+  }, [osmPoints, osmColors])
 
-      const active = props.municipio ? isMunicipioActive(props.municipio, activeMunicipios) : true
-      if (active) {
-        layer.on("mouseover", (e: LeafletMouseEvent) => {
-          ;(e.target as Layer & { setStyle: (s: PathOptions) => void }).setStyle({ fillOpacity: 0.8 })
+  const interactiveLayerIds = useMemo(() => {
+    const ids: string[] = ["veredas-fill"]
+    if (osmPoints && osmPoints.length > 0) ids.push("osm-points")
+    return ids
+  }, [osmPoints])
+
+  const [popupInfo, setPopupInfo] = useState<PopupInfo | null>(null)
+  const [cursor, setCursor] = useState<string>("")
+
+  const handleMapClick = useCallback(
+    (e: MapLayerMouseEvent) => {
+      const { lng, lat } = e.lngLat
+      const osmFeature = e.features?.find((f) => f.layer.id === "osm-points")
+      if (osmFeature) {
+        const props = osmFeature.properties as unknown as OsmPoint
+        setPopupInfo({
+          longitude: lng,
+          latitude: lat,
+          content: (
+            <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
+              <strong>{props.name ?? getOsmCategory(props.category).label}</strong>
+              <span>{getOsmCategory(props.category).label}</span>
+            </div>
+          ),
         })
-        layer.on("mouseout", (e: LeafletMouseEvent) => {
-          ;(e.target as Layer & { setStyle: (s: PathOptions) => void }).setStyle({ fillOpacity: 0.55 })
-        })
+        return
       }
-      layer.on("click", () => {
+      const veredaFeature = e.features?.find((f) => f.layer.id === "veredas-fill")
+      if (veredaFeature) {
+        const props = veredaFeature.properties as unknown as ClimaVeredaProperties
+        const glyph = props.grupoActual ? weatherGlyphSvg(props.grupoActual, { size: 16, esDia: props.esDia }) : ""
+        const condicion = props.grupoActual ? WEATHER_GROUP_LABELS[props.grupoActual] : "Sin dato"
+        const tempActual = props.tempActual != null ? `${Math.round(props.tempActual)}°C` : "—"
+        const rango =
+          props.tempMaxHoy != null && props.tempMinHoy != null
+            ? `${Math.round(props.tempMaxHoy)}° / ${Math.round(props.tempMinHoy)}°`
+            : "—"
+
+        setPopupInfo({
+          longitude: lng,
+          latitude: lat,
+          content: (
+            <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 3, minWidth: 170 }}>
+              <strong>{props.nombre}</strong>
+              <span>{props.municipio}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
+                <span dangerouslySetInnerHTML={{ __html: glyph }} />
+                <span style={{ fontSize: 18, fontWeight: 700 }}>{tempActual}</span>
+              </div>
+              <span>{condicion}</span>
+              {props.sensacionTermica != null && <span>Sensación térmica: {Math.round(props.sensacionTermica)}°C</span>}
+              <span>Hoy: {rango}</span>
+              <span>
+                Racha seca prevista: {props.rachaSeca} día{props.rachaSeca === 1 ? "" : "s"}
+              </span>
+            </div>
+          ),
+        })
+
         if (props.municipio) onZoneSelect?.(normalizeMunicipioName(props.municipio))
         onClimaSelect?.(props)
         const populationFeature = veredasPoblacion?.features.find(
           (f) => f.properties.codigoVereda === props.codigoVereda,
         )
         onVeredaFeatureSelect?.(populationFeature ?? null)
-      })
+        return
+      }
+      setPopupInfo(null)
     },
-    [onZoneSelect, onClimaSelect, onVeredaFeatureSelect, veredasPoblacion, activeMunicipios],
+    [onZoneSelect, onClimaSelect, onVeredaFeatureSelect, veredasPoblacion],
   )
 
-  // Re-key so Leaflet re-runs `style`/`onEachFeature` when colors resolve, the
-  // population lookup loads, or the active municipalities change —
-  // react-leaflet's GeoJSON only wires those up at construction.
-  const geoJsonKey = useMemo(
-    () =>
-      `${colorsReady ? "resolved" : "pending"}-${veredasPoblacion ? "pob" : "nopob"}-${activeMunicipios.join(",")}`,
-    [colorsReady, veredasPoblacion, activeMunicipios],
-  )
+  const syncBounds = useCallback(() => {
+    if (!onBoundsChange) return
+    const map = mapRef.current?.getMap()
+    const b = map?.getBounds()
+    if (!b) return
+    onBoundsChange({ north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() })
+  }, [onBoundsChange])
+
+  const isFirstMunicipioRender = useRef(true)
+  const previousMunicipioKey = useRef(activeMunicipios.join("|"))
+  useEffect(() => {
+    const key = activeMunicipios.join("|")
+    if (isFirstMunicipioRender.current) {
+      isFirstMunicipioRender.current = false
+      previousMunicipioKey.current = key
+      return
+    }
+    if (key === previousMunicipioKey.current) return
+    previousMunicipioKey.current = key
+
+    const bounds = boundsForActiveMunicipios(veredasPoblacion, activeMunicipios) as
+      | [[number, number], [number, number]]
+      | null
+    if (!bounds) return
+    const map = mapRef.current?.getMap()
+    if (!map) return
+    const [[south, west], [north, east]] = bounds
+    map.fitBounds(
+      [
+        [west, south],
+        [east, north],
+      ],
+      { padding: 48, duration: 900, maxZoom: 14 },
+    )
+  }, [veredasPoblacion, activeMunicipios])
 
   return (
     <div className={className ?? "relative isolate h-full min-h-[420px] w-full overflow-hidden rounded-xl border border-border"}>
-      <MapContainer
-        center={AOI_CENTER}
-        zoom={10}
+      <MapGL
+        ref={mapRef}
+        initialViewState={{ bounds: AOI_BOUNDS_ML }}
         minZoom={9}
         maxZoom={16}
-        bounds={AOI_BOUNDS}
-        zoomControl={false}
+        mapStyle={mapStyle}
         attributionControl={false}
-        className="h-full w-full"
+        cursor={cursor}
+        interactiveLayerIds={interactiveLayerIds}
+        onLoad={syncBounds}
+        onMoveEnd={syncBounds}
+        onZoomEnd={syncBounds}
+        onMouseEnter={() => setCursor("pointer")}
+        onMouseLeave={() => setCursor("")}
+        onClick={handleMapClick}
+        style={{ width: "100%", height: "100%" }}
       >
-        <ZoomControl position="topright" />
-        <AttributionControl position="bottomright" prefix="Leaflet" />
-        <BasemapTileLayer />
+        <NavigationControl position="top-left" />
+        <AttributionControl position="bottom-left" customAttribution="MapLibre © OpenStreetMap / CARTO" compact />
+
         {data?.veredas && colorsReady && (
-          <GeoJSON
-            key={geoJsonKey}
-            data={data.veredas as unknown as GeoJSON.GeoJsonObject}
-            style={style}
-            onEachFeature={onEachFeature}
-          />
+          <Source id="veredas-source" type="geojson" data={veredasGeoJson}>
+            <Layer
+              id="veredas-fill"
+              type="fill"
+              paint={{ "fill-color": ["get", "__fillColor"], "fill-opacity": ["get", "__fillOpacity"] }}
+            />
+            <Layer
+              id="veredas-line"
+              type="line"
+              paint={{ "line-color": ["get", "__lineColor"], "line-opacity": ["get", "__lineOpacity"], "line-width": 1 }}
+            />
+          </Source>
         )}
-        <VeredasOverlay enabled={showVeredas} onSelect={onVeredaFeatureSelect} activeMunicipios={activeMunicipios} />
+
         {municipioMarkers.map((m) => (
-          <Marker key={m.municipio} position={[m.lat, m.lon]} icon={m.icon} interactive={false} keyboard={false} />
+          <Marker key={m.municipio} longitude={m.lon} latitude={m.lat}>
+            <div dangerouslySetInnerHTML={{ __html: m.html }} />
+          </Marker>
         ))}
-        {osmColors &&
-          osmPoints?.map((p) => (
-            <CircleMarker
-              key={p.id}
-              center={[p.lat, p.lon]}
-              radius={5}
-              pathOptions={{ color: "#fff", weight: 1, fillColor: osmColors[p.category], fillOpacity: 0.9 }}
-            >
-              <Popup>
-                <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
-                  <strong>{p.name ?? getOsmCategory(p.category).label}</strong>
-                  <span>{getOsmCategory(p.category).label}</span>
-                </div>
-              </Popup>
-            </CircleMarker>
-          ))}
-        {onBoundsChange && <BoundsSync onBoundsChange={onBoundsChange} />}
-        <FlyToMunicipio veredas={veredasPoblacion} activeMunicipios={activeMunicipios} />
-      </MapContainer>
+
+        {osmPoints && osmPoints.length > 0 && (
+          <Source id="osm-source" type="geojson" data={osmGeoJson}>
+            <Layer
+              id="osm-points"
+              type="circle"
+              paint={{
+                "circle-radius": 5,
+                "circle-color": ["get", "__color"],
+                "circle-stroke-color": "#ffffff",
+                "circle-stroke-width": 1,
+                "circle-opacity": 0.9,
+              }}
+            />
+          </Source>
+        )}
+
+        {popupInfo && (
+          <Popup
+            longitude={popupInfo.longitude}
+            latitude={popupInfo.latitude}
+            onClose={() => setPopupInfo(null)}
+            closeOnClick={false}
+            anchor="bottom"
+          >
+            {popupInfo.content}
+          </Popup>
+        )}
+      </MapGL>
 
       {!data && !error && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-background/60">
@@ -289,9 +382,11 @@ function ClimaLiveMapImpl({
         </div>
       )}
       {error && (
-        <Popup position={AOI_CENTER}>
-          <span className="text-sm text-destructive">No se pudo cargar la capa.</span>
-        </Popup>
+        <div className="pointer-events-none absolute inset-x-0 top-16 flex justify-center">
+          <span className="rounded-md bg-background/90 px-3 py-1.5 text-sm text-destructive shadow">
+            No se pudo cargar la capa.
+          </span>
+        </div>
       )}
 
       <MapControlRail>
@@ -338,6 +433,6 @@ function ClimaLiveMapImpl({
   )
 }
 
-// Leaflet touches `window` at module load time, so this component is always
-// consumed through ClimaLiveMapLoader (next/dynamic, ssr: false).
+// MapLibre touches `window` at module load time, so this component is
+// always consumed through ClimaLiveMapLoader (next/dynamic, ssr: false).
 export default ClimaLiveMapImpl
