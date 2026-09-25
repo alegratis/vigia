@@ -18,6 +18,8 @@ import "server-only"
  */
 
 import { booleanPointInPolygon } from "@turf/boolean-point-in-polygon"
+import { centroid } from "@turf/centroid"
+import { classifyDamageEstado, DAMAGE_LEVELS } from "./damage-levels"
 import type { BarrioDamageSummary, SismologiaDanosResponse } from "./api-types"
 
 const SERVICE_ROOT = "https://services7.arcgis.com/fHfQ8qeNWagUQB9e/arcgis/rest/services"
@@ -104,10 +106,26 @@ export async function getSismologiaDanos(): Promise<SismologiaDanosResponse> {
       sinBarrio++
       continue
     }
-    const existing = counts.get(match.nombre) ?? { barrio: match.nombre, totalReportes: 0, porEstado: {} }
+    const existing =
+      counts.get(match.nombre) ??
+      {
+        barrio: match.nombre,
+        totalReportes: 0,
+        porEstado: {},
+        porNivel: { destruida: 0, danada: 0, posible: 0 },
+        // Barrio-boundary centroid — public, non-address geometry, safe to
+        // return to the client (see the module docstring on why individual
+        // survey-point coordinates never are).
+        ...(() => {
+          const [lon, lat] = centroid(match.geometry).geometry.coordinates
+          return { lat, lon }
+        })(),
+      }
     existing.totalReportes++
     const estadoKey = p.estado ?? "Sin especificar"
     existing.porEstado[estadoKey] = (existing.porEstado[estadoKey] ?? 0) + 1
+    const nivel = classifyDamageEstado(p.estado)
+    if (nivel) existing.porNivel[nivel]++
     counts.set(match.nombre, existing)
   }
 

@@ -101,6 +101,9 @@
   --color-riesgo-compuesto-moderado: var(--riesgo-compuesto-moderado);
   --color-riesgo-compuesto-alto: var(--riesgo-compuesto-alto);
   --color-riesgo-compuesto-muy-alto: var(--riesgo-compuesto-muy-alto);
+  --color-danos-destruida: var(--danos-destruida);
+  --color-danos-danada: var(--danos-danada);
+  --color-danos-posible: var(--danos-posible);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -202,6 +205,11 @@
   --sismologia-ligero: oklch(0.68 0.14 305);
   --sismologia-moderado: oklch(0.58 0.17 315);
   --sismologia-fuerte: oklch(0.42 0.19 325);
+
+  /* Sevilla community damage-report severity ramp (Survey123 pilot): warm hue, distinct from the sismología magnitude ramp. */
+  --danos-posible: oklch(0.82 0.15 95);
+  --danos-danada: oklch(0.68 0.19 55);
+  --danos-destruida: oklch(0.52 0.22 25);
 
   /*
    * Climatology histogram recent-past-years comparison lines (2025/2024/
@@ -407,6 +415,11 @@
   --sismologia-ligero: oklch(0.64 0.15 305);
   --sismologia-moderado: oklch(0.56 0.19 315);
   --sismologia-fuerte: oklch(0.48 0.21 325);
+
+  /* Sevilla community damage-report severity ramp (Survey123 pilot): kept vivid and legible on dark surfaces. */
+  --danos-posible: oklch(0.78 0.16 95);
+  --danos-danada: oklch(0.66 0.2 55);
+  --danos-destruida: oklch(0.58 0.23 25);
 
   /* Clima temperature ramp: kept vivid and legible on dark surfaces. */
   --clima-frio: oklch(0.74 0.13 250);
