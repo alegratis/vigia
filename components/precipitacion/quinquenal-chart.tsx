@@ -347,8 +347,8 @@ export function QuinquenalChart({ vereda }: QuinquenalChartProps) {
           >
             Open-Meteo
           </a>{" "}
-          (análisis ECMWF IFS y reanálisis ERA5) a lo largo de un quinquenio completo — 5 años, no 30 como en
-          el histograma de IDEAM arriba — para ver si un mes viene subiendo o bajando en años recientes, algo
+          (análisis ECMWF IFS y reanálisis ERA5) a lo largo de un quinquenio completo — 5 años, no 10 como en
+          el histograma decadal arriba — para ver si un mes viene subiendo o bajando en años recientes, algo
           que una sola normal de varias décadas puede ocultar; cada quinquenio tiene su propio color, en
           orden cronológico según la leyenda. El año {currentYear} y los dos anteriores se dejan fuera de las barras a propósito y se
           muestran como líneas individuales (misma convención que el otro histograma) para no diluir la
