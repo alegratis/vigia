@@ -21,7 +21,7 @@ import "maplibre-gl/dist/maplibre-gl.css"
 if (typeof window !== "undefined") {
   setWorkerUrl("/maplibre-gl-worker.mjs")
 }
-import { Loader2, Droplets, AlertTriangle, Route, History, Trees, Building2, ShieldCheck } from "lucide-react"
+import { Loader2, Droplets, AlertTriangle, History, Trees, Building2, ShieldCheck } from "lucide-react"
 import { MapControlRail, RailSection, RailToggleRow } from "@/components/maps/map-control-rail"
 import { SUSCEPTIBILITY_LEVELS, SUSCEPTIBILITY_LEVEL_STYLES, levelColorToken } from "@/lib/deslizamientos/levels"
 import { resolveCssColor } from "@/lib/resolve-css-color"
@@ -46,7 +46,6 @@ import {
   CRITICAL_SITE_SEVERITY_STYLES,
   tipoLabel,
 } from "@/lib/deslizamientos/critical-sites-types"
-import { useFaults } from "@/lib/deslizamientos/use-faults"
 import { useLandslideInventory } from "@/lib/deslizamientos/use-landslide-inventory"
 import { VeredaPopupContent } from "@/components/maps/vereda-popup-content"
 import { MunicipioTogglePanelContent, type MunicipioRiskSummary } from "@/components/maps/municipio-toggle-panel"
@@ -241,15 +240,12 @@ function DeslizamientosLiveMapImpl({
   const [noDataColor, setNoDataColor] = useState<string | null>(null)
   const [showSoilMoisture, setShowSoilMoisture] = useState(false)
   const [showCriticalSites, setShowCriticalSites] = useState(false)
-  const [showFaults, setShowFaults] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [showLandCover, setShowLandCover] = useState(false)
   const [showSettlement, setShowSettlement] = useState(false)
   const [showProtectedAreas, setShowProtectedAreas] = useState(false)
   const { points: criticalSites } = useCriticalSites(showCriticalSites)
-  const { traces: faultTraces } = useFaults(showFaults)
   const { records: historyRecords } = useLandslideInventory(showHistory)
-  const [faultLineColor, setFaultLineColor] = useState<string | null>(null)
   const [historyColor, setHistoryColor] = useState<string | null>(null)
   const [criticalSiteColors, setCriticalSiteColors] = useState<Record<number, string> | null>(null)
   const [popupInfo, setPopupInfo] = useState<PopupInfo | null>(null)
@@ -261,7 +257,6 @@ function DeslizamientosLiveMapImpl({
     )
     setResolvedColors(Object.fromEntries(entries))
     setNoDataColor(resolveCssColor("var(--muted-foreground)"))
-    setFaultLineColor(resolveCssColor("var(--fault-line)"))
     setHistoryColor(resolveCssColor("var(--historical-event)"))
     setCriticalSiteColors(
       Object.fromEntries(
@@ -308,21 +303,6 @@ function DeslizamientosLiveMapImpl({
       }),
     }
   }, [veredas, activeMunicipios, colorForLevel, noDataColor])
-
-  const faultsGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
-    if (!faultTraces) return { type: "FeatureCollection", features: [] }
-    return {
-      type: "FeatureCollection",
-      features: faultTraces.flatMap((trace) =>
-        trace.paths.map((path, i) => ({
-          type: "Feature" as const,
-          id: `${trace.id}-${i}`,
-          properties: { nombre: trace.nombre, tipo: trace.tipo },
-          geometry: { type: "LineString" as const, coordinates: path },
-        })),
-      ),
-    }
-  }, [faultTraces])
 
   const criticalSitesGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
     if (!criticalSites || !criticalSiteColors) return { type: "FeatureCollection", features: [] }
@@ -372,9 +352,8 @@ function DeslizamientosLiveMapImpl({
     if (showCriticalSites) ids.push("critical-sites")
     if (showHistory) ids.push("history-points")
     if (osmPoints && osmPoints.length > 0) ids.push("osm-points")
-    if (showFaults) ids.push("faults-hit")
     return ids
-  }, [showCriticalSites, showHistory, osmPoints, showFaults])
+  }, [showCriticalSites, showHistory, osmPoints])
 
   const hoveredVeredaId = useRef<string | number | null>(null)
 
@@ -473,20 +452,6 @@ function DeslizamientosLiveMapImpl({
           ),
         })
         return
-      }
-      if (feature.layer.id === "faults-hit") {
-        const props = feature.properties as { nombre: string | null; tipo: string | null }
-        setPopupInfo({
-          longitude: lng,
-          latitude: lat,
-          content: (
-            <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
-              <strong>{props.nombre ?? "Falla sin nombre"}</strong>
-              <span>{props.tipo ?? "Tipo no especificado"}</span>
-              <span style={{ color: "#888" }}>Servicio Geológico Colombiano (SGC)</span>
-            </div>
-          ),
-        })
       }
     },
     [onVeredaSelect],
@@ -617,28 +582,6 @@ function DeslizamientosLiveMapImpl({
           />
         </Source>
 
-        {showFaults && (
-          <Source id="faults-source" type="geojson" data={faultsGeoJson}>
-            <Layer
-              id="faults-line"
-              type="line"
-              paint={{ "line-color": faultLineColor ?? "#888", "line-width": 2, "line-dasharray": [6, 4] }}
-            />
-            {/*
-             * A thin dashed line's clickable area is only ~1px wide, so
-             * clicks land on the vereda polygon underneath almost every
-             * time. This invisible, much wider companion layer carries the
-             * actual click interaction (registered via `interactiveLayerIds`
-             * above) while the thin dashed layer stays purely decorative.
-             */}
-            <Layer
-              id="faults-hit"
-              type="line"
-              paint={{ "line-color": faultLineColor ?? "#888", "line-width": 18, "line-opacity": 0 }}
-            />
-          </Source>
-        )}
-
         {showCriticalSites && (
           <Source id="critical-sites-source" type="geojson" data={criticalSitesGeoJson}>
             <Layer
@@ -736,12 +679,6 @@ function DeslizamientosLiveMapImpl({
               label="Sitios críticos (2019)"
               checked={showCriticalSites}
               onChange={setShowCriticalSites}
-            />
-            <RailToggleRow
-              icon={Route}
-              label="Fallas geológicas"
-              checked={showFaults}
-              onChange={setShowFaults}
             />
             <RailToggleRow
               icon={History}
