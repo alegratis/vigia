@@ -13,12 +13,13 @@ import {
 } from "react-leaflet"
 import type { LatLngBoundsExpression, WMSParams } from "leaflet"
 import "leaflet/dist/leaflet.css"
-import { Loader2 } from "lucide-react"
+import { Loader2, Building2, ShieldCheck } from "lucide-react"
 import { COMPOUND_LEVELS, compoundLevelColorToken } from "@/lib/riesgo-compuesto/levels"
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import { BasemapTileLayer } from "@/components/maps/basemap-tile-layer"
 import { CompoundVeredasOverlay } from "@/components/maps/compound-veredas-overlay"
-import { MunicipioTogglePanel, type MunicipioRiskSummary } from "@/components/maps/municipio-toggle-panel"
+import { MunicipioTogglePanelContent, type MunicipioRiskSummary } from "@/components/maps/municipio-toggle-panel"
+import { MapControlRail, RailSection, RailToggleRow } from "@/components/maps/map-control-rail"
 import { useMunicipioToggles } from "@/lib/veredas/municipio-toggles"
 import { CompoundReportDialog } from "@/components/riesgo-compuesto/compound-report-dialog"
 import { getOsmCategory } from "@/lib/osm/categories"
@@ -231,46 +232,41 @@ function CompoundLiveMapImpl({
           <span className="text-sm text-destructive">No se pudo cargar la capa.</span>
         </div>
       )}
-      <div className="absolute left-3 top-3 z-[400] flex flex-col gap-2 rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
-        <div className="flex flex-col gap-1.5">
-          <label className="flex items-center gap-2 font-medium text-foreground">
-            <input
-              type="checkbox"
-              checked={showSettlement}
-              onChange={(e) => setShowSettlement(e.target.checked)}
-              className="size-3.5 accent-primary"
-            />
-            Asentamientos humanos (GHSL)
-          </label>
-        </div>
-        <div className="border-t border-border pt-1.5">
-          <label className="flex items-center gap-2 font-medium text-foreground">
-            <input
-              type="checkbox"
-              checked={showProtectedAreas}
-              onChange={(e) => setShowProtectedAreas(e.target.checked)}
-              className="size-3.5 accent-primary"
-            />
-            Áreas protegidas (WDPA)
-          </label>
-        </div>
-      </div>
-      <div className="absolute right-3 top-3 z-[400] max-w-[200px]">
-        <OsmLegend points={osmPoints ?? []} />
-      </div>
-      <MunicipioTogglePanel
-        active={activeMunicipiosMap}
-        onToggle={toggleMunicipio}
-        summaries={municipioSummaries}
-        riskTitle="Riesgo compuesto (veredas por nivel)"
-      />
-      <Legend />
-      {(showSettlement || showProtectedAreas) && (
-        <div className="absolute bottom-3 right-3 z-[400] flex flex-col items-end gap-2">
+      <MapControlRail>
+        <RailSection title="Municipios" first>
+          <MunicipioTogglePanelContent
+            active={activeMunicipiosMap}
+            onToggle={toggleMunicipio}
+            summaries={municipioSummaries}
+            riskTitle="Riesgo compuesto (veredas por nivel)"
+          />
+        </RailSection>
+
+        <RailSection title="Riesgo compuesto">
+          <Legend />
+        </RailSection>
+
+        <RailSection title="Infraestructura (OSM)">
+          <OsmLegend points={osmPoints ?? []} />
+        </RailSection>
+
+        <RailSection title="Cobertura y contexto">
+          <RailToggleRow
+            icon={Building2}
+            label="Asentamientos humanos (GHSL)"
+            checked={showSettlement}
+            onChange={setShowSettlement}
+          />
           {showSettlement && <SettlementLegend />}
+          <RailToggleRow
+            icon={ShieldCheck}
+            label="Áreas protegidas (WDPA)"
+            checked={showProtectedAreas}
+            onChange={setShowProtectedAreas}
+          />
           {showProtectedAreas && <ProtectedAreasLegend />}
-        </div>
-      )}
+        </RailSection>
+      </MapControlRail>
       <CompoundReportDialog feature={reportFeature} onOpenChange={(open) => !open && setReportFeature(null)} />
     </div>
   )

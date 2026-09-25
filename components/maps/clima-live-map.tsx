@@ -16,7 +16,7 @@ import L from "leaflet"
 import { BasemapTileLayer } from "./basemap-tile-layer"
 import type { Layer, LatLngBoundsExpression, LeafletMouseEvent, PathOptions } from "leaflet"
 import "leaflet/dist/leaflet.css"
-import { Loader2 } from "lucide-react"
+import { Loader2, LandPlot } from "lucide-react"
 import useSWR from "swr"
 import {
   TEMP_LEVELS,
@@ -32,7 +32,8 @@ import { getOsmCategory } from "@/lib/osm/categories"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
 import { OsmLegend } from "@/components/maps/osm-legend"
 import { VeredasOverlay } from "@/components/maps/veredas-overlay"
-import { MunicipioTogglePanel, type MunicipioRiskSummary } from "@/components/maps/municipio-toggle-panel"
+import { MunicipioTogglePanelContent, type MunicipioRiskSummary } from "@/components/maps/municipio-toggle-panel"
+import { MapControlRail, RailSection, RailToggleRow } from "@/components/maps/map-control-rail"
 import { useVeredas } from "@/lib/veredas/use-veredas"
 import { useMunicipioToggles, isMunicipioActive } from "@/lib/veredas/municipio-toggles"
 import type { OsmPoint } from "@/lib/osm/api-types"
@@ -69,26 +70,6 @@ function BoundsSync({ onBoundsChange }: { onBoundsChange: (bounds: MapBounds) =>
   useMapEvents({ moveend: sync, zoomend: sync, resize: sync })
 
   return null
-}
-
-function ClimaLegend({ tempColors }: { tempColors: Record<string, string> | null }) {
-  return (
-    <div className="pointer-events-none absolute bottom-3 left-3 z-[400] rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
-      <p className="mb-1.5 font-medium text-foreground">Temperatura actual</p>
-      <ul className="flex flex-col gap-1">
-        {TEMP_LEVELS.map((level) => (
-          <li key={level} className="flex items-center gap-2 text-muted-foreground">
-            <span
-              className="size-2.5 shrink-0 rounded-full"
-              style={{ backgroundColor: tempColors?.[level] ?? "transparent" }}
-              aria-hidden="true"
-            />
-            {level}
-          </li>
-        ))}
-      </ul>
-    </div>
-  )
 }
 
 /**
@@ -300,23 +281,6 @@ function ClimaLiveMapImpl({
         {onBoundsChange && <BoundsSync onBoundsChange={onBoundsChange} />}
       </MapContainer>
 
-      <div className="absolute left-3 top-3 z-[400] rounded-md border border-border bg-card/95 px-2.5 py-1.5 text-xs shadow-sm backdrop-blur">
-        <label className="flex items-center gap-1.5 font-medium text-foreground">
-          <input
-            type="checkbox"
-            checked={showVeredas}
-            onChange={(e) => setShowVeredas(e.target.checked)}
-            className="size-3.5 accent-primary"
-          />
-          Límites veredales
-        </label>
-        {showVeredas && (
-          <p className="pl-5 pt-1 text-[11px] leading-snug text-muted-foreground">
-            Muestra el resumen de población e infraestructura de cada vereda.
-          </p>
-        )}
-      </div>
-
       {!data && !error && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-background/60">
           <Loader2 className="size-6 animate-spin text-muted-foreground" aria-hidden="true" />
@@ -327,16 +291,47 @@ function ClimaLiveMapImpl({
           <span className="text-sm text-destructive">No se pudo cargar la capa.</span>
         </Popup>
       )}
-      <ClimaLegend tempColors={tempColors} />
-      <div className="absolute right-3 top-16 z-[400] max-w-[200px]">
-        <OsmLegend points={osmPoints ?? []} />
-      </div>
-      <MunicipioTogglePanel
-        active={activeMunicipiosMap}
-        onToggle={toggleMunicipio}
-        summaries={municipioSummaries}
-        riskTitle="Temperatura (veredas por banda)"
-      />
+
+      <MapControlRail>
+        <RailSection title="Municipios" first>
+          <MunicipioTogglePanelContent
+            active={activeMunicipiosMap}
+            onToggle={toggleMunicipio}
+            summaries={municipioSummaries}
+            riskTitle="Temperatura (veredas por banda)"
+          />
+        </RailSection>
+
+        <RailSection title="Temperatura actual">
+          <ul className="flex flex-col gap-1">
+            {TEMP_LEVELS.map((level) => (
+              <li key={level} className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span
+                  className="size-2.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: tempColors?.[level] ?? "transparent" }}
+                  aria-hidden="true"
+                />
+                {level}
+              </li>
+            ))}
+          </ul>
+        </RailSection>
+
+        <RailSection title="Capas">
+          <RailToggleRow icon={LandPlot} label="Límites veredales" checked={showVeredas} onChange={setShowVeredas} />
+          {showVeredas && (
+            <p className="pl-6 text-[11px] leading-snug text-muted-foreground">
+              Muestra el resumen de población e infraestructura de cada vereda.
+            </p>
+          )}
+        </RailSection>
+
+        {osmPoints && osmPoints.length > 0 && (
+          <RailSection title="Infraestructura (OSM)">
+            <OsmLegend points={osmPoints} />
+          </RailSection>
+        )}
+      </MapControlRail>
     </div>
   )
 }
