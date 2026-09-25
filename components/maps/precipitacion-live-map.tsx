@@ -16,7 +16,7 @@ import {
 import { BasemapTileLayer } from "./basemap-tile-layer"
 import type { Layer, LatLngBoundsExpression, LeafletMouseEvent, PathOptions, WMSParams } from "leaflet"
 import "leaflet/dist/leaflet.css"
-import { ExternalLink, Loader2 } from "lucide-react"
+import { ExternalLink, Loader2, CloudRain, MapPinned, Building2, ShieldCheck } from "lucide-react"
 import useSWR from "swr"
 import {
   PRECIPITATION_LEVELS,
@@ -31,7 +31,9 @@ import { getOsmCategory } from "@/lib/osm/categories"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
 import { OsmLegend } from "@/components/maps/osm-legend"
 import { VeredasOverlay } from "@/components/maps/veredas-overlay"
-import { MunicipioTogglePanel, type MunicipioRiskSummary } from "@/components/maps/municipio-toggle-panel"
+import { FlyToMunicipio } from "@/components/maps/fly-to-municipio"
+import { MunicipioTogglePanelContent, type MunicipioRiskSummary } from "@/components/maps/municipio-toggle-panel"
+import { MapControlRail, RailSection, RailToggleRow } from "@/components/maps/map-control-rail"
 import { useVeredas } from "@/lib/veredas/use-veredas"
 import { useMunicipioToggles, isMunicipioActive } from "@/lib/veredas/municipio-toggles"
 import { WmsLegendChip } from "@/components/maps/wms-legend-chip"
@@ -88,7 +90,8 @@ function BoundsSync({ onBoundsChange }: BoundsSyncProps) {
   return null
 }
 
-function ThreatLegend({ title }: { title: string }) {
+/** Precipitation color-scale rows, rendered inside the shared MapControlRail. */
+function ThreatLegendList() {
   const [colors, setColors] = useState<string[] | null>(null)
 
   useEffect(() => {
@@ -96,21 +99,18 @@ function ThreatLegend({ title }: { title: string }) {
   }, [])
 
   return (
-    <div className="pointer-events-none absolute bottom-3 left-3 z-[400] rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
-      <p className="mb-1.5 font-medium text-foreground">{title}</p>
-      <ul className="flex flex-col gap-1">
-        {PRECIPITATION_LEVELS.map((level, i) => (
-          <li key={level} className="flex items-center gap-2 text-muted-foreground">
-            <span
-              className="size-2.5 shrink-0 rounded-full"
-              style={{ backgroundColor: colors?.[i] ?? "transparent" }}
-              aria-hidden="true"
-            />
-            {level}
-          </li>
-        ))}
-      </ul>
-    </div>
+    <ul className="flex flex-col gap-1">
+      {PRECIPITATION_LEVELS.map((level, i) => (
+        <li key={level} className="flex items-center gap-2 text-muted-foreground">
+          <span
+            className="size-2.5 shrink-0 rounded-full"
+            style={{ backgroundColor: colors?.[i] ?? "transparent" }}
+            aria-hidden="true"
+          />
+          {level}
+        </li>
+      ))}
+    </ul>
   )
 }
 
@@ -401,10 +401,38 @@ function PrecipitacionLiveMapImpl({
             </CircleMarker>
           ))}
         {onBoundsChange && <BoundsSync onBoundsChange={onBoundsChange} />}
+        <FlyToMunicipio veredas={veredasPoblacion} activeMunicipios={activeMunicipios} />
       </MapContainer>
 
-      <div className="absolute left-3 top-3 z-[400] flex flex-col gap-2 rounded-md border border-border bg-card/95 px-2.5 py-1.5 text-xs shadow-sm backdrop-blur">
-        <div className="flex items-center gap-1.5">
+      {!data && !error && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-background/60">
+          <Loader2 className="size-6 animate-spin text-muted-foreground" aria-hidden="true" />
+        </div>
+      )}
+      {error && (
+        <Popup position={AOI_CENTER}>
+          <span className="text-sm text-destructive">No se pudo cargar la capa.</span>
+        </Popup>
+      )}
+      <div className="absolute right-3 top-16 z-[300] max-w-[200px]">
+        <OsmLegend points={osmPoints ?? []} />
+      </div>
+
+      <MapControlRail>
+        <RailSection title="Municipios" first>
+          <MunicipioTogglePanelContent
+            active={activeMunicipiosMap}
+            onToggle={toggleMunicipio}
+            summaries={municipioSummaries}
+            riskTitle="Precipitación (veredas por nivel)"
+          />
+        </RailSection>
+
+        <RailSection title={windowLabel}>
+          <ThreatLegendList />
+        </RailSection>
+
+        <RailSection title="Modo y ventana">
           <div className="inline-flex rounded-md border border-border p-0.5" role="group" aria-label="Modo de datos">
             <button
               type="button"
@@ -431,7 +459,7 @@ function PrecipitacionLiveMapImpl({
             value={windowDays}
             onChange={(e) => setWindowDays(Number(e.target.value))}
             aria-label="Ventana de días"
-            className="rounded-sm border border-border bg-card px-1.5 py-1 font-medium text-foreground"
+            className="mt-1 rounded-sm border border-border bg-card px-1.5 py-1 font-medium text-foreground"
           >
             {windowOptions.map((d) => (
               <option key={d} value={d}>
@@ -439,126 +467,89 @@ function PrecipitacionLiveMapImpl({
               </option>
             ))}
           </select>
-        </div>
-        {mode === "historico" && (
-          <div className="flex items-center gap-1.5">
-            <span className="font-medium text-muted-foreground">Fuente:</span>
-            <div className="inline-flex rounded-md border border-border p-0.5" role="group" aria-label="Fuente de datos históricos">
-              <button
-                type="button"
-                onClick={() => setFuente("power")}
-                aria-pressed={fuente === "power"}
-                className={`rounded-sm px-2 py-1 font-medium transition-colors ${
-                  fuente === "power" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                NASA POWER
-              </button>
-              <button
-                type="button"
-                onClick={() => setFuente("ideam")}
-                aria-pressed={fuente === "ideam"}
-                className={`rounded-sm px-2 py-1 font-medium transition-colors ${
-                  fuente === "ideam" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                IDEAM (estaciones)
-              </button>
+          {mode === "historico" && (
+            <div className="mt-1.5 flex flex-col gap-1.5">
+              <span className="font-medium text-muted-foreground">Fuente:</span>
+              <div className="inline-flex rounded-md border border-border p-0.5" role="group" aria-label="Fuente de datos históricos">
+                <button
+                  type="button"
+                  onClick={() => setFuente("power")}
+                  aria-pressed={fuente === "power"}
+                  className={`rounded-sm px-2 py-1 font-medium transition-colors ${
+                    fuente === "power" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  NASA POWER
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFuente("ideam")}
+                  aria-pressed={fuente === "ideam"}
+                  className={`rounded-sm px-2 py-1 font-medium transition-colors ${
+                    fuente === "ideam" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  IDEAM (estaciones)
+                </button>
+              </div>
             </div>
-          </div>
-        )}
-        {mode === "historico" && fuente === "ideam" && (
-          <p className="max-w-[220px] text-[11px] leading-snug text-muted-foreground">
-            Datos de estación en tiempo real, más precisos donde hay cobertura, pero solo cerca de Zarzal y
-            Bugalagrande. Las veredas atenuadas no tienen estación cercana.
-          </p>
-        )}
-        <label className="flex items-center gap-1.5 font-medium text-foreground">
-          <input
-            type="checkbox"
+          )}
+          {mode === "historico" && fuente === "ideam" && (
+            <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+              Datos de estación en tiempo real, más precisos donde hay cobertura, pero solo cerca de Zarzal y
+              Bugalagrande. Las veredas atenuadas no tienen estación cercana.
+            </p>
+          )}
+        </RailSection>
+
+        <RailSection title="Capas">
+          <RailToggleRow
+            icon={CloudRain}
+            label="Tasa de precipitación (IMERG)"
             checked={showImerg}
-            onChange={(e) => setShowImerg(e.target.checked)}
-            className="size-3.5 accent-primary"
+            onChange={setShowImerg}
           />
-          Tasa de precipitación (IMERG)
-        </label>
-        {showImerg && (
-          <a
-            href={IMERG_WORLDVIEW_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="ml-5 inline-flex items-center gap-1 text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-          >
-            Ver escala en Worldview
-            <ExternalLink className="size-3" aria-hidden="true" />
-          </a>
-        )}
-        <div className="border-t border-border pt-1.5">
-          <label className="flex items-center gap-1.5 font-medium text-foreground">
-            <input
-              type="checkbox"
-              checked={showVeredas}
-              onChange={(e) => setShowVeredas(e.target.checked)}
-              className="size-3.5 accent-primary"
-            />
-            Límites veredales
-          </label>
+          {showImerg && (
+            <a
+              href={IMERG_WORLDVIEW_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="ml-5 inline-flex items-center gap-1 text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+            >
+              Ver escala en Worldview
+              <ExternalLink className="size-3" aria-hidden="true" />
+            </a>
+          )}
+          <RailToggleRow
+            icon={MapPinned}
+            label="Límites veredales"
+            checked={showVeredas}
+            onChange={setShowVeredas}
+          />
           {showVeredas && (
-            <p className="pl-5 pt-1 text-[11px] leading-snug text-muted-foreground">
+            <p className="ml-5 text-[11px] leading-snug text-muted-foreground">
               Muestra el resumen de población e infraestructura de cada vereda.
             </p>
           )}
-        </div>
-        <div className="border-t border-border pt-1.5">
-          <label className="flex items-center gap-1.5 font-medium text-foreground">
-            <input
-              type="checkbox"
-              checked={showSettlement}
-              onChange={(e) => setShowSettlement(e.target.checked)}
-              className="size-3.5 accent-primary"
-            />
-            Asentamientos humanos (GHSL)
-          </label>
-        </div>
-        <div className="border-t border-border pt-1.5">
-          <label className="flex items-center gap-1.5 font-medium text-foreground">
-            <input
-              type="checkbox"
-              checked={showProtectedAreas}
-              onChange={(e) => setShowProtectedAreas(e.target.checked)}
-              className="size-3.5 accent-primary"
-            />
-            Áreas protegidas (WDPA)
-          </label>
-        </div>
-      </div>
+        </RailSection>
 
-      {!data && !error && (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-background/60">
-          <Loader2 className="size-6 animate-spin text-muted-foreground" aria-hidden="true" />
-        </div>
-      )}
-      {error && (
-        <Popup position={AOI_CENTER}>
-          <span className="text-sm text-destructive">No se pudo cargar la capa.</span>
-        </Popup>
-      )}
-      <ThreatLegend title={windowLabel} />
-      <div className="absolute right-3 top-16 z-[400] max-w-[200px]">
-        <OsmLegend points={osmPoints ?? []} />
-      </div>
-      <MunicipioTogglePanel
-        active={activeMunicipiosMap}
-        onToggle={toggleMunicipio}
-        summaries={municipioSummaries}
-        riskTitle="Precipitación (veredas por nivel)"
-      />
-      {(showSettlement || showProtectedAreas) && (
-        <div className="absolute bottom-3 right-3 z-[400] flex flex-col items-end gap-2">
+        <RailSection title="Cobertura y contexto">
+          <RailToggleRow
+            icon={Building2}
+            label="Asentamientos humanos (GHSL)"
+            checked={showSettlement}
+            onChange={setShowSettlement}
+          />
           {showSettlement && <SettlementLegend />}
+          <RailToggleRow
+            icon={ShieldCheck}
+            label="Áreas protegidas (WDPA)"
+            checked={showProtectedAreas}
+            onChange={setShowProtectedAreas}
+          />
           {showProtectedAreas && <ProtectedAreasLegend />}
-        </div>
-      )}
+        </RailSection>
+      </MapControlRail>
     </div>
   )
 }

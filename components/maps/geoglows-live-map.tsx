@@ -19,7 +19,16 @@ import {
 import type { Layer, LatLngBoundsExpression, LeafletMouseEvent, PathOptions, WMSParams } from "leaflet"
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
-import { ExternalLink, Loader2 } from "lucide-react"
+import {
+  ExternalLink,
+  Loader2,
+  Waves,
+  CloudRain,
+  LandPlot,
+  GitBranch,
+  Building2,
+  ShieldCheck,
+} from "lucide-react"
 import { BasemapTileLayer } from "@/components/maps/basemap-tile-layer"
 import useSWR from "swr"
 import {
@@ -44,7 +53,9 @@ import { getOsmCategory } from "@/lib/osm/categories"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
 import { OsmLegend } from "@/components/maps/osm-legend"
 import { VeredasOverlay } from "@/components/maps/veredas-overlay"
-import { MunicipioTogglePanel, type MunicipioRiskSummary } from "@/components/maps/municipio-toggle-panel"
+import { FlyToMunicipio } from "@/components/maps/fly-to-municipio"
+import { MunicipioTogglePanelContent, type MunicipioRiskSummary } from "@/components/maps/municipio-toggle-panel"
+import { MapControlRail, RailSection, RailToggleRow } from "@/components/maps/map-control-rail"
 import { useVeredas } from "@/lib/veredas/use-veredas"
 import { useMunicipioToggles } from "@/lib/veredas/municipio-toggles"
 import { summarizeByMunicipio } from "@/lib/veredas/municipio-summary"
@@ -642,86 +653,9 @@ function GeoglowsLiveMapImpl({
         {onBoundsChange && (
           <OverlaySync onBoundsChange={onBoundsChange} onOverlayChange={handleOverlayChange} />
         )}
+        <FlyToMunicipio veredas={veredas} activeMunicipios={activeMunicipios} />
       </MapContainer>
 
-      <div className="absolute left-3 top-3 z-[400] flex flex-col gap-1.5 rounded-md border border-border bg-card/95 px-2.5 py-1.5 text-xs shadow-sm backdrop-blur">
-        <label className="flex items-center gap-1.5 font-medium text-foreground">
-          <input
-            type="checkbox"
-            checked={queryReachOnClick}
-            onChange={(e) => setQueryReachOnClick(e.target.checked)}
-            className="size-3.5 accent-[var(--primary)]"
-          />
-          Consultar río al hacer clic (GEOGLOWS)
-        </label>
-        <div className="my-0.5 h-px bg-border" aria-hidden="true" />
-        <label className="flex items-center gap-1.5 font-medium text-foreground">
-          <input
-            type="checkbox"
-            checked={showSusceptibility}
-            onChange={(e) => setShowSusceptibility(e.target.checked)}
-            className="size-3.5 accent-[var(--primary)]"
-          />
-          Susceptibilidad a inundación
-        </label>
-        <label className="flex items-center gap-1.5 font-medium text-foreground">
-          <input
-            type="checkbox"
-            checked={showPrecipitation}
-            onChange={(e) => setShowPrecipitation(e.target.checked)}
-            className="size-3.5 accent-[var(--primary)]"
-          />
-          Precipitación (IMERG)
-        </label>
-        <label className="flex items-center gap-1.5 font-medium text-foreground">
-          <input
-            type="checkbox"
-            checked={showVeredas}
-            onChange={(e) => setShowVeredas(e.target.checked)}
-            className="size-3.5 accent-[var(--primary)]"
-          />
-          Modelo propio de inundación (por vereda, incluye Zarzal)
-        </label>
-        <label className="flex items-center gap-1.5 font-medium text-foreground">
-          <input
-            type="checkbox"
-            checked={showQuebradas}
-            onChange={(e) => setShowQuebradas(e.target.checked)}
-            className="size-3.5 accent-[var(--primary)]"
-          />
-          Quebradas y ríos (clic para nombre)
-        </label>
-        <div className="my-0.5 h-px bg-border" aria-hidden="true" />
-        <label className="flex items-center gap-1.5 font-medium text-foreground">
-          <input
-            type="checkbox"
-            checked={showSettlement}
-            onChange={(e) => setShowSettlement(e.target.checked)}
-            className="size-3.5 accent-[var(--primary)]"
-          />
-          Asentamientos humanos (GHSL)
-        </label>
-        <label className="flex items-center gap-1.5 font-medium text-foreground">
-          <input
-            type="checkbox"
-            checked={showProtectedAreas}
-            onChange={(e) => setShowProtectedAreas(e.target.checked)}
-            className="size-3.5 accent-[var(--primary)]"
-          />
-          Áreas protegidas (WDPA)
-        </label>
-        {showPrecipitation && (
-          <a
-            href={IMERG_WORLDVIEW_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1 text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-          >
-            Ver escala en Worldview
-            <ExternalLink className="size-3" aria-hidden="true" />
-          </a>
-        )}
-      </div>
       {((showSusceptibility && !susceptibility && !susceptibilityError) ||
         (showQuebradas && !quebradas && !quebradasError)) && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-background/40">
@@ -729,33 +663,96 @@ function GeoglowsLiveMapImpl({
         </div>
       )}
 
-      <ReturnPeriodLegend />
-      <div className="absolute right-3 top-16 z-[400] max-w-[200px]">
-        <OsmLegend points={osmPoints ?? []} />
-      </div>
-      <MunicipioTogglePanel
-        active={activeMunicipiosMap}
-        onToggle={toggleMunicipio}
-        summaries={municipioSummaries}
-        riskTitle="Amenaza a inundación (modelo propio, veredas por nivel)"
-      />
-      {(showSusceptibility || showVeredas) && (
-        <SusceptibilityLegend
-          title={
-            showSusceptibility && showVeredas
-              ? "Susceptibilidad a inundación (zonificación oficial y modelo propio)"
-              : showSusceptibility
-                ? "Susceptibilidad a inundación (zonificación oficial)"
-                : "Amenaza a inundación (modelo propio, por vereda)"
-          }
-        />
-      )}
-      {(showSettlement || showProtectedAreas) && (
-        <div className="absolute bottom-3 left-56 z-[400] flex flex-col items-start gap-2">
+      <MapControlRail>
+        <RailSection title="Municipios" first>
+          <MunicipioTogglePanelContent
+            active={activeMunicipiosMap}
+            onToggle={toggleMunicipio}
+            summaries={municipioSummaries}
+            riskTitle="Amenaza a inundación (modelo propio, veredas por nivel)"
+          />
+        </RailSection>
+
+        <RailSection title="Río (en vivo)">
+          <RailToggleRow
+            icon={Waves}
+            label="Consultar río al hacer clic (GEOGLOWS)"
+            checked={queryReachOnClick}
+            onChange={setQueryReachOnClick}
+          />
+          <ReturnPeriodLegend />
+        </RailSection>
+
+        <RailSection title="Capas">
+          <RailToggleRow
+            icon={ShieldCheck}
+            label="Susceptibilidad a inundación"
+            checked={showSusceptibility}
+            onChange={setShowSusceptibility}
+          />
+          <RailToggleRow
+            icon={CloudRain}
+            label="Precipitación (IMERG)"
+            checked={showPrecipitation}
+            onChange={setShowPrecipitation}
+          />
+          {showPrecipitation && (
+            <a
+              href={IMERG_WORLDVIEW_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 pl-6 text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+            >
+              Ver escala en Worldview
+              <ExternalLink className="size-3" aria-hidden="true" />
+            </a>
+          )}
+          <RailToggleRow
+            icon={LandPlot}
+            label="Modelo propio de inundación (por vereda, incluye Zarzal)"
+            checked={showVeredas}
+            onChange={setShowVeredas}
+          />
+          {(showSusceptibility || showVeredas) && (
+            <SusceptibilityLegend
+              title={
+                showSusceptibility && showVeredas
+                  ? "Susceptibilidad a inundación (zonificación oficial y modelo propio)"
+                  : showSusceptibility
+                    ? "Susceptibilidad a inundación (zonificación oficial)"
+                    : "Amenaza a inundación (modelo propio, por vereda)"
+              }
+            />
+          )}
+          <RailToggleRow
+            icon={GitBranch}
+            label="Quebradas y ríos (clic para nombre)"
+            checked={showQuebradas}
+            onChange={setShowQuebradas}
+          />
+        </RailSection>
+
+        <RailSection title="Infraestructura (OSM)">
+          <OsmLegend points={osmPoints ?? []} />
+        </RailSection>
+
+        <RailSection title="Cobertura y contexto">
+          <RailToggleRow
+            icon={Building2}
+            label="Asentamientos humanos (GHSL)"
+            checked={showSettlement}
+            onChange={setShowSettlement}
+          />
           {showSettlement && <SettlementLegend />}
+          <RailToggleRow
+            icon={ShieldCheck}
+            label="Áreas protegidas (WDPA)"
+            checked={showProtectedAreas}
+            onChange={setShowProtectedAreas}
+          />
           {showProtectedAreas && <ProtectedAreasLegend />}
-        </div>
-      )}
+        </RailSection>
+      </MapControlRail>
 
       <StationDetailDialog
         station={selectedStation}

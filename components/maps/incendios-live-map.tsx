@@ -15,7 +15,9 @@ import {
 import type { LatLngBoundsExpression, WMSParams } from "leaflet"
 import "leaflet/dist/leaflet.css"
 import useSWR from "swr"
+import { CloudSun, Flame, Satellite, Trees, Building2, ShieldCheck, Mountain } from "lucide-react"
 import { BasemapTileLayer } from "@/components/maps/basemap-tile-layer"
+import { MapControlRail, RailSection, RailToggleRow } from "@/components/maps/map-control-rail"
 import {
   FIRE_THREAT_LEVELS,
   FIRE_THREAT_LEVEL_STYLES,
@@ -42,7 +44,8 @@ import { getOsmCategory } from "@/lib/osm/categories"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
 import { OsmLegend } from "@/components/maps/osm-legend"
 import { VeredasOverlay } from "@/components/maps/veredas-overlay"
-import { MunicipioTogglePanel, type MunicipioRiskSummary } from "@/components/maps/municipio-toggle-panel"
+import { FlyToMunicipio } from "@/components/maps/fly-to-municipio"
+import { MunicipioTogglePanelContent, type MunicipioRiskSummary } from "@/components/maps/municipio-toggle-panel"
 import { useMunicipioToggles, isMunicipioActive } from "@/lib/veredas/municipio-toggles"
 import { useVeredas } from "@/lib/veredas/use-veredas"
 import { summarizeByMunicipio } from "@/lib/veredas/municipio-summary"
@@ -100,7 +103,8 @@ function BoundsSync({ onBoundsChange }: BoundsSyncProps) {
   return null
 }
 
-function ThreatLegend({ title }: { title: string }) {
+/** Fire-threat color-scale rows, rendered inside the shared MapControlRail. */
+function ThreatLegendList() {
   const [colors, setColors] = useState<string[] | null>(null)
 
   useEffect(() => {
@@ -108,21 +112,18 @@ function ThreatLegend({ title }: { title: string }) {
   }, [])
 
   return (
-    <div className="pointer-events-none absolute bottom-3 left-3 z-[400] rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
-      <p className="mb-1.5 font-medium text-foreground">{title}</p>
-      <ul className="flex flex-col gap-1">
-        {FIRE_THREAT_LEVELS.map((level, i) => (
-          <li key={level} className="flex items-center gap-2 text-muted-foreground">
-            <span
-              className="size-2.5 shrink-0 rounded-full"
-              style={{ backgroundColor: colors?.[i] ?? "transparent" }}
-              aria-hidden="true"
-            />
-            {level}
-          </li>
-        ))}
-      </ul>
-    </div>
+    <ul className="flex flex-col gap-1">
+      {FIRE_THREAT_LEVELS.map((level, i) => (
+        <li key={level} className="flex items-center gap-2 text-muted-foreground">
+          <span
+            className="size-2.5 shrink-0 rounded-full"
+            style={{ backgroundColor: colors?.[i] ?? "transparent" }}
+            aria-hidden="true"
+          />
+          {level}
+        </li>
+      ))}
+    </ul>
   )
 }
 
@@ -134,8 +135,8 @@ function FwiLegend() {
 
 function FireLegend({ colors }: { colors: Record<FireDetection["confidence"], string> | null }) {
   return (
-    <div className="pointer-events-none rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
-      <p className="mb-1.5 font-medium text-foreground">Focos activos (MODIS / VIIRS)</p>
+    <div className="flex flex-col gap-1">
+      <p className="font-medium text-foreground">Focos activos (MODIS / VIIRS)</p>
       <ul className="flex flex-col gap-1">
         {(Object.keys(CONFIDENCE_STYLES) as FireDetection["confidence"][]).map((key) => (
           <li key={key} className="flex items-center gap-2 text-muted-foreground">
@@ -255,7 +256,7 @@ function IncendiosLiveMapImpl({
   // showing the same full picture rather than hiding MODIS.
   const [showModis, setShowModis] = useState(true)
   const [showViirs, setShowViirs] = useState(true)
-  const [showSentinel3, setShowSentinel3] = useState(false)
+  const [showSentinel3, setShowSentinel3] = useState(true)
   // Always on — this app's own model is the map's only hazard-coloring
   // source now; AmenazaIncendios' static 2014 PBOT zoning is no longer
   // surfaced here at all (see the component doc comment above).
@@ -445,19 +446,36 @@ function IncendiosLiveMapImpl({
             </CircleMarker>
           ))}
         {onBoundsChange && <BoundsSync onBoundsChange={onBoundsChange} />}
+        <FlyToMunicipio veredas={veredas} activeMunicipios={activeMunicipios} />
       </MapContainer>
 
-      <div className="absolute left-3 top-3 z-[400] flex flex-col gap-2 rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
-        <div className="flex flex-col gap-1.5">
-          <label className="flex items-center gap-2 font-medium text-foreground">
-            <input
-              type="checkbox"
-              checked={showForecast}
-              onChange={(e) => setShowForecast(e.target.checked)}
-              className="size-3.5 accent-primary"
-            />
-            Pronóstico FWI (ECMWF / GWIS)
-          </label>
+      <div className="absolute right-3 top-16 z-[300] max-w-[200px]">
+        <OsmLegend points={osmPoints ?? []} />
+      </div>
+
+      <MapControlRail>
+        <RailSection title="Municipios" first>
+          <MunicipioTogglePanelContent
+            active={activeMunicipiosMap}
+            onToggle={toggleMunicipio}
+            summaries={municipioSummaries}
+            riskTitle="Amenaza de incendio (modelo propio, veredas por nivel)"
+          />
+        </RailSection>
+
+        {showFireModel && (
+          <RailSection title="Amenaza por incendios forestales (modelo propio, por vereda)">
+            <ThreatLegendList />
+          </RailSection>
+        )}
+
+        <RailSection title="Pronóstico y focos activos">
+          <RailToggleRow
+            icon={CloudSun}
+            label="Pronóstico FWI (ECMWF / GWIS)"
+            checked={showForecast}
+            onChange={setShowForecast}
+          />
           {showForecast && (
             <select
               value={selectedDay}
@@ -471,36 +489,15 @@ function IncendiosLiveMapImpl({
               ))}
             </select>
           )}
-        </div>
-        <div className="flex flex-col gap-1.5 border-t border-border pt-1.5">
-          <p className="font-medium text-foreground">Focos activos</p>
-          <label className="flex items-center gap-2 text-foreground">
-            <input
-              type="checkbox"
-              checked={showModis}
-              onChange={(e) => setShowModis(e.target.checked)}
-              className="size-3.5 accent-primary"
-            />
-            MODIS
-          </label>
-          <label className="flex items-center gap-2 text-foreground">
-            <input
-              type="checkbox"
-              checked={showViirs}
-              onChange={(e) => setShowViirs(e.target.checked)}
-              className="size-3.5 accent-primary"
-            />
-            VIIRS (todas)
-          </label>
-          <label className="flex items-center gap-2 text-foreground">
-            <input
-              type="checkbox"
-              checked={showSentinel3}
-              onChange={(e) => setShowSentinel3(e.target.checked)}
-              className="size-3.5 accent-primary"
-            />
-            Sentinel-3
-          </label>
+          {showForecast && <FwiLegend />}
+          <RailToggleRow icon={Flame} label="MODIS" checked={showModis} onChange={setShowModis} />
+          <RailToggleRow icon={Flame} label="VIIRS (todas)" checked={showViirs} onChange={setShowViirs} />
+          <RailToggleRow
+            icon={Satellite}
+            label="Sentinel-3"
+            checked={showSentinel3}
+            onChange={setShowSentinel3}
+          />
           {needsFirms && (
             <label className="ml-5 flex items-center gap-1.5 text-muted-foreground">
               Periodo
@@ -517,75 +514,43 @@ function IncendiosLiveMapImpl({
               </select>
             </label>
           )}
-        </div>
-        <div className="border-t border-border pt-1.5">
-          <label className="flex items-center gap-2 font-medium text-foreground">
-            <input
-              type="checkbox"
-              checked={showLandCover}
-              onChange={(e) => setShowLandCover(e.target.checked)}
-              className="size-3.5 accent-primary"
-            />
-            Cobertura del suelo (MODIS)
-          </label>
-        </div>
-        <div className="border-t border-border pt-1.5">
-          <label className="flex items-center gap-2 font-medium text-foreground">
-            <input
-              type="checkbox"
-              checked={showSettlement}
-              onChange={(e) => setShowSettlement(e.target.checked)}
-              className="size-3.5 accent-primary"
-            />
-            Asentamientos humanos (GHSL)
-          </label>
-        </div>
-        <div className="border-t border-border pt-1.5">
-          <label className="flex items-center gap-2 font-medium text-foreground">
-            <input
-              type="checkbox"
-              checked={showProtectedAreas}
-              onChange={(e) => setShowProtectedAreas(e.target.checked)}
-              className="size-3.5 accent-primary"
-            />
-            Áreas protegidas (WDPA)
-          </label>
-        </div>
-        <div className="border-t border-border pt-1.5">
-          <label className="flex items-center gap-2 font-medium text-foreground">
-            <input
-              type="checkbox"
-              checked={showFireModel}
-              onChange={(e) => setShowFireModel(e.target.checked)}
-              className="size-3.5 accent-primary"
-            />
-            Modelo propio de incendios forestales
-          </label>
-        </div>
-      </div>
-
-      {showFireModel && (
-        <ThreatLegend title="Amenaza por incendios forestales (modelo propio, por vereda)" />
-      )}
-      <div className="absolute right-3 top-16 z-[400] max-w-[200px]">
-        <OsmLegend points={osmPoints ?? []} />
-      </div>
-      <MunicipioTogglePanel
-        active={activeMunicipiosMap}
-        onToggle={toggleMunicipio}
-        summaries={municipioSummaries}
-        riskTitle="Amenaza de incendio (modelo propio, veredas por nivel)"
-      />
-      {(showForecast || needsFirms || showSentinel3 || showLandCover || showSettlement || showProtectedAreas) && (
-        <div className="absolute bottom-3 right-3 z-[400] flex flex-col items-end gap-2">
-          {showForecast && <FwiLegend />}
           {needsFirms && <FireLegend colors={fireColors} />}
           {showSentinel3 && <S3Legend />}
+        </RailSection>
+
+        <RailSection title="Cobertura y contexto">
+          <RailToggleRow
+            icon={Trees}
+            label="Cobertura del suelo (MODIS)"
+            checked={showLandCover}
+            onChange={setShowLandCover}
+          />
           {showLandCover && <LandCoverLegend />}
+          <RailToggleRow
+            icon={Building2}
+            label="Asentamientos humanos (GHSL)"
+            checked={showSettlement}
+            onChange={setShowSettlement}
+          />
           {showSettlement && <SettlementLegend />}
+          <RailToggleRow
+            icon={ShieldCheck}
+            label="Áreas protegidas (WDPA)"
+            checked={showProtectedAreas}
+            onChange={setShowProtectedAreas}
+          />
           {showProtectedAreas && <ProtectedAreasLegend />}
-        </div>
-      )}
+        </RailSection>
+
+        <RailSection title="Modelo de amenaza">
+          <RailToggleRow
+            icon={Mountain}
+            label="Modelo propio de incendios forestales"
+            checked={showFireModel}
+            onChange={setShowFireModel}
+          />
+        </RailSection>
+      </MapControlRail>
     </div>
   )
 }

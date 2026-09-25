@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { Polygon, Popup } from "react-leaflet"
 import L from "leaflet"
-import type { LatLngExpression, LeafletMouseEvent } from "leaflet"
+import type { LatLngExpression, LeafletMouseEvent, Path } from "leaflet"
 import { useVeredas } from "@/lib/veredas/use-veredas"
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import type { VeredaFeature } from "@/lib/veredas/api-types"
@@ -122,11 +122,21 @@ export function VeredasOverlay({
               fillColor: highlightColor ?? "transparent",
               fillOpacity: 0.06,
             }
+        const basePathOptions = active ? activePathOptions : dimmedPathOptions
+        // Hover elevation: a thicker, fully-opaque outline (fill untouched)
+        // so a vereda visibly "lifts" under the cursor without fighting the
+        // hazard fill color underneath it — same idea OSIRIS-style rails use
+        // for row hover, applied here to the polygon itself.
+        const hoverPathOptions = {
+          ...basePathOptions,
+          weight: basePathOptions.weight + 1.5,
+          opacity: 1,
+        }
         return (
           <Polygon
             key={feature.id}
             positions={veredaPositions(feature.geometry.coordinates)}
-            pathOptions={active ? activePathOptions : dimmedPathOptions}
+            pathOptions={basePathOptions}
             eventHandlers={{
               // Some host maps (e.g. deslizamientos') listen for clicks anywhere
               // on the map to run their own lookup; stop that from firing
@@ -137,6 +147,15 @@ export function VeredasOverlay({
               click: (e: LeafletMouseEvent) => {
                 if (blockMapClick) L.DomEvent.stopPropagation(e)
                 onSelect?.(feature)
+              },
+              mouseover: (e: LeafletMouseEvent) => {
+                const layer = e.target as Path
+                layer.setStyle(hoverPathOptions)
+                layer.bringToFront()
+              },
+              mouseout: (e: LeafletMouseEvent) => {
+                const layer = e.target as Path
+                layer.setStyle(basePathOptions)
               },
             }}
           >

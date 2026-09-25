@@ -12,9 +12,12 @@ import {
 } from "react-leaflet"
 import type { LatLngBoundsExpression } from "leaflet"
 import "leaflet/dist/leaflet.css"
+import { Activity, Radio, History, LandPlot, FileWarning } from "lucide-react"
 import { BasemapTileLayer } from "@/components/maps/basemap-tile-layer"
 import { VeredasOverlay } from "@/components/maps/veredas-overlay"
-import { MunicipioTogglePanel, type MunicipioRiskSummary } from "@/components/maps/municipio-toggle-panel"
+import { FlyToMunicipio } from "@/components/maps/fly-to-municipio"
+import { MunicipioTogglePanelContent, type MunicipioRiskSummary } from "@/components/maps/municipio-toggle-panel"
+import { MapControlRail, RailSection, RailToggleRow } from "@/components/maps/map-control-rail"
 import { useVeredas } from "@/lib/veredas/use-veredas"
 import { useMunicipioToggles } from "@/lib/veredas/municipio-toggles"
 import { summarizeExposureByMunicipio } from "@/lib/veredas/municipio-summary"
@@ -169,7 +172,7 @@ function DamageReportsPanel() {
   const { data, isLoading } = useSismologiaDanos(true)
 
   return (
-    <div className="pointer-events-auto absolute right-3 top-3 z-[400] max-h-[60%] w-64 overflow-y-auto rounded-md border border-border bg-card/95 px-3 py-2.5 text-xs shadow-sm backdrop-blur">
+    <div className="pointer-events-auto absolute right-80 top-3 z-[400] max-h-[60%] w-64 overflow-y-auto rounded-md border border-border bg-card/95 px-3 py-2.5 text-xs shadow-sm backdrop-blur max-sm:right-3 max-sm:bottom-[48%] max-sm:top-auto">
       <p className="mb-1.5 font-medium text-foreground">Reportes de daños — Sevilla</p>
       {isLoading && <p className="text-muted-foreground">Cargando…</p>}
       {data && (
@@ -355,56 +358,57 @@ function SismologiaLiveMapImpl({
             </CircleMarker>
           ))}
         {onBoundsChange && <BoundsSync onBoundsChange={onBoundsChange} />}
+        <FlyToMunicipio veredas={veredas} activeMunicipios={activeMunicipios} />
       </MapContainer>
 
-      <div className="absolute left-3 top-3 z-[400] flex flex-col gap-1.5 rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
-        <label className="flex items-center gap-2 font-medium text-foreground">
-          <input type="checkbox" checked={showSgcLive} onChange={(e) => setShowSgcLive(e.target.checked)} className="size-3.5 accent-primary" />
-          SGC en vivo (5 días)
-        </label>
-        <label className="flex items-center gap-2 font-medium text-foreground">
-          <input type="checkbox" checked={showUsgs} onChange={(e) => setShowUsgs(e.target.checked)} className="size-3.5 accent-primary" />
-          USGS en vivo (90 días)
-        </label>
-        <label className="flex items-center gap-2 font-medium text-foreground">
-          <input type="checkbox" checked={showSgc} onChange={(e) => setShowSgc(e.target.checked)} className="size-3.5 accent-primary" />
-          SGC histórico
-        </label>
-        <div className="flex flex-col gap-1 border-t border-border pt-1.5">
-          <span className="font-medium text-foreground">Ventana temporal (solo visual)</span>
-          {TIME_WINDOWS.map((w) => (
-            <label key={w.value} className="flex items-center gap-2 text-muted-foreground">
-              <input
-                type="radio"
-                name="sismo-time-window"
-                checked={timeWindow === w.value}
-                onChange={() => setTimeWindow(w.value)}
-                className="size-3.5 accent-primary"
-              />
-              {w.label}
-            </label>
-          ))}
-        </div>
-        <label className="flex items-center gap-2 border-t border-border pt-1.5 font-medium text-foreground">
-          <input type="checkbox" checked={showVeredas} onChange={(e) => setShowVeredas(e.target.checked)} className="size-3.5 accent-primary" />
-          Límites veredales
-        </label>
-        <label className="flex items-center gap-2 border-t border-border pt-1.5 font-medium text-foreground">
-          <input type="checkbox" checked={showDamage} onChange={(e) => setShowDamage(e.target.checked)} className="size-3.5 accent-primary" />
-          Reportes de daños (Sevilla)
-        </label>
-      </div>
+      <MapControlRail>
+        <RailSection title="Municipios" first>
+          <MunicipioTogglePanelContent
+            active={activeMunicipiosMap}
+            onToggle={toggleMunicipio}
+            summaries={municipioSummaries}
+            riskTitle="Exposición por municipio"
+          />
+        </RailSection>
 
-      <div className="absolute bottom-3 left-3 z-[400] flex flex-col gap-2">
-        {showVeredas && <ExposureLegend />}
-        <MagnitudeLegend />
-      </div>
-      <MunicipioTogglePanel
-        active={activeMunicipiosMap}
-        onToggle={toggleMunicipio}
-        summaries={municipioSummaries}
-        riskTitle="Exposición por municipio"
-      />
+        <RailSection title="Eventos sísmicos">
+          <RailToggleRow icon={Radio} label="SGC en vivo (5 días)" checked={showSgcLive} onChange={setShowSgcLive} />
+          <RailToggleRow icon={Activity} label="USGS en vivo (90 días)" checked={showUsgs} onChange={setShowUsgs} />
+          <RailToggleRow icon={History} label="SGC histórico" checked={showSgc} onChange={setShowSgc} />
+        </RailSection>
+
+        <RailSection title="Ventana temporal (solo visual)">
+          <div className="flex flex-col gap-1">
+            {TIME_WINDOWS.map((w) => (
+              <label key={w.value} className="flex items-center gap-2 text-muted-foreground">
+                <input
+                  type="radio"
+                  name="sismo-time-window"
+                  checked={timeWindow === w.value}
+                  onChange={() => setTimeWindow(w.value)}
+                  className="size-3.5 accent-primary"
+                />
+                {w.label}
+              </label>
+            ))}
+          </div>
+        </RailSection>
+
+        <RailSection title="Magnitud">
+          <MagnitudeLegend />
+        </RailSection>
+
+        <RailSection title="Capas">
+          <RailToggleRow icon={LandPlot} label="Límites veredales" checked={showVeredas} onChange={setShowVeredas} />
+          {showVeredas && <ExposureLegend />}
+          <RailToggleRow
+            icon={FileWarning}
+            label="Reportes de daños (Sevilla)"
+            checked={showDamage}
+            onChange={setShowDamage}
+          />
+        </RailSection>
+      </MapControlRail>
       {showDamage && <DamageReportsPanel />}
     </div>
   )

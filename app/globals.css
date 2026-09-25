@@ -70,6 +70,11 @@
   --color-precipitacion-quinquenio-3: var(--precipitacion-quinquenio-3);
   --color-precipitacion-quinquenio-4: var(--precipitacion-quinquenio-4);
   --color-precipitacion-quinquenio-5: var(--precipitacion-quinquenio-5);
+  --color-precipitacion-decada-1: var(--precipitacion-decada-1);
+  --color-precipitacion-decada-2: var(--precipitacion-decada-2);
+  --color-precipitacion-decada-3: var(--precipitacion-decada-3);
+  --color-precipitacion-decada-4: var(--precipitacion-decada-4);
+  --color-precipitacion-decada-5: var(--precipitacion-decada-5);
   --color-clima-frio: var(--clima-frio);
   --color-clima-fresco: var(--clima-fresco);
   --color-clima-templado: var(--clima-templado);
@@ -233,6 +238,20 @@
   --precipitacion-quinquenio-5: oklch(0.5 0.18 340);
 
   /*
+   * Top precipitación histogram's 10-year-bin bars (see
+   * openmeteo-decadal-climatology.ts) — replaces the old IDEAM-normal
+   * histogram that this chart used to render, so it reuses that chart's
+   * "año en curso" (chart-4) and "años recientes" (historico-1/2) line
+   * colors above it and just needs three new bar hues, one per decade,
+   * kept clear of both those lines and the quinquenio bars below it.
+   */
+  --precipitacion-decada-1: oklch(0.58 0.15 95);
+  --precipitacion-decada-2: oklch(0.54 0.15 160);
+  --precipitacion-decada-3: oklch(0.5 0.15 230);
+  --precipitacion-decada-4: oklch(0.46 0.17 280);
+  --precipitacion-decada-5: oklch(0.44 0.19 330);
+
+  /*
    * Clima temperature ramp: a natural cool-to-warm arc, cool blue (frío) to
    * hot red (caluroso). It reads as a thermometer, not a hazard level, and
    * this map is never shown alongside the other ramps in the compound
@@ -301,36 +320,36 @@
 
 .dark {
   color-scheme: dark;
-  --background: oklch(0.21 0.005 240);
+  --background: oklch(0.14 0.005 240);
   --foreground: oklch(0.95 0.003 240);
-  --card: oklch(0.25 0.006 240);
+  --card: oklch(0.18 0.006 240);
   --card-foreground: oklch(0.95 0.003 240);
-  --popover: oklch(0.25 0.006 240);
+  --popover: oklch(0.18 0.006 240);
   --popover-foreground: oklch(0.95 0.003 240);
   --primary: oklch(0.68 0.11 210);
-  --primary-foreground: oklch(0.18 0.01 240);
-  --secondary: oklch(0.29 0.007 240);
+  --primary-foreground: oklch(0.14 0.01 240);
+  --secondary: oklch(0.21 0.007 240);
   --secondary-foreground: oklch(0.95 0.003 240);
-  --muted: oklch(0.29 0.007 240);
-  --muted-foreground: oklch(0.7 0.006 240);
-  --accent: oklch(0.32 0.012 210);
+  --muted: oklch(0.21 0.007 240);
+  --muted-foreground: oklch(0.68 0.006 240);
+  --accent: oklch(0.24 0.014 210);
   --accent-foreground: oklch(0.95 0.003 240);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 15%);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 13%);
   --ring: oklch(0.68 0.11 210);
   --chart-1: oklch(0.68 0.11 210);
   --chart-2: oklch(0.7 0.14 150);
   --chart-3: oklch(0.8 0.15 85);
   --chart-4: oklch(0.7 0.17 45);
   --chart-5: oklch(0.704 0.191 22.216);
-  --sidebar: oklch(0.25 0.006 240);
+  --sidebar: oklch(0.18 0.006 240);
   --sidebar-foreground: oklch(0.95 0.003 240);
   --sidebar-primary: oklch(0.68 0.11 210);
-  --sidebar-primary-foreground: oklch(0.18 0.01 240);
-  --sidebar-accent: oklch(0.32 0.012 210);
+  --sidebar-primary-foreground: oklch(0.14 0.01 240);
+  --sidebar-accent: oklch(0.24 0.014 210);
   --sidebar-accent-foreground: oklch(0.95 0.003 240);
-  --sidebar-border: oklch(1 0 0 / 12%);
+  --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.68 0.11 210);
 
   /* Demografia category identity colors: kept vivid and legible on dark surfaces. */
@@ -371,6 +390,11 @@
   --precipitacion-historico-1: oklch(0.72 0.13 170);
   --precipitacion-historico-2: oklch(0.7 0.17 300);
   --precipitacion-historico-3: oklch(0.72 0.18 348);
+  --precipitacion-decada-1: oklch(0.64 0.15 95);
+  --precipitacion-decada-2: oklch(0.6 0.15 160);
+  --precipitacion-decada-3: oklch(0.58 0.15 230);
+  --precipitacion-decada-4: oklch(0.54 0.17 280);
+  --precipitacion-decada-5: oklch(0.5 0.19 330);
   --precipitacion-quinquenio-1: oklch(0.66 0.13 125);
   --precipitacion-quinquenio-2: oklch(0.6 0.13 195);
   --precipitacion-quinquenio-3: oklch(0.54 0.16 250);
@@ -416,6 +440,35 @@
   --riesgo-compuesto-moderado: oklch(0.62 0.15 322);
   --riesgo-compuesto-alto: oklch(0.56 0.19 335);
   --riesgo-compuesto-muy-alto: oklch(0.48 0.2 345);
+}
+
+/*
+ * Leaflet popup entrance transition: Leaflet's default snaps the popup
+ * fully visible on the same frame it opens. This fades + scales it in from
+ * its anchor point instead, matching the "more interactive" feel of the
+ * rest of the map polish (hover-elevated veredas, flyTo transitions).
+ * Targets the wrapper Leaflet actually toggles visibility on
+ * (`leaflet-popup`), not `-content-wrapper`, so the animation doesn't
+ * fight Leaflet's own positioning transform on the outer element.
+ */
+@keyframes leaflet-popup-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.leaflet-popup {
+  animation: leaflet-popup-in 0.16s ease-out;
+  transform-origin: bottom center;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: var(--radius-lg);
 }
 
 @layer base {

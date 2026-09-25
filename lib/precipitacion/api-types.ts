@@ -68,54 +68,6 @@ export interface PrecipitacionAmenazaErrorResponse {
   error: string
 }
 
-/** One month of /api/precipitacion/climatologia — see lib/precipitacion/ideam-climatology.ts. */
-export interface ClimatologiaMesPunto {
-  month: number
-  monthLabel: string
-  /** Midpoint estimate (mm) of IDEAM's 1991-2020 normal band for this month, or null if unavailable at this point. */
-  mm1991_2020: number | null
-  /** The original published range, e.g. "150 - 200 mm". */
-  rango1991_2020: string | null
-  /** Midpoint estimate (mm) of IDEAM's 1981-2010 normal band for this month, or null if unavailable at this point. */
-  mm1981_2010: number | null
-  rango1981_2010: string | null
-  /** This calendar year's actual accumulated rainfall (Open-Meteo's historical archive) for this month, or null if the month hasn't started yet or has no valid data. */
-  mmActual: number | null
-  /** True only for the current, still-in-progress month — mmActual is a partial-month sum, not a full month. */
-  esMesEnCurso: boolean
-  /**
-   * This month's full-month accumulated rainfall (Open-Meteo) for each of
-   * the recent past years listed in `ClimatologiaResponse.aniosHistoricos`,
-   * ordered the same way (most recent year first) — e.g. [2025, 2024, 2023]
-   * when the current year is 2026. Unlike `mmActual`, these are always
-   * complete calendar years, so every entry is a full-month total.
-   */
-  historico: Array<{ anio: number; mm: number | null }>
-}
-
-export interface ClimatologiaResponse {
-  /** "vereda" for a single clicked vereda, "municipio" for an averaged whole-territory view. */
-  scope: "vereda" | "municipio"
-  ubicacion: {
-    /** Vereda name, or the municipio name again when scope is "municipio". */
-    nombre: string
-    municipio: string
-    codigoVereda?: string
-    /** Only set when scope is "municipio": how many vereda centroids were averaged together. */
-    veredasPromediadas?: number
-  }
-  generatedAt: string
-  /** 1-12, this calendar year's current month — the last month with any (possibly partial) actual data. */
-  mesEnCurso: number
-  /** The recent past years plotted in `meses[].historico`, most recent first — e.g. [2025, 2024, 2023]. */
-  aniosHistoricos: number[]
-  meses: ClimatologiaMesPunto[]
-}
-
-export interface ClimatologiaErrorResponse {
-  error: string
-}
-
 /** A non-overlapping 5-year window, e.g. { inicio: 1999, fin: 2003 } — see lib/precipitacion/openmeteo-quinquenal-climatology.ts. */
 export interface QuinquenioBin {
   inicio: number
@@ -163,5 +115,55 @@ export interface ClimatologiaQuinquenalResponse {
 }
 
 export interface ClimatologiaQuinquenalErrorResponse {
+  error: string
+}
+
+/** A non-overlapping 10-year window, e.g. { inicio: 1994, fin: 2003 } — see lib/precipitacion/openmeteo-decadal-climatology.ts. */
+export interface DecadaBin {
+  inicio: number
+  fin: number
+}
+
+/** One month of /api/precipitacion/climatologia-decadal. */
+export interface DecadaMesPunto {
+  month: number
+  monthLabel: string
+  /** This month's average monthly total (mm, Open-Meteo) across the years inside each 10-year bin, same order as `ClimatologiaDecadalResponse.decadas`, or null if no bin had valid data. */
+  decadas: Array<DecadaBin & { mm: number | null }>
+  /** This calendar year's actual accumulated rainfall (Open-Meteo) for this month, or null if the month hasn't started yet. */
+  mmActual: number | null
+  /** True only for the current, still-in-progress month — mmActual is a partial-month sum, not a full month. */
+  esMesEnCurso: boolean
+  /**
+   * This month's full-month total (mm, Open-Meteo) for each of the two
+   * calendar years just before the current one (e.g. [2025, 2024] when the
+   * current year is 2026), same order as
+   * `ClimatologiaDecadalResponse.aniosRecientes` — kept out of the 10-year
+   * bins above so the most recent, still-relevant years are always
+   * comparable individually rather than blended into a decade average.
+   */
+  reciente: Array<{ anio: number; mm: number | null }>
+}
+
+export interface ClimatologiaDecadalResponse {
+  /** "vereda" for a single clicked vereda, "municipio" for an averaged whole-territory view. */
+  scope: "vereda" | "municipio"
+  ubicacion: {
+    nombre: string
+    municipio: string
+    codigoVereda?: string
+    veredasPromediadas?: number
+  }
+  generatedAt: string
+  /** 1-12, this calendar year's current month. */
+  mesEnCurso: number
+  /** The 10-year bins plotted in `meses[].decadas`, oldest first — e.g. [{inicio:1994,fin:2003}, {inicio:2004,fin:2013}, {inicio:2014,fin:2023}]. */
+  decadas: DecadaBin[]
+  /** The two individually-plotted recent years, most recent first — e.g. [2025, 2024]. */
+  aniosRecientes: number[]
+  meses: DecadaMesPunto[]
+}
+
+export interface ClimatologiaDecadalErrorResponse {
   error: string
 }
