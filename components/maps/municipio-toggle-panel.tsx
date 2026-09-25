@@ -40,18 +40,18 @@ function Swatch({ colorToken }: { colorToken: string }) {
 }
 
 /**
- * Shared municipality control shown on every hazard map: an independent
- * on/off toggle per study-area municipality (Sevilla, Caicedonia, Zarzal),
- * each highlighting that municipality's veredas on the map and listing its
- * risk factors below the toggle. Positioned top-center so it clears the
- * per-map layer controls (top-left) and zoom/legends (top-right).
+ * Inner content of the municipio control — an independent on/off toggle per
+ * study-area municipality (Sevilla, Caicedonia, Zarzal, Roldanillo), each
+ * highlighting that municipality's veredas on the map and listing its risk
+ * factors below the toggle. Exposed separately from `MunicipioTogglePanel`
+ * so it can be embedded inside `MapControlRail`'s shared scroll area
+ * instead of floating in its own card.
  */
-export function MunicipioTogglePanel({ active, onToggle, summaries, riskTitle }: MunicipioTogglePanelProps) {
+export function MunicipioTogglePanelContent({ active, onToggle, summaries, riskTitle }: MunicipioTogglePanelProps) {
   const summaryByMunicipio = new Map((summaries ?? []).map((s) => [s.municipio, s]))
 
   return (
-    <div className="absolute left-1/2 top-3 z-[400] w-60 max-w-[calc(100%-1.5rem)] -translate-x-1/2 rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
-      <p className="mb-1.5 font-medium text-foreground">Municipios</p>
+    <>
       <div className="flex flex-wrap gap-x-3 gap-y-1">
         {MUNICIPIOS.map((municipio) => (
           <label key={municipio} className="flex items-center gap-1.5 font-medium text-foreground">
@@ -66,7 +66,7 @@ export function MunicipioTogglePanel({ active, onToggle, summaries, riskTitle }:
         ))}
       </div>
       {summaries && summaries.length > 0 && (
-        <div className="mt-2 flex flex-col gap-2 border-t border-border pt-2">
+        <div className="mt-2 flex flex-col gap-2 border-t border-border/70 pt-2">
           {riskTitle && <p className="font-medium text-muted-foreground">{riskTitle}</p>}
           {MUNICIPIOS.filter((m) => active[m]).map((municipio) => {
             const summary = summaryByMunicipio.get(municipio)
@@ -96,6 +96,21 @@ export function MunicipioTogglePanel({ active, onToggle, summaries, riskTitle }:
           })}
         </div>
       )}
+    </>
+  )
+}
+
+/**
+ * Shared municipality control shown on every hazard map not yet migrated to
+ * `MapControlRail` — floats top-center so it clears the per-map layer
+ * controls (top-left) and zoom/legends (top-right). Wraps
+ * `MunicipioTogglePanelContent` in its own floating card.
+ */
+export function MunicipioTogglePanel(props: MunicipioTogglePanelProps) {
+  return (
+    <div className="absolute left-1/2 top-3 z-[400] w-60 max-w-[calc(100%-1.5rem)] -translate-x-1/2 rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
+      <p className="mb-1.5 font-medium text-foreground">Municipios</p>
+      <MunicipioTogglePanelContent {...props} />
     </div>
   )
 }

@@ -16,7 +16,8 @@ import {
 } from "react-leaflet"
 import type { LatLngBoundsExpression, WMSParams } from "leaflet"
 import "leaflet/dist/leaflet.css"
-import { Loader2 } from "lucide-react"
+import { Loader2, Droplets, AlertTriangle, Route, History, Trees, Building2, ShieldCheck } from "lucide-react"
+import { MapControlRail, RailSection, RailToggleRow } from "@/components/maps/map-control-rail"
 import { SUSCEPTIBILITY_LEVELS, SUSCEPTIBILITY_LEVEL_STYLES, levelColorToken } from "@/lib/deslizamientos/levels"
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import { SMAP_TILE_URL, SMAP_COLOR_STOPS, SMAP_MAX_VALUE } from "@/lib/deslizamientos/smap"
@@ -42,7 +43,7 @@ import {
 import { useFaults } from "@/lib/deslizamientos/use-faults"
 import { useLandslideInventory } from "@/lib/deslizamientos/use-landslide-inventory"
 import { VeredasOverlay } from "@/components/maps/veredas-overlay"
-import { MunicipioTogglePanel, type MunicipioRiskSummary } from "@/components/maps/municipio-toggle-panel"
+import { MunicipioTogglePanelContent, type MunicipioRiskSummary } from "@/components/maps/municipio-toggle-panel"
 import { useVeredas } from "@/lib/veredas/use-veredas"
 import { useMunicipioToggles } from "@/lib/veredas/municipio-toggles"
 import { summarizeByMunicipio } from "@/lib/veredas/municipio-summary"
@@ -92,7 +93,8 @@ function BoundsSync({ onBoundsChange }: BoundsSyncProps) {
   return null
 }
 
-function Legend() {
+/** Susceptibility color-scale rows, rendered inside the shared MapControlRail. */
+function SusceptibilityLegendList() {
   const [colors, setColors] = useState<string[] | null>(null)
 
   useEffect(() => {
@@ -100,157 +102,18 @@ function Legend() {
   }, [])
 
   return (
-    <div className="pointer-events-none absolute bottom-3 left-3 z-[400] rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
-      <p className="mb-1.5 font-medium text-foreground">Susceptibilidad a deslizamiento</p>
-      <ul className="flex flex-col gap-1">
-        {SUSCEPTIBILITY_LEVELS.map((level, i) => (
-          <li key={level} className="flex items-center gap-2 text-muted-foreground">
-            <span
-              className="size-2.5 shrink-0 rounded-full"
-              style={{ backgroundColor: colors?.[i] ?? "transparent" }}
-              aria-hidden="true"
-            />
-            {level}
-          </li>
-        ))}
-      </ul>
-    </div>
-  )
-}
-
-interface MapLayersControlProps {
-  showSoilMoisture: boolean
-  onSoilMoistureChange: (checked: boolean) => void
-  showCriticalSites: boolean
-  onCriticalSitesChange: (checked: boolean) => void
-  showFaults: boolean
-  onFaultsChange: (checked: boolean) => void
-  showHistory: boolean
-  onHistoryChange: (checked: boolean) => void
-  showLandCover: boolean
-  onLandCoverChange: (checked: boolean) => void
-  showSettlement: boolean
-  onSettlementChange: (checked: boolean) => void
-  showProtectedAreas: boolean
-  onProtectedAreasChange: (checked: boolean) => void
-}
-
-/**
- * Toggle panel for this map's optional overlays: SMAP root-zone soil
- * moisture (a satellite proxy for the antecedent-moisture signal this
- * map's own rainfall trigger already estimates from ground-station-
- * informed rainfall — worth cross-checking against, not a duplicate; its
- * own in-map legend, `SoilMoistureLegend` below, appears while toggled on),
- * "Sitios críticos" (field-surveyed road-damage points from the Valle del
- * Cauca infrastructure secretariat — see lib/deslizamientos/critical-sites.ts)
- * "Fallas geológicas" (SGC fault traces — the same layer already used as
- * the hazard model's fault-proximity factor, see lib/deslizamientos/faults.ts,
- * shown here as raw lines instead of a derived score), "Movimientos en
- * masa históricos" (the SGC's national mass-movement inventory — the same
- * layer already used as the hazard model's historical-proximity factor,
- * see lib/deslizamientos/landslide-inventory.ts) and "Cobertura del suelo"
- * (GWIS/EFFIS's MODIS land-cover layer — ground-cover/vegetation context
- * for exposure, shared with the fire map, see lib/land-cover/gwis-landcover.ts),
- * "Asentamientos humanos" (GHSL built-up, Sentinel-2 derived) and "Áreas
- * protegidas" (WDPA polygons) — both from the same GWIS server, shared
- * across every hazard map, see lib/demografia/gwis-context-layers.ts.
- */
-function MapLayersControl({
-  showSoilMoisture,
-  onSoilMoistureChange,
-  showCriticalSites,
-  onCriticalSitesChange,
-  showFaults,
-  onFaultsChange,
-  showHistory,
-  onHistoryChange,
-  showLandCover,
-  onLandCoverChange,
-  showSettlement,
-  onSettlementChange,
-  showProtectedAreas,
-  onProtectedAreasChange,
-}: MapLayersControlProps) {
-  return (
-    <div className="absolute left-3 top-3 z-[400] flex flex-col gap-2 rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
-      <div className="flex flex-col gap-1.5">
-        <label className="flex items-center gap-2 font-medium text-foreground">
-          <input
-            type="checkbox"
-            checked={showSoilMoisture}
-            onChange={(e) => onSoilMoistureChange(e.target.checked)}
-            className="size-3.5 accent-primary"
+    <ul className="flex flex-col gap-1">
+      {SUSCEPTIBILITY_LEVELS.map((level, i) => (
+        <li key={level} className="flex items-center gap-2 text-muted-foreground">
+          <span
+            className="size-2.5 shrink-0 rounded-full"
+            style={{ backgroundColor: colors?.[i] ?? "transparent" }}
+            aria-hidden="true"
           />
-          Humedad del suelo (SMAP)
-        </label>
-      </div>
-      <div className="border-t border-border pt-1.5">
-        <label className="flex items-center gap-2 font-medium text-foreground">
-          <input
-            type="checkbox"
-            checked={showCriticalSites}
-            onChange={(e) => onCriticalSitesChange(e.target.checked)}
-            className="size-3.5 accent-primary"
-          />
-          Sitios críticos (2019)
-        </label>
-      </div>
-      <div className="border-t border-border pt-1.5">
-        <label className="flex items-center gap-2 font-medium text-foreground">
-          <input
-            type="checkbox"
-            checked={showFaults}
-            onChange={(e) => onFaultsChange(e.target.checked)}
-            className="size-3.5 accent-primary"
-          />
-          Fallas geológicas (SGC)
-        </label>
-      </div>
-      <div className="border-t border-border pt-1.5">
-        <label className="flex items-center gap-2 font-medium text-foreground">
-          <input
-            type="checkbox"
-            checked={showHistory}
-            onChange={(e) => onHistoryChange(e.target.checked)}
-            className="size-3.5 accent-primary"
-          />
-          Movimientos en masa históricos (SGC)
-        </label>
-      </div>
-      <div className="border-t border-border pt-1.5">
-        <label className="flex items-center gap-2 font-medium text-foreground">
-          <input
-            type="checkbox"
-            checked={showLandCover}
-            onChange={(e) => onLandCoverChange(e.target.checked)}
-            className="size-3.5 accent-primary"
-          />
-          Cobertura del suelo (MODIS)
-        </label>
-      </div>
-      <div className="border-t border-border pt-1.5">
-        <label className="flex items-center gap-2 font-medium text-foreground">
-          <input
-            type="checkbox"
-            checked={showSettlement}
-            onChange={(e) => onSettlementChange(e.target.checked)}
-            className="size-3.5 accent-primary"
-          />
-          Asentamientos humanos (GHSL)
-        </label>
-      </div>
-      <div className="border-t border-border pt-1.5">
-        <label className="flex items-center gap-2 font-medium text-foreground">
-          <input
-            type="checkbox"
-            checked={showProtectedAreas}
-            onChange={(e) => onProtectedAreasChange(e.target.checked)}
-            className="size-3.5 accent-primary"
-          />
-          Áreas protegidas (WDPA)
-        </label>
-      </div>
-    </div>
+          {level}
+        </li>
+      ))}
+    </ul>
   )
 }
 
@@ -287,15 +150,14 @@ function ProtectedAreasLegend() {
 }
 
 /**
- * Legend for the "Sitios críticos" overlay's severity scale
- * (`SEVERIDAD`, 1–4), shown only while the layer is toggled on. Positioned
- * by its parent — see `BottomRightLegends` — so it can stack with the
- * soil-moisture legend without overlapping.
+ * Legend for the "Sitios críticos" overlay's severity scale (`SEVERIDAD`,
+ * 1–4), shown only while the layer is toggled on, inside the shared rail's
+ * "Leyenda activa" section.
  */
 function CriticalSitesLegend() {
   return (
-    <div className="pointer-events-none rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
-      <p className="mb-1.5 font-medium text-foreground">Sitios críticos — severidad</p>
+    <div className="flex flex-col gap-1">
+      <p className="font-medium text-foreground">Sitios críticos — severidad</p>
       <ul className="flex flex-col gap-1">
         {Object.values(CRITICAL_SITE_SEVERITY_STYLES).map((style) => (
           <li key={style.code} className="flex items-center gap-2 text-muted-foreground">
@@ -315,7 +177,7 @@ function CriticalSitesLegend() {
  * Legend for the SMAP root-zone soil moisture overlay: a gradient bar built
  * from `SMAP_COLOR_STOPS` (GIBS's own published colormap), so it reproduces
  * NASA Worldview's legend instead of linking out to it. Shown only while
- * the layer is toggled on.
+ * the layer is toggled on, inside the shared rail's "Leyenda activa" section.
  */
 function SoilMoistureLegend() {
   const gradient = SMAP_COLOR_STOPS.map(
@@ -323,10 +185,10 @@ function SoilMoistureLegend() {
   ).join(", ")
 
   return (
-    <div className="pointer-events-none rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
-      <p className="mb-1.5 font-medium text-foreground">Humedad del suelo (SMAP)</p>
+    <div className="flex flex-col gap-1">
+      <p className="font-medium text-foreground">Humedad del suelo (SMAP)</p>
       <div
-        className="h-2.5 w-36 rounded-sm"
+        className="h-2.5 w-full rounded-sm"
         style={{ background: `linear-gradient(to right, ${gradient})` }}
         aria-hidden="true"
       />
@@ -336,13 +198,6 @@ function SoilMoistureLegend() {
       </div>
       <p className="mt-1 text-muted-foreground">0.00 – ≥0.70 m³/m³ · NASA GIBS</p>
     </div>
-  )
-}
-
-/** Stacks the optional bottom-right overlay legends so they never overlap. */
-function BottomRightLegends({ children }: { children: ReactNode }) {
-  return (
-    <div className="absolute bottom-3 right-3 z-[400] flex flex-col items-end gap-2">{children}</div>
   )
 }
 
@@ -644,41 +499,85 @@ function DeslizamientosLiveMapImpl({
           <span className="text-sm text-destructive">No se pudo cargar la capa.</span>
         </div>
       )}
-      <MapLayersControl
-        showSoilMoisture={showSoilMoisture}
-        onSoilMoistureChange={setShowSoilMoisture}
-        showCriticalSites={showCriticalSites}
-        onCriticalSitesChange={setShowCriticalSites}
-        showFaults={showFaults}
-        onFaultsChange={setShowFaults}
-        showHistory={showHistory}
-        onHistoryChange={setShowHistory}
-        showLandCover={showLandCover}
-        onLandCoverChange={setShowLandCover}
-        showSettlement={showSettlement}
-        onSettlementChange={setShowSettlement}
-        showProtectedAreas={showProtectedAreas}
-        onProtectedAreasChange={setShowProtectedAreas}
-      />
-      <div className="absolute right-3 top-16 z-[400] max-w-[200px]">
+      <div className="absolute bottom-3 left-3 z-[400] max-w-[200px]">
         <OsmLegend points={osmPoints ?? []} />
       </div>
-      <MunicipioTogglePanel
-        active={activeMunicipiosMap}
-        onToggle={toggleMunicipio}
-        summaries={municipioSummaries}
-        riskTitle="Susceptibilidad a deslizamiento (veredas por nivel)"
-      />
-      <Legend />
-      {(showCriticalSites || showSoilMoisture || showLandCover || showSettlement || showProtectedAreas) && (
-        <BottomRightLegends>
-          {showSoilMoisture && <SoilMoistureLegend />}
-          {showCriticalSites && <CriticalSitesLegend />}
-          {showLandCover && <LandCoverLegend />}
-          {showSettlement && <SettlementLegend />}
-          {showProtectedAreas && <ProtectedAreasLegend />}
-        </BottomRightLegends>
-      )}
+      <MapControlRail>
+        <RailSection title="Municipios" first>
+          <MunicipioTogglePanelContent
+            active={activeMunicipiosMap}
+            onToggle={toggleMunicipio}
+            summaries={municipioSummaries}
+            riskTitle="Susceptibilidad a deslizamiento (veredas por nivel)"
+          />
+        </RailSection>
+        <RailSection title="Susceptibilidad a deslizamiento">
+          <SusceptibilityLegendList />
+        </RailSection>
+        <RailSection title="Datos satelitales">
+          <RailToggleRow
+            icon={Droplets}
+            label="Humedad del suelo (SMAP)"
+            checked={showSoilMoisture}
+            onChange={setShowSoilMoisture}
+          />
+        </RailSection>
+        <RailSection title="Referencia oficial (SGC)">
+          <div className="flex flex-col gap-0.5">
+            <RailToggleRow
+              icon={AlertTriangle}
+              label="Sitios críticos (2019)"
+              checked={showCriticalSites}
+              onChange={setShowCriticalSites}
+            />
+            <RailToggleRow
+              icon={Route}
+              label="Fallas geológicas"
+              checked={showFaults}
+              onChange={setShowFaults}
+            />
+            <RailToggleRow
+              icon={History}
+              label="Movimientos en masa históricos"
+              checked={showHistory}
+              onChange={setShowHistory}
+            />
+          </div>
+        </RailSection>
+        <RailSection title="Cobertura y contexto">
+          <div className="flex flex-col gap-0.5">
+            <RailToggleRow
+              icon={Trees}
+              label="Cobertura del suelo (MODIS)"
+              checked={showLandCover}
+              onChange={setShowLandCover}
+            />
+            <RailToggleRow
+              icon={Building2}
+              label="Asentamientos humanos (GHSL)"
+              checked={showSettlement}
+              onChange={setShowSettlement}
+            />
+            <RailToggleRow
+              icon={ShieldCheck}
+              label="Áreas protegidas (WDPA)"
+              checked={showProtectedAreas}
+              onChange={setShowProtectedAreas}
+            />
+          </div>
+        </RailSection>
+        {(showCriticalSites || showSoilMoisture || showLandCover || showSettlement || showProtectedAreas) && (
+          <RailSection title="Leyenda activa">
+            <div className="flex flex-col gap-3">
+              {showSoilMoisture && <SoilMoistureLegend />}
+              {showCriticalSites && <CriticalSitesLegend />}
+              {showLandCover && <LandCoverLegend />}
+              {showSettlement && <SettlementLegend />}
+              {showProtectedAreas && <ProtectedAreasLegend />}
+            </div>
+          </RailSection>
+        )}
+      </MapControlRail>
     </div>
   )
 }
