@@ -25,7 +25,7 @@ Todas las capas cubren Sevilla y Caicedonia; Precipitación y Clima extienden el
 ## Arquitectura
 
 - **Framework:** Next.js (App Router) con React 19 y TypeScript.
-- **Mapas:** Leaflet + react-leaflet, con capas GeoJSON y teselas vectoriales.
+- **Mapas:** MapLibre GL (vía react-map-gl), con fuentes GeoJSON nativas, teselas vectoriales y overlays raster/WMS.
 - **Datos:** rutas de API en `app/api/*` que consultan servicios externos y un backend QGIS, con revalidación y caché por capa. La obtención de datos en cliente usa SWR.
 - **Gráficas:** Recharts mediante los componentes de gráfico de shadcn/ui.
 - **Estilos:** Tailwind CSS v4 con tokens de diseño semánticos en `app/globals.css` y soporte de tema claro/oscuro.

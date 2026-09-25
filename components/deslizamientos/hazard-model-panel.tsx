@@ -35,7 +35,7 @@ const FACTORS = [
     label: "3. Cercanía a una falla geológica",
     weight: "20% del factor estático",
     detail:
-      "Distancia real punto-a-segmento (no al vértice más cercano) hasta la traza de falla más próxima del Servicio Geológico Colombiano (SGC), Atlas Geológico de Colombia. Deja de influir a partir de 2 km. También disponible como capa independiente en el mapa.",
+      "Distancia real punto-a-segmento (no al vértice más cercano) hasta la traza de falla más próxima del Servicio Geológico Colombiano (SGC), Atlas Geológico de Colombia. Deja de influir a partir de 2 km. La capa de fallas geológicas está disponible en el mapa de Sismología.",
   },
   {
     label: "4. Cercanía a un movimiento en masa histórico",

@@ -26,6 +26,7 @@ const LICENSE_GROUPS: LicenseGroup[] = [
       "html2canvas-pro",
       "jspdf",
       "lucide-react (ISC, ver abajo)",
+      "react-map-gl",
       "recharts",
       "shadcn",
       "swr",
@@ -43,7 +44,7 @@ const LICENSE_GROUPS: LicenseGroup[] = [
   },
   {
     license: "BSD-3-Clause",
-    packages: ["@mapbox/vector-tile", "pbf"],
+    packages: ["@mapbox/vector-tile", "maplibre-gl", "pbf"],
   },
   {
     license: "Apache-2.0",
@@ -56,10 +57,6 @@ const LICENSE_GROUPS: LicenseGroup[] = [
   {
     license: "MPL-2.0",
     packages: ["@vercel/analytics"],
-  },
-  {
-    license: "Hippocratic-2.1",
-    packages: ["react-leaflet"],
   },
 ]
 

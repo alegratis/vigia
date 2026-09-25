@@ -19,7 +19,8 @@ import "maplibre-gl/dist/maplibre-gl.css"
 if (typeof window !== "undefined") {
   setWorkerUrl("/maplibre-gl-worker.mjs")
 }
-import { Activity, Radio, History, LandPlot, FileWarning } from "lucide-react"
+import { Activity, Radio, History, LandPlot, FileWarning, Route } from "lucide-react"
+import { useFaults } from "@/lib/deslizamientos/use-faults"
 import { VeredaPopupContent } from "@/components/maps/vereda-popup-content"
 import { MunicipioTogglePanelContent, type MunicipioRiskSummary } from "@/components/maps/municipio-toggle-panel"
 import { MapControlRail, RailSection, RailToggleRow } from "@/components/maps/map-control-rail"
@@ -247,9 +248,12 @@ function SismologiaLiveMapImpl({
   const [timeWindow, setTimeWindow] = useState<TimeWindow>("all")
   const [showDamage, setShowDamage] = useState(false)
   const [showVeredas, setShowVeredas] = useState(true)
+  const [showFaults, setShowFaults] = useState(false)
+  const { traces: faultTraces } = useFaults(showFaults)
   const [resolvedColors, setResolvedColors] = useState<Record<string, string> | null>(null)
   const [exposureColors, setExposureColors] = useState<Record<SeismicExposureLevel, string> | null>(null)
   const [noDataColor, setNoDataColor] = useState<string | null>(null)
+  const [faultLineColor, setFaultLineColor] = useState<string | null>(null)
   const [popupInfo, setPopupInfo] = useState<PopupInfo | null>(null)
   const [cursor, setCursor] = useState<string>("")
 
@@ -264,6 +268,7 @@ function SismologiaLiveMapImpl({
       ) as Record<SeismicExposureLevel, string>,
     )
     setNoDataColor(resolveCssColor("var(--muted-foreground)"))
+    setFaultLineColor(resolveCssColor("var(--fault-line)"))
   }, [])
 
   const visibleEvents = useMemo(() => {
@@ -326,6 +331,21 @@ function SismologiaLiveMapImpl({
     }
   }, [visibleEvents, resolvedColors])
 
+  const faultsGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
+    if (!faultTraces) return { type: "FeatureCollection", features: [] }
+    return {
+      type: "FeatureCollection",
+      features: faultTraces.flatMap((trace) =>
+        trace.paths.map((path, i) => ({
+          type: "Feature" as const,
+          id: `${trace.id}-${i}`,
+          properties: { nombre: trace.nombre, tipo: trace.tipo },
+          geometry: { type: "LineString" as const, coordinates: path },
+        })),
+      ),
+    }
+  }, [faultTraces])
+
   const osmGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
     if (!osmPoints || !osmColors) return { type: "FeatureCollection", features: [] }
     return {
@@ -344,8 +364,9 @@ function SismologiaLiveMapImpl({
     if (showVeredas) ids.push("veredas-fill")
     ids.push("seismic-events")
     if (osmPoints && osmPoints.length > 0) ids.push("osm-points")
+    if (showFaults) ids.push("faults-hit")
     return ids
-  }, [showVeredas, osmPoints])
+  }, [showVeredas, osmPoints, showFaults])
 
   const handleMapClick = useCallback(
     (e: MapLayerMouseEvent) => {
@@ -396,6 +417,22 @@ function SismologiaLiveMapImpl({
           content: <VeredaPopupContent feature={feature} hazardKind="sismologia" colored />,
         })
         onVeredaSelect?.(feature)
+        return
+      }
+      const faultFeature = e.features?.find((f) => f.layer.id === "faults-hit")
+      if (faultFeature) {
+        const props = faultFeature.properties as { nombre: string | null; tipo: string | null }
+        setPopupInfo({
+          longitude: lng,
+          latitude: lat,
+          content: (
+            <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
+              <strong>{props.nombre ?? "Falla sin nombre"}</strong>
+              <span>{props.tipo ?? "Tipo no especificado"}</span>
+              <span style={{ color: "#888" }}>Servicio Geológico Colombiano (SGC)</span>
+            </div>
+          ),
+        })
         return
       }
       setPopupInfo(null)
@@ -512,6 +549,28 @@ function SismologiaLiveMapImpl({
           </Source>
         )}
 
+        {showFaults && (
+          <Source id="faults-source" type="geojson" data={faultsGeoJson}>
+            <Layer
+              id="faults-line"
+              type="line"
+              paint={{ "line-color": faultLineColor ?? "#888", "line-width": 2, "line-dasharray": [6, 4] }}
+            />
+            {/*
+             * A thin dashed line's clickable area is only ~1px wide, so
+             * clicks land on the vereda polygon underneath almost every
+             * time. This invisible, much wider companion layer carries the
+             * actual click interaction (registered via `interactiveLayerIds`
+             * above) while the thin dashed layer stays purely decorative.
+             */}
+            <Layer
+              id="faults-hit"
+              type="line"
+              paint={{ "line-color": faultLineColor ?? "#888", "line-width": 18, "line-opacity": 0 }}
+            />
+          </Source>
+        )}
+
         {popupInfo && (
           <Popup
             longitude={popupInfo.longitude}
@@ -571,6 +630,10 @@ function SismologiaLiveMapImpl({
             checked={showDamage}
             onChange={setShowDamage}
           />
+        </RailSection>
+
+        <RailSection title="Referencia oficial (SGC)">
+          <RailToggleRow icon={Route} label="Fallas geológicas" checked={showFaults} onChange={setShowFaults} />
         </RailSection>
       </MapControlRail>
       {showDamage && <DamageReportsPanel />}
