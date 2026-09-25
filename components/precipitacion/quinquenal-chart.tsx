@@ -60,7 +60,7 @@ function recienteColor(rankFromMostRecent: number) {
 
 /**
  * Second monthly rainfall chart below the precipitación map: instead of
- * IDEAM's two 30-year normal periods (see ClimatologyChart above it), this
+ * the ten-year windows the DecadalChart above it uses, this
  * one computes its own monthly averages directly from Open-Meteo's
  * historical archive over consecutive 5-year windows starting in 1999
  * (see lib/precipitacion/openmeteo-quinquenal-climatology.ts) — one bar
