@@ -7,9 +7,9 @@ import "server-only"
  * has been down and returning no data. This computes the same kind of
  * "long-run normal" directly from Open-Meteo's historical archive — the
  * same source and endpoint as openmeteo-quinquenal-climatology.ts below
- * it on the panel — bucketed into three consecutive 10-year windows
- * instead of that module's 5-year windows, for a longer look back (30
- * years total) at the cost of finer within-window detail.
+ * it on the panel — bucketed into five consecutive 10-year windows
+ * instead of that module's 5-year windows, for a much longer look back
+ * (50 years total) at the cost of finer within-window detail.
  *
  * Same archive endpoint and "why Open-Meteo, not NASA POWER" rationale as
  * openmeteo-historical-client.ts's getYearMonthlyPrecipitation.
@@ -22,7 +22,7 @@ const ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive"
 const REVALIDATE_SECONDS = 3600 * 24
 
 const BIN_LENGTH_YEARS = 10
-const NUM_BINS = 3
+const NUM_BINS = 5
 
 /** A non-overlapping 10-year window, e.g. { inicio: 1994, fin: 2003 }. */
 export interface DecadaBin {
@@ -37,10 +37,10 @@ export interface DecadaBin {
  * openmeteo-historical-client.ts's getRecentPastYears), same convention as
  * openmeteo-quinquenal-climatology.ts's getQuinquenioBins. Computed
  * backward from the last binnable year rather than forward from a fixed
- * start year, so the three decades always mean "last 10 years, the 10
- * before that, and the 10 before that" relative to today instead of
- * drifting to some other fixed range — e.g. today (2026) yields
- * [1994-2003, 2004-2013, 2014-2023].
+ * start year, so the five decades always mean "last 10 years, and the
+ * four consecutive 10-year windows before that" relative to today
+ * instead of drifting to some other fixed range — e.g. today (2026)
+ * yields [1974-1983, 1984-1993, 1994-2003, 2004-2013, 2014-2023].
  */
 export function getDecadaBins(referenceDate: Date = new Date()): DecadaBin[] {
   const currentYear = referenceDate.getUTCFullYear()
@@ -66,8 +66,8 @@ export interface DecadaSeries extends DecadaBin {
 
 /**
  * Fetches one point's entire daily rainfall history across every bin in
- * one request (e.g. 1994-01-01 through 2023-12-31 today, 30 years in a
- * single call rather than 3 separate ones), then buckets it first by
+ * one request (e.g. 1974-01-01 through 2023-12-31 today, 50 years in a
+ * single call rather than 5 separate ones), then buckets it first by
  * calendar year+month, then averages each month across the 10 years
  * inside each bin.
  */

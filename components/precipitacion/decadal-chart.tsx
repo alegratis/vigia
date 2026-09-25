@@ -47,9 +47,9 @@ function recienteKey(anio: number) {
   return `reciente_${anio}`
 }
 
-/** Color for a 10-year bin bar: three distinct hues (`--precipitacion-decada-1..3`), one per decade. */
+/** Color for a 10-year bin bar: five distinct hues (`--precipitacion-decada-1..5`), one per decade. */
 function decadaColor(index: number) {
-  return `var(--precipitacion-decada-${(index % 3) + 1})`
+  return `var(--precipitacion-decada-${(index % 5) + 1})`
 }
 
 /** The two most recent individual years reuse the first two "historico" hues from the quinquenal histogram, for a consistent visual vocabulary across all three charts. */
@@ -64,8 +64,8 @@ function recienteColor(rankFromMostRecent: number) {
  * a service that has been down, leaving that chart permanently empty.
  * This one computes its own monthly averages directly from Open-Meteo's
  * historical archive (the same source the quinquenal histogram below it
- * already uses) over three consecutive 10-year windows — a longer,
- * 30-year look back than the quinquenal chart's 5-year bins, at the cost
+ * already uses) over five consecutive 10-year windows — a much longer,
+ * 50-year look back than the quinquenal chart's 5-year bins, at the cost
  * of finer within-window detail, so the two charts complement rather than
  * duplicate each other. The current year and the two years right before
  * it are left out of the bins and shown as individual lines instead (same
@@ -340,8 +340,8 @@ export function DecadalChart({ vereda }: DecadalChartProps) {
           >
             Open-Meteo
           </a>{" "}
-          (análisis ECMWF IFS y reanálisis ERA5) a lo largo de una década completa — 10 años, para una mirada
-          más larga al pasado (30 años en total) que el histograma de quinquenios abajo; cada década tiene su
+            (análisis ECMWF IFS y reanálisis ERA5) a lo largo de una década completa — 10 años, para una mirada
+            mucho más larga al pasado (50 años en total) que el histograma de quinquenios abajo; cada década tiene su
           propio color, en orden cronológico según la leyenda. El año {currentYear} y los dos anteriores se
           dejan fuera de las barras a propósito y se muestran como líneas individuales (misma convención que
           el histograma de quinquenios) para no diluir la comparación más reciente dentro de un promedio.
