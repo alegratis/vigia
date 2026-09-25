@@ -1,25 +1,29 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import {
-  AttributionControl,
-  CircleMarker,
-  GeoJSON,
-  ImageOverlay,
-  MapContainer,
-  Polygon,
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { useTheme } from "next-themes"
+import Map, {
+  Source,
+  Layer,
   Popup,
-  TileLayer,
-  WMSTileLayer,
-  ZoomControl,
-  useMap,
-} from "react-leaflet"
-import type { Layer, LatLngBoundsExpression, LatLngExpression, PathOptions, WMSParams } from "leaflet"
-import "leaflet/dist/leaflet.css"
+  NavigationControl,
+  AttributionControl,
+  type MapRef,
+  type MapLayerMouseEvent,
+} from "react-map-gl/maplibre"
+import { setWorkerUrl } from "maplibre-gl"
+import "maplibre-gl/dist/maplibre-gl.css"
+
+// See deslizamientos-live-map.tsx for why this self-hosted worker override
+// is needed under Turbopack.
+if (typeof window !== "undefined") {
+  setWorkerUrl("/maplibre-gl-worker.mjs")
+}
 import useSWR from "swr"
 import { Download, Loader2, Mountain, Droplets, Flame, CloudRain } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { BasemapTileLayer } from "@/components/maps/basemap-tile-layer"
+import { maplibreBasemapStyle } from "@/lib/maps/maplibre-basemap-style"
+import { wmsRasterSource } from "@/lib/maps/wms-raster-source"
 import { SUSCEPTIBILITY_LEVELS, levelColorToken } from "@/lib/deslizamientos/levels"
 import { useVeredas } from "@/lib/veredas/use-veredas"
 import { FLOOD_SUSCEPTIBILITY_LEVELS, floodSusceptibilityColorToken } from "@/lib/inundaciones/levels"
@@ -37,6 +41,11 @@ import type { IncendiosAmenazaResponse } from "@/lib/incendios/api-types"
 import type { PrecipitacionAmenazaResponse } from "@/lib/precipitacion/api-types"
 import type { FiresResponse } from "@/lib/firms/api-types"
 
+/**
+ * MapLibre GL port (see v0_plans/grand-method.md, Phase 3) — follows the
+ * other hazard maps' patterns. No hazard data/model/API logic changed.
+ */
+
 type HazardKey = "deslizamientos" | "inundaciones" | "incendios" | "precipitacion"
 
 const HAZARD_META: Record<HazardKey, { label: string; icon: typeof Mountain }> = {
@@ -44,6 +53,12 @@ const HAZARD_META: Record<HazardKey, { label: string; icon: typeof Mountain }> =
   inundaciones: { label: "Inundaciones", icon: Droplets },
   incendios: { label: "Incendios", icon: Flame },
   precipitacion: { label: "Precipitación", icon: CloudRain },
+}
+
+interface PopupInfo {
+  longitude: number
+  latitude: number
+  content: ReactNode
 }
 
 const inundacionesFetcher = async (url: string): Promise<InundacionesSusceptibilidadResponse> => {
@@ -65,70 +80,6 @@ const firesFetcher = async (url: string): Promise<FiresResponse> => {
   const res = await fetch(url)
   if (!res.ok) throw new Error("No se pudo cargar los focos activos")
   return res.json()
-}
-
-/** Converts a vereda's GeoJSON `[lon, lat]` MultiPolygon rings to Leaflet's `[lat, lon]` order. */
-function toLatLngRings(coordinates: number[][][][]): LatLngExpression[][][] {
-  return coordinates.map((polygon) => polygon.map((ring) => ring.map(([lon, lat]) => [lat, lon])))
-}
-
-/** Fits the map to the selected vereda's bbox whenever it changes. */
-function FitToVereda({ vereda }: { vereda: VeredaListEntry }) {
-  const map = useMap()
-  useEffect(() => {
-    const [south, west, north, east] = vereda.bbox
-    const bounds: LatLngBoundsExpression = [
-      [south, west],
-      [north, east],
-    ]
-    map.fitBounds(bounds, { padding: [24, 24] })
-  }, [map, vereda])
-  return null
-}
-
-/** Reports the current viewport in the shape GEOGLOWS' export proxy expects, refreshed on move/zoom. */
-function useGeoglowsOverlay(enabled: boolean) {
-  const map = useMap()
-  const [overlay, setOverlay] = useState<{ bounds: GeoglowsBounds; width: number; height: number } | null>(null)
-
-  useEffect(() => {
-    if (!enabled) return
-    const sync = () => {
-      const b = map.getBounds()
-      const size = map.getSize()
-      setOverlay({
-        bounds: { north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() },
-        width: size.x,
-        height: size.y,
-      })
-    }
-    sync()
-    map.on("moveend", sync)
-    map.on("zoomend", sync)
-    return () => {
-      map.off("moveend", sync)
-      map.off("zoomend", sync)
-    }
-  }, [map, enabled])
-
-  return overlay
-}
-
-function GeoglowsOverlay() {
-  const overlay = useGeoglowsOverlay(true)
-  if (!overlay) return null
-  const bounds: LatLngBoundsExpression = [
-    [overlay.bounds.south, overlay.bounds.west],
-    [overlay.bounds.north, overlay.bounds.east],
-  ]
-  return (
-    <ImageOverlay
-      url={buildProxyExportUrl(overlay.bounds, overlay.width, overlay.height)}
-      bounds={bounds}
-      opacity={0.9}
-      crossOrigin="anonymous"
-    />
-  )
 }
 
 function HazardLegend({ hazardKeys }: { hazardKeys: HazardKey[] }) {
@@ -159,7 +110,7 @@ function HazardLegend({ hazardKeys }: { hazardKeys: HazardKey[] }) {
   }
 
   return (
-    <div className="pointer-events-none absolute bottom-3 left-3 z-[400] flex flex-col gap-2 rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
+    <div className="pointer-events-none absolute bottom-3 left-3 z-10 flex flex-col gap-2 rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
       {hazardKeys.map((key) => (
         <div key={key}>
           <p className="mb-1 font-medium text-foreground">{TITLES[key]}</p>
@@ -190,7 +141,7 @@ function HazardToggleControl({ active, onToggle }: HazardToggleControlProps) {
   return (
     <div
       data-html2canvas-ignore="true"
-      className="absolute left-3 top-3 z-[400] flex flex-col gap-1.5 rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur"
+      className="absolute left-3 top-3 z-10 flex flex-col gap-1.5 rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur"
     >
       <p className="font-medium text-foreground">Amenazas y pronóstico</p>
       {(Object.keys(HAZARD_META) as HazardKey[]).map((key) => {
@@ -225,11 +176,19 @@ function HazardToggleControl({ active, onToggle }: HazardToggleControlProps) {
  * on by default alongside the others rather than left for the user to find.
  */
 function ExposicionMapImpl({ vereda }: { vereda: VeredaListEntry }) {
+  const mapRef = useRef<MapRef>(null)
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === "dark"
+  const mapStyle = useMemo(() => maplibreBasemapStyle(isDark), [isDark])
+
   const [active, setActive] = useState<Set<HazardKey>>(
     new Set(["deslizamientos", "inundaciones", "incendios", "precipitacion"]),
   )
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
+  const [popupInfo, setPopupInfo] = useState<PopupInfo | null>(null)
+  const [cursor, setCursor] = useState<string>("")
+  const [overlay, setOverlay] = useState<{ bounds: GeoglowsBounds; width: number; height: number } | null>(null)
   const captureRef = useRef<HTMLDivElement>(null)
 
   const toggle = useCallback((key: HazardKey) => {
@@ -257,11 +216,9 @@ function ExposicionMapImpl({ vereda }: { vereda: VeredaListEntry }) {
     incendiosFetcher,
     { revalidateOnFocus: false },
   )
-  const { data: fires } = useSWR<FiresResponse>(
-    showIncendios ? "/api/incendios?days=2" : null,
-    firesFetcher,
-    { revalidateOnFocus: false },
-  )
+  const { data: fires } = useSWR<FiresResponse>(showIncendios ? "/api/incendios?days=2" : null, firesFetcher, {
+    revalidateOnFocus: false,
+  })
   const { data: precipitacion } = useSWR<PrecipitacionAmenazaResponse>(
     showPrecipitacion ? "/api/precipitacion/amenaza" : null,
     precipitacionFetcher,
@@ -275,8 +232,11 @@ function ExposicionMapImpl({ vereda }: { vereda: VeredaListEntry }) {
     precipitacion: Record<string, string>
     fires: Record<string, string>
   } | null>(null)
+  const [noDataColor, setNoDataColor] = useState<string | null>(null)
+  const [outlineColor, setOutlineColor] = useState<string | null>(null)
 
   useEffect(() => {
+    setOutlineColor(resolveCssColor("var(--primary)"))
     setResolvedColors({
       deslizamientos: Object.fromEntries(
         SUSCEPTIBILITY_LEVELS.map((l) => [l, resolveCssColor(levelColorToken(l))] as const),
@@ -296,69 +256,266 @@ function ExposicionMapImpl({ vereda }: { vereda: VeredaListEntry }) {
         ),
       ),
     })
+    setNoDataColor(resolveCssColor("var(--muted-foreground)"))
   }, [])
 
-  const inundacionesStyle = useCallback(
-    (feature?: GeoJSON.Feature): PathOptions => {
-      const level = feature?.properties?.descripcio as string | undefined
-      const color = (level && resolvedColors?.inundaciones[level]) || "var(--muted-foreground)"
-      return { color, weight: 1, fillColor: color, fillOpacity: 0.45 }
-    },
-    [resolvedColors],
+  const veredaOutlineGeoJson = useMemo<GeoJSON.FeatureCollection>(
+    () => ({
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature",
+          properties: {},
+          geometry: { type: "MultiPolygon", coordinates: vereda.polygons },
+        },
+      ],
+    }),
+    [vereda],
   )
-  const onEachInundacionesFeature = useCallback((feature: GeoJSON.Feature, layer: Layer) => {
-    const nivel = feature.properties?.descripcio as string | undefined
-    layer.bindPopup(
-      `<div style="font-size:13px"><strong>Susceptibilidad a inundación</strong><br/>${nivel ?? "—"}</div>`,
-    )
-  }, [])
-
-  const incendiosStyle = useCallback(
-    (feature?: GeoJSON.Feature): PathOptions => {
-      const level = feature?.properties?.Amenaza_Label as string | undefined
-      const color = (level && resolvedColors?.incendios[level]) || "var(--muted-foreground)"
-      return { color, weight: 1, fillColor: color, fillOpacity: 0.5 }
-    },
-    [resolvedColors],
-  )
-  const onEachIncendiosFeature = useCallback((feature: GeoJSON.Feature, layer: Layer) => {
-    const vereda_ = feature.properties?.NOMBRE_VER as string | undefined
-    const municipio = feature.properties?.NOMB_MPIO as string | undefined
-    const nivel = feature.properties?.Amenaza_Label as string | undefined
-    layer.bindPopup(
-      `<div style="font-size:13px"><strong>${vereda_ ?? municipio ?? "—"}</strong><br/>Amenaza: ${nivel ?? "—"}</div>`,
-    )
-  }, [])
-
-  const precipitacionStyle = useCallback(
-    (feature?: GeoJSON.Feature): PathOptions => {
-      const level = feature?.properties?.nivel as string | undefined
-      const color = (level && resolvedColors?.precipitacion[level]) || "var(--muted-foreground)"
-      return { color, weight: 1, fillColor: color, fillOpacity: 0.45 }
-    },
-    [resolvedColors],
-  )
-  const onEachPrecipitacionFeature = useCallback((feature: GeoJSON.Feature, layer: Layer) => {
-    const nivel = feature.properties?.nivel as string | undefined
-    const acumulado = feature.properties?.acumuladoMm as number | undefined
-    layer.bindPopup(
-      `<div style="font-size:13px"><strong>Lluvia acumulada (7 días)</strong><br/>Nivel: ${nivel ?? "—"}<br/>${
-        acumulado != null ? `${acumulado} mm` : "sin dato"
-      }</div>`,
-    )
-  }, [])
 
   const veredaHazardFeature = useMemo(
     () => veredasHazard?.features.find((f) => f.properties.codigoVereda === vereda.codigoVereda) ?? null,
     [veredasHazard, vereda.codigoVereda],
   )
 
-  const veredaOutline = useMemo(() => toLatLngRings(vereda.polygons), [vereda])
+  const deslizamientosGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
+    if (!veredaHazardFeature || !resolvedColors || !noDataColor) return { type: "FeatureCollection", features: [] }
+    const nivel = veredaHazardFeature.properties.dominantLevel
+    const color = (nivel && resolvedColors.deslizamientos[nivel]) || noDataColor
+    return {
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature",
+          properties: { nivel: nivel ?? null, __color: color },
+          geometry: { type: "MultiPolygon", coordinates: veredaHazardFeature.geometry.coordinates },
+        },
+      ],
+    }
+  }, [veredaHazardFeature, resolvedColors, noDataColor])
+
+  const inundacionesGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
+    if (!inundaciones?.polygons || !resolvedColors || !noDataColor) return { type: "FeatureCollection", features: [] }
+    return {
+      type: "FeatureCollection",
+      features: inundaciones.polygons.features.map((feature, i) => {
+        const nivel = feature.properties?.descripcio as string | undefined
+        const color = (nivel && resolvedColors.inundaciones[nivel]) || noDataColor
+        return {
+          type: "Feature",
+          id: `inundaciones-${i}`,
+          properties: { ...feature.properties, __color: color },
+          geometry: feature.geometry,
+        }
+      }),
+    } as GeoJSON.FeatureCollection
+  }, [inundaciones, resolvedColors, noDataColor])
+
+  const incendiosGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
+    if (!incendios?.polygons || !resolvedColors || !noDataColor) return { type: "FeatureCollection", features: [] }
+    return {
+      type: "FeatureCollection",
+      features: incendios.polygons.features.map((feature, i) => {
+        const nivel = feature.properties?.Amenaza_Label as string | undefined
+        const color = (nivel && resolvedColors.incendios[nivel]) || noDataColor
+        return {
+          type: "Feature",
+          id: `incendios-${i}`,
+          properties: { ...feature.properties, __color: color },
+          geometry: feature.geometry,
+        }
+      }),
+    } as GeoJSON.FeatureCollection
+  }, [incendios, resolvedColors, noDataColor])
+
+  const firesGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
+    if (!fires?.detections || !resolvedColors) return { type: "FeatureCollection", features: [] }
+    return {
+      type: "FeatureCollection",
+      features: fires.detections.map((d) => ({
+        type: "Feature",
+        id: d.id,
+        properties: { ...d, __color: resolvedColors.fires[d.confidence] },
+        geometry: { type: "Point", coordinates: [d.lon, d.lat] },
+      })),
+    }
+  }, [fires, resolvedColors])
+
+  const precipitacionGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
+    if (!precipitacion?.veredas || !resolvedColors || !noDataColor) return { type: "FeatureCollection", features: [] }
+    return {
+      type: "FeatureCollection",
+      features: precipitacion.veredas.features.map((feature, i) => {
+        const nivel = feature.properties?.nivel as string | undefined
+        const color = (nivel && resolvedColors.precipitacion[nivel]) || noDataColor
+        return {
+          type: "Feature",
+          id: `precipitacion-${i}`,
+          properties: { ...feature.properties, __color: color },
+          geometry: feature.geometry,
+        }
+      }),
+    } as GeoJSON.FeatureCollection
+  }, [precipitacion, resolvedColors, noDataColor])
+
+  const forecastSource = useMemo(
+    () => wmsRasterSource(GWIS_WMS_URL, GWIS_FWI_LAYER, { TIME: new Date().toISOString().slice(0, 10) }),
+    [],
+  )
+
+  const overlayUrl = useMemo(() => {
+    if (!overlay) return null
+    return buildProxyExportUrl(overlay.bounds, overlay.width, overlay.height)
+  }, [overlay])
+
+  const reachImageCoordinates = useMemo<
+    [[number, number], [number, number], [number, number], [number, number]] | null
+  >(() => {
+    if (!overlay) return null
+    const { north, south, east, west } = overlay.bounds
+    return [
+      [west, north],
+      [east, north],
+      [east, south],
+      [west, south],
+    ]
+  }, [overlay])
 
   const activeHazardKeys = useMemo(
     () => (Object.keys(HAZARD_META) as HazardKey[]).filter((k) => active.has(k)),
     [active],
   )
+
+  const interactiveLayerIds = useMemo(() => {
+    const ids: string[] = []
+    if (showDeslizamientos) ids.push("deslizamientos-fill")
+    if (showInundaciones) ids.push("inundaciones-fill")
+    if (showIncendios) ids.push("incendios-fill", "fires")
+    if (showPrecipitacion) ids.push("precipitacion-fill")
+    return ids
+  }, [showDeslizamientos, showInundaciones, showIncendios, showPrecipitacion])
+
+  const handleMapClick = useCallback((e: MapLayerMouseEvent) => {
+    const { lng, lat } = e.lngLat
+    const deslizamientosFeature = e.features?.find((f) => f.layer.id === "deslizamientos-fill")
+    if (deslizamientosFeature) {
+      const nivel = deslizamientosFeature.properties?.nivel as string | undefined
+      setPopupInfo({
+        longitude: lng,
+        latitude: lat,
+        content: (
+          <div style={{ fontSize: 13 }}>
+            <strong>Amenaza (modelo propio)</strong>
+            <br />
+            {nivel ?? "Sin datos del modelo"}
+          </div>
+        ),
+      })
+      return
+    }
+    const inundacionesFeature = e.features?.find((f) => f.layer.id === "inundaciones-fill")
+    if (inundacionesFeature) {
+      const nivel = inundacionesFeature.properties?.descripcio as string | undefined
+      setPopupInfo({
+        longitude: lng,
+        latitude: lat,
+        content: (
+          <div style={{ fontSize: 13 }}>
+            <strong>Susceptibilidad a inundación</strong>
+            <br />
+            {nivel ?? "—"}
+          </div>
+        ),
+      })
+      return
+    }
+    const firesFeature = e.features?.find((f) => f.layer.id === "fires")
+    if (firesFeature) {
+      const props = firesFeature.properties as unknown as {
+        acquiredAt: string
+        nearest: { name: string; distanceKm: number }
+        frp: number
+      }
+      setPopupInfo({
+        longitude: lng,
+        latitude: lat,
+        content: (
+          <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
+            <strong>{formatDateTime(props.acquiredAt)}</strong>
+            <span>
+              Cerca de {props.nearest.name} · {formatDistance(props.nearest.distanceKm)}
+            </span>
+            <span>FRP: {formatFrp(props.frp)}</span>
+          </div>
+        ),
+      })
+      return
+    }
+    const incendiosFeature = e.features?.find((f) => f.layer.id === "incendios-fill")
+    if (incendiosFeature) {
+      const veredaNombre = incendiosFeature.properties?.NOMBRE_VER as string | undefined
+      const municipio = incendiosFeature.properties?.NOMB_MPIO as string | undefined
+      const nivel = incendiosFeature.properties?.Amenaza_Label as string | undefined
+      setPopupInfo({
+        longitude: lng,
+        latitude: lat,
+        content: (
+          <div style={{ fontSize: 13 }}>
+            <strong>{veredaNombre ?? municipio ?? "—"}</strong>
+            <br />
+            Amenaza: {nivel ?? "—"}
+          </div>
+        ),
+      })
+      return
+    }
+    const precipitacionFeature = e.features?.find((f) => f.layer.id === "precipitacion-fill")
+    if (precipitacionFeature) {
+      const nivel = precipitacionFeature.properties?.nivel as string | undefined
+      const acumulado = precipitacionFeature.properties?.acumuladoMm as number | undefined
+      setPopupInfo({
+        longitude: lng,
+        latitude: lat,
+        content: (
+          <div style={{ fontSize: 13 }}>
+            <strong>Lluvia acumulada (7 días)</strong>
+            <br />
+            Nivel: {nivel ?? "—"}
+            <br />
+            {acumulado != null ? `${acumulado} mm` : "sin dato"}
+          </div>
+        ),
+      })
+      return
+    }
+    setPopupInfo(null)
+  }, [])
+
+  const syncOverlay = useCallback(() => {
+    const map = mapRef.current?.getMap()
+    const b = map?.getBounds()
+    const canvas = map?.getCanvas()
+    if (!b || !canvas) return
+    setOverlay({
+      bounds: { north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() },
+      width: canvas.width,
+      height: canvas.height,
+    })
+  }, [])
+
+  const veredaBounds = useMemo<[[number, number], [number, number]]>(() => {
+    const [south, west, north, east] = vereda.bbox
+    return [
+      [west, south],
+      [east, north],
+    ]
+  }, [vereda])
+
+  useEffect(() => {
+    const map = mapRef.current?.getMap()
+    if (!map) return
+    map.fitBounds(veredaBounds, { padding: 24, duration: 0 })
+  }, [veredaBounds])
 
   async function handleExportPdf() {
     if (!captureRef.current) return
@@ -369,10 +526,7 @@ function ExposicionMapImpl({ vereda }: { vereda: VeredaListEntry }) {
       // (lab()/oklch()) our Tailwind v4 design tokens resolve to, and throws
       // instead of rendering — html2canvas-pro is a maintained fork that
       // adds support for them.
-      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
-        import("html2canvas-pro"),
-        import("jspdf"),
-      ])
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import("html2canvas-pro"), import("jspdf")])
       const canvas = await html2canvas(captureRef.current, {
         useCORS: true,
         backgroundColor: "#ffffff",
@@ -431,129 +585,136 @@ function ExposicionMapImpl({ vereda }: { vereda: VeredaListEntry }) {
       </div>
 
       <div ref={captureRef} className="relative min-h-0 flex-1">
-        <MapContainer
-          center={vereda.center}
-          zoom={13}
-          zoomControl={false}
+        <Map
+          ref={mapRef}
+          initialViewState={{ bounds: veredaBounds }}
+          mapStyle={mapStyle}
           attributionControl={false}
-          className="h-full w-full"
+          cursor={cursor}
+          interactiveLayerIds={interactiveLayerIds}
+          onLoad={syncOverlay}
+          onMoveEnd={syncOverlay}
+          onZoomEnd={syncOverlay}
+          onMouseEnter={() => setCursor("pointer")}
+          onMouseLeave={() => setCursor("")}
+          onClick={handleMapClick}
+          style={{ width: "100%", height: "100%" }}
         >
-          <ZoomControl position="topright" />
-          <AttributionControl position="bottomright" prefix="Leaflet" />
-          <BasemapTileLayer crossOrigin="anonymous" />
+          <NavigationControl position="top-right" />
+          <AttributionControl position="bottom-right" customAttribution="MapLibre © OpenStreetMap / CARTO" compact />
 
-          <FitToVereda vereda={vereda} />
-
-          <Polygon
-            positions={veredaOutline}
-            pathOptions={{ color: "var(--primary)", weight: 2, fill: false, dashArray: "6 4" }}
-          />
+          <Source id="vereda-outline-source" type="geojson" data={veredaOutlineGeoJson}>
+            <Layer
+              id="vereda-outline"
+              type="line"
+              paint={{ "line-color": outlineColor ?? "#888888", "line-width": 2, "line-dasharray": [6, 4] }}
+            />
+          </Source>
 
           {showDeslizamientos && (
             <>
-              <TileLayer attribution="NASA GIBS / SMAP" url={SMAP_TILE_URL} opacity={0.55} maxNativeZoom={6} crossOrigin="anonymous" />
-              {resolvedColors &&
-                veredaHazardFeature &&
-                (() => {
-                  const nivel = veredaHazardFeature.properties.dominantLevel
-                  const color = (nivel && resolvedColors.deslizamientos[nivel]) || "var(--muted-foreground)"
-                  return (
-                    <Polygon
-                      positions={toLatLngRings(veredaHazardFeature.geometry.coordinates)}
-                      pathOptions={{ color: "#fff", weight: 1, fillColor: color, fillOpacity: 0.5 }}
-                    >
-                      <Popup>
-                        <div style={{ fontSize: 13 }}>
-                          <strong>Amenaza (modelo propio)</strong>
-                          <br />
-                          {nivel ?? "Sin datos del modelo"}
-                        </div>
-                      </Popup>
-                    </Polygon>
-                  )
-                })()}
+              <Source id="smap-source" type="raster" tiles={[SMAP_TILE_URL]} tileSize={256} maxzoom={6}>
+                <Layer id="smap" type="raster" paint={{ "raster-opacity": 0.55 }} />
+              </Source>
+              <Source id="deslizamientos-source" type="geojson" data={deslizamientosGeoJson}>
+                <Layer
+                  id="deslizamientos-fill"
+                  type="fill"
+                  paint={{ "fill-color": ["get", "__color"], "fill-opacity": 0.5 }}
+                />
+                <Layer id="deslizamientos-line" type="line" paint={{ "line-color": "#ffffff", "line-width": 1 }} />
+              </Source>
             </>
           )}
 
           {showInundaciones && (
             <>
-              {inundaciones?.polygons && resolvedColors && (
-                <GeoJSON
-                  key="inundaciones"
-                  data={inundaciones.polygons as unknown as GeoJSON.GeoJsonObject}
-                  style={inundacionesStyle}
-                  onEachFeature={onEachInundacionesFeature}
+              <Source id="inundaciones-source" type="geojson" data={inundacionesGeoJson}>
+                <Layer
+                  id="inundaciones-fill"
+                  type="fill"
+                  paint={{ "fill-color": ["get", "__color"], "fill-opacity": 0.45 }}
                 />
+                <Layer
+                  id="inundaciones-line"
+                  type="line"
+                  paint={{ "line-color": ["get", "__color"], "line-width": 1 }}
+                />
+              </Source>
+              {reachImageCoordinates && overlayUrl && (
+                <Source id="geoglows-image-source" type="image" url={overlayUrl} coordinates={reachImageCoordinates}>
+                  <Layer id="geoglows-image" type="raster" paint={{ "raster-opacity": 0.9 }} />
+                </Source>
               )}
-              <GeoglowsOverlay />
             </>
           )}
 
           {showIncendios && (
             <>
-              <WMSTileLayer
-                url={GWIS_WMS_URL}
-                opacity={0.55}
-                crossOrigin="anonymous"
-                params={
-                  {
-                    layers: GWIS_FWI_LAYER,
-                    format: "image/png",
-                    transparent: true,
-                    version: "1.1.1",
-                    TIME: new Date().toISOString().slice(0, 10),
-                  } as WMSParams
-                }
-              />
-              {incendios?.polygons && resolvedColors && (
-                <GeoJSON
-                  key="incendios"
-                  data={incendios.polygons as unknown as GeoJSON.GeoJsonObject}
-                  style={incendiosStyle}
-                  onEachFeature={onEachIncendiosFeature}
+              <Source
+                id="forecast-source"
+                type="raster"
+                tiles={forecastSource.tiles}
+                tileSize={forecastSource.tileSize}
+              >
+                <Layer id="forecast" type="raster" paint={{ "raster-opacity": 0.55 }} />
+              </Source>
+              <Source id="incendios-source" type="geojson" data={incendiosGeoJson}>
+                <Layer
+                  id="incendios-fill"
+                  type="fill"
+                  paint={{ "fill-color": ["get", "__color"], "fill-opacity": 0.5 }}
                 />
-              )}
-              {resolvedColors &&
-                fires?.detections.map((d) => (
-                  <CircleMarker
-                    key={d.id}
-                    center={[d.lat, d.lon]}
-                    radius={5}
-                    pathOptions={{
-                      color: "#fff",
-                      weight: 1,
-                      fillColor: resolvedColors.fires[d.confidence],
-                      fillOpacity: 0.85,
-                    }}
-                  >
-                    <Popup>
-                      <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
-                        <strong>{formatDateTime(d.acquiredAt)}</strong>
-                        <span>
-                          Cerca de {d.nearest.name} · {formatDistance(d.nearest.distanceKm)}
-                        </span>
-                        <span>FRP: {formatFrp(d.frp)}</span>
-                      </div>
-                    </Popup>
-                  </CircleMarker>
-                ))}
+                <Layer id="incendios-line" type="line" paint={{ "line-color": ["get", "__color"], "line-width": 1 }} />
+              </Source>
+              <Source id="fires-source" type="geojson" data={firesGeoJson}>
+                <Layer
+                  id="fires"
+                  type="circle"
+                  paint={{
+                    "circle-radius": 5,
+                    "circle-color": ["get", "__color"],
+                    "circle-stroke-color": "#ffffff",
+                    "circle-stroke-width": 1,
+                    "circle-opacity": 0.85,
+                  }}
+                />
+              </Source>
             </>
           )}
 
           {showPrecipitacion && (
             <>
-              <TileLayer attribution="NASA GIBS / IMERG" url={IMERG_TILE_URL} opacity={0.5} maxNativeZoom={6} crossOrigin="anonymous" />
-              {precipitacion?.veredas && resolvedColors && (
-                <GeoJSON
-                  key="precipitacion"
-                  data={precipitacion.veredas as unknown as GeoJSON.GeoJsonObject}
-                  style={precipitacionStyle}
-                  onEachFeature={onEachPrecipitacionFeature}
+              <Source id="imerg-source" type="raster" tiles={[IMERG_TILE_URL]} tileSize={256} maxzoom={6}>
+                <Layer id="imerg" type="raster" paint={{ "raster-opacity": 0.5 }} />
+              </Source>
+              <Source id="precipitacion-source" type="geojson" data={precipitacionGeoJson}>
+                <Layer
+                  id="precipitacion-fill"
+                  type="fill"
+                  paint={{ "fill-color": ["get", "__color"], "fill-opacity": 0.45 }}
                 />
-              )}
+                <Layer
+                  id="precipitacion-line"
+                  type="line"
+                  paint={{ "line-color": ["get", "__color"], "line-width": 1 }}
+                />
+              </Source>
             </>
           )}
-        </MapContainer>
+
+          {popupInfo && (
+            <Popup
+              longitude={popupInfo.longitude}
+              latitude={popupInfo.latitude}
+              onClose={() => setPopupInfo(null)}
+              closeOnClick={false}
+              anchor="bottom"
+            >
+              {popupInfo.content}
+            </Popup>
+          )}
+        </Map>
 
         <HazardToggleControl active={active} onToggle={toggle} />
         <HazardLegend hazardKeys={activeHazardKeys} />
@@ -562,6 +723,6 @@ function ExposicionMapImpl({ vereda }: { vereda: VeredaListEntry }) {
   )
 }
 
-// Leaflet touches `window` at module load time, so this component is always
-// consumed through ExposicionMapLoader (next/dynamic, ssr: false).
+// MapLibre touches `window` at module load time, so this component is
+// always consumed through ExposicionMapLoader (next/dynamic, ssr: false).
 export default ExposicionMapImpl
