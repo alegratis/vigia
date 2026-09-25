@@ -1,27 +1,33 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
-import {
-  AttributionControl,
-  CircleMarker,
-  MapContainer,
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { useTheme } from "next-themes"
+import Map, {
+  Source,
+  Layer,
   Popup,
-  WMSTileLayer,
-  ZoomControl,
-  useMap,
-  useMapEvents,
-} from "react-leaflet"
-import type { LatLngBoundsExpression, WMSParams } from "leaflet"
-import "leaflet/dist/leaflet.css"
+  NavigationControl,
+  AttributionControl,
+  type MapRef,
+  type MapLayerMouseEvent,
+} from "react-map-gl/maplibre"
+import { setWorkerUrl } from "maplibre-gl"
+import "maplibre-gl/dist/maplibre-gl.css"
+
+// See deslizamientos-live-map.tsx for why this self-hosted worker override
+// is needed under Turbopack.
+if (typeof window !== "undefined") {
+  setWorkerUrl("/maplibre-gl-worker.mjs")
+}
 import { Loader2, Building2, ShieldCheck } from "lucide-react"
 import { COMPOUND_LEVELS, compoundLevelColorToken } from "@/lib/riesgo-compuesto/levels"
 import { resolveCssColor } from "@/lib/resolve-css-color"
-import { BasemapTileLayer } from "@/components/maps/basemap-tile-layer"
-import { CompoundVeredasOverlay } from "@/components/maps/compound-veredas-overlay"
-import { FlyToMunicipio } from "@/components/maps/fly-to-municipio"
+import { maplibreBasemapStyle } from "@/lib/maps/maplibre-basemap-style"
+import { wmsRasterSource } from "@/lib/maps/wms-raster-source"
 import { MunicipioTogglePanelContent, type MunicipioRiskSummary } from "@/components/maps/municipio-toggle-panel"
 import { MapControlRail, RailSection, RailToggleRow } from "@/components/maps/map-control-rail"
-import { useMunicipioToggles } from "@/lib/veredas/municipio-toggles"
+import { useMunicipioToggles, isMunicipioActive } from "@/lib/veredas/municipio-toggles"
+import { boundsForActiveMunicipios } from "@/lib/veredas/municipio-bounds"
 import { CompoundReportDialog } from "@/components/riesgo-compuesto/compound-report-dialog"
 import { getOsmCategory } from "@/lib/osm/categories"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
@@ -37,30 +43,23 @@ import {
 import { useCompoundVeredas } from "@/lib/riesgo-compuesto/use-compound-veredas"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
-import type { CompoundFeature } from "@/lib/riesgo-compuesto/api-types"
+import type { CompoundFeature, CompoundVeredaProperties } from "@/lib/riesgo-compuesto/api-types"
+
+/**
+ * MapLibre GL port (see v0_plans/grand-method.md, Phase 3) — follows the
+ * deslizamientos spike's patterns. No hazard data/model/API logic changed.
+ */
 
 // Same AOI as the other three vereda maps (Sevilla, Caicedonia, Zarzal).
-const AOI_CENTER: [number, number] = [4.16, -75.89]
-const AOI_BOUNDS: LatLngBoundsExpression = [
-  [3.88, -76.06],
-  [4.44, -75.72],
+const AOI_BOUNDS: [[number, number], [number, number]] = [
+  [-76.06, 3.88],
+  [-75.72, 4.44],
 ]
 
-function BoundsSync({ onBoundsChange }: { onBoundsChange: (bounds: MapBounds) => void }) {
-  const map = useMap()
-
-  const sync = useCallback(() => {
-    const b = map.getBounds()
-    onBoundsChange({ north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() })
-  }, [map, onBoundsChange])
-
-  useEffect(() => {
-    sync()
-  }, [sync])
-
-  useMapEvents({ moveend: sync, zoomend: sync, resize: sync })
-
-  return null
+interface PopupInfo {
+  longitude: number
+  latitude: number
+  content: ReactNode
 }
 
 function Legend() {
@@ -71,7 +70,7 @@ function Legend() {
   }, [])
 
   return (
-    <div className="pointer-events-none absolute bottom-3 left-3 z-[400] rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
+    <div className="pointer-events-none rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
       <p className="mb-1.5 font-medium text-foreground">Riesgo compuesto</p>
       <ul className="flex flex-col gap-1">
         {COMPOUND_LEVELS.map((level, i) => (
@@ -90,20 +89,81 @@ function Legend() {
 }
 
 function SettlementLegend() {
-  return (
-    <WmsLegendChip
-      src={GWIS_SETTLEMENT_LEGEND_URL}
-      alt="Leyenda de asentamientos humanos (GHSL Built-Up)"
-    />
-  )
+  return <WmsLegendChip src={GWIS_SETTLEMENT_LEGEND_URL} alt="Leyenda de asentamientos humanos (GHSL Built-Up)" />
 }
 
 function ProtectedAreasLegend() {
+  return <WmsLegendChip src={GWIS_PROTECTED_AREAS_LEGEND_URL} alt="Leyenda de áreas protegidas (WDPA)" />
+}
+
+function CompoundPopupBody({
+  feature,
+  colors,
+  noDataColor,
+  onOpenReport,
+}: {
+  feature: CompoundFeature
+  colors: Record<string, string>
+  noDataColor: string
+  onOpenReport: (feature: CompoundFeature) => void
+}) {
+  const props = feature.properties
   return (
-    <WmsLegendChip
-      src={GWIS_PROTECTED_AREAS_LEGEND_URL}
-      alt="Leyenda de áreas protegidas (WDPA)"
-    />
+    <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 4, minWidth: 220 }}>
+      <strong>{props.nombre}</strong>
+      <span style={{ color: "#888" }}>{props.municipio}</span>
+      {props.compoundLevel ? (
+        <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span
+            style={{
+              display: "inline-block",
+              width: 9,
+              height: 9,
+              borderRadius: "50%",
+              flexShrink: 0,
+              backgroundColor: colors[props.compoundLevel] ?? noDataColor,
+            }}
+          />
+          Riesgo compuesto: {props.compoundLevel} · {props.actionTier}
+        </span>
+      ) : (
+        <span style={{ color: "#888" }}>Sin datos suficientes para calcular el riesgo compuesto</span>
+      )}
+      <div style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: 2 }}>
+        {props.subHazards.map((h) => (
+          <span key={h.hazard} style={{ display: "flex", alignItems: "center", gap: 6, color: "#888" }}>
+            <span
+              style={{
+                display: "inline-block",
+                width: 7,
+                height: 7,
+                borderRadius: "50%",
+                flexShrink: 0,
+                backgroundColor: resolveCssColor(h.colorToken),
+              }}
+            />
+            {h.label}: {h.rawLevel ?? "sin datos"}
+          </span>
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={() => onOpenReport(feature)}
+        style={{
+          marginTop: 6,
+          padding: "6px 10px",
+          borderRadius: 6,
+          border: "1px solid var(--border)",
+          background: "var(--secondary)",
+          color: "var(--secondary-foreground)",
+          fontSize: 12,
+          fontWeight: 600,
+          cursor: "pointer",
+        }}
+      >
+        Ver reporte completo
+      </button>
+    </div>
   )
 }
 
@@ -126,22 +186,29 @@ function CompoundLiveMapImpl({
   osmPoints?: OsmPoint[]
   className?: string
 }) {
+  const mapRef = useRef<MapRef>(null)
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === "dark"
+  const mapStyle = useMemo(() => maplibreBasemapStyle(isDark), [isDark])
+
   const osmColors = useOsmCategoryColors()
   const { veredas, error: veredasError, isLoading: veredasLoading } = useCompoundVeredas(true)
   const { active: activeMunicipiosMap, activeMunicipios, toggle: toggleMunicipio } = useMunicipioToggles()
   const [reportFeature, setReportFeature] = useState<CompoundFeature | null>(null)
+  const [popupInfo, setPopupInfo] = useState<PopupInfo | null>(null)
+  const [cursor, setCursor] = useState<string>("")
 
   const municipioSummaries = useMemo<MunicipioRiskSummary[]>(() => {
     if (!veredas) return []
-    const byMunicipio = new Map<string, Record<string, number>>()
+    const byMunicipio: Record<string, Record<string, number>> = {}
     for (const feature of veredas.features) {
       const level = feature.properties.compoundLevel
       if (!level) continue
-      const counts = byMunicipio.get(feature.properties.municipio) ?? {}
+      const counts = byMunicipio[feature.properties.municipio] ?? {}
       counts[level] = (counts[level] ?? 0) + 1
-      byMunicipio.set(feature.properties.municipio, counts)
+      byMunicipio[feature.properties.municipio] = counts
     }
-    return Array.from(byMunicipio.entries()).map(([municipio, counts]) => ({
+    return Object.entries(byMunicipio).map(([municipio, counts]) => ({
       municipio,
       items: COMPOUND_LEVELS.filter((level) => (counts[level] ?? 0) > 0).map((level) => ({
         label: level,
@@ -150,80 +217,239 @@ function CompoundLiveMapImpl({
       })),
     }))
   }, [veredas])
+
   const [showSettlement, setShowSettlement] = useState(false)
   const [showProtectedAreas, setShowProtectedAreas] = useState(false)
+  const [resolvedColors, setResolvedColors] = useState<Record<string, string> | null>(null)
+  const [noDataColor, setNoDataColor] = useState<string | null>(null)
+
+  useEffect(() => {
+    setResolvedColors({
+      "Muy bajo": resolveCssColor(compoundLevelColorToken("Muy bajo")),
+      Bajo: resolveCssColor(compoundLevelColorToken("Bajo")),
+      Moderado: resolveCssColor(compoundLevelColorToken("Moderado")),
+      Alto: resolveCssColor(compoundLevelColorToken("Alto")),
+      "Muy alto": resolveCssColor(compoundLevelColorToken("Muy alto")),
+    })
+    setNoDataColor(resolveCssColor("var(--muted-foreground)"))
+  }, [])
+
+  const veredasGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
+    if (!veredas || !resolvedColors || !noDataColor) return { type: "FeatureCollection", features: [] }
+    return {
+      type: "FeatureCollection",
+      features: veredas.features.map((feature) => {
+        const active = isMunicipioActive(feature.properties.municipio, activeMunicipios)
+        const fillColor = feature.properties.compoundLevel
+          ? resolvedColors[feature.properties.compoundLevel]
+          : noDataColor
+        return {
+          type: "Feature",
+          id: feature.id,
+          properties: {
+            ...feature.properties,
+            __subHazards: JSON.stringify(feature.properties.subHazards),
+            __fillColor: active ? fillColor : noDataColor,
+            __fillOpacity: active ? 0.65 : 0.12,
+            __lineColor: active ? "#ffffff" : noDataColor,
+            __lineOpacity: active ? 0.9 : 0.3,
+          },
+          geometry: {
+            type: "MultiPolygon",
+            coordinates: feature.geometry.coordinates,
+          },
+        }
+      }),
+    }
+  }, [veredas, resolvedColors, noDataColor, activeMunicipios])
+
+  const osmGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
+    if (!osmPoints || !osmColors) return { type: "FeatureCollection", features: [] }
+    return {
+      type: "FeatureCollection",
+      features: osmPoints.map((p) => ({
+        type: "Feature",
+        id: p.id,
+        properties: { ...p, __color: osmColors[p.category] },
+        geometry: { type: "Point", coordinates: [p.lon, p.lat] },
+      })),
+    }
+  }, [osmPoints, osmColors])
+
+  const settlementSource = useMemo(() => wmsRasterSource(GWIS_WMS_URL, GWIS_SETTLEMENT_LAYER), [])
+  const protectedAreasSource = useMemo(() => wmsRasterSource(GWIS_WMS_URL, GWIS_PROTECTED_AREAS_LAYER), [])
+
+  const interactiveLayerIds = useMemo(() => {
+    const ids: string[] = ["veredas-fill"]
+    if (osmPoints && osmPoints.length > 0) ids.push("osm-points")
+    return ids
+  }, [osmPoints])
+
+  const handleMapClick = useCallback(
+    (e: MapLayerMouseEvent) => {
+      const { lng, lat } = e.lngLat
+      const osmFeature = e.features?.find((f) => f.layer.id === "osm-points")
+      if (osmFeature) {
+        const props = osmFeature.properties as unknown as OsmPoint
+        setPopupInfo({
+          longitude: lng,
+          latitude: lat,
+          content: (
+            <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
+              <strong>{props.name ?? getOsmCategory(props.category).label}</strong>
+              <span>{getOsmCategory(props.category).label}</span>
+            </div>
+          ),
+        })
+        return
+      }
+      const veredaFeature = e.features?.find((f) => f.layer.id === "veredas-fill")
+      if (veredaFeature && resolvedColors && noDataColor) {
+        const rawProps = veredaFeature.properties as unknown as CompoundVeredaProperties & { __subHazards: string }
+        const props: CompoundVeredaProperties = { ...rawProps, subHazards: JSON.parse(rawProps.__subHazards) }
+        const feature = { properties: props } as CompoundFeature
+        setPopupInfo({
+          longitude: lng,
+          latitude: lat,
+          content: (
+            <CompoundPopupBody
+              feature={feature}
+              colors={resolvedColors}
+              noDataColor={noDataColor}
+              onOpenReport={setReportFeature}
+            />
+          ),
+        })
+        onVeredaSelect?.(feature)
+        return
+      }
+      setPopupInfo(null)
+    },
+    [onVeredaSelect, resolvedColors, noDataColor],
+  )
+
+  const syncBounds = useCallback(() => {
+    if (!onBoundsChange) return
+    const map = mapRef.current?.getMap()
+    const b = map?.getBounds()
+    if (!b) return
+    onBoundsChange({ north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() })
+  }, [onBoundsChange])
+
+  const isFirstMunicipioRender = useRef(true)
+  const previousMunicipioKey = useRef(activeMunicipios.join("|"))
+  useEffect(() => {
+    const key = activeMunicipios.join("|")
+    if (isFirstMunicipioRender.current) {
+      isFirstMunicipioRender.current = false
+      previousMunicipioKey.current = key
+      return
+    }
+    if (key === previousMunicipioKey.current) return
+    previousMunicipioKey.current = key
+
+    const bounds = boundsForActiveMunicipios(veredas, activeMunicipios) as
+      | [[number, number], [number, number]]
+      | null
+    if (!bounds) return
+    const map = mapRef.current?.getMap()
+    if (!map) return
+    const [[south, west], [north, east]] = bounds
+    map.fitBounds(
+      [
+        [west, south],
+        [east, north],
+      ],
+      { padding: 48, duration: 900, maxZoom: 14 },
+    )
+  }, [veredas, activeMunicipios])
 
   return (
     <div
       className={className ?? "relative isolate h-full min-h-[420px] w-full overflow-hidden rounded-xl border border-border"}
     >
-      <MapContainer
-        center={AOI_CENTER}
-        zoom={11}
+      <Map
+        ref={mapRef}
+        initialViewState={{ bounds: AOI_BOUNDS }}
         minZoom={9}
         maxZoom={16}
-        bounds={AOI_BOUNDS}
-        zoomControl={false}
+        mapStyle={mapStyle}
         attributionControl={false}
-        preferCanvas
-        className="h-full w-full"
+        cursor={cursor}
+        interactiveLayerIds={interactiveLayerIds}
+        onLoad={syncBounds}
+        onMoveEnd={syncBounds}
+        onZoomEnd={syncBounds}
+        onMouseEnter={() => setCursor("pointer")}
+        onMouseLeave={() => setCursor("")}
+        onClick={handleMapClick}
+        style={{ width: "100%", height: "100%" }}
       >
-        <ZoomControl position="topright" />
-        <AttributionControl position="bottomright" prefix="Leaflet" />
-        <BasemapTileLayer />
+        <NavigationControl position="top-left" />
+        <AttributionControl position="bottom-left" customAttribution="MapLibre © OpenStreetMap / CARTO" compact />
+
         {showSettlement && (
-          <WMSTileLayer
-            url={GWIS_WMS_URL}
-            opacity={0.7}
-            params={
-              {
-                layers: GWIS_SETTLEMENT_LAYER,
-                format: "image/png",
-                transparent: true,
-                version: "1.1.1",
-              } as WMSParams
-            }
-          />
+          <Source
+            id="settlement-source"
+            type="raster"
+            tiles={settlementSource.tiles}
+            tileSize={settlementSource.tileSize}
+          >
+            <Layer id="settlement" type="raster" paint={{ "raster-opacity": 0.7 }} />
+          </Source>
         )}
         {showProtectedAreas && (
-          <WMSTileLayer
-            url={GWIS_WMS_URL}
-            opacity={0.6}
-            params={
-              {
-                layers: GWIS_PROTECTED_AREAS_LAYER,
-                format: "image/png",
-                transparent: true,
-                version: "1.1.1",
-              } as WMSParams
-            }
-          />
+          <Source
+            id="protected-areas-source"
+            type="raster"
+            tiles={protectedAreasSource.tiles}
+            tileSize={protectedAreasSource.tileSize}
+          >
+            <Layer id="protected-areas" type="raster" paint={{ "raster-opacity": 0.6 }} />
+          </Source>
         )}
-        <CompoundVeredasOverlay
-          enabled
-          onSelect={onVeredaSelect}
-          onOpenReport={setReportFeature}
-          activeMunicipios={activeMunicipios}
-        />
-        {osmColors &&
-          osmPoints?.map((p) => (
-            <CircleMarker
-              key={p.id}
-              center={[p.lat, p.lon]}
-              radius={5}
-              pathOptions={{ color: "#fff", weight: 1, fillColor: osmColors[p.category], fillOpacity: 0.9 }}
-            >
-              <Popup>
-                <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
-                  <strong>{p.name ?? getOsmCategory(p.category).label}</strong>
-                  <span>{getOsmCategory(p.category).label}</span>
-                </div>
-              </Popup>
-            </CircleMarker>
-          ))}
-        {onBoundsChange && <BoundsSync onBoundsChange={onBoundsChange} />}
-        <FlyToMunicipio veredas={veredas} activeMunicipios={activeMunicipios} />
-      </MapContainer>
+
+        <Source id="veredas-source" type="geojson" data={veredasGeoJson}>
+          <Layer
+            id="veredas-fill"
+            type="fill"
+            paint={{ "fill-color": ["get", "__fillColor"], "fill-opacity": ["get", "__fillOpacity"] }}
+          />
+          <Layer
+            id="veredas-line"
+            type="line"
+            paint={{ "line-color": ["get", "__lineColor"], "line-opacity": ["get", "__lineOpacity"], "line-width": 1 }}
+          />
+        </Source>
+
+        {osmPoints && osmPoints.length > 0 && (
+          <Source id="osm-source" type="geojson" data={osmGeoJson}>
+            <Layer
+              id="osm-points"
+              type="circle"
+              paint={{
+                "circle-radius": 5,
+                "circle-color": ["get", "__color"],
+                "circle-stroke-color": "#ffffff",
+                "circle-stroke-width": 1,
+                "circle-opacity": 0.9,
+              }}
+            />
+          </Source>
+        )}
+
+        {popupInfo && (
+          <Popup
+            longitude={popupInfo.longitude}
+            latitude={popupInfo.latitude}
+            onClose={() => setPopupInfo(null)}
+            closeOnClick={false}
+            anchor="bottom"
+          >
+            {popupInfo.content}
+          </Popup>
+        )}
+      </Map>
       {veredasLoading && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-background/60">
           <Loader2 className="size-6 animate-spin text-muted-foreground" aria-hidden="true" />
@@ -274,4 +500,6 @@ function CompoundLiveMapImpl({
   )
 }
 
+// MapLibre touches `window` at module load time, so this component is
+// always consumed through a next/dynamic loader with ssr: false.
 export default CompoundLiveMapImpl
