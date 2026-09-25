@@ -1,5 +1,7 @@
 /** Client-safe types for /api/sismologia/eventos and /api/sismologia/danos. No server imports. */
 
+import type { DamageLevel } from "./damage-levels"
+
 export type SeismicSource = "usgs" | "sgc" | "sgc-live"
 
 export interface SeismicEvent {
@@ -51,6 +53,11 @@ export interface BarrioDamageSummary {
   totalReportes: number
   /** Counts by `estado_de_la_vivienda_tras_el_s` (Destruida / Dañado / Posiblemente dañado). */
   porEstado: Record<string, number>
+  /** Same counts bucketed into the 3 canonical severity levels (lib/sismologia/damage-levels.ts). */
+  porNivel: Record<DamageLevel, number>
+  /** Barrio-boundary centroid (public polygon geometry, never a survey point) — used to place the 3D damage columns. */
+  lat: number
+  lon: number
 }
 
 export interface SismologiaDanosResponse {

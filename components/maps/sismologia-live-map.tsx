@@ -43,7 +43,8 @@ import {
   magnitudeRadius,
   seismicExposureLevel,
 } from "@/lib/sismologia/levels"
-import type { SeismicEvent } from "@/lib/sismologia/api-types"
+import { DAMAGE_LEVEL_ORDER, DAMAGE_LEVEL_LABEL, DAMAGE_LEVEL_COLOR_TOKEN, type DamageLevel } from "@/lib/sismologia/damage-levels"
+import type { SeismicEvent, BarrioDamageSummary, SismologiaDanosResponse } from "@/lib/sismologia/api-types"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
 import type { VeredaFeature, VeredaProperties } from "@/lib/veredas/api-types"
@@ -165,9 +166,13 @@ function ExposureLegend() {
   )
 }
 
-function DamageReportsPanel() {
-  const { data, isLoading } = useSismologiaDanos(true)
-
+function DamageReportsPanel({
+  data,
+  isLoading,
+}: {
+  data: SismologiaDanosResponse | undefined
+  isLoading: boolean
+}) {
   return (
     <div className="pointer-events-auto absolute right-80 top-3 z-[400] max-h-[60%] w-64 overflow-y-auto rounded-md border border-border bg-card/95 px-3 py-2.5 text-xs shadow-sm backdrop-blur max-sm:right-3 max-sm:bottom-[48%] max-sm:top-auto">
       <p className="mb-1.5 font-medium text-foreground">Reportes de daños — Sevilla</p>
@@ -175,19 +180,52 @@ function DamageReportsPanel() {
       {data && (
         <>
           <p className="mb-2 text-muted-foreground">
-            {data.totalReportes} reportes comunitarios, sin verificar, agregados por barrio.
+            {data.totalReportes} reportes comunitarios, sin verificar, agregados por barrio. Las columnas 3D del mapa
+            muestran la misma concentración por nivel de daño.
           </p>
-          <ul className="flex flex-col gap-1.5">
-            {data.barrios.map((b) => (
-              <li key={b.barrio} className="flex items-baseline justify-between gap-2 border-t border-border pt-1.5 first:border-0 first:pt-0">
-                <span className="text-foreground">{b.barrio}</span>
-                <span className="shrink-0 tabular-nums text-muted-foreground">{b.totalReportes}</span>
+          <ul className="flex flex-col gap-2">
+            {data.barrios.map((b: BarrioDamageSummary) => (
+              <li key={b.barrio} className="flex flex-col gap-1 border-t border-border pt-2 first:border-0 first:pt-0">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="font-medium text-foreground">{b.barrio}</span>
+                  <span className="shrink-0 tabular-nums text-muted-foreground">{b.totalReportes}</span>
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  {DAMAGE_LEVEL_ORDER.filter((level) => b.porNivel[level] > 0).map((level) => (
+                    <div key={level} className="flex items-center justify-between gap-2 text-muted-foreground">
+                      <span className="flex items-center gap-1.5">
+                        <span
+                          className="inline-block size-2 shrink-0 rounded-full"
+                          style={{ backgroundColor: DAMAGE_LEVEL_COLOR_TOKEN[level] }}
+                        />
+                        {DAMAGE_LEVEL_LABEL[level]}
+                      </span>
+                      <span className="shrink-0 tabular-nums">{b.porNivel[level]}</span>
+                    </div>
+                  ))}
+                </div>
               </li>
             ))}
           </ul>
         </>
       )}
     </div>
+  )
+}
+
+function DamageLevelLegend() {
+  return (
+    <ul className="flex flex-col gap-1 text-xs text-muted-foreground">
+      {DAMAGE_LEVEL_ORDER.map((level) => (
+        <li key={level} className="flex items-center gap-1.5">
+          <span
+            className="inline-block size-2.5 shrink-0 rounded-sm"
+            style={{ backgroundColor: DAMAGE_LEVEL_COLOR_TOKEN[level] }}
+          />
+          {DAMAGE_LEVEL_LABEL[level]}
+        </li>
+      ))}
+    </ul>
   )
 }
 
@@ -252,10 +290,19 @@ function SismologiaLiveMapImpl({
   const { traces: faultTraces } = useFaults(showFaults)
   const [resolvedColors, setResolvedColors] = useState<Record<string, string> | null>(null)
   const [exposureColors, setExposureColors] = useState<Record<SeismicExposureLevel, string> | null>(null)
+  const [damageColors, setDamageColors] = useState<Record<DamageLevel, string> | null>(null)
   const [noDataColor, setNoDataColor] = useState<string | null>(null)
   const [faultLineColor, setFaultLineColor] = useState<string | null>(null)
   const [popupInfo, setPopupInfo] = useState<PopupInfo | null>(null)
   const [cursor, setCursor] = useState<string>("")
+  const { data: damageData, isLoading: isDamageLoading } = useSismologiaDanos(showDamage)
+  // Drives the damage-column cluster/detail switch below — matches the
+  // AOI's default zoom until the map reports its real one on load.
+  const [damageZoom, setDamageZoom] = useState(9)
+  const handleZoomChange = useCallback(() => {
+    const map = mapRef.current?.getMap()
+    if (map) setDamageZoom(map.getZoom())
+  }, [])
 
   useEffect(() => {
     const entries = SEISMIC_MAGNITUDE_LEVELS.map(
@@ -267,9 +314,23 @@ function SismologiaLiveMapImpl({
         SEISMIC_EXPOSURE_LEVELS.map((level) => [level, resolveCssColor(SEISMIC_EXPOSURE_LEVEL_TOKENS[level])] as const),
       ) as Record<SeismicExposureLevel, string>,
     )
+    setDamageColors(
+      Object.fromEntries(
+        DAMAGE_LEVEL_ORDER.map((level) => [level, resolveCssColor(DAMAGE_LEVEL_COLOR_TOKEN[level])] as const),
+      ) as Record<DamageLevel, string>,
+    )
     setNoDataColor(resolveCssColor("var(--muted-foreground)"))
     setFaultLineColor(resolveCssColor("var(--fault-line)"))
   }, [])
+
+  // Tilts into a 3D perspective while the damage columns are showing (flat
+  // 2D fill-extrusion columns are invisible from directly overhead), then
+  // eases back to the map's normal top-down view when toggled off.
+  useEffect(() => {
+    const map = mapRef.current?.getMap()
+    if (!map) return
+    map.easeTo(showDamage ? { pitch: 55, bearing: -12, duration: 800 } : { pitch: 0, bearing: 0, duration: 600 })
+  }, [showDamage])
 
   const visibleEvents = useMemo(() => {
     if (!data) return []
@@ -346,6 +407,106 @@ function SismologiaLiveMapImpl({
     }
   }, [faultTraces])
 
+  // Below this zoom every barrio collapses into one Sevilla-wide cluster —
+  // the standard point-cluster convention (many bars up close, one
+  // aggregate far away) and, since the per-barrio bars are otherwise too
+  // small to read against the wider AOI, the only way the zoomed-out view
+  // communicates total concentration relative to the land at all.
+  const DAMAGE_CLUSTER_ZOOM = 12.5
+
+  // One extruded "bar" per non-zero severity level, laid out side by side
+  // around a centroid — a 3D bar chart draped on the map, styled after the
+  // ArcGIS field-data extrusion demo.
+  const damageColumnsGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
+    if (!damageData || !damageColors) return { type: "FeatureCollection", features: [] }
+    const metersPerDegLat = 111_320
+
+    const squareAround = (lon: number, lat: number, halfSideMeters: number): number[][] => {
+      const metersPerDegLon = metersPerDegLat * Math.cos((lat * Math.PI) / 180)
+      const dLat = halfSideMeters / metersPerDegLat
+      const dLon = halfSideMeters / metersPerDegLon
+      return [
+        [lon - dLon, lat - dLat],
+        [lon + dLon, lat - dLat],
+        [lon + dLon, lat + dLat],
+        [lon - dLon, lat + dLat],
+        [lon - dLon, lat - dLat],
+      ]
+    }
+
+    // Lays out one row of bars — one per non-zero severity level, height
+    // normalized against `maxCount` — centered on (lat, lon).
+    const buildRow = (
+      idPrefix: string,
+      label: string,
+      lat: number,
+      lon: number,
+      porNivel: Record<DamageLevel, number>,
+      maxCount: number,
+      opts: { maxHeightMeters: number; minHeightMeters: number; barHalfSideMeters: number; barSpacingMeters: number },
+    ): GeoJSON.Feature[] => {
+      const metersPerDegLon = metersPerDegLat * Math.cos((lat * Math.PI) / 180)
+      const activeLevels = DAMAGE_LEVEL_ORDER.filter((level) => porNivel[level] > 0)
+      const rowOffset = ((activeLevels.length - 1) * opts.barSpacingMeters) / 2
+      return activeLevels.map((level, i) => {
+        const count = porNivel[level]
+        const dLon = (i * opts.barSpacingMeters - rowOffset) / metersPerDegLon
+        const height = opts.minHeightMeters + (count / maxCount) * (opts.maxHeightMeters - opts.minHeightMeters)
+        return {
+          type: "Feature",
+          id: `${idPrefix}-${level}`,
+          properties: {
+            barrio: label,
+            nivel: level,
+            nivelLabel: DAMAGE_LEVEL_LABEL[level],
+            count,
+            __height: height,
+            __color: damageColors[level],
+          },
+          geometry: { type: "Polygon", coordinates: [squareAround(lon + dLon, lat, opts.barHalfSideMeters)] },
+        }
+      })
+    }
+
+    if (damageZoom < DAMAGE_CLUSTER_ZOOM) {
+      const totalPorNivel: Record<DamageLevel, number> = { destruida: 0, danada: 0, posible: 0 }
+      let weightedLat = 0
+      let weightedLon = 0
+      for (const barrio of damageData.barrios) {
+        for (const level of DAMAGE_LEVEL_ORDER) totalPorNivel[level] += barrio.porNivel[level]
+        weightedLat += barrio.lat * barrio.totalReportes
+        weightedLon += barrio.lon * barrio.totalReportes
+      }
+      if (damageData.totalReportes > 0) {
+        weightedLat /= damageData.totalReportes
+        weightedLon /= damageData.totalReportes
+      }
+      const maxCount = Math.max(1, ...DAMAGE_LEVEL_ORDER.map((l) => totalPorNivel[l]))
+      return {
+        type: "FeatureCollection",
+        features: buildRow("sevilla-total", "Sevilla (todos los barrios)", weightedLat, weightedLon, totalPorNivel, maxCount, {
+          maxHeightMeters: 900,
+          minHeightMeters: 60,
+          barHalfSideMeters: 55,
+          barSpacingMeters: 160,
+        }),
+      }
+    }
+
+    const maxCount = Math.max(1, ...damageData.barrios.flatMap((b) => DAMAGE_LEVEL_ORDER.map((l) => b.porNivel[l])))
+    return {
+      type: "FeatureCollection",
+      features: damageData.barrios.flatMap((barrio) =>
+        buildRow(barrio.barrio, barrio.barrio, barrio.lat, barrio.lon, barrio.porNivel, maxCount, {
+          maxHeightMeters: 420,
+          minHeightMeters: 24,
+          barHalfSideMeters: 14,
+          barSpacingMeters: 42,
+        }),
+      ),
+    }
+  }, [damageData, damageColors, damageZoom])
+
   const osmGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
     if (!osmPoints || !osmColors) return { type: "FeatureCollection", features: [] }
     return {
@@ -365,8 +526,9 @@ function SismologiaLiveMapImpl({
     ids.push("seismic-events")
     if (osmPoints && osmPoints.length > 0) ids.push("osm-points")
     if (showFaults) ids.push("faults-hit")
+    if (showDamage) ids.push("damage-columns")
     return ids
-  }, [showVeredas, osmPoints, showFaults])
+  }, [showVeredas, osmPoints, showFaults, showDamage])
 
   const handleMapClick = useCallback(
     (e: MapLayerMouseEvent) => {
@@ -417,6 +579,29 @@ function SismologiaLiveMapImpl({
           content: <VeredaPopupContent feature={feature} hazardKind="sismologia" colored />,
         })
         onVeredaSelect?.(feature)
+        return
+      }
+      const damageFeature = e.features?.find((f) => f.layer.id === "damage-columns")
+      if (damageFeature) {
+        const props = damageFeature.properties as unknown as {
+          barrio: string
+          nivelLabel: string
+          count: number
+        }
+        setPopupInfo({
+          longitude: lng,
+          latitude: lat,
+          content: (
+            <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
+              <strong>{props.barrio}</strong>
+              <span>{props.nivelLabel}</span>
+              <span>
+                {props.count} {props.count === 1 ? "reporte" : "reportes"}
+              </span>
+              <span style={{ color: "#888" }}>Reporte comunitario, sin verificar (Sevilla)</span>
+            </div>
+          ),
+        })
         return
       }
       const faultFeature = e.features?.find((f) => f.layer.id === "faults-hit")
@@ -491,9 +676,13 @@ function SismologiaLiveMapImpl({
         attributionControl={false}
         cursor={cursor}
         interactiveLayerIds={interactiveLayerIds}
-        onLoad={syncBounds}
+        onLoad={() => {
+          syncBounds()
+          handleZoomChange()
+        }}
         onMoveEnd={syncBounds}
         onZoomEnd={syncBounds}
+        onZoom={handleZoomChange}
         onMouseEnter={() => setCursor("pointer")}
         onMouseLeave={() => setCursor("")}
         onClick={handleMapClick}
@@ -571,6 +760,21 @@ function SismologiaLiveMapImpl({
           </Source>
         )}
 
+        {showDamage && damageColors && (
+          <Source id="damage-columns-source" type="geojson" data={damageColumnsGeoJson}>
+            <Layer
+              id="damage-columns"
+              type="fill-extrusion"
+              paint={{
+                "fill-extrusion-height": ["get", "__height"],
+                "fill-extrusion-base": 0,
+                "fill-extrusion-color": ["get", "__color"],
+                "fill-extrusion-opacity": 0.88,
+              }}
+            />
+          </Source>
+        )}
+
         {popupInfo && (
           <Popup
             longitude={popupInfo.longitude}
@@ -626,17 +830,18 @@ function SismologiaLiveMapImpl({
           {showVeredas && <ExposureLegend />}
           <RailToggleRow
             icon={FileWarning}
-            label="Reportes de daños (Sevilla)"
+            label="Reportes de daños (Sevilla) — 3D"
             checked={showDamage}
             onChange={setShowDamage}
           />
+          {showDamage && <DamageLevelLegend />}
         </RailSection>
 
         <RailSection title="Referencia oficial (SGC)">
           <RailToggleRow icon={Route} label="Fallas geológicas" checked={showFaults} onChange={setShowFaults} />
         </RailSection>
       </MapControlRail>
-      {showDamage && <DamageReportsPanel />}
+      {showDamage && <DamageReportsPanel data={damageData} isLoading={isDamageLoading} />}
     </div>
   )
 }
