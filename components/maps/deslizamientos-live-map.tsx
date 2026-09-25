@@ -43,6 +43,7 @@ import {
 import { useFaults } from "@/lib/deslizamientos/use-faults"
 import { useLandslideInventory } from "@/lib/deslizamientos/use-landslide-inventory"
 import { VeredasOverlay } from "@/components/maps/veredas-overlay"
+import { FlyToMunicipio } from "@/components/maps/fly-to-municipio"
 import { MunicipioTogglePanelContent, type MunicipioRiskSummary } from "@/components/maps/municipio-toggle-panel"
 import { useVeredas } from "@/lib/veredas/use-veredas"
 import { useMunicipioToggles } from "@/lib/veredas/municipio-toggles"
@@ -488,6 +489,7 @@ function DeslizamientosLiveMapImpl({
             </CircleMarker>
           ))}
         {onBoundsChange && <BoundsSync onBoundsChange={onBoundsChange} />}
+        <FlyToMunicipio veredas={veredas} activeMunicipios={activeMunicipios} />
       </MapContainer>
       {veredasLoading && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-background/60">

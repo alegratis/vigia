@@ -18,6 +18,7 @@ import { COMPOUND_LEVELS, compoundLevelColorToken } from "@/lib/riesgo-compuesto
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import { BasemapTileLayer } from "@/components/maps/basemap-tile-layer"
 import { CompoundVeredasOverlay } from "@/components/maps/compound-veredas-overlay"
+import { FlyToMunicipio } from "@/components/maps/fly-to-municipio"
 import { MunicipioTogglePanelContent, type MunicipioRiskSummary } from "@/components/maps/municipio-toggle-panel"
 import { MapControlRail, RailSection, RailToggleRow } from "@/components/maps/map-control-rail"
 import { useMunicipioToggles } from "@/lib/veredas/municipio-toggles"
@@ -221,6 +222,7 @@ function CompoundLiveMapImpl({
             </CircleMarker>
           ))}
         {onBoundsChange && <BoundsSync onBoundsChange={onBoundsChange} />}
+        <FlyToMunicipio veredas={veredas} activeMunicipios={activeMunicipios} />
       </MapContainer>
       {veredasLoading && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-background/60">
