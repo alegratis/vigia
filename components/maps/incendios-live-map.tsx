@@ -256,7 +256,7 @@ function IncendiosLiveMapImpl({
   // showing the same full picture rather than hiding MODIS.
   const [showModis, setShowModis] = useState(true)
   const [showViirs, setShowViirs] = useState(true)
-  const [showSentinel3, setShowSentinel3] = useState(false)
+  const [showSentinel3, setShowSentinel3] = useState(true)
   // Always on — this app's own model is the map's only hazard-coloring
   // source now; AmenazaIncendios' static 2014 PBOT zoning is no longer
   // surfaced here at all (see the component doc comment above).
