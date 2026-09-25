@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip } from "@/components/ui/chart"
 import type { ClimatologiaQuinquenalResponse } from "@/lib/precipitacion/api-types"
-import type { SelectedVereda } from "@/components/precipitacion/climatology-chart"
+import type { SelectedVereda } from "@/components/precipitacion/decadal-chart"
 
 /** The three municipios in the study area, selectable as a "whole territory" average. */
 const MUNICIPIOS = ["Sevilla", "Zarzal", "Caicedonia", "Roldanillo"] as const

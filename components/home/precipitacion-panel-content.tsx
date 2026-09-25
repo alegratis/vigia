@@ -5,7 +5,7 @@ import { PrecipitacionLiveMapLoader } from "@/components/maps/precipitacion-live
 import { ScrollHintButton } from "@/components/home/scroll-hint-button"
 import { BackToTopButton } from "@/components/home/back-to-top-button"
 import { PrecipitationOverview } from "@/components/precipitacion/precipitation-overview"
-import { ClimatologyChart, type SelectedVereda } from "@/components/precipitacion/climatology-chart"
+import { DecadalChart, type SelectedVereda } from "@/components/precipitacion/decadal-chart"
 import { QuinquenalChart } from "@/components/precipitacion/quinquenal-chart"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
@@ -67,7 +67,7 @@ export function PrecipitacionPanelContent({
       </div>
       <div ref={captionRef} className="flex flex-col gap-6 p-4 sm:p-6">
         <div aria-live="polite">
-          <ClimatologyChart vereda={selectedVereda} />
+          <DecadalChart vereda={selectedVereda} />
         </div>
         <div aria-live="polite">
           <QuinquenalChart vereda={selectedVereda} />
@@ -112,7 +112,7 @@ export function PrecipitacionPanelContent({
   demás capas de amenaza, esta cubre Zarzal y Roldanillo con el mismo detalle que Sevilla y
   Caicedonia. Los umbrales de nivel son un criterio simple de referencia, no un
           modelo de amenaza calibrado. Haz clic sobre cualquier vereda para ver su detalle
-          y actualizar el histograma de lluvia normal mensual que aparece arriba.
+          y actualizar los histogramas de lluvia mensual que aparecen arriba.
         </p>
         <BackToTopButton targetRef={mapRef} />
       </div>

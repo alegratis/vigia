@@ -70,6 +70,9 @@
   --color-precipitacion-quinquenio-3: var(--precipitacion-quinquenio-3);
   --color-precipitacion-quinquenio-4: var(--precipitacion-quinquenio-4);
   --color-precipitacion-quinquenio-5: var(--precipitacion-quinquenio-5);
+  --color-precipitacion-decada-1: var(--precipitacion-decada-1);
+  --color-precipitacion-decada-2: var(--precipitacion-decada-2);
+  --color-precipitacion-decada-3: var(--precipitacion-decada-3);
   --color-clima-frio: var(--clima-frio);
   --color-clima-fresco: var(--clima-fresco);
   --color-clima-templado: var(--clima-templado);
@@ -233,6 +236,18 @@
   --precipitacion-quinquenio-5: oklch(0.5 0.18 340);
 
   /*
+   * Top precipitación histogram's 10-year-bin bars (see
+   * openmeteo-decadal-climatology.ts) — replaces the old IDEAM-normal
+   * histogram that this chart used to render, so it reuses that chart's
+   * "año en curso" (chart-4) and "años recientes" (historico-1/2) line
+   * colors above it and just needs three new bar hues, one per decade,
+   * kept clear of both those lines and the quinquenio bars below it.
+   */
+  --precipitacion-decada-1: oklch(0.58 0.15 95);
+  --precipitacion-decada-2: oklch(0.5 0.15 230);
+  --precipitacion-decada-3: oklch(0.46 0.17 280);
+
+  /*
    * Clima temperature ramp: a natural cool-to-warm arc, cool blue (frío) to
    * hot red (caluroso). It reads as a thermometer, not a hazard level, and
    * this map is never shown alongside the other ramps in the compound
@@ -371,6 +386,9 @@
   --precipitacion-historico-1: oklch(0.72 0.13 170);
   --precipitacion-historico-2: oklch(0.7 0.17 300);
   --precipitacion-historico-3: oklch(0.72 0.18 348);
+  --precipitacion-decada-1: oklch(0.64 0.15 95);
+  --precipitacion-decada-2: oklch(0.58 0.15 230);
+  --precipitacion-decada-3: oklch(0.54 0.17 280);
   --precipitacion-quinquenio-1: oklch(0.66 0.13 125);
   --precipitacion-quinquenio-2: oklch(0.6 0.13 195);
   --precipitacion-quinquenio-3: oklch(0.54 0.16 250);

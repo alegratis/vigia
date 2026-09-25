@@ -3,14 +3,14 @@
 import { useEffect, useMemo, useState } from "react"
 import useSWR from "swr"
 import { Bar, ComposedChart, CartesianGrid, Line, XAxis, YAxis } from "recharts"
-import { AlertTriangle, CloudRain, MapPin, RefreshCw } from "lucide-react"
+import { AlertTriangle, CloudRain, RefreshCw } from "lucide-react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip } from "@/components/ui/chart"
-import type { ClimatologiaResponse } from "@/lib/precipitacion/api-types"
+import type { ClimatologiaDecadalResponse } from "@/lib/precipitacion/api-types"
 
 export interface SelectedVereda {
   codigoVereda: string
@@ -22,78 +22,66 @@ export interface SelectedVereda {
 const MUNICIPIOS = ["Sevilla", "Zarzal", "Caicedonia", "Roldanillo"] as const
 type Municipio = (typeof MUNICIPIOS)[number]
 
-interface ClimatologyChartProps {
+interface DecadalChartProps {
   /** Last vereda clicked on the map, if any — takes over the chart until a municipio tab is chosen instead. */
   vereda: SelectedVereda | null
 }
 
-const fetcher = async (url: string): Promise<ClimatologiaResponse> => {
+const fetcher = async (url: string): Promise<ClimatologiaDecadalResponse> => {
   const res = await fetch(url)
-  if (!res.ok) throw new Error("No se pudo cargar la climatología")
+  if (!res.ok) throw new Error("No se pudo cargar la climatología decadal")
   return res.json()
 }
 
 const CHART_CONFIG = {
-  mm1991_2020: { label: "Normal 1991-2020", color: "var(--chart-1)" },
-  mm1981_2010: { label: "Normal 1981-2010", color: "var(--chart-2)" },
   mmActual: { label: "Año en curso", color: "var(--chart-4)" },
 } as const
 
-/**
- * Data key for a past year's line in chart rows/config, e.g. "hist_2025" —
- * prefixed since object keys can't be bare numbers and Recharts/ChartConfig
- * both key off these strings.
- */
-function historicoKey(anio: number) {
-  return `hist_${anio}`
+/** Data key for a 10-year bin in chart rows/config, e.g. "bin_1994_2003". */
+function binKey(inicio: number, fin: number) {
+  return `bin_${inicio}_${fin}`
 }
 
-/**
- * Color for a past year's line: three genuinely distinct hues
- * (`--precipitacion-historico-1/2/3` — teal-blue, violet, rose) rather
- * than one hue faded to different opacities, so each toggled year reads
- * as its own line at a glance instead of requiring the legend to tell
- * "80% violet" apart from "50% violet".
- */
-function historicoColor(rankFromMostRecent: number) {
+/** Data key for a recent individual year's line, e.g. "reciente_2025". */
+function recienteKey(anio: number) {
+  return `reciente_${anio}`
+}
+
+/** Color for a 10-year bin bar: three distinct hues (`--precipitacion-decada-1..3`), one per decade. */
+function decadaColor(index: number) {
+  return `var(--precipitacion-decada-${(index % 3) + 1})`
+}
+
+/** The two most recent individual years reuse the first two "historico" hues from the quinquenal histogram, for a consistent visual vocabulary across all three charts. */
+function recienteColor(rankFromMostRecent: number) {
   return `var(--precipitacion-historico-${(rankFromMostRecent % 3) + 1})`
 }
 
 /**
- * Monthly rainfall chart below the precipitación map: two bars for IDEAM's
- * published normal periods (see lib/precipitacion/ideam-climatology.ts),
- * plus an optional line for this calendar year's actual accumulation
- * (Open-Meteo's historical archive — see
- * openmeteo-historical-client.ts's getCurrentYearMonthlyPrecipitation —
- * chosen over NASA POWER's satellite-derived near-real-time layer, which
- * was observed overestimating rainfall in this terrain), so a viewer can
- * see whether the current year is running above or below normal for a
- * given month. Individually toggleable lines for each of the three most
- * recently completed calendar years (getRecentPastYears — e.g. 2025, 2024,
- * 2023) are also available, off by default, for comparing specific recent
- * years against each other or against the current year rather than only
- * against the multi-decade IDEAM normal.
+ * First monthly rainfall chart above the precipitación map: replaces the
+ * old IDEAM-normal histogram, which read from IDEAM's published
+ * 1991-2020/1981-2010 climatology raster (visualizador.ideam.gov.co) —
+ * a service that has been down, leaving that chart permanently empty.
+ * This one computes its own monthly averages directly from Open-Meteo's
+ * historical archive (the same source the quinquenal histogram below it
+ * already uses) over three consecutive 10-year windows — a longer,
+ * 30-year look back than the quinquenal chart's 5-year bins, at the cost
+ * of finer within-window detail, so the two charts complement rather than
+ * duplicate each other. The current year and the two years right before
+ * it are left out of the bins and shown as individual lines instead (same
+ * convention as the quinquenal chart: current year on by default with its
+ * own switch, the two prior years off by default and individually
+ * toggleable).
  *
- * Two ways to choose what's plotted:
- * - Click a vereda on the map (bubbles up via onVeredaSelect) — shows that
- *   single vereda's centroid climatology.
- * - Pick one of the three municipio tabs — shows the average of every
- *   rural vereda centroid in that municipio, i.e. the whole territory
- *   rather than one point. Sevilla is selected by default so the chart
- *   always has something to show even before any vereda is clicked.
- *
- * Clicking a vereda switches the tabs over to it (there's no vereda tab to
- * highlight, so the vereda name takes over the header); picking a
- * municipio tab afterward switches back to the whole-territory average.
+ * Same two ways to choose what's plotted as the quinquenal chart: click a
+ * vereda on the map, or pick a municipio tab for the whole-territory
+ * average.
  */
-export function ClimatologyChart({ vereda }: ClimatologyChartProps) {
+export function DecadalChart({ vereda }: DecadalChartProps) {
   const [municipio, setMunicipio] = useState<Municipio>("Sevilla")
   const [showActual, setShowActual] = useState(true)
-  // Off by default — three extra lines on top of the two normal bars and the current-year line would
-  // clutter the chart before anyone's asked for a specific year to compare against.
+  // Off by default, same rationale as the quinquenal histogram's recent-year toggles.
   const [enabledYears, setEnabledYears] = useState<Set<number>>(new Set())
-  // Vereda selection takes over the chart the moment one is clicked; remember whether that's currently
-  // in effect so a later municipio-tab click can explicitly hand control back.
   const [mode, setMode] = useState<"vereda" | "municipio">("municipio")
 
   function toggleYear(anio: number, checked: boolean) {
@@ -111,53 +99,52 @@ export function ClimatologyChart({ vereda }: ClimatologyChartProps) {
 
   const query =
     mode === "vereda" && vereda
-      ? `/api/precipitacion/climatologia?codigoVereda=${encodeURIComponent(vereda.codigoVereda)}`
-      : `/api/precipitacion/climatologia?municipio=${encodeURIComponent(municipio)}`
+      ? `/api/precipitacion/climatologia-decadal?codigoVereda=${encodeURIComponent(vereda.codigoVereda)}`
+      : `/api/precipitacion/climatologia-decadal?municipio=${encodeURIComponent(municipio)}`
 
-  const { data, error, isLoading, mutate, isValidating } = useSWR<ClimatologiaResponse>(query, fetcher, {
+  const { data, error, isLoading, mutate, isValidating } = useSWR<ClimatologiaDecadalResponse>(query, fetcher, {
     revalidateOnFocus: false,
   })
 
-  const aniosHistoricos = data?.aniosHistoricos ?? []
+  const decadas = data?.decadas ?? []
+  const aniosRecientes = data?.aniosRecientes ?? []
 
   const chartData = useMemo(
     () =>
       (data?.meses ?? []).map((m) => {
-        const historicoValues = Object.fromEntries(m.historico.map((h) => [historicoKey(h.anio), h.mm]))
+        const binValues = Object.fromEntries(m.decadas.map((d) => [binKey(d.inicio, d.fin), d.mm]))
+        const recienteValues = Object.fromEntries(m.reciente.map((r) => [recienteKey(r.anio), r.mm]))
         return {
           monthLabel: m.monthLabel,
-          mm1991_2020: m.mm1991_2020,
-          rango1991_2020: m.rango1991_2020,
-          mm1981_2010: m.mm1981_2010,
-          rango1981_2010: m.rango1981_2010,
           mmActual: m.mmActual,
           esMesEnCurso: m.esMesEnCurso,
-          ...historicoValues,
+          ...binValues,
+          ...recienteValues,
         }
       }),
     [data],
   )
-  const hasAnyData = chartData.some((m) => m.mm1991_2020 != null || m.mm1981_2010 != null)
+  const hasAnyData = chartData.some((m) => decadas.some((d) => (m as Record<string, unknown>)[binKey(d.inicio, d.fin)] != null))
   const currentYear = new Date().getFullYear()
 
   const chartConfig = useMemo(() => {
-    const historicoConfig = Object.fromEntries(
-      aniosHistoricos.map((anio, rank) => [
-        historicoKey(anio),
-        { label: String(anio), color: historicoColor(rank) },
-      ]),
+    const binConfig = Object.fromEntries(
+      decadas.map((d, i) => [binKey(d.inicio, d.fin), { label: `${d.inicio}-${d.fin}`, color: decadaColor(i) }]),
     )
-    return { ...CHART_CONFIG, ...historicoConfig }
-  }, [aniosHistoricos])
+    const recienteConfig = Object.fromEntries(
+      aniosRecientes.map((anio, rank) => [recienteKey(anio), { label: String(anio), color: recienteColor(rank) }]),
+    )
+    return { ...CHART_CONFIG, ...binConfig, ...recienteConfig }
+  }, [decadas, aniosRecientes])
 
   return (
     <Card>
       <CardHeader className="gap-3 border-b border-border">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <MapPin className="size-4 text-muted-foreground" aria-hidden="true" />
+            <CloudRain className="size-4 text-muted-foreground" aria-hidden="true" />
             <h3 className="font-semibold tracking-tight">
-              Histograma de lluvia normal —{" "}
+              Histograma de lluvia por décadas —{" "}
               {mode === "vereda" && vereda
                 ? `${vereda.nombre} (${vereda.municipio})`
                 : `${municipio} (territorio completo)`}
@@ -199,19 +186,19 @@ export function ClimatologyChart({ vereda }: ClimatologyChartProps) {
           <fieldset className="flex flex-wrap items-center gap-3">
             <legend className="sr-only">Años a mostrar</legend>
             <div className="flex items-center gap-2">
-              <Switch id="show-actual-year" checked={showActual} onCheckedChange={setShowActual} />
-              <Label htmlFor="show-actual-year" className="text-sm font-medium text-foreground">
+              <Switch id="show-actual-year-decadal" checked={showActual} onCheckedChange={setShowActual} />
+              <Label htmlFor="show-actual-year-decadal" className="text-sm font-medium text-foreground">
                 {currentYear} (año en curso)
               </Label>
             </div>
-            {aniosHistoricos.map((anio) => (
+            {aniosRecientes.map((anio) => (
               <div key={anio} className="flex items-center gap-2">
                 <Switch
-                  id={`show-year-${anio}`}
+                  id={`show-year-decadal-${anio}`}
                   checked={enabledYears.has(anio)}
                   onCheckedChange={(checked) => toggleYear(anio, checked)}
                 />
-                <Label htmlFor={`show-year-${anio}`} className="text-sm font-medium text-foreground">
+                <Label htmlFor={`show-year-decadal-${anio}`} className="text-sm font-medium text-foreground">
                   {anio}
                 </Label>
               </div>
@@ -220,8 +207,8 @@ export function ClimatologyChart({ vereda }: ClimatologyChartProps) {
         </div>
         <p className="text-xs text-muted-foreground">
           {mode === "vereda" && vereda
-            ? "IDEAM — normales mensuales interpoladas en el centroide de la vereda seleccionada."
-            : `IDEAM — normales mensuales promediadas entre las ${data?.ubicacion.veredasPromediadas ?? ""} veredas rurales de ${municipio}.`}
+            ? "Open-Meteo — promedios mensuales por década en el centroide de la vereda seleccionada."
+            : `Open-Meteo — promedios mensuales por década, promediados entre las ${data?.ubicacion.veredasPromediadas ?? ""} veredas rurales de ${municipio}.`}
           {showActual && " Línea: acumulado real de este año (Open-Meteo)."}
           {enabledYears.size > 0 &&
             ` Comparando con ${[...enabledYears].sort((a, b) => b - a).join(", ")} (acumulado completo del año, Open-Meteo).`}
@@ -236,10 +223,7 @@ export function ClimatologyChart({ vereda }: ClimatologyChartProps) {
               <AlertTriangle className="size-5" aria-hidden="true" />
               <p className="font-medium">No se pudo cargar el histograma</p>
             </div>
-            <p className="text-sm text-muted-foreground">
-              El servicio de climatología de IDEAM (visualizador.ideam.gov.co) o Open-Meteo podría no estar
-              disponible en este momento.
-            </p>
+            <p className="text-sm text-muted-foreground">El servicio de Open-Meteo podría no estar disponible en este momento.</p>
             <button
               type="button"
               onClick={() => mutate()}
@@ -269,28 +253,19 @@ export function ClimatologyChart({ vereda }: ClimatologyChartProps) {
                     <div className="grid min-w-48 gap-1.5 rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl">
                       <p className="font-medium text-foreground">{label}</p>
                       <div className="grid gap-1">
-                        {row.mm1991_2020 != null && (
-                          <TooltipRow
-                            color="var(--color-mm1991_2020)"
-                            label={CHART_CONFIG.mm1991_2020.label}
-                            value={
-                              row.rango1991_2020
-                                ? `${row.rango1991_2020} (aprox. ${row.mm1991_2020} mm)`
-                                : `${row.mm1991_2020} mm`
-                            }
-                          />
-                        )}
-                        {row.mm1981_2010 != null && (
-                          <TooltipRow
-                            color="var(--color-mm1981_2010)"
-                            label={CHART_CONFIG.mm1981_2010.label}
-                            value={
-                              row.rango1981_2010
-                                ? `${row.rango1981_2010} (aprox. ${row.mm1981_2010} mm)`
-                                : `${row.mm1981_2010} mm`
-                            }
-                          />
-                        )}
+                        {decadas.map((d) => {
+                          const key = binKey(d.inicio, d.fin)
+                          const mm = (row as unknown as Record<string, number | null>)[key]
+                          if (mm == null) return null
+                          return (
+                            <TooltipRow
+                              key={key}
+                              color={`var(--color-${key})`}
+                              label={`${d.inicio}-${d.fin}`}
+                              value={`${mm} mm`}
+                            />
+                          )
+                        })}
                         {showActual && row.mmActual != null && (
                           <TooltipRow
                             swatchClassName="rounded-full"
@@ -299,10 +274,10 @@ export function ClimatologyChart({ vereda }: ClimatologyChartProps) {
                             value={`${row.mmActual} mm${row.esMesEnCurso ? " (mes en curso, parcial)" : ""}`}
                           />
                         )}
-                        {aniosHistoricos
+                        {aniosRecientes
                           .filter((anio) => enabledYears.has(anio))
                           .map((anio) => {
-                            const key = historicoKey(anio)
+                            const key = recienteKey(anio)
                             const mm = (row as unknown as Record<string, number | null>)[key]
                             if (mm == null) return null
                             return (
@@ -320,8 +295,10 @@ export function ClimatologyChart({ vereda }: ClimatologyChartProps) {
                   )
                 }}
               />
-              <Bar dataKey="mm1991_2020" fill="var(--color-mm1991_2020)" radius={[3, 3, 0, 0]} />
-              <Bar dataKey="mm1981_2010" fill="var(--color-mm1981_2010)" radius={[3, 3, 0, 0]} />
+              {decadas.map((d) => {
+                const key = binKey(d.inicio, d.fin)
+                return <Bar key={key} dataKey={key} fill={`var(--color-${key})`} radius={[3, 3, 0, 0]} />
+              })}
               {showActual && (
                 <Line
                   dataKey="mmActual"
@@ -331,9 +308,9 @@ export function ClimatologyChart({ vereda }: ClimatologyChartProps) {
                   connectNulls
                 />
               )}
-              {aniosHistoricos.map((anio) => {
+              {aniosRecientes.map((anio) => {
                 if (!enabledYears.has(anio)) return null
-                const key = historicoKey(anio)
+                const key = recienteKey(anio)
                 return (
                   <Line
                     key={anio}
@@ -350,23 +327,11 @@ export function ClimatologyChart({ vereda }: ClimatologyChartProps) {
           </ChartContainer>
         ) : (
           <p className="py-10 text-center text-sm text-muted-foreground">
-            IDEAM no tiene un valor de climatología publicado para este punto exacto.
+            Open-Meteo no tiene datos históricos suficientes para este punto exacto.
           </p>
         )}
         <p className="mt-3 text-xs leading-snug text-muted-foreground">
-          Cada barra es el punto medio de la banda de precipitación mensual del{" "}
-          <a
-            href="https://visualizador.ideam.gov.co"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline underline-offset-2 hover:text-foreground"
-          >
-            mapa de climatología interpolada de IDEAM
-          </a>
-          , no la lectura exacta de una estación individual (ver el rango original al pasar el cursor) — a
-          diferencia del histograma de una sola estación (por ejemplo, Cumbarco en Sevilla), esta versión cubre
-          cualquier vereda o municipio del área de estudio. La línea de {currentYear}, cuando está activa, es el
-          acumulado real de{" "}
+          Cada barra es el promedio mensual de{" "}
           <a
             href="https://open-meteo.com"
             target="_blank"
@@ -375,10 +340,11 @@ export function ClimatologyChart({ vereda }: ClimatologyChartProps) {
           >
             Open-Meteo
           </a>{" "}
-          (análisis ECMWF IFS y reanálisis ERA5, que asimilan observaciones reales de estaciones y no solo
-          imágenes satelitales) para cada mes transcurrido; el mes en curso es un acumulado parcial (no cierra
-          hasta fin de mes), y los meses futuros del año no se dibujan. Las líneas de años anteriores, cuando
-          están activas, son el acumulado completo de esa misma fuente para cada mes de ese año.
+          (análisis ECMWF IFS y reanálisis ERA5) a lo largo de una década completa — 10 años, para una mirada
+          más larga al pasado (30 años en total) que el histograma de quinquenios abajo; cada década tiene su
+          propio color, en orden cronológico según la leyenda. El año {currentYear} y los dos anteriores se
+          dejan fuera de las barras a propósito y se muestran como líneas individuales (misma convención que
+          el histograma de quinquenios) para no diluir la comparación más reciente dentro de un promedio.
         </p>
       </CardContent>
     </Card>
