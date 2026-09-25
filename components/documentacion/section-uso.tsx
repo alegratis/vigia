@@ -22,7 +22,7 @@ const STEPS: GuideStep[] = [
     simple:
       "Cuando abres Vigía, ya estás viendo un mapa. A la derecha hay seis franjas verticales con un ícono cada una: Deslizamientos, Inundaciones, Incendios, Precipitación, Clima y Sismología (más Riesgo compuesto, que junta las cinco amenazas). Clima es un reporte del tiempo, no una amenaza. Toca cualquier franja y el mapa completo cambia a esa vista — no se abre una página nueva, todo pasa en la misma pantalla.",
     technical:
-      "Cada amenaza carga su propio mapa Leaflet con capas independientes que se activan y desactivan con las casillas de la esquina superior izquierda (por ejemplo, \"Humedad del suelo (SMAP)\" o \"Fallas geológicas (SGC)\"). La leyenda de colores está siempre en la esquina inferior — de verde (muy bajo) a rojo (muy alto).",
+      "Cada amenaza carga su propio mapa Leaflet con capas independientes que se activan y desactivan desde un único panel de control acoplado al borde derecho del mapa (por ejemplo, \"Humedad del suelo (SMAP)\" o \"Fallas geológicas (SGC)\"), agrupadas por Municipios, capas satelitales y capas de referencia oficial. La leyenda de colores activa aparece dentro del mismo panel — de verde (muy bajo) a rojo (muy alto) — y el panel se puede colapsar a una franja de íconos para dejar el mapa a pantalla completa.",
     image: {
       src: "/images/docs/panel-principal.png",
       alt: "Panel principal de Vigía mostrando el mapa de deslizamientos, la leyenda de colores y las franjas de las otras amenazas a la derecha",
