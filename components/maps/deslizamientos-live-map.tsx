@@ -555,8 +555,14 @@ function DeslizamientosLiveMapImpl({
         onClick={handleMapClick}
         style={{ width: "100%", height: "100%" }}
       >
-        <NavigationControl position="top-right" />
-        <AttributionControl position="bottom-right" customAttribution="MapLibre © OpenStreetMap / Esri" compact />
+        {/*
+         * MapControlRail docks the full right edge (top-3 to bottom-3), so
+         * top-right/bottom-right controls would render underneath it. Both
+         * live on the left edge instead — the only corners the rail never
+         * occupies, on desktop or its mobile bottom-sheet layout.
+         */}
+        <NavigationControl position="top-left" />
+        <AttributionControl position="bottom-left" customAttribution="MapLibre © OpenStreetMap / CARTO" compact />
 
         {showSoilMoisture && (
           <Source id="soil-moisture" type="raster" tiles={[SMAP_TILE_URL]} tileSize={256} maxzoom={6}>
@@ -703,9 +709,6 @@ function DeslizamientosLiveMapImpl({
           <span className="text-sm text-destructive">No se pudo cargar la capa.</span>
         </div>
       )}
-      <div className="absolute bottom-3 left-3 z-[400] max-w-[200px]">
-        <OsmLegend points={osmPoints ?? []} />
-      </div>
       <MapControlRail>
         <RailSection title="Municipios" first>
           <MunicipioTogglePanelContent
@@ -770,7 +773,12 @@ function DeslizamientosLiveMapImpl({
             />
           </div>
         </RailSection>
-        {(showCriticalSites || showSoilMoisture || showLandCover || showSettlement || showProtectedAreas) && (
+        {(showCriticalSites ||
+          showSoilMoisture ||
+          showLandCover ||
+          showSettlement ||
+          showProtectedAreas ||
+          (osmPoints && osmPoints.length > 0)) && (
           <RailSection title="Leyenda activa">
             <div className="flex flex-col gap-3">
               {showSoilMoisture && <SoilMoistureLegend />}
@@ -778,6 +786,7 @@ function DeslizamientosLiveMapImpl({
               {showLandCover && <LandCoverLegend />}
               {showSettlement && <SettlementLegend />}
               {showProtectedAreas && <ProtectedAreasLegend />}
+              {osmPoints && osmPoints.length > 0 && <OsmLegend points={osmPoints} bare />}
             </div>
           </RailSection>
         )}

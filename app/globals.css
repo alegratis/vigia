@@ -484,6 +484,48 @@
 
 .maplibregl-popup-content {
   border-radius: var(--radius-lg);
+  background: var(--card);
+  color: var(--card-foreground);
+}
+
+/*
+ * MapLibre's own stylesheet (imported in deslizamientos-live-map.tsx)
+ * hardcodes the popup, its tip triangle, and its close button to a fixed
+ * white (#fff) background with dark text — invisible in dark mode, since
+ * the content inside (VeredaPopupContent, etc.) themes its text off
+ * --foreground/--card-foreground assuming a themed surface underneath.
+ * Next.js's CSS chunk order loads maplibre-gl.css after this file despite
+ * source order, so equal-specificity overrides above lose the cascade;
+ * `!important` is required here to reliably win instead of depending on
+ * import order.
+ */
+.maplibregl-popup-content {
+  background: var(--card) !important;
+  color: var(--card-foreground) !important;
+}
+
+.maplibregl-popup-anchor-top .maplibregl-popup-tip,
+.maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
+.maplibregl-popup-anchor-top-right .maplibregl-popup-tip {
+  border-bottom-color: var(--card) !important;
+}
+
+.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
+.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip {
+  border-top-color: var(--card) !important;
+}
+
+.maplibregl-popup-anchor-left .maplibregl-popup-tip {
+  border-right-color: var(--card) !important;
+}
+
+.maplibregl-popup-anchor-right .maplibregl-popup-tip {
+  border-left-color: var(--card) !important;
+}
+
+.maplibregl-popup-close-button {
+  color: var(--card-foreground) !important;
 }
 
 @layer base {
