@@ -17,7 +17,7 @@ const LAYERS = [
   },
   {
     title: "Mapas",
-    body: "Leaflet y react-leaflet, importados dinámicamente con next/dynamic({ ssr: false }) para evitar que el renderizado en servidor choque con las dependencias de window/document de Leaflet. Cada amenaza combina GeoJSON, CircleMarker, TileLayer, WMSTileLayer e ImageOverlay según la forma de su fuente.",
+    body: "MapLibre GL, vía react-map-gl, importado dinámicamente con next/dynamic({ ssr: false }) para evitar que el renderizado en servidor choque con las dependencias de window/document del motor de mapas. Cada amenaza combina fuentes GeoJSON, capas de símbolos/círculos, teselas vectoriales y overlays raster o WMS según la forma de su fuente, todo compuesto en un único WebGL canvas.",
   },
   {
     title: "Estilos y sistema de diseño",
