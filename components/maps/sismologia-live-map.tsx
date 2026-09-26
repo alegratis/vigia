@@ -24,6 +24,7 @@ import { useFaults } from "@/lib/deslizamientos/use-faults"
 import { VeredaPopupContent } from "@/components/maps/vereda-popup-content"
 import { MunicipioTogglePanelContent, type MunicipioRiskSummary } from "@/components/maps/municipio-toggle-panel"
 import { MapControlRail, RailSection, RailToggleRow } from "@/components/maps/map-control-rail"
+import { MapViewToggle } from "@/components/maps/map-view-toggle"
 import { useVeredas } from "@/lib/veredas/use-veredas"
 import { useMunicipioToggles, isMunicipioActive } from "@/lib/veredas/municipio-toggles"
 import { boundsForActiveMunicipios } from "@/lib/veredas/municipio-bounds"
@@ -327,14 +328,23 @@ function SismologiaLiveMapImpl({
     setFaultLineColor(resolveCssColor("var(--fault-line)"))
   }, [])
 
-  // Tilts into a 3D perspective while the damage columns are showing (flat
-  // 2D fill-extrusion columns are invisible from directly overhead), then
-  // eases back to the map's normal top-down view when toggled off.
-  useEffect(() => {
+  // Shared pitch/bearing toggle: tilts into a 3D perspective (flat 2D
+  // fill-extrusion columns are invisible from directly overhead) or eases
+  // back to the map's normal top-down view. Also drives the manual
+  // MapViewToggle button below.
+  const [is3D, setIs3D] = useState(false)
+  const setMapPitch = useCallback((next: boolean) => {
     const map = mapRef.current?.getMap()
-    if (!map) return
-    map.easeTo(showDamage ? { pitch: 55, bearing: -12, duration: 800 } : { pitch: 0, bearing: 0, duration: 600 })
-  }, [showDamage])
+    if (map) map.easeTo(next ? { pitch: 55, bearing: -12, duration: 800 } : { pitch: 0, bearing: 0, duration: 600 })
+    setIs3D(next)
+  }, [])
+
+  // Defaults into 3D whenever the damage columns are switched on, since
+  // they're otherwise invisible from directly overhead; the user can still
+  // flip back with the manual toggle.
+  useEffect(() => {
+    setMapPitch(showDamage)
+  }, [showDamage, setMapPitch])
 
   const visibleEvents = useMemo(() => {
     if (!data) return []
@@ -695,6 +705,7 @@ function SismologiaLiveMapImpl({
       >
         <NavigationControl position="top-left" />
         <AttributionControl position="bottom-left" customAttribution="MapLibre © OpenStreetMap / CARTO" compact />
+        <MapViewToggle is3D={is3D} onToggle={() => setMapPitch(!is3D)} className="left-3 top-20" />
 
         {showVeredas && (
           <Source id="veredas-source" type="geojson" data={veredasGeoJson}>

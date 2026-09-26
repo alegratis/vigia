@@ -22,6 +22,7 @@ if (typeof window !== "undefined") {
 import useSWR from "swr"
 import { CloudSun, Flame, Satellite, Trees, Building2, ShieldCheck, Mountain } from "lucide-react"
 import { MapControlRail, RailSection, RailToggleRow } from "@/components/maps/map-control-rail"
+import { MapViewToggle } from "@/components/maps/map-view-toggle"
 import { FIRE_THREAT_LEVELS, FIRE_THREAT_LEVEL_STYLES, fireLevelColorToken } from "@/lib/incendios/levels"
 import {
   forecastDayOptions,
@@ -183,6 +184,13 @@ function IncendiosLiveMapImpl({
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === "dark"
   const mapStyle = useMemo(() => maplibreBasemapStyle(isDark), [isDark])
+
+  const [is3D, setIs3D] = useState(false)
+  const setMapPitch = useCallback((next: boolean) => {
+    const map = mapRef.current?.getMap()
+    if (map) map.easeTo(next ? { pitch: 55, bearing: -12, duration: 800 } : { pitch: 0, bearing: 0, duration: 600 })
+    setIs3D(next)
+  }, [])
 
   const osmColors = useOsmCategoryColors()
   const { active: activeMunicipiosMap, activeMunicipios, toggle: toggleMunicipio } = useMunicipioToggles()
@@ -415,6 +423,7 @@ function IncendiosLiveMapImpl({
       >
         <NavigationControl position="top-left" />
         <AttributionControl position="bottom-left" customAttribution="MapLibre © OpenStreetMap / CARTO" compact />
+        <MapViewToggle is3D={is3D} onToggle={() => setMapPitch(!is3D)} className="left-3 top-20" />
 
         {showForecast && (
           <Source id="forecast-source" type="raster" tiles={forecastSource.tiles} tileSize={forecastSource.tileSize}>
