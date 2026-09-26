@@ -106,6 +106,19 @@ export const mapModels: MapModel[] = [
     href: "/?categoria=riesgo-compuesto",
     ready: true,
   },
+  {
+    slug: "demografia",
+    title: "Demografía",
+    hook: "Los indicadores sociodemográficos de DANE, en 3D, municipio por municipio y manzana por manzana.",
+    description:
+      "Extruimos en 3D dos indicadores del geoportal de DANE —pobreza multidimensional por municipio y viviendas, hogares y personas por manzana censal— además del índice de vulnerabilidad compuesto que cruza esas condiciones sociales con el riesgo físico de esta app.",
+    image: "/images/demografia-map.png",
+    imageAlt:
+      "Vista satelital de un valle andino con columnas 3D representando indicadores demográficos por municipio",
+    tag: "Condición social",
+    href: "/?categoria=demografia",
+    ready: true,
+  },
 ]
 
 export function getMapModel(slug: string): MapModel | undefined {

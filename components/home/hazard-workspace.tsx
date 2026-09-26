@@ -11,12 +11,14 @@ import {
   Flame,
   Mountain,
   ShieldAlert,
+  Users,
   PanelLeftClose,
   PanelLeftOpen,
   type LucideIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { CategoryPanel } from "@/components/home/category-panel"
+import { CategoryTab } from "@/components/home/category-tab"
 import { DeslizamientosPanelContent } from "@/components/home/deslizamientos-panel-content"
 import { InundacionesPanelContent } from "@/components/home/inundaciones-panel-content"
 import { IncendiosPanelContent } from "@/components/home/incendios-panel-content"
@@ -24,6 +26,7 @@ import { PrecipitacionPanelContent } from "@/components/home/precipitacion-panel
 import { ClimaPanelContent } from "@/components/home/clima-panel-content"
 import { SismologiaPanelContent } from "@/components/home/sismologia-panel-content"
 import { RiesgoCompuestoPanelContent } from "@/components/home/riesgo-compuesto-panel-content"
+import { DemografiaPanelContent } from "@/components/home/demografia-panel-content"
 import { LiveAreaPopulation } from "@/components/maps/live-area-population"
 import { LiveInfrastructureCategories } from "@/components/maps/live-infrastructure-categories"
 import { LiveInfrastructureBuildings } from "@/components/maps/live-infrastructure-buildings"
@@ -43,7 +46,8 @@ const hazardIcons: Record<string, LucideIcon> = {
   clima: CloudSun,
   sismologia: Activity,
   "riesgo-compuesto": ShieldAlert,
-}
+  demografia: Users,
+  }
 
 /** Which DANE population category the shared sidebar card preselects for each hazard. */
 const CATEGORY_BASIS: Record<string, { basis: "urbano" | "rural"; basisLabel: string }> = {
@@ -54,7 +58,8 @@ const CATEGORY_BASIS: Record<string, { basis: "urbano" | "rural"; basisLabel: st
   clima: { basis: "rural", basisLabel: "Población rural" },
   sismologia: { basis: "rural", basisLabel: "Población rural" },
   "riesgo-compuesto": { basis: "rural", basisLabel: "Población rural" },
-}
+  demografia: { basis: "urbano", basisLabel: "Población urbana" },
+  }
 
 /**
  * Single-viewport homepage workspace: a static sidebar (mission statement +
@@ -377,12 +382,35 @@ export function HazardWorkspace({ initialCategory }: { initialCategory: string }
                   activeOsmPoints={activeOsmPoints}
                 />
               )}
-              {model.slug === "riesgo-compuesto" && (
-                <RiesgoCompuestoPanelContent onBoundsChange={setBounds} activeOsmPoints={activeOsmPoints} />
-              )}
-            </CategoryPanel>
-          )
+                {model.slug === "riesgo-compuesto" && (
+                  <RiesgoCompuestoPanelContent onBoundsChange={setBounds} activeOsmPoints={activeOsmPoints} />
+                )}
+                {model.slug === "demografia" && <DemografiaPanelContent onBoundsChange={setBounds} />}
+              </CategoryPanel>
+            )
         })}
+      </div>
+
+      {/*
+        Right-docked category rail: fixed-width, desktop-only (mobile keeps the collapsed strips
+        stacked with the map inside the row above, since there's no spare edge to dock a rail on a
+        narrow screen). Every category renders here regardless of which one is active, so the map
+        row's width never shifts as categories are added, reordered, or switched — only the active
+        tab's highlight state changes.
+      */}
+      <div
+        aria-label="Categorías de mapas"
+        className="hidden shrink-0 flex-col items-center gap-2 overflow-y-auto border-l border-border bg-card py-3 pl-2 lg:flex lg:w-16 xl:w-[4.5rem]"
+      >
+        {mapModels.map((model: MapModel) => (
+          <CategoryTab
+            key={model.slug}
+            model={model}
+            icon={hazardIcons[model.slug] ?? Mountain}
+            isActive={model.slug === activeSlug}
+            onActivate={() => activate(model.slug)}
+          />
+        ))}
       </div>
     </main>
   )

@@ -35,6 +35,12 @@ const SLIDE_DURATION_MS = 500
  * it still mount and unmount (heavy map content only exists while active),
  * each fading in on mount so the swap doesn't feel like an abrupt cut.
  *
+ * On desktop, the collapsed photo-strip below is only ever shown on mobile
+ * (`lg:hidden`) — the right-docked `CategoryTab` rail in `HazardWorkspace`
+ * is what represents inactive categories at that breakpoint, so the active
+ * panel is the only one visible in the map row and can simply claim all of
+ * it (`lg:flex-1`) instead of sharing space with collapsed siblings.
+ *
  * `children` (the map) is deliberately not mounted the instant a panel
  * activates: Leaflet/MapLibre measure their container's pixel size once at
  * mount, and the panel is still animating from a ~80px strip to its full
@@ -64,7 +70,7 @@ export function CategoryPanel({ model, icon: Icon, isActive, onActivate, childre
         // instead — basis-auto (the default) plus the active map's explicit h-[70vh] achieves the same
         // "map fills the first fold" result without a flex-grow chain that has nothing to grow against.
         "relative flex flex-col overflow-hidden transition-[flex-grow,flex-basis] duration-500 ease-in-out lg:min-h-0",
-        isActive ? "shrink basis-auto lg:grow lg:basis-0" : "grow-0 shrink-0 basis-16 lg:basis-10 xl:basis-12",
+        isActive ? "shrink basis-auto lg:flex-1 lg:basis-0" : "grow-0 shrink-0 basis-16 lg:hidden",
       )}
     >
       {isActive ? (
