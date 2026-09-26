@@ -60,8 +60,10 @@ class ViewToggleControl implements IControl {
         aria-pressed={this.is3D}
         aria-label={this.is3D ? "Cambiar a vista 2D" : "Cambiar a vista 3D"}
         title={this.is3D ? "Vista 2D" : "Vista 3D"}
-        className="maplibregl-ctrl-icon flex items-center justify-center"
-        style={{ color: "#333" }}
+        className="maplibregl-ctrl-icon"
+        // `.maplibregl-ctrl-group button{display:block}` outranks the Tailwind
+        // `flex` utility class on specificity, so the centering has to be inline.
+        style={{ display: "flex", alignItems: "center", justifyContent: "center", color: "#333" }}
       >
         <Icon className="size-4" aria-hidden="true" />
       </button>,
