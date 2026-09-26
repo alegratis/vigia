@@ -23,6 +23,7 @@ if (typeof window !== "undefined") {
 }
 import { Loader2, Droplets, AlertTriangle, History, Trees, Building2, ShieldCheck } from "lucide-react"
 import { MapControlRail, RailSection, RailToggleRow } from "@/components/maps/map-control-rail"
+import { MapViewToggleControl } from "@/components/maps/map-view-toggle-control"
 import { SUSCEPTIBILITY_LEVELS, SUSCEPTIBILITY_LEVEL_STYLES, levelColorToken } from "@/lib/deslizamientos/levels"
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import { SMAP_TILE_URL, SMAP_COLOR_STOPS, SMAP_MAX_VALUE } from "@/lib/deslizamientos/smap"
@@ -217,6 +218,13 @@ function DeslizamientosLiveMapImpl({
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === "dark"
   const mapStyle = useMemo(() => maplibreBasemapStyle(isDark), [isDark])
+
+  const [is3D, setIs3D] = useState(false)
+  const setMapPitch = useCallback((next: boolean) => {
+    const map = mapRef.current?.getMap()
+    if (map) map.easeTo(next ? { pitch: 55, bearing: -12, duration: 800 } : { pitch: 0, bearing: 0, duration: 600 })
+    setIs3D(next)
+  }, [])
 
   const osmColors = useOsmCategoryColors()
   // Always enabled now that vereda shading is this map's primary layer, not
@@ -527,6 +535,7 @@ function DeslizamientosLiveMapImpl({
          * occupies, on desktop or its mobile bottom-sheet layout.
          */}
         <NavigationControl position="top-left" />
+        <MapViewToggleControl is3D={is3D} onToggle={() => setMapPitch(!is3D)} />
         <AttributionControl position="bottom-left" customAttribution="MapLibre © OpenStreetMap / CARTO" compact />
 
         {showSoilMoisture && (

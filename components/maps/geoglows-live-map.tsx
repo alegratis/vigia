@@ -31,6 +31,7 @@ import {
   ShieldCheck,
 } from "lucide-react"
 import { MapControlRail, RailSection, RailToggleRow } from "@/components/maps/map-control-rail"
+import { MapViewToggleControl } from "@/components/maps/map-view-toggle-control"
 import {
   AOI_BOUNDS,
   buildExportUrl,
@@ -228,6 +229,13 @@ function GeoglowsLiveMapImpl({
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === "dark"
   const mapStyle = useMemo(() => maplibreBasemapStyle(isDark), [isDark])
+
+  const [is3D, setIs3D] = useState(false)
+  const setMapPitch = useCallback((next: boolean) => {
+    const map = mapRef.current?.getMap()
+    if (map) map.easeTo(next ? { pitch: 55, bearing: -12, duration: 800 } : { pitch: 0, bearing: 0, duration: 600 })
+    setIs3D(next)
+  }, [])
 
   const [overlay, setOverlay] = useState<{ bounds: LatLngBounds; width: number; height: number } | null>(null)
   const [showSusceptibility, setShowSusceptibility] = useState(false)
@@ -606,8 +614,9 @@ function GeoglowsLiveMapImpl({
         onClick={handleMapClick}
         style={{ width: "100%", height: "100%" }}
       >
-        <NavigationControl position="top-left" />
-        <AttributionControl position="bottom-left" customAttribution="MapLibre © OpenStreetMap / CARTO" compact />
+  <NavigationControl position="top-left" />
+  <MapViewToggleControl is3D={is3D} onToggle={() => setMapPitch(!is3D)} />
+  <AttributionControl position="bottom-left" customAttribution="MapLibre © OpenStreetMap / CARTO" compact />
 
         {showSusceptibility && (
           <Source id="susceptibility-source" type="geojson" data={susceptibilityGeoJson}>
@@ -813,7 +822,7 @@ function GeoglowsLiveMapImpl({
                     showSusceptibility && showVeredas
                       ? "Susceptibilidad a inundación (zonificación oficial y modelo propio)"
                       : showSusceptibility
-                        ? "Susceptibilidad a inundación (zonificación oficial)"
+                        ? "Susceptibilidad a inundación (zonificaci��n oficial)"
                         : "Amenaza a inundación (modelo propio, por vereda)"
                   }
                 />

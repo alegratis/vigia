@@ -37,6 +37,7 @@ import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
 import { OsmLegend } from "@/components/maps/osm-legend"
 import { MunicipioTogglePanelContent, type MunicipioRiskSummary } from "@/components/maps/municipio-toggle-panel"
 import { MapControlRail, RailSection, RailToggleRow } from "@/components/maps/map-control-rail"
+import { MapViewToggleControl } from "@/components/maps/map-view-toggle-control"
 import { useVeredas } from "@/lib/veredas/use-veredas"
 import { useMunicipioToggles, isMunicipioActive } from "@/lib/veredas/municipio-toggles"
 import { boundsForActiveMunicipios } from "@/lib/veredas/municipio-bounds"
@@ -96,6 +97,13 @@ function ClimaLiveMapImpl({
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === "dark"
   const mapStyle = useMemo(() => maplibreBasemapStyle(isDark), [isDark])
+
+  const [is3D, setIs3D] = useState(false)
+  const setMapPitch = useCallback((next: boolean) => {
+    const map = mapRef.current?.getMap()
+    if (map) map.easeTo(next ? { pitch: 55, bearing: -12, duration: 800 } : { pitch: 0, bearing: 0, duration: 600 })
+    setIs3D(next)
+  }, [])
 
   const [showVeredas, setShowVeredas] = useState(false)
 
@@ -323,8 +331,9 @@ function ClimaLiveMapImpl({
         onClick={handleMapClick}
         style={{ width: "100%", height: "100%" }}
       >
-        <NavigationControl position="top-left" />
-        <AttributionControl position="bottom-left" customAttribution="MapLibre © OpenStreetMap / CARTO" compact />
+  <NavigationControl position="top-left" />
+  <MapViewToggleControl is3D={is3D} onToggle={() => setMapPitch(!is3D)} />
+  <AttributionControl position="bottom-left" customAttribution="MapLibre © OpenStreetMap / CARTO" compact />
 
         {data?.veredas && colorsReady && (
           <Source id="veredas-source" type="geojson" data={veredasGeoJson}>

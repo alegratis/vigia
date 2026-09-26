@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { MapViewToggleControl } from "@/components/maps/map-view-toggle-control"
 import { useTheme } from "next-themes"
 import Map, {
   Source,
@@ -180,6 +181,13 @@ function ExposicionMapImpl({ vereda }: { vereda: VeredaListEntry }) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === "dark"
   const mapStyle = useMemo(() => maplibreBasemapStyle(isDark), [isDark])
+
+  const [is3D, setIs3D] = useState(false)
+  const setMapPitch = useCallback((next: boolean) => {
+    const map = mapRef.current?.getMap()
+    if (map) map.easeTo(next ? { pitch: 55, bearing: -12, duration: 800 } : { pitch: 0, bearing: 0, duration: 600 })
+    setIs3D(next)
+  }, [])
 
   const [active, setActive] = useState<Set<HazardKey>>(
     new Set(["deslizamientos", "inundaciones", "incendios", "precipitacion"]),
@@ -600,8 +608,9 @@ function ExposicionMapImpl({ vereda }: { vereda: VeredaListEntry }) {
           onClick={handleMapClick}
           style={{ width: "100%", height: "100%" }}
         >
-          <NavigationControl position="top-right" />
-          <AttributionControl position="bottom-right" customAttribution="MapLibre © OpenStreetMap / CARTO" compact />
+    <NavigationControl position="top-right" />
+  <MapViewToggleControl is3D={is3D} onToggle={() => setMapPitch(!is3D)} position="top-right" />
+  <AttributionControl position="bottom-right" customAttribution="MapLibre © OpenStreetMap / CARTO" compact />
 
           <Source id="vereda-outline-source" type="geojson" data={veredaOutlineGeoJson}>
             <Layer
