@@ -79,6 +79,8 @@ export interface MunicipioHvi {
 
 export interface ManzanaHvi {
   codigoManzana: string
+  /** Nearest OSM place name to this manzana's centroid (see lib/demografia/osm-neighborhoods.ts), or `null`. Use this instead of `codigoManzana` for anything shown to a person. */
+  barrio: string | null
   /** Raw IPM (%) for this manzana. */
   ipm: number
   /** Min-max normalized HVI across every manzana in the 4 study municipios' urban cores (0–1) — the bar-chart height for this manzana. */
@@ -131,6 +133,7 @@ export async function getUrbanHviByMunicipio(): Promise<UrbanMunicipioHvi[]> {
     entry.count += 1
     entry.manzanas.push({
       codigoManzana: f.properties.codigoManzana,
+      barrio: f.properties.barrio,
       ipm: f.properties.ipm,
       hvi: normalizeIpm(f.properties.ipm),
       geometry: f.geometry,

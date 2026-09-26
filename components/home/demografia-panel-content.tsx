@@ -1,13 +1,10 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { useMemo, useRef } from "react"
+import { useRef } from "react"
 import { ScrollHintButton } from "@/components/home/scroll-hint-button"
 import { BackToTopButton } from "@/components/home/back-to-top-button"
-import { VulnerabilityBreakdownChart } from "@/components/charts/vulnerability-breakdown-chart"
-import { VULNERABILITY_LEVEL_STYLES } from "@/lib/vulnerabilidad/levels"
-import { useVulnerabilidad } from "@/lib/vulnerabilidad/use-vulnerabilidad"
-import { resolveCssColor } from "@/lib/resolve-css-color"
+import { DemografiaPopulationSection } from "@/components/demografia/demografia-population-section"
 import type { MapBounds } from "@/lib/map-bounds"
 
 const DemografiaLiveMap = dynamic(
@@ -15,34 +12,16 @@ const DemografiaLiveMap = dynamic(
   { ssr: false },
 )
 
-/** Same quintile cutoffs as `vulnerabilityLevelFromScore` (lib/vulnerabilidad/combined-score.ts), applied to a raw 0–1 HVI value so this panel's manzana bars use the same 5-tier color scale as the map. */
-function levelColorForHvi(hvi: number): string {
-  const level = hvi < 0.2 ? "Muy bajo" : hvi < 0.4 ? "Bajo" : hvi < 0.6 ? "Moderado" : hvi < 0.8 ? "Alto" : "Muy alto"
-  return resolveCssColor(VULNERABILITY_LEVEL_STYLES[level].colorToken)
-}
-
 /**
- * Full explanation of the vulnerability index plus its manzana-level
- * breakdown — the below-map counterpart to the map's compact click popup.
- * Fetches its own copy of /api/vulnerabilidad (SWR dedupes against the map's
- * request) so the chart renders regardless of which map layer is active.
+ * Full explanation of the vulnerability index — the below-map counterpart to
+ * the map's compact click popup. A manzana-level ranking chart used to live
+ * here too, but every manzana currently resolves to the same "sin nombre
+ * cercano" fallback label (the OSM lookup that would give each one a real
+ * name is unreachable from this environment — see osm-neighborhoods.ts), so
+ * a ranking of indistinguishable rows isn't useful data. Revisit once a
+ * reachable named-places source exists.
  */
 function VulnerabilityExplainerSection() {
-  const { data } = useVulnerabilidad(true)
-
-  const topManzanas = useMemo(() => {
-    if (!data) return []
-    return data.hviUrbanoPorMunicipio
-      .flatMap((m) => m.manzanas.map((manzana) => ({ ...manzana, municipio: m.municipio })))
-      .sort((a, b) => b.hvi - a.hvi)
-      .slice(0, 12)
-      .map((m) => ({
-        label: `${m.codigoManzana} (${m.municipio})`,
-        value: m.hvi * 100,
-        color: levelColorForHvi(m.hvi),
-      }))
-  }, [data])
-
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-border bg-card/50 p-4">
       <div>
@@ -73,14 +52,6 @@ function VulnerabilityExplainerSection() {
           </p>
         </div>
       </div>
-      {topManzanas.length > 0 && (
-        <div>
-          <p className="mb-2 text-xs font-medium text-foreground">
-            Las 12 manzanas censales más vulnerables (de los 4 municipios)
-          </p>
-          <VulnerabilityBreakdownChart rows={topManzanas} valueSuffix="% HVI" height={320} />
-        </div>
-      )}
     </div>
   )
 }
@@ -110,8 +81,10 @@ export function DemografiaPanelContent({ onBoundsChange }: DemografiaPanelConten
         <p className="sr-only">
           Mapa interactivo en 3D con indicadores del geoportal de DANE: el índice de pobreza
           multidimensional por manzana censal en los cascos urbanos, las cifras de viviendas, hogares
-          y personas por manzana censal, y el índice de vulnerabilidad compuesto por vereda, para
-          Sevilla, Caicedonia, Zarzal y Roldanillo.
+          y personas por manzana censal, y el índice de vulnerabilidad compuesto por manzana en cascos
+          urbanos o por vereda en zonas rurales, para Sevilla, Caicedonia, Zarzal y Roldanillo. Debajo
+          del mapa hay una explicación completa de cada índice y un panel de consulta de población por
+          municipio, residencia, sexo y exposición a amenazas.
         </p>
         <DemografiaLiveMap className="relative isolate h-full w-full" onBoundsChange={onBoundsChange} />
         <ScrollHintButton targetRef={captionRef} label="Ver más sobre estos indicadores" />
@@ -134,6 +107,16 @@ export function DemografiaPanelContent({ onBoundsChange }: DemografiaPanelConten
           </p>
         </div>
         <VulnerabilityExplainerSection />
+        <div className="flex flex-col gap-4 border-t border-border pt-6">
+          <div>
+            <p className="text-sm font-medium text-foreground">Población, sexo y exposición por amenaza</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Proyecciones de población del DANE por municipio, residencia (urbano/rural) y sexo, cruzadas con la
+              exposición actual a inundaciones, incendios forestales y deslizamientos.
+            </p>
+          </div>
+          <DemografiaPopulationSection />
+        </div>
         <p className="text-xs text-muted-foreground">
           Fuente:{" "}
           <a

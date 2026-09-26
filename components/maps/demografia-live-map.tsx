@@ -308,7 +308,8 @@ function DemografiaLiveMapImpl({
           content: (
             <div className="flex flex-col gap-1 text-xs">
               <p className="font-medium text-foreground">
-                Manzana {props.codigoManzana} <span className="text-muted-foreground">({props.municipio})</span>
+                {props.barrio ?? "Manzana sin nombre cercano"}{" "}
+                <span className="text-muted-foreground">({props.municipio})</span>
               </p>
               <p className="text-muted-foreground">
                 IPM: <span className="font-medium text-foreground">{props.ipm.toFixed(1)}%</span>
@@ -330,7 +331,7 @@ function DemografiaLiveMapImpl({
           latitude: e.lngLat.lat,
           content: (
             <div className="flex flex-col gap-1 text-xs">
-              <p className="font-medium text-foreground">Manzana {props.codigoManzana}</p>
+              <p className="font-medium text-foreground">{props.barrio ?? "Manzana sin nombre cercano"}</p>
               <p className="text-muted-foreground">
                 Viviendas: <span className="font-medium text-foreground">{props.viviendas.toLocaleString("es-CO")}</span>
               </p>
@@ -395,6 +396,7 @@ function DemografiaLiveMapImpl({
         // riesgo compuesto doesn't resolve finer than the "Casco Urbano" vereda.
         const props = feature.properties as unknown as {
           codigoManzana: string
+          barrio: string | null
           municipio: string
           hvi: number
           combinedLevel: string
@@ -407,7 +409,8 @@ function DemografiaLiveMapImpl({
             <div className="flex w-64 flex-col gap-2 text-xs">
               <div>
                 <p className="font-medium text-foreground">
-                  Manzana {props.codigoManzana} <span className="text-muted-foreground">({props.municipio})</span>
+                  {props.barrio ?? "Manzana sin nombre cercano"}{" "}
+                  <span className="text-muted-foreground">({props.municipio})</span>
                 </p>
                 <p className="text-muted-foreground">
                   Vulnerabilidad compuesta:{" "}

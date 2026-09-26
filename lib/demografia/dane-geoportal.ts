@@ -70,6 +70,8 @@ export interface PobrezaFeature {
     ipm: number
     /** DANE's own pre-bucketed label, e.g. "Vulnerabilidad media-alta". */
     categoria: string
+    /** Nearest OpenStreetMap place name to this manzana's centroid (see osm-neighborhoods.ts), or `null` if none was found nearby. DANE's own manzana code is a cryptic cadastral id, not something to show a person. */
+    barrio: string | null
   }
   geometry: GeoJSON.Geometry
 }
@@ -116,6 +118,7 @@ export async function getPobrezaMultidimensional(): Promise<PobrezaFeatureCollec
           codigoManzana: String(f.properties.COD_DANE ?? ""),
           ipm: Number(f.properties.ipm ?? 0),
           categoria: String(f.properties.LABEL ?? ""),
+          barrio: null,
         },
         geometry: f.geometry,
       })
@@ -124,6 +127,11 @@ export async function getPobrezaMultidimensional(): Promise<PobrezaFeatureCollec
     offset += pageSize
   }
 
+  // `barrio` stays null for now: the public Overpass API that would supply
+  // OSM place names is unreachable from this environment (blocks the request
+  // outright), so every lookup would resolve to null anyway. Revisit with a
+  // reachable named-places source. Callers already render a graceful
+  // fallback instead of the raw manzana code — see demografia-live-map.tsx.
   return { type: "FeatureCollection", features }
 }
 
@@ -135,6 +143,8 @@ export interface ManzanaFeature {
     viviendas: number
     hogares: number
     personas: number
+    /** Nearest OSM place name to this manzana's centroid, or `null` — see osm-neighborhoods.ts. */
+    barrio: string | null
   }
   geometry: GeoJSON.Geometry
 }
@@ -210,6 +220,7 @@ export async function getViviendasHogaresPersonas(): Promise<ManzanaFeatureColle
         viviendas: census?.viviendas ?? 0,
         hogares: census?.hogares ?? 0,
         personas: census?.personas ?? 0,
+        barrio: f.properties.barrio,
       },
       geometry: f.geometry,
     }

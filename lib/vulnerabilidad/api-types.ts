@@ -49,6 +49,8 @@ export interface VulnerabilidadFeatureCollection {
  */
 export interface ManzanaVulnerabilidadProperties {
   codigoManzana: string
+  /** Nearest OSM place name to this manzana's centroid, or `null` — use instead of `codigoManzana` in any UI. */
+  barrio: string | null
   codigoMunicipio: string
   municipio: string
   /** This specific manzana's own HVI (0–1), not a municipio-wide average. */
@@ -85,6 +87,8 @@ export interface MunicipioHviSummary {
 
 export interface ManzanaHviSummary {
   codigoManzana: string
+  /** Nearest OSM place name to this manzana's centroid, or `null` — use instead of `codigoManzana` in any UI. */
+  barrio: string | null
   ipm: number
   hvi: number
 }

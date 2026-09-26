@@ -82,6 +82,7 @@ export async function GET() {
           id: `${row.codigoMunicipio}-${manzana.codigoManzana}`,
           properties: {
             codigoManzana: manzana.codigoManzana,
+            barrio: manzana.barrio,
             codigoMunicipio: row.codigoMunicipio,
             municipio: row.municipio,
             hvi: result.hvi,

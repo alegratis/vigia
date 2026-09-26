@@ -8,6 +8,8 @@ export interface PobrezaFeatureProperties {
   ipm: number
   /** DANE's own pre-bucketed label, e.g. "Vulnerabilidad media-alta". */
   categoria: string
+  /** Nearest OSM place name to this manzana's centroid, or `null` — use instead of `codigoManzana` in any UI. */
+  barrio: string | null
 }
 
 export interface PobrezaFeature {
@@ -27,6 +29,8 @@ export interface ManzanaFeatureProperties {
   viviendas: number
   hogares: number
   personas: number
+  /** Nearest OSM place name to this manzana's centroid, or `null` — use instead of `codigoManzana` in any UI. */
+  barrio: string | null
 }
 
 export interface ManzanaFeature {
