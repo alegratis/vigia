@@ -111,8 +111,14 @@ class BasemapControl implements IControl {
                 role="menuitemradio"
                 aria-checked={option.value === this.basemap}
                 onClick={() => this.select(option.value)}
-                className="flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-left text-sm font-medium transition-colors hover:opacity-80"
+                className="w-full gap-3 rounded-md px-2.5 py-2 text-left text-sm font-medium transition-colors hover:opacity-80"
+                // Same specificity issue as the trigger button above:
+                // `.maplibregl-ctrl-group button{display:block}` outranks the
+                // Tailwind `flex` utility, so icon+label stack instead of
+                // sitting side by side unless forced inline.
                 style={{
+                  display: "flex",
+                  alignItems: "center",
                   color: "var(--popover-foreground)",
                   backgroundColor: option.value === this.basemap ? "var(--accent)" : "transparent",
                 }}
