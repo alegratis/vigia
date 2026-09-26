@@ -15,7 +15,7 @@ export type MapModel = {
   comingSoon?: boolean
 }
 
-export const mapModels: MapModel[] = [
+const declaredMapModels: MapModel[] = [
   {
     slug: "deslizamientos",
     title: "Deslizamientos",
@@ -106,6 +106,30 @@ export const mapModels: MapModel[] = [
     href: "/?categoria=riesgo-compuesto",
     ready: true,
   },
+  {
+    slug: "demografia",
+    title: "Demografía",
+    hook: "Los indicadores sociodemográficos de DANE, en 3D, municipio por municipio y manzana por manzana.",
+    description:
+      "Extruimos en 3D dos indicadores del geoportal de DANE —pobreza multidimensional por municipio y viviendas, hogares y personas por manzana censal— además del índice de vulnerabilidad compuesto que cruza esas condiciones sociales con el riesgo físico de esta app.",
+    image: "/images/demografia-map.png",
+    imageAlt:
+      "Vista satelital de un valle andino con columnas 3D representando indicadores demográficos por municipio",
+    tag: "Condición social",
+    href: "/?categoria=demografia",
+    ready: true,
+  },
+]
+
+/**
+ * Riesgo compuesto isn't a hazard alongside the others — it's the conclusion drawn *from* them (see
+ * its own `description` above), so it must always render last no matter how many more hazard
+ * categories get declared above it later. Enforced here instead of by list order alone, so a future
+ * addition can't accidentally land after it.
+ */
+export const mapModels: MapModel[] = [
+  ...declaredMapModels.filter((m) => m.slug !== "riesgo-compuesto"),
+  ...declaredMapModels.filter((m) => m.slug === "riesgo-compuesto"),
 ]
 
 export function getMapModel(slug: string): MapModel | undefined {

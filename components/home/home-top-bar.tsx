@@ -3,14 +3,15 @@
 import Link from "next/link"
 import { ArrowUpRight } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { openInfoPopup } from "@/lib/open-info-popup"
 import { BETA_VERSION } from "@/lib/version"
 
 /**
  * Minimal top bar for the homepage workspace. The full SiteHeader (logo +
  * hazard nav + mobile menu) doesn't fit a single-viewport accordion layout,
  * so this keeps only what still needs a home on "/": the theme toggle and
- * openers for the demografía panel and the documentation page.
+ * an opener for the documentation page. Demografía now lives entirely
+ * inside its own workspace panel (below its map), so it no longer needs a
+ * separate popup entry point here.
  */
 export function HomeTopBar() {
   return (
@@ -21,13 +22,6 @@ export function HomeTopBar() {
       >
         Beta v0.{BETA_VERSION}
       </span>
-      <button
-        type="button"
-        onClick={() => openInfoPopup("/demografia/popup", "vigia-demografia", { width: 1180, height: 980 })}
-        className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-      >
-        Demografía
-      </button>
       <Link
         href="/documentacion"
         target="_blank"
