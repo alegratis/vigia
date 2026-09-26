@@ -41,6 +41,39 @@ export interface VulnerabilidadFeatureCollection {
   features: VulnerabilidadFeature[]
 }
 
+/**
+ * One genuine manzana (city block) inside a municipio's urban core, each
+ * with its own HVI and combined score — the actual block-level resolution
+ * behind `hviUrbanoPorMunicipio`, rendered as its own map polygon instead
+ * of being collapsed into a single value for the whole urban area.
+ */
+export interface ManzanaVulnerabilidadProperties {
+  codigoManzana: string
+  codigoMunicipio: string
+  municipio: string
+  /** This specific manzana's own HVI (0–1), not a municipio-wide average. */
+  hvi: number
+  /** The enclosing "Casco Urbano" pseudo-vereda's hazard tier, rescaled to 1–4 — every manzana in that urban core shares the same physical-hazard exposure. `null` if unresolved. */
+  hazardScore: number | null
+  /** This manzana's HVI × the urban core's hazardScore, range [0, 4]. `null` if unresolved. */
+  combinedScore: number | null
+  combinedLevel: VulnerabilityLevel | null
+  /** The underlying riesgo-compuesto tier the urban core's hazard score was derived from. */
+  compoundLevel: string | null
+}
+
+export interface ManzanaVulnerabilidadFeature {
+  type: "Feature"
+  id: string
+  properties: ManzanaVulnerabilidadProperties
+  geometry: GeoJSON.Geometry
+}
+
+export interface ManzanaVulnerabilidadFeatureCollection {
+  type: "FeatureCollection"
+  features: ManzanaVulnerabilidadFeature[]
+}
+
 export interface MunicipioHviSummary {
   municipio: string
   codigoMunicipio: string
@@ -68,7 +101,10 @@ export interface UrbanMunicipioHviSummary {
 
 export interface VulnerabilidadResponse {
   generatedAt: string
+  /** Rural veredas only — urban cores are now rendered manzana-by-manzana via `manzanas` instead of one polygon per municipio. */
   veredas: VulnerabilidadFeatureCollection
+  /** Every manzana in the 4 municipios' urban cores, each with its own HVI and combined score — the actual block-level polygons behind `hviUrbanoPorMunicipio`. */
+  manzanas: ManzanaVulnerabilidadFeatureCollection
   hviPorMunicipio: MunicipioHviSummary[]
   /** Manzana-derived HVI per municipio's urban core — the finer-grained value used for each "Casco Urbano" vereda. */
   hviUrbanoPorMunicipio: UrbanMunicipioHviSummary[]

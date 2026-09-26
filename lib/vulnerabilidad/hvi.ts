@@ -83,6 +83,8 @@ export interface ManzanaHvi {
   ipm: number
   /** Min-max normalized HVI across every manzana in the 4 study municipios' urban cores (0–1) — the bar-chart height for this manzana. */
   hvi: number
+  /** This manzana's own polygon (from the IPM layer), so the map can render one true block-level feature per manzana instead of a single aggregated shape for the whole urban core. */
+  geometry: GeoJSON.Geometry
 }
 
 export interface UrbanMunicipioHvi {
@@ -131,6 +133,7 @@ export async function getUrbanHviByMunicipio(): Promise<UrbanMunicipioHvi[]> {
       codigoManzana: f.properties.codigoManzana,
       ipm: f.properties.ipm,
       hvi: normalizeIpm(f.properties.ipm),
+      geometry: f.geometry,
     })
     byMunicipio.set(f.properties.codigoMunicipio, entry)
   }

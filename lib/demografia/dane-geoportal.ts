@@ -20,9 +20,16 @@
  *   `FeatureServer` while the other still uses `MapServer`.
  * - Viviendas, Hogares y Personas (matches the estadisticas-integradas
  *   geovisor, cod_dimension=1): `MARCO_INTEGRADO/Serv_DatosCNPV2018_Integrados_MGN2018`,
- *   layer 808 ("Manzana Integrada") — one polygon per city block, with
- *   `TVIVIENDA`/`TP16_HOG`/`TP27_PERSO` (viviendas/hogares/personas) counts
- *   from the 2018 census.
+ *   layer 808 ("Manzana Integrada") carries the `TVIVIENDA`/`TP16_HOG`/`TP27_PERSO`
+ *   (viviendas/hogares/personas) counts from the 2018 census, keyed by
+ *   `COD_DANE_A` — but this layer's `query` endpoint returns null geometry
+ *   for every feature regardless of `f`/`returnGeometry` (confirmed live;
+ *   unlike the IPM layer above, no FeatureServer alternative exists for
+ *   it). Its `COD_DANE_A` manzana code is identical in format and count to
+ *   the IPM layer's `COD_DANE` (515/387/563/709 manzanas per municipio,
+ *   matching exactly) — the same physical city blocks — so this indicator
+ *   fetches attributes-only from layer 808 and joins them onto the IPM
+ *   layer's polygons by manzana code, rather than going geometry-less.
  *
  * Both datasets are static (2018 census / 2020-vintage IPM), so responses
  * are cached long — same `next: { revalidate }` convention as every other
@@ -137,49 +144,76 @@ export interface ManzanaFeatureCollection {
   features: ManzanaFeature[]
 }
 
+interface CensusCounts {
+  viviendas: number
+  hogares: number
+  personas: number
+}
+
 /**
- * City-block ("manzana") level viviendas/hogares/personas counts for the 4
- * study municipios, from the 2018 census (matches the estadisticas-integradas
- * geovisor, cod_dimension=1). Paginated: ~2,174 manzanas across the 4
- * municipios exceeds the service's 2,000-record page size.
+ * Attribute-only pull of viviendas/hogares/personas from layer 808, keyed
+ * by manzana code — no geometry requested since this layer's query
+ * endpoint never returns any (see module docstring). Joined onto the IPM
+ * layer's polygons in `getViviendasHogaresPersonas`.
  */
-export async function getViviendasHogaresPersonas(): Promise<ManzanaFeatureCollection> {
+async function fetchManzanaCensusCounts(): Promise<Map<string, CensusCounts>> {
   const pageSize = 2000
-  const features: ManzanaFeature[] = []
+  const byCode = new Map<string, CensusCounts>()
   let offset = 0
 
   while (true) {
     const params = new URLSearchParams({
       where: `MPIO_CDPMP IN (${CODES_IN_LIST})`,
-      outFields: "MPIO_CDPMP,COD_DANE_A,TVIVIENDA,TP16_HOG,TP27_PERSO",
-      outSR: "4326",
+      outFields: "COD_DANE_A,TVIVIENDA,TP16_HOG,TP27_PERSO",
       resultRecordCount: String(pageSize),
       resultOffset: String(offset),
-      f: "geojson",
+      f: "json",
     })
     const res = await fetch(`${MANZANA_LAYER_URL}/query?${params}`, { next: { revalidate: REVALIDATE_SECONDS } })
     if (!res.ok) {
-      throw new Error(`DANE manzana query failed (${res.status})`)
+      throw new Error(`DANE manzana census query failed (${res.status})`)
     }
-    const page = (await res.json()) as {
-      features: { type: "Feature"; properties: Record<string, unknown>; geometry: GeoJSON.Geometry }[]
-    }
+    const page = (await res.json()) as { features: { attributes: Record<string, unknown> }[] }
     for (const f of page.features) {
-      features.push({
-        type: "Feature",
-        properties: {
-          codigoMunicipio: String(f.properties.MPIO_CDPMP ?? ""),
-          codigoManzana: String(f.properties.COD_DANE_A ?? ""),
-          viviendas: Number(f.properties.TVIVIENDA ?? 0),
-          hogares: Number(f.properties.TP16_HOG ?? 0),
-          personas: Number(f.properties.TP27_PERSO ?? 0),
-        },
-        geometry: f.geometry,
+      byCode.set(String(f.attributes.COD_DANE_A ?? ""), {
+        viviendas: Number(f.attributes.TVIVIENDA ?? 0),
+        hogares: Number(f.attributes.TP16_HOG ?? 0),
+        personas: Number(f.attributes.TP27_PERSO ?? 0),
       })
     }
     if (page.features.length < pageSize) break
     offset += pageSize
   }
+
+  return byCode
+}
+
+/**
+ * City-block ("manzana") level viviendas/hogares/personas counts for the 4
+ * study municipios, from the 2018 census (matches the estadisticas-integradas
+ * geovisor, cod_dimension=1). Layer 808 carries the counts but never returns
+ * geometry, so each manzana's polygon is borrowed from the IPM layer
+ * (`getPobrezaMultidimensional`) and joined by manzana code — see the
+ * module docstring for why this join is safe (identical codes, identical
+ * per-municipio counts).
+ */
+export async function getViviendasHogaresPersonas(): Promise<ManzanaFeatureCollection> {
+  const [pobreza, censusByCode] = await Promise.all([getPobrezaMultidimensional(), fetchManzanaCensusCounts()])
+
+  const features: ManzanaFeature[] = pobreza.features.map((f) => {
+    const census = censusByCode.get(f.properties.codigoManzana)
+    return {
+      type: "Feature",
+      properties: {
+        codigoMunicipio: f.properties.codigoMunicipio,
+        codigoManzana: f.properties.codigoManzana,
+        viviendas: census?.viviendas ?? 0,
+        hogares: census?.hogares ?? 0,
+        personas: census?.personas ?? 0,
+      },
+      geometry: f.geometry,
+    }
+  })
 
   return { type: "FeatureCollection", features }
 }
