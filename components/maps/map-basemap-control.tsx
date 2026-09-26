@@ -122,14 +122,18 @@ class BasemapControl implements IControl {
                   onMouseLeave={(e) => {
                     if (!selected) e.currentTarget.style.backgroundColor = "transparent"
                   }}
-                  className="w-full gap-3 rounded-md px-2.5 py-2 text-left text-sm font-medium"
-                  // Same specificity issue as the trigger button above:
-                  // `.maplibregl-ctrl-group button{display:block}` outranks the
-                  // Tailwind `flex` utility, so icon+label stack instead of
-                  // sitting side by side unless forced inline.
+                  className="gap-3 rounded-md px-2.5 py-2 text-left text-sm font-medium"
+                  // `.maplibregl-ctrl-group button{width:29px;height:29px}` outranks
+                  // Tailwind's `w-full` class on specificity (type+class beats a single
+                  // class), silently clamping every menu item to a 29px icon-button box
+                  // with the label overflowing outside its real hit area — which is what
+                  // made the icon look uncentered and the hover fill look misaligned no
+                  // matter how padding/gap were tuned. Only an inline style can outrank it.
                   style={{
                     display: "flex",
                     alignItems: "center",
+                    width: "100%",
+                    height: "auto",
                     color: "var(--popover-foreground)",
                     backgroundColor: selected ? "var(--accent)" : "transparent",
                   }}
