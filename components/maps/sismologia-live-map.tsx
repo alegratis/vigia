@@ -1,7 +1,6 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
-import { useTheme } from "next-themes"
 import Map, {
   Source,
   Layer,
@@ -25,6 +24,7 @@ import { VeredaPopupContent } from "@/components/maps/vereda-popup-content"
 import { MunicipioTogglePanelContent, type MunicipioRiskSummary } from "@/components/maps/municipio-toggle-panel"
 import { MapControlRail, RailSection, RailToggleRow } from "@/components/maps/map-control-rail"
 import { MapViewToggleControl } from "@/components/maps/map-view-toggle-control"
+import { MapBasemapControl } from "@/components/maps/map-basemap-control"
 import { useVeredas } from "@/lib/veredas/use-veredas"
 import { useMunicipioToggles, isMunicipioActive } from "@/lib/veredas/municipio-toggles"
 import { boundsForActiveMunicipios } from "@/lib/veredas/municipio-bounds"
@@ -32,7 +32,7 @@ import { summarizeExposureByMunicipio } from "@/lib/veredas/municipio-summary"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
 import { getOsmCategory } from "@/lib/osm/categories"
 import { resolveCssColor } from "@/lib/resolve-css-color"
-import { maplibreBasemapStyle, maplibreSatelliteTerrainStyle } from "@/lib/maps/maplibre-basemap-style"
+import { maplibreMapStyle, type BasemapType } from "@/lib/maps/maplibre-basemap-style"
 import { useSismologiaDanos, useSismologiaEventos } from "@/lib/sismologia/use-sismologia"
 import {
   SEISMIC_MAGNITUDE_LEVELS,
@@ -253,8 +253,6 @@ function SismologiaLiveMapImpl({
   className?: string
 }) {
   const mapRef = useRef<MapRef>(null)
-  const { resolvedTheme } = useTheme()
-  const isDark = resolvedTheme === "dark"
 
   const { data } = useSismologiaEventos()
   const osmColors = useOsmCategoryColors()
@@ -332,10 +330,12 @@ function SismologiaLiveMapImpl({
   // back to the map's normal top-down view. Also drives the manual
   // MapViewToggle button below.
   const [is3D, setIs3D] = useState(false)
-  // 3D mode swaps the whole basemap to Esri satellite imagery draped over
-  // real terrain elevation (MapLibre `raster-dem` + `terrain`), since flat
-  // 2D tiles have no relief to show once the map is tilted.
-  const mapStyle = useMemo(() => (is3D ? maplibreSatelliteTerrainStyle() : maplibreBasemapStyle(isDark)), [isDark, is3D])
+  // Basemap theme, switched independently of the 2D/3D toggle via
+  // `MapBasemapControl`. In 3D mode every theme gains real terrain
+  // elevation (MapLibre `raster-dem` + `terrain`), since flat 2D tiles have
+  // no relief to show once the map is tilted.
+  const [basemap, setBasemap] = useState<BasemapType>("osm")
+  const mapStyle = useMemo(() => maplibreMapStyle(basemap, is3D), [basemap, is3D])
   const setMapPitch = useCallback((next: boolean) => {
     const map = mapRef.current?.getMap()
     if (map) map.easeTo(next ? { pitch: 55, bearing: -12, duration: 800 } : { pitch: 0, bearing: 0, duration: 600 })
@@ -706,8 +706,9 @@ function SismologiaLiveMapImpl({
         onClick={handleMapClick}
         style={{ width: "100%", height: "100%" }}
       >
-  <NavigationControl position="top-left" />
-  <MapViewToggleControl is3D={is3D} onToggle={() => setMapPitch(!is3D)} />
+        <NavigationControl position="top-left" />
+        <MapViewToggleControl is3D={is3D} onToggle={() => setMapPitch(!is3D)} />
+        <MapBasemapControl basemap={basemap} onChange={setBasemap} />
   <AttributionControl position="bottom-left" customAttribution="MapLibre © OpenStreetMap / CARTO" compact />
 
         {showVeredas && (

@@ -1,7 +1,6 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
-import { useTheme } from "next-themes"
 import Map, {
   Source,
   Layer,
@@ -32,6 +31,7 @@ import {
 } from "lucide-react"
 import { MapControlRail, RailSection, RailToggleRow } from "@/components/maps/map-control-rail"
 import { MapViewToggleControl } from "@/components/maps/map-view-toggle-control"
+import { MapBasemapControl } from "@/components/maps/map-basemap-control"
 import {
   AOI_BOUNDS,
   buildExportUrl,
@@ -57,7 +57,7 @@ import { useVeredas } from "@/lib/veredas/use-veredas"
 import { useMunicipioToggles, isMunicipioActive } from "@/lib/veredas/municipio-toggles"
 import { summarizeByMunicipio } from "@/lib/veredas/municipio-summary"
 import { boundsForActiveMunicipios } from "@/lib/veredas/municipio-bounds"
-import { maplibreBasemapStyle, maplibreSatelliteTerrainStyle } from "@/lib/maps/maplibre-basemap-style"
+import { maplibreMapStyle, type BasemapType } from "@/lib/maps/maplibre-basemap-style"
 import { wmsRasterSource } from "@/lib/maps/wms-raster-source"
 import { WmsLegendChip } from "@/components/maps/wms-legend-chip"
 import { GWIS_WMS_URL } from "@/lib/incendios/gwis"
@@ -226,10 +226,9 @@ function GeoglowsLiveMapImpl({
   className?: string
 }) {
   const mapRef = useRef<MapRef>(null)
-  const { resolvedTheme } = useTheme()
-  const isDark = resolvedTheme === "dark"
   const [is3D, setIs3D] = useState(false)
-  const mapStyle = useMemo(() => (is3D ? maplibreSatelliteTerrainStyle() : maplibreBasemapStyle(isDark)), [isDark, is3D])
+  const [basemap, setBasemap] = useState<BasemapType>("osm")
+  const mapStyle = useMemo(() => maplibreMapStyle(basemap, is3D), [basemap, is3D])
   const setMapPitch = useCallback((next: boolean) => {
     const map = mapRef.current?.getMap()
     if (map) map.easeTo(next ? { pitch: 55, bearing: -12, duration: 800 } : { pitch: 0, bearing: 0, duration: 600 })
@@ -614,7 +613,8 @@ function GeoglowsLiveMapImpl({
         style={{ width: "100%", height: "100%" }}
       >
   <NavigationControl position="top-left" />
-  <MapViewToggleControl is3D={is3D} onToggle={() => setMapPitch(!is3D)} />
+        <MapViewToggleControl is3D={is3D} onToggle={() => setMapPitch(!is3D)} />
+        <MapBasemapControl basemap={basemap} onChange={setBasemap} />
   <AttributionControl position="bottom-left" customAttribution="MapLibre © OpenStreetMap / CARTO" compact />
 
         {showSusceptibility && (

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { MapViewToggleControl } from "@/components/maps/map-view-toggle-control"
-import { useTheme } from "next-themes"
+import { MapBasemapControl } from "@/components/maps/map-basemap-control"
 import Map, {
   Source,
   Layer,
@@ -23,7 +23,7 @@ if (typeof window !== "undefined") {
 import useSWR from "swr"
 import { Download, Loader2, Mountain, Droplets, Flame, CloudRain } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { maplibreBasemapStyle, maplibreSatelliteTerrainStyle } from "@/lib/maps/maplibre-basemap-style"
+import { maplibreMapStyle, type BasemapType } from "@/lib/maps/maplibre-basemap-style"
 import { wmsRasterSource } from "@/lib/maps/wms-raster-source"
 import { SUSCEPTIBILITY_LEVELS, levelColorToken } from "@/lib/deslizamientos/levels"
 import { useVeredas } from "@/lib/veredas/use-veredas"
@@ -178,10 +178,9 @@ function HazardToggleControl({ active, onToggle }: HazardToggleControlProps) {
  */
 function ExposicionMapImpl({ vereda }: { vereda: VeredaListEntry }) {
   const mapRef = useRef<MapRef>(null)
-  const { resolvedTheme } = useTheme()
-  const isDark = resolvedTheme === "dark"
   const [is3D, setIs3D] = useState(false)
-  const mapStyle = useMemo(() => (is3D ? maplibreSatelliteTerrainStyle() : maplibreBasemapStyle(isDark)), [isDark, is3D])
+  const [basemap, setBasemap] = useState<BasemapType>("osm")
+  const mapStyle = useMemo(() => maplibreMapStyle(basemap, is3D), [basemap, is3D])
   const setMapPitch = useCallback((next: boolean) => {
     const map = mapRef.current?.getMap()
     if (map) map.easeTo(next ? { pitch: 55, bearing: -12, duration: 800 } : { pitch: 0, bearing: 0, duration: 600 })
@@ -608,7 +607,8 @@ function ExposicionMapImpl({ vereda }: { vereda: VeredaListEntry }) {
           style={{ width: "100%", height: "100%" }}
         >
     <NavigationControl position="top-right" />
-  <MapViewToggleControl is3D={is3D} onToggle={() => setMapPitch(!is3D)} position="top-right" />
+        <MapViewToggleControl is3D={is3D} onToggle={() => setMapPitch(!is3D)} position="top-right" />
+        <MapBasemapControl basemap={basemap} onChange={setBasemap} position="top-right" />
   <AttributionControl position="bottom-right" customAttribution="MapLibre © OpenStreetMap / CARTO" compact />
 
           <Source id="vereda-outline-source" type="geojson" data={veredaOutlineGeoJson}>
