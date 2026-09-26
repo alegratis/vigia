@@ -31,7 +31,7 @@ import {
   ShieldCheck,
 } from "lucide-react"
 import { MapControlRail, RailSection, RailToggleRow } from "@/components/maps/map-control-rail"
-import { MapViewToggle } from "@/components/maps/map-view-toggle"
+import { MapViewToggleControl } from "@/components/maps/map-view-toggle-control"
 import {
   AOI_BOUNDS,
   buildExportUrl,
@@ -614,9 +614,9 @@ function GeoglowsLiveMapImpl({
         onClick={handleMapClick}
         style={{ width: "100%", height: "100%" }}
       >
-        <NavigationControl position="top-left" />
-        <AttributionControl position="bottom-left" customAttribution="MapLibre © OpenStreetMap / CARTO" compact />
-        <MapViewToggle is3D={is3D} onToggle={() => setMapPitch(!is3D)} className="left-3 top-20" />
+  <NavigationControl position="top-left" />
+  <MapViewToggleControl is3D={is3D} onToggle={() => setMapPitch(!is3D)} />
+  <AttributionControl position="bottom-left" customAttribution="MapLibre © OpenStreetMap / CARTO" compact />
 
         {showSusceptibility && (
           <Source id="susceptibility-source" type="geojson" data={susceptibilityGeoJson}>

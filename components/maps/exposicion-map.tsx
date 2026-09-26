@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
-import { MapViewToggle } from "@/components/maps/map-view-toggle"
+import { MapViewToggleControl } from "@/components/maps/map-view-toggle-control"
 import { useTheme } from "next-themes"
 import Map, {
   Source,
@@ -608,9 +608,9 @@ function ExposicionMapImpl({ vereda }: { vereda: VeredaListEntry }) {
           onClick={handleMapClick}
           style={{ width: "100%", height: "100%" }}
         >
-          <NavigationControl position="top-right" />
-          <AttributionControl position="bottom-right" customAttribution="MapLibre © OpenStreetMap / CARTO" compact />
-          <MapViewToggle is3D={is3D} onToggle={() => setMapPitch(!is3D)} className="left-3 top-3" />
+    <NavigationControl position="top-right" />
+  <MapViewToggleControl is3D={is3D} onToggle={() => setMapPitch(!is3D)} position="top-right" />
+  <AttributionControl position="bottom-right" customAttribution="MapLibre © OpenStreetMap / CARTO" compact />
 
           <Source id="vereda-outline-source" type="geojson" data={veredaOutlineGeoJson}>
             <Layer

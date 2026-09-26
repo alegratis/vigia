@@ -23,7 +23,7 @@ if (typeof window !== "undefined") {
 }
 import { Loader2, Droplets, AlertTriangle, History, Trees, Building2, ShieldCheck } from "lucide-react"
 import { MapControlRail, RailSection, RailToggleRow } from "@/components/maps/map-control-rail"
-import { MapViewToggle } from "@/components/maps/map-view-toggle"
+import { MapViewToggleControl } from "@/components/maps/map-view-toggle-control"
 import { SUSCEPTIBILITY_LEVELS, SUSCEPTIBILITY_LEVEL_STYLES, levelColorToken } from "@/lib/deslizamientos/levels"
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import { SMAP_TILE_URL, SMAP_COLOR_STOPS, SMAP_MAX_VALUE } from "@/lib/deslizamientos/smap"
@@ -535,8 +535,8 @@ function DeslizamientosLiveMapImpl({
          * occupies, on desktop or its mobile bottom-sheet layout.
          */}
         <NavigationControl position="top-left" />
+        <MapViewToggleControl is3D={is3D} onToggle={() => setMapPitch(!is3D)} />
         <AttributionControl position="bottom-left" customAttribution="MapLibre © OpenStreetMap / CARTO" compact />
-        <MapViewToggle is3D={is3D} onToggle={() => setMapPitch(!is3D)} className="left-3 top-20" />
 
         {showSoilMoisture && (
           <Source id="soil-moisture" type="raster" tiles={[SMAP_TILE_URL]} tileSize={256} maxzoom={6}>
