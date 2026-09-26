@@ -18,7 +18,7 @@ import "maplibre-gl/dist/maplibre-gl.css"
 if (typeof window !== "undefined") {
   setWorkerUrl("/maplibre-gl-worker.mjs")
 }
-import { Activity, Radio, History, LandPlot, FileWarning, Route } from "lucide-react"
+import { Activity, Radio, History, LandPlot, FileWarning, Route, PanelLeftClose, PanelLeftOpen } from "lucide-react"
 import { useFaults } from "@/lib/deslizamientos/use-faults"
 import { VeredaPopupContent } from "@/components/maps/vereda-popup-content"
 import { MunicipioTogglePanelContent, type MunicipioRiskSummary } from "@/components/maps/municipio-toggle-panel"
@@ -32,6 +32,7 @@ import { summarizeExposureByMunicipio } from "@/lib/veredas/municipio-summary"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
 import { getOsmCategory } from "@/lib/osm/categories"
 import { resolveCssColor } from "@/lib/resolve-css-color"
+import { cn } from "@/lib/utils"
 import { maplibreMapStyle, defaultBasemapForCurrentTheme, type BasemapType } from "@/lib/maps/maplibre-basemap-style"
 import { useSismologiaDanos, useSismologiaEventos } from "@/lib/sismologia/use-sismologia"
 import {
@@ -174,42 +175,84 @@ function DamageReportsPanel({
   data: SismologiaDanosResponse | undefined
   isLoading: boolean
 }) {
+  const [collapsed, setCollapsed] = useState(false)
+
+  // Shared anchor so the collapsed button sits exactly where the panel was,
+  // rather than jumping to a different corner once hidden.
+  const anchor = "absolute right-80 top-3 z-[400] max-sm:right-3 max-sm:bottom-[48%] max-sm:top-auto"
+
+  if (collapsed) {
+    return (
+      <button
+        type="button"
+        onClick={() => setCollapsed(false)}
+        aria-label="Mostrar reportes de daños"
+        className={cn(
+          anchor,
+          "pointer-events-auto flex size-9 items-center justify-center rounded-md border border-border bg-card/80 text-foreground shadow-sm backdrop-blur-md transition-colors hover:bg-card",
+        )}
+      >
+        <PanelLeftOpen className="size-4" aria-hidden="true" />
+      </button>
+    )
+  }
+
   return (
-    <div className="pointer-events-auto absolute right-80 top-3 z-[400] max-h-[60%] w-64 overflow-y-auto rounded-md border border-border bg-card/95 px-3 py-2.5 text-xs shadow-sm backdrop-blur max-sm:right-3 max-sm:bottom-[48%] max-sm:top-auto">
-      <p className="mb-1.5 font-medium text-foreground">Reportes de daños — Sevilla</p>
-      {isLoading && <p className="text-muted-foreground">Cargando…</p>}
-      {data && (
-        <>
-          <p className="mb-2 text-muted-foreground">
-            {data.totalReportes} reportes comunitarios, sin verificar, agregados por barrio. Las columnas 3D del mapa
-            muestran la misma concentración por nivel de daño.
-          </p>
-          <ul className="flex flex-col gap-2">
-            {data.barrios.map((b: BarrioDamageSummary) => (
-              <li key={b.barrio} className="flex flex-col gap-1 border-t border-border pt-2 first:border-0 first:pt-0">
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className="font-medium text-foreground">{b.barrio}</span>
-                  <span className="shrink-0 tabular-nums text-muted-foreground">{b.totalReportes}</span>
-                </div>
-                <div className="flex flex-col gap-0.5">
-                  {DAMAGE_LEVEL_ORDER.filter((level) => b.porNivel[level] > 0).map((level) => (
-                    <div key={level} className="flex items-center justify-between gap-2 text-muted-foreground">
-                      <span className="flex items-center gap-1.5">
-                        <span
-                          className="inline-block size-2 shrink-0 rounded-full"
-                          style={{ backgroundColor: DAMAGE_LEVEL_COLOR_TOKEN[level] }}
-                        />
-                        {DAMAGE_LEVEL_LABEL[level]}
-                      </span>
-                      <span className="shrink-0 tabular-nums">{b.porNivel[level]}</span>
-                    </div>
-                  ))}
-                </div>
-              </li>
-            ))}
-          </ul>
-        </>
+    <div
+      className={cn(
+        anchor,
+        "pointer-events-auto flex max-h-[60%] w-64 flex-col overflow-hidden rounded-md border border-border bg-card/95 text-xs shadow-sm backdrop-blur",
       )}
+    >
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border/70 px-3 py-2">
+        <p className="font-medium text-foreground">Reportes de daños — Sevilla</p>
+        <button
+          type="button"
+          onClick={() => setCollapsed(true)}
+          aria-label="Ocultar reportes de daños"
+          className="flex size-6 shrink-0 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <PanelLeftClose className="size-4" aria-hidden="true" />
+        </button>
+      </div>
+      <div className="overflow-y-auto px-3 py-2.5">
+        {isLoading && <p className="text-muted-foreground">Cargando…</p>}
+        {data && (
+          <>
+            <p className="mb-2 text-muted-foreground">
+              {data.totalReportes} reportes comunitarios, sin verificar, agregados por barrio. Las columnas 3D del
+              mapa muestran la misma concentración por nivel de daño.
+            </p>
+            <ul className="flex flex-col gap-2">
+              {data.barrios.map((b: BarrioDamageSummary) => (
+                <li
+                  key={b.barrio}
+                  className="flex flex-col gap-1 border-t border-border pt-2 first:border-0 first:pt-0"
+                >
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="font-medium text-foreground">{b.barrio}</span>
+                    <span className="shrink-0 tabular-nums text-muted-foreground">{b.totalReportes}</span>
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    {DAMAGE_LEVEL_ORDER.filter((level) => b.porNivel[level] > 0).map((level) => (
+                      <div key={level} className="flex items-center justify-between gap-2 text-muted-foreground">
+                        <span className="flex items-center gap-1.5">
+                          <span
+                            className="inline-block size-2 shrink-0 rounded-full"
+                            style={{ backgroundColor: DAMAGE_LEVEL_COLOR_TOKEN[level] }}
+                          />
+                          {DAMAGE_LEVEL_LABEL[level]}
+                        </span>
+                        <span className="shrink-0 tabular-nums">{b.porNivel[level]}</span>
+                      </div>
+                    ))}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </div>
     </div>
   )
 }

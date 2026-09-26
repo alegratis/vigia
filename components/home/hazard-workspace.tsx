@@ -2,7 +2,20 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Image from "next/image"
-import { ArrowRight, Activity, CloudRain, CloudSun, Droplets, Flame, Mountain, ShieldAlert, type LucideIcon } from "lucide-react"
+import {
+  ArrowRight,
+  Activity,
+  CloudRain,
+  CloudSun,
+  Droplets,
+  Flame,
+  Mountain,
+  ShieldAlert,
+  PanelLeftClose,
+  PanelLeftOpen,
+  type LucideIcon,
+} from "lucide-react"
+import { cn } from "@/lib/utils"
 import { CategoryPanel } from "@/components/home/category-panel"
 import { DeslizamientosPanelContent } from "@/components/home/deslizamientos-panel-content"
 import { InundacionesPanelContent } from "@/components/home/inundaciones-panel-content"
@@ -62,6 +75,10 @@ export function HazardWorkspace({ initialCategory }: { initialCategory: string }
   const [selectedVereda, setSelectedVereda] = useState<VeredaFeature | null>(null)
   const { points: osmPoints, isLoading: osmLoading, error: osmError } = useOsmInfrastructure()
   const [activeOsmCategories, setActiveOsmCategories] = useState<Set<OsmCategoryKey>>(new Set())
+  // Collapsing keeps just the brand marks + a compact population readout —
+  // everything else (mission text, CTA, infrastructure lists) needs real
+  // width to stay legible, so it's simplest to hide it rather than shrink it.
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   const activeConfig = CATEGORY_BASIS[activeSlug] ?? CATEGORY_BASIS[mapModels[0].slug]
 
@@ -103,120 +120,193 @@ export function HazardWorkspace({ initialCategory }: { initialCategory: string }
       tabIndex={-1}
       className="flex flex-1 flex-col focus-visible:outline-none lg:min-h-0 lg:flex-row"
     >
-      <div className="flex flex-col gap-6 border-b border-border bg-card p-6 sm:p-8 lg:w-80 lg:shrink-0 lg:overflow-y-auto lg:border-b-0 lg:border-r xl:w-96">
-        <div className="flex flex-col items-center gap-6 text-center">
-          <div className="flex items-center gap-4">
-            <span className="relative flex h-12 items-center justify-center">
-              <Image
-                src="/images/redlabot-mark-light.png"
-                alt="RED LabOT"
-                width={100}
-                height={45}
-                className="block h-9 w-auto dark:hidden"
-                priority
-              />
-              <Image
-                src="/images/redlabot-mark-dark.png"
-                alt="RED LabOT"
-                width={100}
-                height={45}
-                className="hidden h-9 w-auto dark:block"
-                priority
-              />
-            </span>
-            <span aria-hidden="true" className="h-10 w-px bg-border" />
-            <span className="relative flex size-16 items-center justify-center">
-              <Image
-                src="/images/vigia-mark-light.png"
-                alt=""
-                width={84}
-                height={65}
-                className="block dark:hidden"
-                priority
-              />
-              <Image
-                src="/images/vigia-mark-dark.png"
-                alt=""
-                width={84}
-                height={65}
-                className="hidden dark:block"
-                priority
-              />
-            </span>
-          </div>
-          <div className="flex flex-col items-center gap-3">
-            <h1 className="sr-only">Vigía</h1>
-            <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
-              Observación satelital e inteligencia geoespacial para anticipar
-              amenazas y fortalecer la respuesta ante emergencias en Sevilla,
-              Caicedonia, Zarzal y Roldanillo.
-            </p>
-          </div>
-
-          <div className="flex flex-col items-center gap-1.5">
-            <span className="text-xs font-medium text-muted-foreground">En colaboración con</span>
-            <a
-              href="https://nasalifelines.org"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            >
-              <Image
-                src="/images/nasa-lifelines-wordmark-darkblue.png"
-                alt="NASA Lifelines"
-                width={5112}
-                height={643}
-                className="block h-5 w-auto dark:hidden"
-              />
-              <Image
-                src="/images/nasa-lifelines-wordmark-white.png"
-                alt="NASA Lifelines"
-                width={5112}
-                height={643}
-                className="hidden h-5 w-auto dark:block"
-              />
-            </a>
-            <div className="h-px w-8 bg-border" aria-hidden="true" />
-            <AlejandroPinoLogo className="h-6" />
-          </div>
-        </div>
-
+      <div
+        className={cn(
+          "relative flex flex-col border-b border-border bg-card transition-[width,padding,gap] duration-300 ease-in-out lg:shrink-0 lg:overflow-y-auto lg:border-b-0 lg:border-r",
+          sidebarCollapsed
+            ? "items-center gap-4 p-3 pt-11 lg:w-16 xl:w-16"
+            : "gap-6 p-6 pt-11 sm:p-8 sm:pt-11 lg:w-80 xl:w-96",
+        )}
+      >
         <button
           type="button"
-          onClick={() => openInfoPopup("/exposicion/popup", "vigia-exposicion", { width: 1180, height: 980 })}
-          className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-md bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          onClick={() => setSidebarCollapsed((collapsed) => !collapsed)}
+          aria-label={sidebarCollapsed ? "Mostrar panel lateral" : "Ocultar panel lateral"}
+          className="absolute right-2 top-2 z-10 flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          Conoce tu nivel de exposición
-          <ArrowRight className="size-4" aria-hidden="true" />
+          {sidebarCollapsed ? (
+            <PanelLeftOpen className="size-4" aria-hidden="true" />
+          ) : (
+            <PanelLeftClose className="size-4" aria-hidden="true" />
+          )}
         </button>
 
-        <div aria-live="polite" className="shrink-0">
-          <LiveAreaPopulation
-            bounds={bounds}
-            basis={activeConfig.basis}
-            basisLabel={activeConfig.basisLabel}
-            selectedMunicipio={selectedMunicipio}
-            selectedVereda={selectedVereda}
-            onClearSelection={clearSidebarSelection}
-          />
-        </div>
+        {sidebarCollapsed ? (
+          <div className="flex w-full flex-col items-center gap-4 animate-in fade-in duration-300">
+            <div className="flex flex-col items-center gap-3">
+              <span className="relative flex h-7 items-center justify-center">
+                <Image
+                  src="/images/redlabot-mark-light.png"
+                  alt="RED LabOT"
+                  width={100}
+                  height={45}
+                  className="block h-5 w-auto dark:hidden"
+                />
+                <Image
+                  src="/images/redlabot-mark-dark.png"
+                  alt="RED LabOT"
+                  width={100}
+                  height={45}
+                  className="hidden h-5 w-auto dark:block"
+                />
+              </span>
+              <span aria-hidden="true" className="h-px w-8 bg-border" />
+              <span className="relative flex size-9 items-center justify-center">
+                <Image
+                  src="/images/vigia-mark-light.png"
+                  alt="Vigía"
+                  width={84}
+                  height={65}
+                  className="block dark:hidden"
+                />
+                <Image
+                  src="/images/vigia-mark-dark.png"
+                  alt="Vigía"
+                  width={84}
+                  height={65}
+                  className="hidden dark:block"
+                />
+              </span>
+            </div>
 
-        <LiveInfrastructureCategories
-          className="shrink-0"
-          bounds={bounds}
-          points={osmPoints}
-          isLoading={osmLoading}
-          error={osmError}
-          activeCategories={activeOsmCategories}
-          onToggleCategory={toggleOsmCategory}
-        />
+            <LiveAreaPopulation
+              compact
+              className="w-full shrink-0"
+              bounds={bounds}
+              basis={activeConfig.basis}
+              basisLabel={activeConfig.basisLabel}
+              selectedMunicipio={selectedMunicipio}
+              selectedVereda={selectedVereda}
+              onClearSelection={clearSidebarSelection}
+            />
+          </div>
+        ) : (
+          <div className="flex w-full flex-col items-center gap-6 animate-in fade-in duration-300">
+            <div className="flex flex-col items-center gap-6 text-center">
+              <div className="flex items-center gap-4">
+                <span className="relative flex h-12 items-center justify-center">
+                  <Image
+                    src="/images/redlabot-mark-light.png"
+                    alt="RED LabOT"
+                    width={100}
+                    height={45}
+                    className="block h-9 w-auto dark:hidden"
+                    priority
+                  />
+                  <Image
+                    src="/images/redlabot-mark-dark.png"
+                    alt="RED LabOT"
+                    width={100}
+                    height={45}
+                    className="hidden h-9 w-auto dark:block"
+                    priority
+                  />
+                </span>
+                <span aria-hidden="true" className="h-10 w-px bg-border" />
+                <span className="relative flex size-16 items-center justify-center">
+                  <Image
+                    src="/images/vigia-mark-light.png"
+                    alt=""
+                    width={84}
+                    height={65}
+                    className="block dark:hidden"
+                    priority
+                  />
+                  <Image
+                    src="/images/vigia-mark-dark.png"
+                    alt=""
+                    width={84}
+                    height={65}
+                    className="hidden dark:block"
+                    priority
+                  />
+                </span>
+              </div>
+              <div className="flex flex-col items-center gap-3">
+                <h1 className="sr-only">Vigía</h1>
+                <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
+                  Observación satelital e inteligencia geoespacial para anticipar
+                  amenazas y fortalecer la respuesta ante emergencias en Sevilla,
+                  Caicedonia, Zarzal y Roldanillo.
+                </p>
+              </div>
 
-        <LiveInfrastructureBuildings
-          className="shrink-0"
-          bounds={bounds}
-          points={osmPoints}
-          activeCategories={activeOsmCategories}
-        />
+              <div className="flex flex-col items-center gap-1.5">
+                <span className="text-xs font-medium text-muted-foreground">En colaboración con</span>
+                <a
+                  href="https://nasalifelines.org"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                >
+                  <Image
+                    src="/images/nasa-lifelines-wordmark-darkblue.png"
+                    alt="NASA Lifelines"
+                    width={5112}
+                    height={643}
+                    className="block h-5 w-auto dark:hidden"
+                  />
+                  <Image
+                    src="/images/nasa-lifelines-wordmark-white.png"
+                    alt="NASA Lifelines"
+                    width={5112}
+                    height={643}
+                    className="hidden h-5 w-auto dark:block"
+                  />
+                </a>
+                <div className="h-px w-8 bg-border" aria-hidden="true" />
+                <AlejandroPinoLogo className="h-6" />
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => openInfoPopup("/exposicion/popup", "vigia-exposicion", { width: 1180, height: 980 })}
+              className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-md bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
+              Conoce tu nivel de exposición
+              <ArrowRight className="size-4" aria-hidden="true" />
+            </button>
+
+            <div aria-live="polite" className="shrink-0">
+              <LiveAreaPopulation
+                bounds={bounds}
+                basis={activeConfig.basis}
+                basisLabel={activeConfig.basisLabel}
+                selectedMunicipio={selectedMunicipio}
+                selectedVereda={selectedVereda}
+                onClearSelection={clearSidebarSelection}
+              />
+            </div>
+
+            <LiveInfrastructureCategories
+              className="shrink-0"
+              bounds={bounds}
+              points={osmPoints}
+              isLoading={osmLoading}
+              error={osmError}
+              activeCategories={activeOsmCategories}
+              onToggleCategory={toggleOsmCategory}
+            />
+
+            <LiveInfrastructureBuildings
+              className="shrink-0"
+              bounds={bounds}
+              points={osmPoints}
+              activeCategories={activeOsmCategories}
+            />
+          </div>
+        )}
       </div>
 
       {/*

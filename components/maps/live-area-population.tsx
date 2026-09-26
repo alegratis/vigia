@@ -46,6 +46,13 @@ interface LiveAreaPopulationProps {
   selectedVereda?: VeredaFeature | null
   onClearSelection?: () => void
   className?: string
+  /**
+   * Renders as a narrow stack of small population pills — municipio
+   * abbreviation + total — instead of the full card. Used by the collapsed
+   * sidebar state, which has no room for the year toggle or per-category
+   * breakdown.
+   */
+  compact?: boolean
 }
 
 const LATEST_YEAR = AVAILABLE_YEARS[AVAILABLE_YEARS.length - 1]
@@ -68,6 +75,7 @@ export function LiveAreaPopulation({
   selectedVereda,
   onClearSelection,
   className,
+  compact = false,
 }: LiveAreaPopulationProps) {
   const { data, isLoading } = useSWR<DemografiaResponse>("/api/demografia", fetcher, {
     revalidateOnFocus: false,
@@ -76,7 +84,15 @@ export function LiveAreaPopulation({
   const [year, setYear] = useState<AvailableYear>(LATEST_YEAR)
 
   if (isLoading || !data) {
-    return <Skeleton className={cn("h-[420px] max-h-[60vh] rounded-xl", className)} />
+    return compact ? (
+      <div className={cn("flex flex-col gap-1.5", className)} aria-hidden="true">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-9 w-full rounded-full" />
+        ))}
+      </div>
+    ) : (
+      <Skeleton className={cn("h-[420px] max-h-[60vh] rounded-xl", className)} />
+    )
   }
 
   const inView = bounds ? pointsInBounds(REFERENCE_POINTS, bounds) : null
@@ -93,6 +109,30 @@ export function LiveAreaPopulation({
     (sum, m) => sum + (m.population.years[year]?.total ?? 0),
     0,
   )
+
+  if (compact) {
+    return (
+      <div className={cn("flex flex-col gap-1.5", className)} aria-label="Población por municipio">
+        {visible.map((m) => {
+          const total = m.population.years[year]?.total ?? 0
+          return (
+            <div
+              key={m.municipio}
+              title={`${m.municipio}: ${formatNumber(total)} habitantes`}
+              className="flex flex-col items-center gap-0.5 rounded-full bg-muted px-1.5 py-1.5"
+            >
+              <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+                {m.municipio.slice(0, 3)}
+              </span>
+              <span className="text-[10px] font-semibold tabular-nums text-foreground">
+                {formatNumber(total)}
+              </span>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
 
   return (
     <Card className={cn("flex h-[420px] max-h-[60vh] flex-col", className)}>
