@@ -104,29 +104,41 @@ class BasemapControl implements IControl {
               borderColor: "var(--border)",
             }}
           >
-            {BASEMAP_OPTIONS.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                role="menuitemradio"
-                aria-checked={option.value === this.basemap}
-                onClick={() => this.select(option.value)}
-                className="w-full gap-3 rounded-md px-2.5 py-2 text-left text-sm font-medium transition-colors hover:opacity-80"
-                // Same specificity issue as the trigger button above:
-                // `.maplibregl-ctrl-group button{display:block}` outranks the
-                // Tailwind `flex` utility, so icon+label stack instead of
-                // sitting side by side unless forced inline.
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  color: "var(--popover-foreground)",
-                  backgroundColor: option.value === this.basemap ? "var(--accent)" : "transparent",
-                }}
-              >
-                <option.Icon className="size-4 shrink-0" aria-hidden="true" />
-                <span className="whitespace-nowrap leading-none">{option.label}</span>
-              </button>
-            ))}
+            {BASEMAP_OPTIONS.map((option) => {
+              const selected = option.value === this.basemap
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={selected}
+                  onClick={() => this.select(option.value)}
+                  // Hover is applied imperatively (not a Tailwind `hover:` class) because
+                  // the inline `backgroundColor` below always wins over a class on
+                  // specificity, so a `hover:bg-*` class would be silently ignored.
+                  onMouseEnter={(e) => {
+                    if (!selected) e.currentTarget.style.backgroundColor = "var(--accent)"
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!selected) e.currentTarget.style.backgroundColor = "transparent"
+                  }}
+                  className="w-full gap-3 rounded-md px-2.5 py-2 text-left text-sm font-medium"
+                  // Same specificity issue as the trigger button above:
+                  // `.maplibregl-ctrl-group button{display:block}` outranks the
+                  // Tailwind `flex` utility, so icon+label stack instead of
+                  // sitting side by side unless forced inline.
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    color: "var(--popover-foreground)",
+                    backgroundColor: selected ? "var(--accent)" : "transparent",
+                  }}
+                >
+                  <option.Icon className="size-4 shrink-0" aria-hidden="true" />
+                  <span className="whitespace-nowrap leading-none">{option.label}</span>
+                </button>
+              )
+            })}
           </div>
         )}
       </div>,
