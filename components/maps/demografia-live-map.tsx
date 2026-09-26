@@ -18,7 +18,7 @@ import "maplibre-gl/dist/maplibre-gl.css"
 if (typeof window !== "undefined") {
   setWorkerUrl("/maplibre-gl-worker.mjs")
 }
-import { Building2, Home, Users } from "lucide-react"
+import { Building2, Home, Users, TriangleAlert } from "lucide-react"
 import { MapControlRail, RailSection } from "@/components/maps/map-control-rail"
 import { MapViewToggleControl } from "@/components/maps/map-view-toggle-control"
 import { MapBasemapControl } from "@/components/maps/map-basemap-control"
@@ -26,7 +26,10 @@ import { resolveCssColor } from "@/lib/resolve-css-color"
 import { cn } from "@/lib/utils"
 import { maplibreMapStyle, defaultBasemapForCurrentTheme, type BasemapType } from "@/lib/maps/maplibre-basemap-style"
 import { useDemografiaGeoportal } from "@/lib/demografia/use-geoportal"
+import { useVulnerabilidad } from "@/lib/vulnerabilidad/use-vulnerabilidad"
 import { INDICATOR_LEVELS, INDICATOR_LEVEL_TOKENS, normalize, indicatorLevel, indicatorHeight } from "@/lib/demografia/indicator-levels"
+import { COMPOUND_LEVELS, COMPOUND_LEVEL_STYLES, isCompoundLevel } from "@/lib/riesgo-compuesto/levels"
+import type { VulnerabilidadVeredaProperties } from "@/lib/vulnerabilidad/api-types"
 import type { PobrezaFeatureProperties, ManzanaFeatureProperties } from "@/lib/demografia/geoportal-api-types"
 import type { MapBounds } from "@/lib/map-bounds"
 
@@ -36,7 +39,7 @@ const AOI_BOUNDS: [[number, number], [number, number]] = [
   [-75.72, 4.44],
 ]
 
-type Indicator = "pobreza" | "manzanas"
+type Indicator = "pobreza" | "manzanas" | "vulnerabilidad"
 type ManzanaField = "viviendas" | "hogares" | "personas"
 
 const MANZANA_FIELD_LABEL: Record<ManzanaField, string> = {
@@ -84,6 +87,33 @@ function IndicatorLegend({ title }: { title: string }) {
   )
 }
 
+/** Legend for the combined-vulnerability layer — same 5-tier scale as riesgo-compuesto, so the two maps read consistently. */
+function VulnerabilityLegend() {
+  const [colors, setColors] = useState<string[] | null>(null)
+
+  useEffect(() => {
+    setColors(COMPOUND_LEVELS.map((level) => resolveCssColor(COMPOUND_LEVEL_STYLES[level].colorToken)))
+  }, [])
+
+  return (
+    <div className="pointer-events-none rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
+      <p className="mb-1.5 font-medium text-foreground">Índice de vulnerabilidad compuesto</p>
+      <ul className="flex flex-col gap-1">
+        {COMPOUND_LEVELS.map((level, i) => (
+          <li key={level} className="flex items-center gap-2 text-muted-foreground">
+            <span
+              className="size-2.5 shrink-0 rounded-sm"
+              style={{ backgroundColor: colors?.[i] ?? "transparent" }}
+              aria-hidden="true"
+            />
+            {level}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 /**
  * Demografía tab's map: extrudes DANE geoportal indicators in 3D over the
  * 4-municipio AOI. Two mutually exclusive layers (never shown together,
@@ -102,17 +132,22 @@ function DemografiaLiveMapImpl({
   className?: string
 }) {
   const mapRef = useRef<MapRef>(null)
-  const { data } = useDemografiaGeoportal(true)
-
   const [indicator, setIndicator] = useState<Indicator>("pobreza")
+  const { data } = useDemografiaGeoportal(indicator !== "vulnerabilidad")
+  const { data: vulnerabilidadData } = useVulnerabilidad(indicator === "vulnerabilidad")
+
   const [manzanaField, setManzanaField] = useState<ManzanaField>("personas")
   const [levelColors, setLevelColors] = useState<Record<string, string> | null>(null)
+  const [compoundColors, setCompoundColors] = useState<Record<string, string> | null>(null)
   const [popupInfo, setPopupInfo] = useState<PopupInfo | null>(null)
   const [cursor, setCursor] = useState<string>("")
 
   useEffect(() => {
     setLevelColors(
       Object.fromEntries(INDICATOR_LEVELS.map((level) => [level, resolveCssColor(INDICATOR_LEVEL_TOKENS[level])])),
+    )
+    setCompoundColors(
+      Object.fromEntries(COMPOUND_LEVELS.map((level) => [level, resolveCssColor(COMPOUND_LEVEL_STYLES[level].colorToken)])),
     )
   }, [])
 
@@ -172,8 +207,36 @@ function DemografiaLiveMapImpl({
     }
   }, [data, levelColors, manzanaField])
 
+  // Step 3 of the vulnerability methodology (lib/vulnerabilidad/combined-score.ts):
+  // combinedScore has a fixed theoretical range [0, 4] (HVI ∈ [0,1] × HazardScore ∈ [1,4]),
+  // so this is bucketed by the API's own combinedLevel rather than re-normalized client-side.
+  const vulnerabilidadGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
+    if (!vulnerabilidadData || !compoundColors) return { type: "FeatureCollection", features: [] }
+    return {
+      type: "FeatureCollection",
+      features: vulnerabilidadData.veredas.features
+        .filter((f) => f.properties.combinedScore != null && f.properties.combinedLevel != null)
+        .map((feature, i) => {
+          const level = feature.properties.combinedLevel as string
+          const height = indicatorHeight((feature.properties.combinedScore ?? 0) / 4, 900)
+          return {
+            type: "Feature",
+            id: i,
+            properties: {
+              ...feature.properties,
+              __height: height,
+              __color: compoundColors[level],
+            },
+            geometry: feature.geometry,
+          }
+        }),
+    }
+  }, [vulnerabilidadData, compoundColors])
+
   const interactiveLayerIds = useMemo(() => {
-    return indicator === "pobreza" ? ["pobreza-columns"] : ["manzanas-columns"]
+    if (indicator === "pobreza") return ["pobreza-columns"]
+    if (indicator === "manzanas") return ["manzanas-columns"]
+    return ["vulnerabilidad-columns"]
   }, [indicator])
 
   const handleMapClick = useCallback(
@@ -213,6 +276,28 @@ function DemografiaLiveMapImpl({
               </p>
               <p className="text-muted-foreground">
                 Personas: <span className="font-medium text-foreground">{props.personas.toLocaleString("es-CO")}</span>
+              </p>
+            </div>
+          ),
+        })
+      } else if (feature.layer.id === "vulnerabilidad-columns") {
+        const props = feature.properties as unknown as VulnerabilidadVeredaProperties
+        setPopupInfo({
+          longitude: e.lngLat.lng,
+          latitude: e.lngLat.lat,
+          content: (
+            <div className="flex flex-col gap-1 text-xs">
+              <p className="font-medium text-foreground">
+                {props.nombre} <span className="text-muted-foreground">({props.municipio})</span>
+              </p>
+              <p className="text-muted-foreground">
+                Vulnerabilidad compuesta:{" "}
+                <span className="font-medium text-foreground">{props.combinedLevel}</span>
+              </p>
+              <p className="text-muted-foreground">
+                HVI (municipio): <span className="font-medium text-foreground">{props.hvi.toFixed(2)}</span>
+                {" · "}
+                Amenaza: <span className="font-medium text-foreground">{props.compoundLevel ?? "—"}</span>
               </p>
             </div>
           ),
@@ -280,6 +365,21 @@ function DemografiaLiveMapImpl({
           </Source>
         )}
 
+        {indicator === "vulnerabilidad" && compoundColors && (
+          <Source id="vulnerabilidad-source" type="geojson" data={vulnerabilidadGeoJson}>
+            <Layer
+              id="vulnerabilidad-columns"
+              type="fill-extrusion"
+              paint={{
+                "fill-extrusion-height": ["get", "__height"],
+                "fill-extrusion-base": 0,
+                "fill-extrusion-color": ["get", "__color"],
+                "fill-extrusion-opacity": 0.88,
+              }}
+            />
+          </Source>
+        )}
+
         {popupInfo && (
           <Popup
             longitude={popupInfo.longitude}
@@ -294,9 +394,13 @@ function DemografiaLiveMapImpl({
       </Map>
 
       <div className="pointer-events-none absolute bottom-3 left-3 z-[400] max-sm:hidden">
-        <IndicatorLegend
-          title={indicator === "pobreza" ? "Pobreza multidimensional (IPM)" : MANZANA_FIELD_LABEL[manzanaField]}
-        />
+        {indicator === "vulnerabilidad" ? (
+          <VulnerabilityLegend />
+        ) : (
+          <IndicatorLegend
+            title={indicator === "pobreza" ? "Pobreza multidimensional (IPM)" : MANZANA_FIELD_LABEL[manzanaField]}
+          />
+        )}
       </div>
 
       <MapControlRail>
@@ -321,6 +425,17 @@ function DemografiaLiveMapImpl({
                 className="size-3.5 shrink-0 accent-primary"
               />
               <span className="text-pretty">Viviendas, hogares y personas</span>
+            </label>
+            <label className="flex items-center gap-2 rounded-sm px-1.5 py-1 -mx-1.5 font-medium text-foreground transition-colors hover:bg-muted/70">
+              <input
+                type="radio"
+                name="demografia-indicator"
+                checked={indicator === "vulnerabilidad"}
+                onChange={() => setIndicator("vulnerabilidad")}
+                className="size-3.5 shrink-0 accent-primary"
+              />
+              <TriangleAlert className="size-3.5 shrink-0 text-muted-foreground" />
+              <span className="text-pretty">Índice de vulnerabilidad compuesto</span>
             </label>
           </div>
         </RailSection>
@@ -353,7 +468,9 @@ function DemografiaLiveMapImpl({
 
         <RailSection title="Fuente">
           <p className="text-muted-foreground">
-            DANE — Geoportal (IPM 2018 y Censo Nacional de Población y Vivienda 2018).
+            {indicator === "vulnerabilidad"
+              ? "HVI por municipio (déficit habitacional DANE 2018) × riesgo compuesto por vereda (este mismo sitio)."
+              : "DANE — Geoportal (IPM 2018 y Censo Nacional de Población y Vivienda 2018)."}
           </p>
         </RailSection>
       </MapControlRail>

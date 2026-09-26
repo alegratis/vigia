@@ -18,7 +18,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { CategoryPanel } from "@/components/home/category-panel"
-import { CategoryTab } from "@/components/home/category-tab"
+import { CategoryRail } from "@/components/home/category-rail"
 import { DeslizamientosPanelContent } from "@/components/home/deslizamientos-panel-content"
 import { InundacionesPanelContent } from "@/components/home/inundaciones-panel-content"
 import { IncendiosPanelContent } from "@/components/home/incendios-panel-content"
@@ -322,7 +322,7 @@ export function HazardWorkspace({ initialCategory }: { initialCategory: string }
         the collapsed strips' basis-20) instead of being forced into a min-height:0 flex item that has no
         ambient space to grow into, which is what was collapsing the active map to a sliver.
       */}
-      <div className="flex flex-col lg:min-h-0 lg:flex-1 lg:flex-row">
+      <div className="relative flex flex-col lg:min-h-0 lg:flex-1 lg:flex-row">
         {mapModels.map((model: MapModel) => {
           const isActive = model.slug === activeSlug
           return (
@@ -389,28 +389,21 @@ export function HazardWorkspace({ initialCategory }: { initialCategory: string }
               </CategoryPanel>
             )
         })}
-      </div>
 
-      {/*
-        Right-docked category rail: fixed-width, desktop-only (mobile keeps the collapsed strips
-        stacked with the map inside the row above, since there's no spare edge to dock a rail on a
-        narrow screen). Every category renders here regardless of which one is active, so the map
-        row's width never shifts as categories are added, reordered, or switched — only the active
-        tab's highlight state changes.
-      */}
-      <div
-        aria-label="Categorías de mapas"
-        className="hidden shrink-0 flex-col items-center gap-2 overflow-y-auto border-l border-border bg-card py-3 pl-2 lg:flex lg:w-16 xl:w-[4.5rem]"
-      >
-        {mapModels.map((model: MapModel) => (
-          <CategoryTab
-            key={model.slug}
-            model={model}
-            icon={hazardIcons[model.slug] ?? Mountain}
-            isActive={model.slug === activeSlug}
-            onActivate={() => activate(model.slug)}
-          />
-        ))}
+        {/*
+          Floating category rail: desktop-only (mobile keeps the collapsed strips stacked with the
+          map inside the row above, since there's no spare edge to dock a rail on a narrow screen).
+          Absolutely positioned over this row's right edge instead of a flex sibling, so it overlaps
+          the active map's own edge — reading as tabs attached to the map — rather than reserving a
+          separate column that would both shrink the map and detach the tabs from it visually.
+        */}
+        <CategoryRail
+          models={mapModels}
+          icons={hazardIcons}
+          fallbackIcon={Mountain}
+          activeSlug={activeSlug}
+          onActivate={activate}
+        />
       </div>
     </main>
   )

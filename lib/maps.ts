@@ -15,7 +15,7 @@ export type MapModel = {
   comingSoon?: boolean
 }
 
-export const mapModels: MapModel[] = [
+const declaredMapModels: MapModel[] = [
   {
     slug: "deslizamientos",
     title: "Deslizamientos",
@@ -119,6 +119,17 @@ export const mapModels: MapModel[] = [
     href: "/?categoria=demografia",
     ready: true,
   },
+]
+
+/**
+ * Riesgo compuesto isn't a hazard alongside the others — it's the conclusion drawn *from* them (see
+ * its own `description` above), so it must always render last no matter how many more hazard
+ * categories get declared above it later. Enforced here instead of by list order alone, so a future
+ * addition can't accidentally land after it.
+ */
+export const mapModels: MapModel[] = [
+  ...declaredMapModels.filter((m) => m.slug !== "riesgo-compuesto"),
+  ...declaredMapModels.filter((m) => m.slug === "riesgo-compuesto"),
 ]
 
 export function getMapModel(slug: string): MapModel | undefined {

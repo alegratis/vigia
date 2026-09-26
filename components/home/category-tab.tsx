@@ -10,22 +10,29 @@ interface CategoryTabProps {
   icon: LucideIcon
   isActive: boolean
   onActivate: () => void
+  /** Continuous px values from `CategoryRail`, derived from the space this one tab actually has
+   *  (rail height ÷ tab count) rather than a fixed size, so the whole stack always fits the
+   *  available height exactly instead of overflowing or leaving a scrollbar. */
+  fontSize: number
+  iconSize: number
+  gap: number
 }
 
+const TAB_WIDTH = "w-14 xl:w-16"
+
 /**
- * One entry in the right-docked category rail (desktop only). This is the
- * markup `CategoryPanel`'s collapsed branch used to render inline in the
- * map row — same photo, icon, and title — now living in a fixed-position
- * vertical stack that never moves as categories are activated, so the map
- * next to it always claims the same amount of space regardless of which
- * (or how many) categories exist.
+ * One entry in the right-docked category rail (desktop only). `pointer-events-auto` is needed
+ * because the rail wrapper (`CategoryRail`) is `pointer-events-none` — it floats over the live
+ * map, so only the tabs themselves (not the transparent gaps between them) should intercept
+ * clicks that would otherwise go to the map underneath.
  *
- * The rounded-left / flush-right corners plus the slight negative right
- * margin on the active tab give it a literal file-folder-tab silhouette:
- * it reads as sticking out from the rail's edge rather than just being a
- * highlighted rectangle in a list.
+ * Rounded only on the left (the edge overlapping the map) and translated further onto the map
+ * when active/hovered — a literal file-tab silhouette poking out of the map's edge, rather than a
+ * flat rectangle in a boxed-off sidebar column.
  */
-export function CategoryTab({ model, icon: Icon, isActive, onActivate }: CategoryTabProps) {
+export function CategoryTab({ model, icon: Icon, isActive, onActivate, fontSize, iconSize, gap }: CategoryTabProps) {
+  const words = model.title.split(" ")
+
   return (
     <button
       type="button"
@@ -33,8 +40,11 @@ export function CategoryTab({ model, icon: Icon, isActive, onActivate }: Categor
       aria-label={`Mostrar ${model.title}`}
       aria-pressed={isActive}
       className={cn(
-        "group relative flex h-20 w-14 shrink-0 items-center justify-center overflow-hidden rounded-l-xl text-left transition-[margin,box-shadow,opacity] duration-300 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset xl:h-24 xl:w-16",
-        isActive ? "-mr-2 opacity-100 shadow-[0_0_0_2px_var(--primary)]" : "opacity-85 hover:opacity-100",
+        "group pointer-events-auto relative flex min-h-0 flex-1 shrink-0 items-center justify-center overflow-hidden rounded-l-2xl text-left shadow-[-3px_2px_10px_rgba(0,0,0,0.28)] ring-1 ring-black/10 transition-[transform,box-shadow,opacity] duration-300 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+        TAB_WIDTH,
+        isActive
+          ? "-translate-x-2 opacity-100 shadow-[-3px_2px_14px_rgba(0,0,0,0.32),0_0_0_2px_var(--primary)]"
+          : "opacity-80 hover:-translate-x-1 hover:opacity-100",
       )}
     >
       <Image
@@ -53,19 +63,26 @@ export function CategoryTab({ model, icon: Icon, isActive, onActivate }: Categor
         )}
         aria-hidden="true"
       />
-      <div className="relative z-10 flex flex-col items-center gap-1.5 px-1">
+      <div className="relative z-10 flex flex-col items-center px-1" style={{ gap }}>
         <Icon
-          className={cn("size-4 shrink-0", isActive ? "text-primary-foreground" : "text-black dark:text-white")}
+          className={cn("shrink-0", isActive ? "text-primary-foreground" : "text-black dark:text-white")}
+          style={{ width: iconSize, height: iconSize }}
           aria-hidden="true"
         />
-        <span
-          className={cn(
-            "line-clamp-1 text-[10px] font-semibold uppercase tracking-wide [writing-mode:vertical-rl] rotate-180",
-            isActive ? "text-primary-foreground" : "text-black dark:text-white",
-          )}
-        >
-          {model.title}
-        </span>
+        <div className="flex items-start" style={{ gap: Math.max(1, gap / 2) }}>
+          {words.map((word) => (
+            <span
+              key={word}
+              style={{ fontSize }}
+              className={cn(
+                "font-semibold uppercase tracking-wide leading-none [writing-mode:vertical-rl] rotate-180",
+                isActive ? "text-primary-foreground" : "text-black dark:text-white",
+              )}
+            >
+              {word}
+            </span>
+          ))}
+        </div>
       </div>
     </button>
   )
