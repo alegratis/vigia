@@ -50,7 +50,9 @@ class ViewToggleControl implements IControl {
 
   private renderButton() {
     if (!this.root) return
-    const Icon = this.is3D ? Box : Square
+    // Show the icon for the view the button will switch TO, not the current one,
+    // so the glyph reads as "press this to get 3D" / "press this to get 2D".
+    const Icon = this.is3D ? Square : Box
     this.root.render(
       <button
         type="button"
@@ -59,6 +61,7 @@ class ViewToggleControl implements IControl {
         aria-label={this.is3D ? "Cambiar a vista 2D" : "Cambiar a vista 3D"}
         title={this.is3D ? "Vista 2D" : "Vista 3D"}
         className="maplibregl-ctrl-icon flex items-center justify-center"
+        style={{ color: "#333" }}
       >
         <Icon className="size-4" aria-hidden="true" />
       </button>,
