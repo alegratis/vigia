@@ -52,6 +52,12 @@ export function SiteHeader() {
         </Link>
 
         <div className="flex items-center gap-1">
+          <span
+            className="mr-1 hidden select-none text-[10px] font-medium uppercase tracking-wide text-muted-foreground/50 sm:inline"
+            title="Vigía está en fase beta"
+          >
+            Beta v0.84
+          </span>
           <nav aria-label="Navegación principal" className="hidden items-center gap-1 md:flex">
             {navLinks.map((link) => {
               const active = pathname === link.href
