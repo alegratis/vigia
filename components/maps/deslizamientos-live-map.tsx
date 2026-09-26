@@ -1,7 +1,6 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
-import { useTheme } from "next-themes"
 import Map, {
   Source,
   Layer,
@@ -24,6 +23,7 @@ if (typeof window !== "undefined") {
 import { Loader2, Droplets, AlertTriangle, History, Trees, Building2, ShieldCheck } from "lucide-react"
 import { MapControlRail, RailSection, RailToggleRow } from "@/components/maps/map-control-rail"
 import { MapViewToggleControl } from "@/components/maps/map-view-toggle-control"
+import { MapBasemapControl } from "@/components/maps/map-basemap-control"
 import { SUSCEPTIBILITY_LEVELS, SUSCEPTIBILITY_LEVEL_STYLES, levelColorToken } from "@/lib/deslizamientos/levels"
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import { SMAP_TILE_URL, SMAP_COLOR_STOPS, SMAP_MAX_VALUE } from "@/lib/deslizamientos/smap"
@@ -35,7 +35,7 @@ import {
   GWIS_PROTECTED_AREAS_LAYER,
   GWIS_PROTECTED_AREAS_LEGEND_URL,
 } from "@/lib/demografia/gwis-context-layers"
-import { maplibreBasemapStyle } from "@/lib/maps/maplibre-basemap-style"
+import { maplibreMapStyle, defaultBasemapForCurrentTheme, type BasemapType } from "@/lib/maps/maplibre-basemap-style"
 import { wmsRasterSource } from "@/lib/maps/wms-raster-source"
 import { getOsmCategory } from "@/lib/osm/categories"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
@@ -215,12 +215,11 @@ function DeslizamientosLiveMapImpl({
   className?: string
 }) {
   const mapRef = useRef<MapRef>(null)
-  const { resolvedTheme } = useTheme()
-  const isDark = resolvedTheme === "dark"
-  const mapStyle = useMemo(() => maplibreBasemapStyle(isDark), [isDark])
 
   const [is3D, setIs3D] = useState(false)
-  const setMapPitch = useCallback((next: boolean) => {
+  const [basemap, setBasemap] = useState<BasemapType>(defaultBasemapForCurrentTheme)
+  const mapStyle = useMemo(() => maplibreMapStyle(basemap, is3D), [basemap, is3D])
+ const setMapPitch = useCallback((next: boolean) => {
     const map = mapRef.current?.getMap()
     if (map) map.easeTo(next ? { pitch: 55, bearing: -12, duration: 800 } : { pitch: 0, bearing: 0, duration: 600 })
     setIs3D(next)
@@ -536,6 +535,7 @@ function DeslizamientosLiveMapImpl({
          */}
         <NavigationControl position="top-left" />
         <MapViewToggleControl is3D={is3D} onToggle={() => setMapPitch(!is3D)} />
+        <MapBasemapControl basemap={basemap} onChange={setBasemap} />
         <AttributionControl position="bottom-left" customAttribution="MapLibre © OpenStreetMap / CARTO" compact />
 
         {showSoilMoisture && (

@@ -1,7 +1,6 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
-import { useTheme } from "next-themes"
 import Map, {
   Source,
   Layer,
@@ -22,11 +21,12 @@ if (typeof window !== "undefined") {
 import { Loader2, Building2, ShieldCheck } from "lucide-react"
 import { COMPOUND_LEVELS, compoundLevelColorToken } from "@/lib/riesgo-compuesto/levels"
 import { resolveCssColor } from "@/lib/resolve-css-color"
-import { maplibreBasemapStyle } from "@/lib/maps/maplibre-basemap-style"
+import { maplibreMapStyle, defaultBasemapForCurrentTheme, type BasemapType } from "@/lib/maps/maplibre-basemap-style"
 import { wmsRasterSource } from "@/lib/maps/wms-raster-source"
 import { MunicipioTogglePanelContent, type MunicipioRiskSummary } from "@/components/maps/municipio-toggle-panel"
 import { MapControlRail, RailSection, RailToggleRow } from "@/components/maps/map-control-rail"
 import { MapViewToggleControl } from "@/components/maps/map-view-toggle-control"
+import { MapBasemapControl } from "@/components/maps/map-basemap-control"
 import { useMunicipioToggles, isMunicipioActive } from "@/lib/veredas/municipio-toggles"
 import { boundsForActiveMunicipios } from "@/lib/veredas/municipio-bounds"
 import { CompoundReportDialog } from "@/components/riesgo-compuesto/compound-report-dialog"
@@ -188,11 +188,9 @@ function CompoundLiveMapImpl({
   className?: string
 }) {
   const mapRef = useRef<MapRef>(null)
-  const { resolvedTheme } = useTheme()
-  const isDark = resolvedTheme === "dark"
-  const mapStyle = useMemo(() => maplibreBasemapStyle(isDark), [isDark])
-
   const [is3D, setIs3D] = useState(false)
+  const [basemap, setBasemap] = useState<BasemapType>(defaultBasemapForCurrentTheme)
+  const mapStyle = useMemo(() => maplibreMapStyle(basemap, is3D), [basemap, is3D])
   const setMapPitch = useCallback((next: boolean) => {
     const map = mapRef.current?.getMap()
     if (map) map.easeTo(next ? { pitch: 55, bearing: -12, duration: 800 } : { pitch: 0, bearing: 0, duration: 600 })
@@ -394,7 +392,8 @@ function CompoundLiveMapImpl({
         style={{ width: "100%", height: "100%" }}
       >
   <NavigationControl position="top-left" />
-  <MapViewToggleControl is3D={is3D} onToggle={() => setMapPitch(!is3D)} />
+        <MapViewToggleControl is3D={is3D} onToggle={() => setMapPitch(!is3D)} />
+        <MapBasemapControl basemap={basemap} onChange={setBasemap} />
   <AttributionControl position="bottom-left" customAttribution="MapLibre © OpenStreetMap / CARTO" compact />
 
         {showSettlement && (
