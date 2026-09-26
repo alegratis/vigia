@@ -73,6 +73,16 @@ export interface MunicipioHvi {
   componentAvgPct: number
   /** Min-max normalized HVI across the 4 study municipios (0–1, higher = more physically fragile housing stock). */
   hvi: number
+  /** The 8 raw component percentages behind `componentAvgPct`, for the rural-vereda breakdown chart — this municipio's finest available granularity. */
+  components: Record<keyof typeof HVI_COMPONENTS, number>
+}
+
+export interface ManzanaHvi {
+  codigoManzana: string
+  /** Raw IPM (%) for this manzana. */
+  ipm: number
+  /** Min-max normalized HVI across every manzana in the 4 study municipios' urban cores (0–1) — the bar-chart height for this manzana. */
+  hvi: number
 }
 
 export interface UrbanMunicipioHvi {
@@ -84,6 +94,8 @@ export interface UrbanMunicipioHvi {
   avgIpmPct: number
   /** Min-max normalized HVI across the 4 study municipios' urban cores (0–1). */
   hvi: number
+  /** Every manzana behind `avgIpmPct`, sorted by `hvi` descending — for the manzana-level breakdown bar chart. */
+  manzanas: ManzanaHvi[]
 }
 
 /**
@@ -92,26 +104,45 @@ export interface UrbanMunicipioHvi {
  * per municipio, then min-max normalizes across the 4 study municipios.
  * Used only for each municipio's "Casco Urbano" pseudo-vereda — rural
  * veredas have no manzana coverage and keep the coarser municipio-wide
- * déficit habitacional HVI from `getHousingVulnerabilityIndex`.
+ * déficit habitacional HVI from `getHousingVulnerabilityIndex`. Also keeps
+ * every individual manzana's normalized HVI (`manzanas`) so the UI can
+ * chart the actual block-level distribution behind each municipio's
+ * average, not just the average itself.
  */
 export async function getUrbanHviByMunicipio(): Promise<UrbanMunicipioHvi[]> {
   const { features } = await getPobrezaMultidimensional()
 
-  const sums = new Map<string, { nombre: string; sum: number; count: number }>()
+  const ipmValues = features.map((f) => f.properties.ipm)
+  const ipmMin = Math.min(...ipmValues, 0)
+  const ipmMax = Math.max(...ipmValues, 1)
+  const normalizeIpm = (ipm: number) => (ipmMax > ipmMin ? (ipm - ipmMin) / (ipmMax - ipmMin) : 0.5)
+
+  const byMunicipio = new Map<
+    string,
+    { nombre: string; sum: number; count: number; manzanas: ManzanaHvi[] }
+  >()
   for (const f of features) {
-    const entry = sums.get(f.properties.codigoMunicipio) ?? { nombre: f.properties.municipio, sum: 0, count: 0 }
+    const entry =
+      byMunicipio.get(f.properties.codigoMunicipio) ??
+      { nombre: f.properties.municipio, sum: 0, count: 0, manzanas: [] }
     entry.sum += f.properties.ipm
     entry.count += 1
-    sums.set(f.properties.codigoMunicipio, entry)
+    entry.manzanas.push({
+      codigoManzana: f.properties.codigoManzana,
+      ipm: f.properties.ipm,
+      hvi: normalizeIpm(f.properties.ipm),
+    })
+    byMunicipio.set(f.properties.codigoMunicipio, entry)
   }
 
   const rows = Object.values(STUDY_MUNICIPIO_CODES).map((codigo) => {
-    const entry = sums.get(codigo)
+    const entry = byMunicipio.get(codigo)
     return {
       codigoMunicipio: codigo,
       municipio: entry?.nombre ?? "",
       manzanaCount: entry?.count ?? 0,
       avgIpmPct: entry && entry.count > 0 ? entry.sum / entry.count : 0,
+      manzanas: (entry?.manzanas ?? []).slice().sort((a, b) => b.hvi - a.hvi),
     }
   })
 
@@ -166,15 +197,18 @@ export async function getHousingVulnerabilityIndex(): Promise<MunicipioHvi[]> {
     let nombre = ""
     let sum = 0
     let count = 0
-    for (const componentMap of componentMaps) {
-      const entry = componentMap.get(codigo)
+    const components = {} as Record<keyof typeof HVI_COMPONENTS, number>
+    services.forEach((service, i) => {
+      const entry = componentMaps[i].get(codigo)
+      const pct = entry?.pct ?? 0
+      components[service] = pct
       if (entry) {
         nombre = entry.nombre
         sum += entry.pct
         count += 1
       }
-    }
-    return { codigoMunicipio: codigo, municipio: nombre, componentAvgPct: count > 0 ? sum / count : 0 }
+    })
+    return { codigoMunicipio: codigo, municipio: nombre, componentAvgPct: count > 0 ? sum / count : 0, components }
   })
 
   const values = rows.map((r) => r.componentAvgPct)

@@ -46,6 +46,14 @@ export interface MunicipioHviSummary {
   codigoMunicipio: string
   componentAvgPct: number
   hvi: number
+  /** The 8 raw déficit habitacional component percentages behind `componentAvgPct`, keyed by component id — see lib/vulnerabilidad/hvi-components.ts for labels. */
+  components: Record<string, number>
+}
+
+export interface ManzanaHviSummary {
+  codigoManzana: string
+  ipm: number
+  hvi: number
 }
 
 export interface UrbanMunicipioHviSummary {
@@ -54,6 +62,8 @@ export interface UrbanMunicipioHviSummary {
   manzanaCount: number
   avgIpmPct: number
   hvi: number
+  /** Every manzana behind `avgIpmPct`, sorted by `hvi` descending — the block-level breakdown for the bar chart. */
+  manzanas: ManzanaHviSummary[]
 }
 
 export interface VulnerabilidadResponse {
