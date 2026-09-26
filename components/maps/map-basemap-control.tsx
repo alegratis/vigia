@@ -113,33 +113,35 @@ class BasemapControl implements IControl {
                   role="menuitemradio"
                   aria-checked={selected}
                   onClick={() => this.select(option.value)}
-                  // Hover is applied imperatively (not a Tailwind `hover:` class) because
-                  // the inline `backgroundColor` below always wins over a class on
-                  // specificity, so a `hover:bg-*` class would be silently ignored.
+                  // No button "shape" (no background/border box per row) — just a color
+                  // shift on the icon+text, applied imperatively since Tailwind's
+                  // `hover:` class can't win the specificity fight described below.
                   onMouseEnter={(e) => {
-                    if (!selected) e.currentTarget.style.backgroundColor = "var(--accent)"
+                    if (!selected) e.currentTarget.style.color = "var(--popover-foreground)"
                   }}
                   onMouseLeave={(e) => {
-                    if (!selected) e.currentTarget.style.backgroundColor = "transparent"
+                    if (!selected) e.currentTarget.style.color = "var(--muted-foreground)"
                   }}
-                  className="gap-3 rounded-md px-2.5 py-2 text-left text-sm font-medium"
+                  className="gap-3 px-2.5 py-2 text-left text-sm"
                   // `.maplibregl-ctrl-group button{width:29px;height:29px}` outranks
                   // Tailwind's `w-full` class on specificity (type+class beats a single
                   // class), silently clamping every menu item to a 29px icon-button box
                   // with the label overflowing outside its real hit area — which is what
-                  // made the icon look uncentered and the hover fill look misaligned no
-                  // matter how padding/gap were tuned. Only an inline style can outrank it.
+                  // made the icon look uncentered no matter how padding/gap were tuned.
+                  // Only an inline style can outrank it.
                   style={{
                     display: "flex",
                     alignItems: "center",
                     width: "100%",
                     height: "auto",
-                    color: "var(--popover-foreground)",
-                    backgroundColor: selected ? "var(--accent)" : "transparent",
+                    backgroundColor: "transparent",
+                    fontWeight: selected ? 600 : 500,
+                    color: selected ? "var(--popover-foreground)" : "var(--muted-foreground)",
                   }}
                 >
                   <option.Icon className="size-4 shrink-0" aria-hidden="true" />
                   <span className="whitespace-nowrap leading-none">{option.label}</span>
+                  {selected && <span className="ml-auto size-1.5 shrink-0 rounded-full bg-current" aria-hidden="true" />}
                 </button>
               )
             })}
