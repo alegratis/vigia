@@ -300,7 +300,8 @@ function DemografiaLiveMapImpl({
                 <span className="font-medium text-foreground">{props.combinedLevel}</span>
               </p>
               <p className="text-muted-foreground">
-                HVI (municipio): <span className="font-medium text-foreground">{props.hvi.toFixed(2)}</span>
+                HVI ({props.hviResolution === "manzana" ? "manzana" : "municipio"}):{" "}
+                <span className="font-medium text-foreground">{props.hvi.toFixed(2)}</span>
                 {" · "}
                 Amenaza: <span className="font-medium text-foreground">{props.compoundLevel ?? "—"}</span>
               </p>
@@ -474,7 +475,7 @@ function DemografiaLiveMapImpl({
         <RailSection title="Fuente">
           <p className="text-muted-foreground">
             {indicator === "vulnerabilidad"
-              ? "HVI por municipio (déficit habitacional DANE 2018) × riesgo compuesto por vereda (este mismo sitio)."
+              ? "HVI a nivel manzana en cascos urbanos, a nivel municipio en veredas rurales (DANE) × riesgo compuesto por vereda (este mismo sitio)."
               : "DANE — Geoportal (IPM 2018 y Censo Nacional de Población y Vivienda 2018)."}
           </p>
         </RailSection>

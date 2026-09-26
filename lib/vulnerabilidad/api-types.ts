@@ -8,8 +8,14 @@ export interface VulnerabilidadVeredaProperties {
   municipio: string
   esCascoUrbano?: boolean
 
-  /** Housing Vulnerability Index of this vereda's municipio (0–1, higher = more physically fragile housing stock). */
+  /**
+   * Housing Vulnerability Index behind this vereda's score (0–1, higher =
+   * more physically fragile housing stock). Manzana-derived for urban
+   * cores, municipio-wide for rural veredas — see `hviResolution`.
+   */
   hvi: number
+  /** Whether `hvi` comes from manzana-level IPM (urban core) or the coarser municipio-wide déficit habitacional average (rural vereda). */
+  hviResolution: "manzana" | "municipio"
   /** This vereda's riesgo-compuesto hazard tier, rescaled to the 1–4 methodology scale. `null` if unresolved. */
   hazardScore: number | null
   /** HVI × HazardScore, range [0, 4]. `null` if the vereda has no resolved hazard tier. */
@@ -42,10 +48,20 @@ export interface MunicipioHviSummary {
   hvi: number
 }
 
+export interface UrbanMunicipioHviSummary {
+  municipio: string
+  codigoMunicipio: string
+  manzanaCount: number
+  avgIpmPct: number
+  hvi: number
+}
+
 export interface VulnerabilidadResponse {
   generatedAt: string
   veredas: VulnerabilidadFeatureCollection
   hviPorMunicipio: MunicipioHviSummary[]
+  /** Manzana-derived HVI per municipio's urban core — the finer-grained value used for each "Casco Urbano" vereda. */
+  hviUrbanoPorMunicipio: UrbanMunicipioHviSummary[]
   source: string
   sourceUrl: string
 }

@@ -2,16 +2,27 @@ import "server-only"
 
 /**
  * Step 1 of the vulnerability-index methodology (see v0_plans/grand-method.md,
- * Part 3) — Housing Vulnerability Index (HVI), reinterpreted at municipio
- * grain. The instructions ask for manzana/sector-level physical-fragility
- * variables (inadequate walls/floors, overcrowding, lack of services), but
- * DANE's manzana layer (lib/demografia/dane-geoportal.ts) only covers
- * urban/poblado blocks, not the dispersed rural veredas that make up most
- * of these 4 municipios — so a manzana-level HVI can't be extended to the
- * whole study area.
+ * Part 3) — Housing Vulnerability Index (HVI). Two resolutions, applied to
+ * whichever geometry can actually support them:
  *
- * DANE separately publishes exactly the named variables as ready-made
- * municipio-level "déficit habitacional cualitativo" component indicators —
+ * - **Urban cores ("Casco Urbano" pseudo-veredas)**: DANE's manzana-level
+ *   IPM (lib/demografia/dane-geoportal.ts's `getPobrezaMultidimensional`,
+ *   ~2,174 city blocks) is averaged per municipio and min-max normalized
+ *   across the 4 study municipios — a genuinely finer, block-level-derived
+ *   HVI specific to each municipio's urban core, distinct from its rural
+ *   veredas. See `getUrbanHviByMunicipio`.
+ * - **Rural veredas**: the manzana/IPM layer only covers urban/poblado
+ *   blocks, not the dispersed rural veredas that make up most of these 4
+ *   municipios' area, so no finer-than-municipio physical-fragility data
+ *   exists for them from DANE. They keep the municipio-level "déficit
+ *   habitacional cualitativo" component average below — every rural vereda
+ *   in a municipio inherits the same value (see
+ *   lib/vulnerabilidad/combined-score.ts), which is an honest data
+ *   limitation, not a design choice.
+ *
+ * DANE publishes the walls/floors/overcrowding/services variables named in
+ * the instructions as ready-made municipio-level "déficit habitacional
+ * cualitativo" component indicators —
  * confirmed live against production, one `MapServer` per component, all
  * sharing the same layer id (`4`) and municipio-code/name fields as the
  * other `INDICADORES_COND_DE_VIDA` services this app already queries:
@@ -32,7 +43,7 @@ import "server-only"
  * vereda inherits its municipio's HVI (see lib/vulnerabilidad/combined-score.ts).
  */
 
-import { STUDY_MUNICIPIO_CODES } from "@/lib/demografia/dane-geoportal"
+import { STUDY_MUNICIPIO_CODES, getPobrezaMultidimensional } from "@/lib/demografia/dane-geoportal"
 
 const BASE_URL = "https://geoportal.dane.gov.co/mparcgis/rest/services/INDICADORES_COND_DE_VIDA"
 
@@ -62,6 +73,56 @@ export interface MunicipioHvi {
   componentAvgPct: number
   /** Min-max normalized HVI across the 4 study municipios (0–1, higher = more physically fragile housing stock). */
   hvi: number
+}
+
+export interface UrbanMunicipioHvi {
+  municipio: string
+  codigoMunicipio: string
+  /** Manzana count backing this municipio's urban-core average, for transparency in the UI. */
+  manzanaCount: number
+  /** Raw average IPM (%) across every manzana in this municipio's urban core. */
+  avgIpmPct: number
+  /** Min-max normalized HVI across the 4 study municipios' urban cores (0–1). */
+  hvi: number
+}
+
+/**
+ * Urban-core HVI: averages manzana-level IPM (multidimensional poverty,
+ * the finest DANE resolution available — see `getPobrezaMultidimensional`)
+ * per municipio, then min-max normalizes across the 4 study municipios.
+ * Used only for each municipio's "Casco Urbano" pseudo-vereda — rural
+ * veredas have no manzana coverage and keep the coarser municipio-wide
+ * déficit habitacional HVI from `getHousingVulnerabilityIndex`.
+ */
+export async function getUrbanHviByMunicipio(): Promise<UrbanMunicipioHvi[]> {
+  const { features } = await getPobrezaMultidimensional()
+
+  const sums = new Map<string, { nombre: string; sum: number; count: number }>()
+  for (const f of features) {
+    const entry = sums.get(f.properties.codigoMunicipio) ?? { nombre: f.properties.municipio, sum: 0, count: 0 }
+    entry.sum += f.properties.ipm
+    entry.count += 1
+    sums.set(f.properties.codigoMunicipio, entry)
+  }
+
+  const rows = Object.values(STUDY_MUNICIPIO_CODES).map((codigo) => {
+    const entry = sums.get(codigo)
+    return {
+      codigoMunicipio: codigo,
+      municipio: entry?.nombre ?? "",
+      manzanaCount: entry?.count ?? 0,
+      avgIpmPct: entry && entry.count > 0 ? entry.sum / entry.count : 0,
+    }
+  })
+
+  const values = rows.map((r) => r.avgIpmPct)
+  const min = Math.min(...values)
+  const max = Math.max(...values)
+
+  return rows.map((r) => ({
+    ...r,
+    hvi: max > min ? (r.avgIpmPct - min) / (max - min) : 0.5,
+  }))
 }
 
 async function fetchComponent(service: keyof typeof HVI_COMPONENTS): Promise<Map<string, { nombre: string; pct: number }>> {
