@@ -19,7 +19,7 @@ const FEATURE_SERVER_URL =
   "https://services1.arcgis.com/Og2nrTKe5bptW02d/arcgis/rest/services/Fallas/FeatureServer/0/query"
 
 /** Same AOI the other hazard-model sources use, as an ArcGIS envelope: minLon,minLat,maxLon,maxLat. */
-const AOI_ENVELOPE = "-76.06,3.88,-75.72,4.44"
+export const AOI_ENVELOPE = "-76.06,3.88,-75.72,4.44"
 
 export interface FaultTrace {
   id: string
@@ -37,18 +37,20 @@ interface RawFeature {
 }
 
 /**
- * Fetches every fault trace intersecting the study-area AOI. Cached for 30
- * days — geological fault mapping is static on any timescale this app
- * cares about, unlike every other rainfall/road/soil-moisture source it
- * fetches, which is the whole reason it's safe to reuse across both the
- * hazard model's fault-proximity factor and the optional map layer without
- * re-fetching per request.
+ * Fetches every fault trace intersecting `envelope` (an ArcGIS envelope
+ * string: minLon,minLat,maxLon,maxLat). Defaults to the study-area AOI used
+ * by the hazard model's fault-proximity factor, but the map layer (see
+ * use-faults.ts) passes a larger, viewport-derived envelope so the layer
+ * keeps extending as the user zooms out instead of stopping at that small
+ * local box. Cached for 30 days per distinct envelope — geological fault
+ * mapping is static on any timescale this app cares about, unlike every
+ * other rainfall/road/soil-moisture source it fetches.
  */
-export async function getFaultTraces(): Promise<FaultTrace[]> {
+export async function getFaultTraces(envelope: string = AOI_ENVELOPE): Promise<FaultTrace[]> {
   const params = new URLSearchParams({
     where: "1=1",
     outFields: "OBJECTID,Tipo,NombreFall",
-    geometry: AOI_ENVELOPE,
+    geometry: envelope,
     geometryType: "esriGeometryEnvelope",
     inSR: "4326",
     spatialRel: "esriSpatialRelIntersects",
