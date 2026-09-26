@@ -322,7 +322,7 @@ export function HazardWorkspace({ initialCategory }: { initialCategory: string }
         the collapsed strips' basis-20) instead of being forced into a min-height:0 flex item that has no
         ambient space to grow into, which is what was collapsing the active map to a sliver.
       */}
-      <div className="relative flex flex-col lg:min-h-0 lg:flex-1 lg:flex-row">
+      <div className="flex flex-col lg:min-h-0 lg:flex-1 lg:flex-row">
         {mapModels.map((model: MapModel) => {
           const isActive = model.slug === activeSlug
           return (
@@ -391,11 +391,10 @@ export function HazardWorkspace({ initialCategory }: { initialCategory: string }
         })}
 
         {/*
-          Floating category rail: desktop-only (mobile keeps the collapsed strips stacked with the
-          map inside the row above, since there's no spare edge to dock a rail on a narrow screen).
-          Absolutely positioned over this row's right edge instead of a flex sibling, so it overlaps
-          the active map's own edge — reading as tabs attached to the map — rather than reserving a
-          separate column that would both shrink the map and detach the tabs from it visually.
+          Category rail: desktop-only (mobile keeps the collapsed strips stacked with the map
+          inside the row above, since there's no spare edge to dock a rail on a narrow screen). A
+          flex sibling of the map panels, so it reserves its own width from this row and the map
+          shrinks to make room for it, rather than floating over map content.
         */}
         <CategoryRail
           models={mapModels}

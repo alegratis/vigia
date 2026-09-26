@@ -21,14 +21,14 @@ interface CategoryTabProps {
 const TAB_WIDTH = "w-14 xl:w-16"
 
 /**
- * One entry in the right-docked category rail (desktop only). `pointer-events-auto` is needed
- * because the rail wrapper (`CategoryRail`) is `pointer-events-none` — it floats over the live
- * map, so only the tabs themselves (not the transparent gaps between them) should intercept
- * clicks that would otherwise go to the map underneath.
+ * One entry in the right-docked category rail (desktop only). The rail reserves real layout
+ * width next to the map (see `CategoryRail`) rather than floating over it, so the tab is never
+ * covering map content the user might want to see or click.
  *
- * Rounded only on the left (the edge overlapping the map) and translated further onto the map
- * when active/hovered — a literal file-tab silhouette poking out of the map's edge, rather than a
- * flat rectangle in a boxed-off sidebar column.
+ * Rounded only on the right (the outer edge, away from the map) with the left edge left square
+ * where it meets the map — a literal file-tab silhouette attached to the map's edge, rather than
+ * a flat rectangle in a boxed-off sidebar column. Active/hovered tabs nudge left, over the seam,
+ * to read as poking into the map.
  */
 export function CategoryTab({ model, icon: Icon, isActive, onActivate, fontSize, iconSize, gap }: CategoryTabProps) {
   const words = model.title.split(" ")
@@ -40,7 +40,7 @@ export function CategoryTab({ model, icon: Icon, isActive, onActivate, fontSize,
       aria-label={`Mostrar ${model.title}`}
       aria-pressed={isActive}
       className={cn(
-        "group pointer-events-auto relative flex min-h-0 flex-1 shrink-0 items-center justify-center overflow-hidden rounded-l-2xl text-left shadow-[-3px_2px_10px_rgba(0,0,0,0.28)] ring-1 ring-black/10 transition-[transform,box-shadow,opacity] duration-300 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+        "group relative flex min-h-0 flex-1 shrink-0 items-center justify-center overflow-hidden rounded-r-2xl text-left shadow-[-3px_2px_10px_rgba(0,0,0,0.28)] ring-1 ring-black/10 transition-[transform,box-shadow,opacity] duration-300 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
         TAB_WIDTH,
         isActive
           ? "-translate-x-2 opacity-100 shadow-[-3px_2px_14px_rgba(0,0,0,0.32),0_0_0_2px_var(--primary)]"

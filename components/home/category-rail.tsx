@@ -13,11 +13,12 @@ interface CategoryRailProps {
 }
 
 /**
- * Right-docked category rail for the desktop hazard workspace. Floats
- * absolutely over the active map's right edge (see `HazardWorkspace`)
- * rather than reserving its own flex column, so the map keeps its full
- * width and the tabs read as tabs *on* the map instead of a second sidebar
- * bolted to the window edge.
+ * Right-docked category rail for the desktop hazard workspace. A normal flex
+ * column that reserves its own width next to the map row (see
+ * `HazardWorkspace`) — the map shrinks to make room for it rather than the
+ * rail floating on top of map content. The square inner edge on each tab
+ * (see `CategoryTab`) is what makes the rail still read as attached to the
+ * map instead of a second sidebar bolted to the window edge.
  *
  * Every tab evenly divides whatever height this rail actually has
  * (measured with `ResizeObserver`, since that height changes with the
@@ -56,7 +57,7 @@ export function CategoryRail({ models, icons, fallbackIcon, activeSlug, onActiva
     <div
       ref={containerRef}
       aria-label="Categorías de mapas"
-      className="pointer-events-none absolute inset-y-0 right-0 z-20 hidden flex-col py-3 pr-0 lg:flex lg:w-16 xl:w-20"
+      className="hidden shrink-0 flex-col py-3 lg:flex lg:w-16 xl:w-20"
     >
       {models.map((model) => (
         <CategoryTab
