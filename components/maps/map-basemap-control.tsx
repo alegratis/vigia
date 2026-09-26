@@ -93,13 +93,13 @@ class BasemapControl implements IControl {
         {this.isOpen && (
           <div
             role="menu"
-            className="font-sans absolute left-full top-0 ml-1 flex flex-col overflow-hidden rounded-md border shadow-lg"
+            className="font-sans absolute left-full top-0 ml-2 flex flex-col gap-0.5 overflow-hidden rounded-lg border p-1.5 shadow-lg"
             // Inline colors (not Tailwind bg-popover/border classes) because this
             // control is mounted outside the app's Tailwind-processed subtree via
             // `createRoot`, so `oklch(var(--popover))`-based utility classes never
             // resolve here — read the CSS custom properties directly instead.
             style={{
-              minWidth: "10rem",
+              minWidth: "11rem",
               backgroundColor: "var(--popover)",
               borderColor: "var(--border)",
             }}
@@ -111,7 +111,7 @@ class BasemapControl implements IControl {
                 role="menuitemradio"
                 aria-checked={option.value === this.basemap}
                 onClick={() => this.select(option.value)}
-                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm font-medium transition-colors hover:opacity-80"
+                className="flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-left text-sm font-medium transition-colors hover:opacity-80"
                 style={{
                   color: "var(--popover-foreground)",
                   backgroundColor: option.value === this.basemap ? "var(--accent)" : "transparent",
