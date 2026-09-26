@@ -2,6 +2,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { BETA_VERSION } from "@/lib/version"
 
 /**
  * Minimal header for the standalone /documentacion page. This route opens
@@ -45,7 +46,7 @@ export function DocHeader() {
             className="mr-1 hidden select-none text-[10px] font-medium uppercase tracking-wide text-muted-foreground/50 sm:inline"
             title="Vigía está en fase beta"
           >
-            Beta v0.84
+            Beta v0.{BETA_VERSION}
           </span>
           <Link
             href="/"

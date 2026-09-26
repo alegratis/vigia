@@ -4,6 +4,7 @@ import Link from "next/link"
 import { ArrowUpRight } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { openInfoPopup } from "@/lib/open-info-popup"
+import { BETA_VERSION } from "@/lib/version"
 
 /**
  * Minimal top bar for the homepage workspace. The full SiteHeader (logo +
@@ -18,7 +19,7 @@ export function HomeTopBar() {
         className="hidden select-none text-[10px] font-medium uppercase tracking-wide text-muted-foreground/50 sm:inline"
         title="Vigía está en fase beta"
       >
-        Beta v0.84
+        Beta v0.{BETA_VERSION}
       </span>
       <button
         type="button"
