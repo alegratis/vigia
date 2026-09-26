@@ -69,7 +69,7 @@ export function CategoryPanel({ model, icon: Icon, isActive, onActivate, childre
     >
       {isActive ? (
         <div className="flex flex-col animate-in fade-in slide-in-from-left-2 duration-300 lg:min-h-0 lg:flex-1">
-          <div className="relative flex shrink-0 items-center gap-2 overflow-hidden border-b border-border px-4 py-3 sm:px-6">
+          <div className="relative flex h-10 shrink-0 items-center gap-2 overflow-hidden border-b border-border px-3 sm:px-4">
             <Image
               src={model.image || "/placeholder.svg"}
               alt=""
@@ -78,12 +78,12 @@ export function CategoryPanel({ model, icon: Icon, isActive, onActivate, childre
               className="object-cover"
             />
             <div className="absolute inset-0 bg-white/75 dark:bg-black/65" aria-hidden="true" />
-            <Icon className="relative z-10 size-5 text-primary" aria-hidden="true" />
-            <h2 className="relative z-10 text-lg font-semibold tracking-tight text-black dark:text-white">
+            <Icon className="relative z-10 size-4 text-primary" aria-hidden="true" />
+            <h2 className="relative z-10 text-sm font-semibold tracking-tight text-black dark:text-white">
               {model.title}
             </h2>
             {model.ready && (
-              <span className="relative z-10 inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-foreground">
+              <span className="relative z-10 inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-foreground">
                 <span className="size-1.5 rounded-full bg-[var(--chart-2)]" aria-hidden="true" />
                 En vivo
               </span>
