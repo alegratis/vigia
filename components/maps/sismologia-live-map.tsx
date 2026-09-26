@@ -287,7 +287,11 @@ function SismologiaLiveMapImpl({
   const [showDamage, setShowDamage] = useState(false)
   const [showVeredas, setShowVeredas] = useState(true)
   const [showFaults, setShowFaults] = useState(false)
-  const { traces: faultTraces } = useFaults(showFaults)
+  // Drives the faults layer's viewport-growing fetch below — set from the
+  // same bounds sync as `onBoundsChange`, but kept local since the layer
+  // needs it whether or not a parent is listening.
+  const [viewportBounds, setViewportBounds] = useState<MapBounds | null>(null)
+  const { traces: faultTraces } = useFaults(showFaults, viewportBounds)
   const [resolvedColors, setResolvedColors] = useState<Record<string, string> | null>(null)
   const [exposureColors, setExposureColors] = useState<Record<SeismicExposureLevel, string> | null>(null)
   const [damageColors, setDamageColors] = useState<Record<DamageLevel, string> | null>(null)
@@ -626,11 +630,12 @@ function SismologiaLiveMapImpl({
   )
 
   const syncBounds = useCallback(() => {
-    if (!onBoundsChange) return
     const map = mapRef.current?.getMap()
     const b = map?.getBounds()
     if (!b) return
-    onBoundsChange({ north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() })
+    const bounds = { north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() }
+    setViewportBounds(bounds)
+    onBoundsChange?.(bounds)
   }, [onBoundsChange])
 
   const isFirstMunicipioRender = useRef(true)
