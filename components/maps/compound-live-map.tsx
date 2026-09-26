@@ -21,7 +21,7 @@ if (typeof window !== "undefined") {
 import { Loader2, Building2, ShieldCheck } from "lucide-react"
 import { COMPOUND_LEVELS, compoundLevelColorToken } from "@/lib/riesgo-compuesto/levels"
 import { resolveCssColor } from "@/lib/resolve-css-color"
-import { maplibreMapStyle, type BasemapType } from "@/lib/maps/maplibre-basemap-style"
+import { maplibreMapStyle, defaultBasemapForCurrentTheme, type BasemapType } from "@/lib/maps/maplibre-basemap-style"
 import { wmsRasterSource } from "@/lib/maps/wms-raster-source"
 import { MunicipioTogglePanelContent, type MunicipioRiskSummary } from "@/components/maps/municipio-toggle-panel"
 import { MapControlRail, RailSection, RailToggleRow } from "@/components/maps/map-control-rail"
@@ -189,7 +189,7 @@ function CompoundLiveMapImpl({
 }) {
   const mapRef = useRef<MapRef>(null)
   const [is3D, setIs3D] = useState(false)
-  const [basemap, setBasemap] = useState<BasemapType>("osm")
+  const [basemap, setBasemap] = useState<BasemapType>(defaultBasemapForCurrentTheme)
   const mapStyle = useMemo(() => maplibreMapStyle(basemap, is3D), [basemap, is3D])
   const setMapPitch = useCallback((next: boolean) => {
     const map = mapRef.current?.getMap()

@@ -41,7 +41,7 @@ import { MapBasemapControl } from "@/components/maps/map-basemap-control"
 import { useVeredas } from "@/lib/veredas/use-veredas"
 import { useMunicipioToggles, isMunicipioActive } from "@/lib/veredas/municipio-toggles"
 import { boundsForActiveMunicipios } from "@/lib/veredas/municipio-bounds"
-import { maplibreMapStyle, type BasemapType } from "@/lib/maps/maplibre-basemap-style"
+import { maplibreMapStyle, defaultBasemapForCurrentTheme, type BasemapType } from "@/lib/maps/maplibre-basemap-style"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
 import type { VeredaFeature } from "@/lib/veredas/api-types"
@@ -95,7 +95,7 @@ function ClimaLiveMapImpl({
 }) {
   const mapRef = useRef<MapRef>(null)
   const [is3D, setIs3D] = useState(false)
-  const [basemap, setBasemap] = useState<BasemapType>("osm")
+  const [basemap, setBasemap] = useState<BasemapType>(defaultBasemapForCurrentTheme)
   const mapStyle = useMemo(() => maplibreMapStyle(basemap, is3D), [basemap, is3D])
   const setMapPitch = useCallback((next: boolean) => {
     const map = mapRef.current?.getMap()

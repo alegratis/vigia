@@ -10,6 +10,18 @@ import type { StyleSpecification } from "maplibre-gl"
  */
 export type BasemapType = "osm" | "hybrid" | "dark" | "satellite"
 
+/**
+ * Picks the initial basemap so a freshly loaded map still matches the
+ * app's light/dark theme, same as before the four-way switcher replaced
+ * the old "light basemap vs dark basemap" behavior. Read once as a lazy
+ * `useState` initializer — after that, the user's explicit choice in
+ * `MapBasemapControl` takes over and this is never consulted again.
+ */
+export function defaultBasemapForCurrentTheme(): BasemapType {
+  if (typeof document === "undefined") return "osm"
+  return document.documentElement.classList.contains("dark") ? "dark" : "osm"
+}
+
 // OSM's `{s}` subdomains (a/b/c) expanded into one raster source with three
 // URL templates, since MapLibre raster sources don't support Leaflet's `{s}`
 // placeholder the way react-leaflet's <TileLayer> does.

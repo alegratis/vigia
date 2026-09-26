@@ -32,7 +32,7 @@ import { summarizeExposureByMunicipio } from "@/lib/veredas/municipio-summary"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
 import { getOsmCategory } from "@/lib/osm/categories"
 import { resolveCssColor } from "@/lib/resolve-css-color"
-import { maplibreMapStyle, type BasemapType } from "@/lib/maps/maplibre-basemap-style"
+import { maplibreMapStyle, defaultBasemapForCurrentTheme, type BasemapType } from "@/lib/maps/maplibre-basemap-style"
 import { useSismologiaDanos, useSismologiaEventos } from "@/lib/sismologia/use-sismologia"
 import {
   SEISMIC_MAGNITUDE_LEVELS,
@@ -334,7 +334,7 @@ function SismologiaLiveMapImpl({
   // `MapBasemapControl`. In 3D mode every theme gains real terrain
   // elevation (MapLibre `raster-dem` + `terrain`), since flat 2D tiles have
   // no relief to show once the map is tilted.
-  const [basemap, setBasemap] = useState<BasemapType>("osm")
+  const [basemap, setBasemap] = useState<BasemapType>(defaultBasemapForCurrentTheme)
   const mapStyle = useMemo(() => maplibreMapStyle(basemap, is3D), [basemap, is3D])
   const setMapPitch = useCallback((next: boolean) => {
     const map = mapRef.current?.getMap()

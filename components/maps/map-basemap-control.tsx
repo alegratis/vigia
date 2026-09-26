@@ -93,8 +93,16 @@ class BasemapControl implements IControl {
         {this.isOpen && (
           <div
             role="menu"
-            className="absolute left-full top-0 ml-1 flex flex-col overflow-hidden rounded-md border border-border bg-card shadow-md"
-            style={{ minWidth: "9rem" }}
+            className="font-sans absolute left-full top-0 ml-1 flex flex-col overflow-hidden rounded-md border shadow-lg"
+            // Inline colors (not Tailwind bg-popover/border classes) because this
+            // control is mounted outside the app's Tailwind-processed subtree via
+            // `createRoot`, so `oklch(var(--popover))`-based utility classes never
+            // resolve here — read the CSS custom properties directly instead.
+            style={{
+              minWidth: "10rem",
+              backgroundColor: "var(--popover)",
+              borderColor: "var(--border)",
+            }}
           >
             {BASEMAP_OPTIONS.map((option) => (
               <button
@@ -103,14 +111,14 @@ class BasemapControl implements IControl {
                 role="menuitemradio"
                 aria-checked={option.value === this.basemap}
                 onClick={() => this.select(option.value)}
-                className={
-                  option.value === this.basemap
-                    ? "flex items-center gap-2 px-3 py-2 text-left text-xs font-medium text-foreground bg-accent"
-                    : "flex items-center gap-2 px-3 py-2 text-left text-xs font-medium text-foreground hover:bg-accent/60"
-                }
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm font-medium transition-colors hover:opacity-80"
+                style={{
+                  color: "var(--popover-foreground)",
+                  backgroundColor: option.value === this.basemap ? "var(--accent)" : "transparent",
+                }}
               >
                 <option.Icon className="size-4 shrink-0" aria-hidden="true" />
-                {option.label}
+                <span className="whitespace-nowrap leading-none">{option.label}</span>
               </button>
             ))}
           </div>
