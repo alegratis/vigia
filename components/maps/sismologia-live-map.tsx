@@ -32,7 +32,7 @@ import { summarizeExposureByMunicipio } from "@/lib/veredas/municipio-summary"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
 import { getOsmCategory } from "@/lib/osm/categories"
 import { resolveCssColor } from "@/lib/resolve-css-color"
-import { maplibreBasemapStyle } from "@/lib/maps/maplibre-basemap-style"
+import { maplibreBasemapStyle, maplibreSatelliteTerrainStyle } from "@/lib/maps/maplibre-basemap-style"
 import { useSismologiaDanos, useSismologiaEventos } from "@/lib/sismologia/use-sismologia"
 import {
   SEISMIC_MAGNITUDE_LEVELS,
@@ -255,7 +255,6 @@ function SismologiaLiveMapImpl({
   const mapRef = useRef<MapRef>(null)
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === "dark"
-  const mapStyle = useMemo(() => maplibreBasemapStyle(isDark), [isDark])
 
   const { data } = useSismologiaEventos()
   const osmColors = useOsmCategoryColors()
@@ -333,6 +332,10 @@ function SismologiaLiveMapImpl({
   // back to the map's normal top-down view. Also drives the manual
   // MapViewToggle button below.
   const [is3D, setIs3D] = useState(false)
+  // 3D mode swaps the whole basemap to Esri satellite imagery draped over
+  // real terrain elevation (MapLibre `raster-dem` + `terrain`), since flat
+  // 2D tiles have no relief to show once the map is tilted.
+  const mapStyle = useMemo(() => (is3D ? maplibreSatelliteTerrainStyle() : maplibreBasemapStyle(isDark)), [isDark, is3D])
   const setMapPitch = useCallback((next: boolean) => {
     const map = mapRef.current?.getMap()
     if (map) map.easeTo(next ? { pitch: 55, bearing: -12, duration: 800 } : { pitch: 0, bearing: 0, duration: 600 })

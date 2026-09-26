@@ -23,7 +23,7 @@ if (typeof window !== "undefined") {
 import useSWR from "swr"
 import { Download, Loader2, Mountain, Droplets, Flame, CloudRain } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { maplibreBasemapStyle } from "@/lib/maps/maplibre-basemap-style"
+import { maplibreBasemapStyle, maplibreSatelliteTerrainStyle } from "@/lib/maps/maplibre-basemap-style"
 import { wmsRasterSource } from "@/lib/maps/wms-raster-source"
 import { SUSCEPTIBILITY_LEVELS, levelColorToken } from "@/lib/deslizamientos/levels"
 import { useVeredas } from "@/lib/veredas/use-veredas"
@@ -180,9 +180,8 @@ function ExposicionMapImpl({ vereda }: { vereda: VeredaListEntry }) {
   const mapRef = useRef<MapRef>(null)
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === "dark"
-  const mapStyle = useMemo(() => maplibreBasemapStyle(isDark), [isDark])
-
   const [is3D, setIs3D] = useState(false)
+  const mapStyle = useMemo(() => (is3D ? maplibreSatelliteTerrainStyle() : maplibreBasemapStyle(isDark)), [isDark, is3D])
   const setMapPitch = useCallback((next: boolean) => {
     const map = mapRef.current?.getMap()
     if (map) map.easeTo(next ? { pitch: 55, bearing: -12, duration: 800 } : { pitch: 0, bearing: 0, duration: 600 })

@@ -35,7 +35,7 @@ import { MapViewToggleControl } from "@/components/maps/map-view-toggle-control"
 import { useVeredas } from "@/lib/veredas/use-veredas"
 import { useMunicipioToggles, isMunicipioActive } from "@/lib/veredas/municipio-toggles"
 import { boundsForActiveMunicipios } from "@/lib/veredas/municipio-bounds"
-import { maplibreBasemapStyle } from "@/lib/maps/maplibre-basemap-style"
+import { maplibreBasemapStyle, maplibreSatelliteTerrainStyle } from "@/lib/maps/maplibre-basemap-style"
 import { wmsRasterSource } from "@/lib/maps/wms-raster-source"
 import { WmsLegendChip } from "@/components/maps/wms-legend-chip"
 import { GWIS_WMS_URL } from "@/lib/incendios/gwis"
@@ -135,9 +135,8 @@ function PrecipitacionLiveMapImpl({
   const mapRef = useRef<MapRef>(null)
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === "dark"
-  const mapStyle = useMemo(() => maplibreBasemapStyle(isDark), [isDark])
-
   const [is3D, setIs3D] = useState(false)
+  const mapStyle = useMemo(() => (is3D ? maplibreSatelliteTerrainStyle() : maplibreBasemapStyle(isDark)), [isDark, is3D])
   const setMapPitch = useCallback((next: boolean) => {
     const map = mapRef.current?.getMap()
     if (map) map.easeTo(next ? { pitch: 55, bearing: -12, duration: 800 } : { pitch: 0, bearing: 0, duration: 600 })

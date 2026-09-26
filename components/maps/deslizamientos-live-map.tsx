@@ -35,7 +35,7 @@ import {
   GWIS_PROTECTED_AREAS_LAYER,
   GWIS_PROTECTED_AREAS_LEGEND_URL,
 } from "@/lib/demografia/gwis-context-layers"
-import { maplibreBasemapStyle } from "@/lib/maps/maplibre-basemap-style"
+import { maplibreBasemapStyle, maplibreSatelliteTerrainStyle } from "@/lib/maps/maplibre-basemap-style"
 import { wmsRasterSource } from "@/lib/maps/wms-raster-source"
 import { getOsmCategory } from "@/lib/osm/categories"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
@@ -217,10 +217,10 @@ function DeslizamientosLiveMapImpl({
   const mapRef = useRef<MapRef>(null)
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === "dark"
-  const mapStyle = useMemo(() => maplibreBasemapStyle(isDark), [isDark])
 
   const [is3D, setIs3D] = useState(false)
-  const setMapPitch = useCallback((next: boolean) => {
+  const mapStyle = useMemo(() => (is3D ? maplibreSatelliteTerrainStyle() : maplibreBasemapStyle(isDark)), [isDark, is3D])
+ const setMapPitch = useCallback((next: boolean) => {
     const map = mapRef.current?.getMap()
     if (map) map.easeTo(next ? { pitch: 55, bearing: -12, duration: 800 } : { pitch: 0, bearing: 0, duration: 600 })
     setIs3D(next)

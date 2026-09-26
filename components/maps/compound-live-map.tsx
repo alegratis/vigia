@@ -22,7 +22,7 @@ if (typeof window !== "undefined") {
 import { Loader2, Building2, ShieldCheck } from "lucide-react"
 import { COMPOUND_LEVELS, compoundLevelColorToken } from "@/lib/riesgo-compuesto/levels"
 import { resolveCssColor } from "@/lib/resolve-css-color"
-import { maplibreBasemapStyle } from "@/lib/maps/maplibre-basemap-style"
+import { maplibreBasemapStyle, maplibreSatelliteTerrainStyle } from "@/lib/maps/maplibre-basemap-style"
 import { wmsRasterSource } from "@/lib/maps/wms-raster-source"
 import { MunicipioTogglePanelContent, type MunicipioRiskSummary } from "@/components/maps/municipio-toggle-panel"
 import { MapControlRail, RailSection, RailToggleRow } from "@/components/maps/map-control-rail"
@@ -190,9 +190,8 @@ function CompoundLiveMapImpl({
   const mapRef = useRef<MapRef>(null)
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === "dark"
-  const mapStyle = useMemo(() => maplibreBasemapStyle(isDark), [isDark])
-
   const [is3D, setIs3D] = useState(false)
+  const mapStyle = useMemo(() => (is3D ? maplibreSatelliteTerrainStyle() : maplibreBasemapStyle(isDark)), [isDark, is3D])
   const setMapPitch = useCallback((next: boolean) => {
     const map = mapRef.current?.getMap()
     if (map) map.easeTo(next ? { pitch: 55, bearing: -12, duration: 800 } : { pitch: 0, bearing: 0, duration: 600 })
