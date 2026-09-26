@@ -30,8 +30,18 @@ const OVERPASS_URLS = [
   "https://overpass.openstreetmap.ru/api/interpreter",
 ]
 
-/** Same AOI bounding box the live hazard maps fit to: south,west,north,east. */
-export const AOI_BBOX = "3.88,-76.06,4.44,-75.72"
+/**
+ * Study-area AOI: south,west,north,east — wide enough to cover all four
+ * study municipios (Sevilla, Caicedonia, Zarzal, Roldanillo; see
+ * lib/veredas/boundaries.ts), not just the narrower Sevilla/Caicedonia box
+ * the deslizamiento susceptibility layer itself fits to. Matches the union
+ * of the other AOI boxes already used elsewhere for this same corridor
+ * (lib/geoglows/live-map.ts's AOI_BOUNDS and lib/firms/area.ts's
+ * STUDY_AREA) so "Infraestructura por categoría" actually has OSM data to
+ * count in Zarzal and Roldanillo instead of silently querying outside
+ * their extent.
+ */
+export const AOI_BBOX = "3.88,-76.25,4.62,-75.72"
 
 const HEALTH_AMENITIES = [
   "hospital",
