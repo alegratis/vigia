@@ -25,7 +25,7 @@ const LAYERS = [
   },
   {
     title: "Ventanas emergentes sin barra de navegador",
-    body: "lib/open-info-popup.ts abre vistas de referencia auxiliares (Demografía, Conoce tu nivel de exposición) en una ventana emergente sin menú, barra de herramientas ni barra de direcciones — para no interrumpir el mapa en vivo que el usuario tenía abierto. La documentación, en cambio, abre en una pestaña normal del navegador porque es contenido extenso pensado para desplazarse, imprimirse o guardarse como marcador.",
+    body: "lib/open-info-popup.ts abre vistas de referencia auxiliares (por ahora, \"Conoce tu nivel de exposición\") en una ventana emergente sin menú, barra de herramientas ni barra de direcciones — para no interrumpir el mapa en vivo que el usuario tenía abierto. Demografía dejó de ser una ventana aparte: ahora vive como una pestaña más del panel de inicio, con su mapa y su información debajo en el mismo scroll. La documentación, por su parte, abre en una pestaña normal del navegador porque es contenido extenso pensado para desplazarse, imprimirse o guardarse como marcador.",
   },
   {
     title: "Exportación a PDF",
