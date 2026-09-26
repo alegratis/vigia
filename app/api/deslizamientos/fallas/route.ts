@@ -3,9 +3,9 @@ import { getFaultTraces } from "@/lib/deslizamientos/faults"
 import type { FaultsErrorResponse, FaultsResponse } from "@/lib/deslizamientos/fault-types"
 
 // Colombia's own rough bounding box — clamps a client-supplied `bbox` (the
-// live map's current viewport, growing as the user zooms out; see
-// use-faults.ts) so an unexpected value can't turn into an oversized query
-// against the third-party SGC ArcGIS service.
+// live map's current viewport, re-queried dynamically as the user pans or
+// zooms; see use-faults.ts) so an unexpected value can't turn into an
+// oversized query against the third-party SGC ArcGIS service.
 const COLOMBIA_BOUNDS = { minLon: -79.1, minLat: -4.3, maxLon: -66.8, maxLat: 13.6 }
 
 function parseBbox(raw: string | null): string | undefined {

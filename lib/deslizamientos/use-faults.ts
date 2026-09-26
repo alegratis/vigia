@@ -33,20 +33,30 @@ function contains(outer: Envelope, inner: Envelope): boolean {
   return inner[0] >= outer[0] && inner[1] >= outer[1] && inner[2] <= outer[2] && inner[3] <= outer[3]
 }
 
-function union(a: Envelope, b: Envelope): Envelope {
-  return [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])]
+function area(e: Envelope): number {
+  return (e[2] - e[0]) * (e[3] - e[1])
 }
+
+// How much larger the cached envelope is allowed to be than what the
+// current viewport actually needs before it's considered stale. The SGC
+// FeatureServer caps how many features it returns per query, so a huge
+// envelope fetched while zoomed way out can come back truncated in a way
+// that drops fine local traces — reusing that same response after zooming
+// back in would make those traces look like they "disappeared". Keeping
+// this ratio small forces a fresh, tightly-scoped request once the
+// viewport has shrunk enough to want that detail back.
+const MAX_STALE_AREA_RATIO = 2.5
 
 /**
  * Fetches the SGC geological faults layer only when `enabled` is true — the
- * same lazy pattern as use-critical-sites.ts — and grows the queried
- * envelope to follow `bounds` (the live map's current viewport) as the user
- * zooms or pans out, instead of clipping the layer to the small local AOI
- * the hazard model uses. The envelope only ever grows: panning or zooming
- * back into an area it already covers reuses the cached response with no
- * extra request, and each grown envelope is a superset of the previous
- * one, so the latest response always includes everything the layer showed
- * before it.
+ * same lazy pattern as use-critical-sites.ts — and re-queries around
+ * `bounds` (the live map's current viewport) every time it changes enough
+ * to matter, instead of clipping the layer to the small local AOI the
+ * hazard model uses. Panning or zooming only slightly reuses the cached
+ * response with no extra request; zooming out far enough to need more
+ * coverage, or back in far enough that the cached envelope is now much
+ * bigger than the viewport (and so may be missing local detail dropped by
+ * the server's feature-count cap), triggers a fresh, right-sized fetch.
  */
 export function useFaults(enabled: boolean, bounds: MapBounds | null) {
   const [envelope, setEnvelope] = useState<Envelope | null>(null)
@@ -54,7 +64,12 @@ export function useFaults(enabled: boolean, bounds: MapBounds | null) {
   useEffect(() => {
     if (!enabled || !bounds) return
     const needed = padToEnvelope(bounds)
-    setEnvelope((current) => (current && contains(current, needed) ? current : current ? union(current, needed) : needed))
+    setEnvelope((current) => {
+      if (!current) return needed
+      const stillCovers = contains(current, needed)
+      const stillTight = area(current) / area(needed) <= MAX_STALE_AREA_RATIO
+      return stillCovers && stillTight ? current : needed
+    })
   }, [enabled, bounds])
 
   const key =
