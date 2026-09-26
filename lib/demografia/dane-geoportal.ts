@@ -4,23 +4,33 @@
  * against production. Backs the Demografía tab's two DANE indicators (see
  * v0_plans/grand-method.md, Part 2):
  *
- * - Pobreza multidimensional (matches geoportal.dane.gov.co/visipm):
- *   `INDICADORES_COND_DE_VIDA/Serv_Mpios_IndPobrezaMultidimensional_2018`,
- *   layer 4 — one polygon per municipio, field `IPM` (% of the population
- *   in multidimensional poverty).
+ * - Pobreza multidimensional, at **manzana** (city-block) resolution
+ *   (matches the manzana-level layer behind geoportal.dane.gov.co/visipm):
+ *   `POBREZA_MULTIDIMENSIONAL/Serv_MGN2020_Integrado_IPM`, layer `325`
+ *   ("Pobreza Multidimensional") — one polygon per manzana, field `ipm`
+ *   (% of the population in multidimensional poverty) plus a pre-bucketed
+ *   `LABEL` ("Vulnerabilidad baja/media/alta"). Confirmed live: 2,174
+ *   manzana features across the 4 study municipios (`COD_MPIO IN (...)`,
+ *   same count as the viviendas/hogares/personas manzana layer below) —
+ *   the municipio-level `Serv_Mpios_IndPobrezaMultidimensional_2018`
+ *   service is DANE's older, coarser IPM layer and is no longer used here.
+ *   Geometry is only served via the `FeatureServer` endpoint for this
+ *   service (the `MapServer` query endpoint returns null geometry for this
+ *   particular layer), so this one indicator is fetched through
+ *   `FeatureServer` while the other still uses `MapServer`.
  * - Viviendas, Hogares y Personas (matches the estadisticas-integradas
  *   geovisor, cod_dimension=1): `MARCO_INTEGRADO/Serv_DatosCNPV2018_Integrados_MGN2018`,
  *   layer 808 ("Manzana Integrada") — one polygon per city block, with
  *   `TVIVIENDA`/`TP16_HOG`/`TP27_PERSO` (viviendas/hogares/personas) counts
  *   from the 2018 census.
  *
- * Both datasets are static (2018 census / 2018 IPM), so responses are
- * cached long — same `next: { revalidate }` convention as every other
+ * Both datasets are static (2018 census / 2020-vintage IPM), so responses
+ * are cached long — same `next: { revalidate }` convention as every other
  * ArcGIS fetch in this app (e.g. lib/inundaciones/streams.ts).
  */
 
 const BASE_URL = "https://geoportal.dane.gov.co/mparcgis/rest/services"
-const IPM_LAYER_URL = `${BASE_URL}/INDICADORES_COND_DE_VIDA/Serv_Mpios_IndPobrezaMultidimensional_2018/MapServer/4`
+const IPM_LAYER_URL = `${BASE_URL}/POBREZA_MULTIDIMENSIONAL/Serv_MGN2020_Integrado_IPM/FeatureServer/325`
 const MANZANA_LAYER_URL = `${BASE_URL}/MARCO_INTEGRADO/Serv_DatosCNPV2018_Integrados_MGN2018/MapServer/808`
 
 // Static reference data (2018 census / 2018 IPM) — safe to cache for a long stretch.
@@ -38,13 +48,21 @@ const CODES_IN_LIST = Object.values(STUDY_MUNICIPIO_CODES)
   .map((code) => `'${code}'`)
   .join(",")
 
+/** Reverse lookup (code → name) for enriching manzana-level features, which carry no name field of their own. */
+const MUNICIPIO_NAME_BY_CODE: Record<string, string> = Object.fromEntries(
+  Object.entries(STUDY_MUNICIPIO_CODES).map(([name, code]) => [code, name]),
+)
+
 export interface PobrezaFeature {
   type: "Feature"
   properties: {
     municipio: string
     codigoMunicipio: string
-    /** % of households in multidimensional poverty (DANE IPM 2018). */
+    codigoManzana: string
+    /** % of the manzana's population in multidimensional poverty (DANE IPM, MGN2020-integrated). */
     ipm: number
+    /** DANE's own pre-bucketed label, e.g. "Vulnerabilidad media-alta". */
+    categoria: string
   }
   geometry: GeoJSON.Geometry
 }
@@ -55,35 +73,51 @@ export interface PobrezaFeatureCollection {
 }
 
 /**
- * Municipio-level multidimensional poverty index polygons for the 4 study
- * municipios (matches geoportal.dane.gov.co/visipm).
+ * Manzana-level multidimensional poverty index polygons for the 4 study
+ * municipios — the finest resolution DANE publishes for this indicator.
+ * Paginated: ~2,174 manzanas across the 4 municipios exceeds the service's
+ * 2,000-record page size (same shape as `getViviendasHogaresPersonas`).
  */
 export async function getPobrezaMultidimensional(): Promise<PobrezaFeatureCollection> {
-  const params = new URLSearchParams({
-    where: `MPIO_CCDGO IN (${CODES_IN_LIST})`,
-    outFields: "MPIO_CNMBR,MPIO_CCDGO,IPM",
-    outSR: "4326",
-    f: "geojson",
-  })
-  const res = await fetch(`${IPM_LAYER_URL}/query?${params}`, { next: { revalidate: REVALIDATE_SECONDS } })
-  if (!res.ok) {
-    throw new Error(`DANE IPM query failed (${res.status})`)
+  const pageSize = 2000
+  const features: PobrezaFeature[] = []
+  let offset = 0
+
+  while (true) {
+    const params = new URLSearchParams({
+      where: `COD_MPIO IN (${CODES_IN_LIST})`,
+      outFields: "COD_MPIO,COD_DANE,ipm,LABEL",
+      outSR: "4326",
+      resultRecordCount: String(pageSize),
+      resultOffset: String(offset),
+      f: "geojson",
+    })
+    const res = await fetch(`${IPM_LAYER_URL}/query?${params}`, { next: { revalidate: REVALIDATE_SECONDS } })
+    if (!res.ok) {
+      throw new Error(`DANE IPM query failed (${res.status})`)
+    }
+    const page = (await res.json()) as {
+      features: { type: "Feature"; properties: Record<string, unknown>; geometry: GeoJSON.Geometry }[]
+    }
+    for (const f of page.features) {
+      const codigoMunicipio = String(f.properties.COD_MPIO ?? "")
+      features.push({
+        type: "Feature",
+        properties: {
+          municipio: MUNICIPIO_NAME_BY_CODE[codigoMunicipio] ?? codigoMunicipio,
+          codigoMunicipio,
+          codigoManzana: String(f.properties.COD_DANE ?? ""),
+          ipm: Number(f.properties.ipm ?? 0),
+          categoria: String(f.properties.LABEL ?? ""),
+        },
+        geometry: f.geometry,
+      })
+    }
+    if (page.features.length < pageSize) break
+    offset += pageSize
   }
-  const raw = (await res.json()) as {
-    features: { type: "Feature"; properties: Record<string, unknown>; geometry: GeoJSON.Geometry }[]
-  }
-  return {
-    type: "FeatureCollection",
-    features: raw.features.map((f) => ({
-      type: "Feature",
-      properties: {
-        municipio: String(f.properties.MPIO_CNMBR ?? ""),
-        codigoMunicipio: String(f.properties.MPIO_CCDGO ?? ""),
-        ipm: Number(f.properties.IPM ?? 0),
-      },
-      geometry: f.geometry,
-    })),
-  }
+
+  return { type: "FeatureCollection", features }
 }
 
 export interface ManzanaFeature {

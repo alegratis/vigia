@@ -1,6 +1,7 @@
 "use client"
 
-import { useLayoutEffect, useRef, useState, type LucideIcon } from "react"
+import { useLayoutEffect, useRef, useState } from "react"
+import type { LucideIcon } from "lucide-react"
 import { CategoryTab } from "@/components/home/category-tab"
 import type { MapModel } from "@/lib/maps"
 

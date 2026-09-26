@@ -253,9 +253,14 @@ function DemografiaLiveMapImpl({
           latitude: e.lngLat.lat,
           content: (
             <div className="flex flex-col gap-1 text-xs">
-              <p className="font-medium text-foreground">{props.municipio}</p>
+              <p className="font-medium text-foreground">
+                Manzana {props.codigoManzana} <span className="text-muted-foreground">({props.municipio})</span>
+              </p>
               <p className="text-muted-foreground">
-                Pobreza multidimensional: <span className="font-medium text-foreground">{props.ipm.toFixed(1)}%</span>
+                IPM: <span className="font-medium text-foreground">{props.ipm.toFixed(1)}%</span>
+              </p>
+              <p className="text-muted-foreground">
+                Categoría: <span className="font-medium text-foreground">{props.categoria}</span>
               </p>
             </div>
           ),

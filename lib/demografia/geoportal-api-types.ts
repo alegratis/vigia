@@ -3,8 +3,11 @@
 export interface PobrezaFeatureProperties {
   municipio: string
   codigoMunicipio: string
-  /** % of households in multidimensional poverty (DANE IPM 2018). */
+  codigoManzana: string
+  /** % of the manzana's population in multidimensional poverty (DANE IPM, MGN2020-integrated). */
   ipm: number
+  /** DANE's own pre-bucketed label, e.g. "Vulnerabilidad media-alta". */
+  categoria: string
 }
 
 export interface PobrezaFeature {
