@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation"
 import { ArrowUpRight, Menu, X } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { openInfoPopup } from "@/lib/open-info-popup"
+import { BETA_VERSION } from "@/lib/version"
 
 const navLinks = [
   { label: "Panel", href: "/" },
@@ -52,6 +53,12 @@ export function SiteHeader() {
         </Link>
 
         <div className="flex items-center gap-1">
+          <span
+            className="mr-1 hidden select-none text-[10px] font-medium uppercase tracking-wide text-muted-foreground/50 sm:inline"
+            title="Vigía está en fase beta"
+          >
+            Beta v0.{BETA_VERSION}
+          </span>
           <nav aria-label="Navegación principal" className="hidden items-center gap-1 md:flex">
             {navLinks.map((link) => {
               const active = pathname === link.href
