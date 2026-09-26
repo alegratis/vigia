@@ -14,6 +14,12 @@ import { openInfoPopup } from "@/lib/open-info-popup"
 export function HomeTopBar() {
   return (
     <div className="flex h-12 shrink-0 items-center justify-end gap-4 border-b border-border px-4 sm:px-6">
+      <span
+        className="hidden select-none text-[10px] font-medium uppercase tracking-wide text-muted-foreground/50 sm:inline"
+        title="Vigía está en fase beta"
+      >
+        Beta v0.84
+      </span>
       <button
         type="button"
         onClick={() => openInfoPopup("/demografia/popup", "vigia-demografia", { width: 1180, height: 980 })}
