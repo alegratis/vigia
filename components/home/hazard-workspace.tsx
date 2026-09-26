@@ -122,7 +122,7 @@ export function HazardWorkspace({ initialCategory }: { initialCategory: string }
     >
       <div
         className={cn(
-          "relative flex flex-col border-b border-border bg-card lg:shrink-0 lg:overflow-y-auto lg:border-b-0 lg:border-r",
+          "relative flex flex-col border-b border-border bg-card transition-[width,padding,gap] duration-300 ease-in-out lg:shrink-0 lg:overflow-y-auto lg:border-b-0 lg:border-r",
           sidebarCollapsed
             ? "items-center gap-4 p-3 pt-11 lg:w-16 xl:w-16"
             : "gap-6 p-6 pt-11 sm:p-8 sm:pt-11 lg:w-80 xl:w-96",
@@ -142,7 +142,7 @@ export function HazardWorkspace({ initialCategory }: { initialCategory: string }
         </button>
 
         {sidebarCollapsed ? (
-          <>
+          <div className="flex w-full flex-col items-center gap-4 animate-in fade-in duration-300">
             <div className="flex flex-col items-center gap-3">
               <span className="relative flex h-7 items-center justify-center">
                 <Image
@@ -189,9 +189,9 @@ export function HazardWorkspace({ initialCategory }: { initialCategory: string }
               selectedVereda={selectedVereda}
               onClearSelection={clearSidebarSelection}
             />
-          </>
+          </div>
         ) : (
-          <>
+          <div className="flex w-full flex-col items-center gap-6 animate-in fade-in duration-300">
             <div className="flex flex-col items-center gap-6 text-center">
               <div className="flex items-center gap-4">
                 <span className="relative flex h-12 items-center justify-center">
@@ -305,7 +305,7 @@ export function HazardWorkspace({ initialCategory }: { initialCategory: string }
               points={osmPoints}
               activeCategories={activeOsmCategories}
             />
-          </>
+          </div>
         )}
       </div>
 
