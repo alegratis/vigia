@@ -314,7 +314,21 @@ function IncendiosLiveMapImpl({
   const handleMapClick = useCallback(
     (e: MapLayerMouseEvent) => {
       const { lng, lat } = e.lngLat
-      const fireFeature = e.features?.find((f) => f.layer.id === "fires")
+      // Active fire/OSM markers are small circles that sit on top of the vereda
+      // polygon visually, but a precise single-point hit test often misses them
+      // while still landing inside the (much larger) polygon underneath. Query a
+      // small pixel box around the click first so these point layers always win
+      // over the vereda fill when the click is anywhere near a marker.
+      const map = mapRef.current?.getMap()
+      const tolerance = 6
+      const bbox: [[number, number], [number, number]] = [
+        [e.point.x - tolerance, e.point.y - tolerance],
+        [e.point.x + tolerance, e.point.y + tolerance],
+      ]
+      const fireFeature =
+        map && map.getLayer("fires")
+          ? map.queryRenderedFeatures(bbox, { layers: ["fires"] })[0]
+          : e.features?.find((f) => f.layer.id === "fires")
       if (fireFeature) {
         const props = fireFeature.properties as unknown as FireDetection
         setPopupInfo({
@@ -334,7 +348,10 @@ function IncendiosLiveMapImpl({
         })
         return
       }
-      const osmFeature = e.features?.find((f) => f.layer.id === "osm-points")
+      const osmFeature =
+        map && map.getLayer("osm-points")
+          ? map.queryRenderedFeatures(bbox, { layers: ["osm-points"] })[0]
+          : e.features?.find((f) => f.layer.id === "osm-points")
       if (osmFeature) {
         const props = osmFeature.properties as unknown as OsmPoint
         setPopupInfo({
