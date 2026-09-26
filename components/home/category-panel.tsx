@@ -64,7 +64,7 @@ export function CategoryPanel({ model, icon: Icon, isActive, onActivate, childre
         // instead — basis-auto (the default) plus the active map's explicit h-[70vh] achieves the same
         // "map fills the first fold" result without a flex-grow chain that has nothing to grow against.
         "relative flex flex-col overflow-hidden transition-[flex-grow,flex-basis] duration-500 ease-in-out lg:min-h-0",
-        isActive ? "shrink basis-auto lg:grow lg:basis-0" : "grow-0 shrink-0 basis-20 lg:basis-14 xl:basis-16",
+        isActive ? "shrink basis-auto lg:grow lg:basis-0" : "grow-0 shrink-0 basis-16 lg:basis-10 xl:basis-12",
       )}
     >
       {isActive ? (
