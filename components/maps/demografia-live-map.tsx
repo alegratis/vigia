@@ -29,7 +29,7 @@ import { useDemografiaGeoportal } from "@/lib/demografia/use-geoportal"
 import { useVulnerabilidad } from "@/lib/vulnerabilidad/use-vulnerabilidad"
 import { INDICATOR_LEVELS, INDICATOR_LEVEL_TOKENS, normalize, indicatorLevel, indicatorHeight } from "@/lib/demografia/indicator-levels"
 import { VULNERABILITY_LEVELS, VULNERABILITY_LEVEL_STYLES, vulnerabilityLevelColorToken } from "@/lib/vulnerabilidad/levels"
-import { HVI_COMPONENT_LABELS, HVI_COMPONENT_ORDER } from "@/lib/vulnerabilidad/hvi-components"
+import { IVH_COMPONENT_LABELS, IVH_COMPONENT_ORDER } from "@/lib/vulnerabilidad/ivh-components"
 import { VulnerabilityBreakdownChart } from "@/components/charts/vulnerability-breakdown-chart"
 import type { VulnerabilidadVeredaProperties, VulnerabilidadResponse } from "@/lib/vulnerabilidad/api-types"
 import type { PobrezaFeatureProperties, ManzanaFeatureProperties } from "@/lib/demografia/geoportal-api-types"
@@ -62,7 +62,7 @@ interface PopupInfo {
   content: ReactNode
 }
 
-/** Same quintile cutoffs as `vulnerabilityLevelFromScore` (lib/vulnerabilidad/combined-score.ts), applied directly to a 0–1 HVI value so individual manzana/component bars can be colored on the same 5-tier scale even though they aren't combined scores themselves. */
+/** Same quintile cutoffs as `vulnerabilityLevelFromScore` (lib/vulnerabilidad/combined-score.ts), applied directly to a 0–1 IVH value so individual manzana/component bars can be colored on the same 5-tier scale even though they aren't combined scores themselves. */
 function vulnerabilityLevelFromNormalized(value: number): (typeof VULNERABILITY_LEVELS)[number] {
   if (value < 0.2) return "Muy bajo"
   if (value < 0.4) return "Bajo"
@@ -72,8 +72,8 @@ function vulnerabilityLevelFromNormalized(value: number): (typeof VULNERABILITY_
 }
 
 /** Short, plain-language explainer reused by both the map popup (compact) and the below-map panel (below, in full) — what the index is, how to read it, what it's for. */
-const HVI_EXPLAINER = {
-  what: "El HVI mide qué tan frágil es la vivienda: paredes, pisos, hacinamiento y acceso a acueducto/alcantarillado/energía/basuras.",
+const IVH_EXPLAINER = {
+  what: "El IVH mide qué tan frágil es la vivienda: paredes, pisos, hacinamiento y acceso a acueducto/alcantarillado/energía/basuras.",
   read: "0 = la vivienda menos frágil de los 4 municipios estudiados; 1 = la más frágil. En cascos urbanos se calcula manzana por manzana; en veredas rurales, por municipio completo.",
   use: "Multiplicado por la amenaza física (riesgo compuesto) da la vulnerabilidad combinada: dónde la gente vive en peores condiciones Y está más expuesta al peligro — la prioridad más alta para intervención.",
 }
@@ -234,10 +234,10 @@ function DemografiaLiveMapImpl({
   }, [data, levelColors, manzanaField])
 
   // Step 3 of the vulnerability methodology (lib/vulnerabilidad/combined-score.ts):
-  // combinedScore has a fixed theoretical range [0, 4] (HVI ∈ [0,1] × HazardScore ∈ [1,4]),
+  // combinedScore has a fixed theoretical range [0, 4] (IVH ∈ [0,1] × HazardScore ∈ [1,4]),
   // so this is bucketed by the API's own combinedLevel rather than re-normalized client-side.
   // Rural veredas only now — urban cores are their own manzana-level layer below, each
-  // block keeping its own HVI instead of being flattened into one municipio-wide shape.
+  // block keeping its own IVH instead of being flattened into one municipio-wide shape.
   const vulnerabilidadGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
     if (!vulnerabilidadData || !vulnColors) return { type: "FeatureCollection", features: [] }
     return {
@@ -348,11 +348,11 @@ function DemografiaLiveMapImpl({
         // Rural vereda — always municipio-wide, since the census has no
         // manzana breakdown outside urban cores.
         const props = feature.properties as unknown as VulnerabilidadVeredaProperties
-        const ruralSummary = vulnerabilidadData?.hviPorMunicipio.find((m) => m.municipio === props.municipio)
+        const ruralSummary = vulnerabilidadData?.ivhPorMunicipio.find((m) => m.municipio === props.municipio)
 
         const breakdownRows = ruralSummary
-          ? HVI_COMPONENT_ORDER.map((key) => ({
-              label: HVI_COMPONENT_LABELS[key],
+          ? IVH_COMPONENT_ORDER.map((key) => ({
+              label: IVH_COMPONENT_LABELS[key],
               value: ruralSummary.components[key] ?? 0,
               color: resolveCssColor(
                 VULNERABILITY_LEVEL_STYLES[vulnerabilityLevelFromNormalized((ruralSummary.components[key] ?? 0) / 100)]
@@ -375,7 +375,7 @@ function DemografiaLiveMapImpl({
                   <span className="font-medium text-foreground">{props.combinedLevel}</span>
                 </p>
                 <p className="text-muted-foreground">
-                  HVI (por municipio): <span className="font-medium text-foreground">{props.hvi.toFixed(2)}</span>
+                  IVH (por municipio): <span className="font-medium text-foreground">{props.ivh.toFixed(2)}</span>
                   {" · "}
                   Amenaza: <span className="font-medium text-foreground">{props.compoundLevel ?? "—"}</span>
                 </p>
@@ -386,19 +386,19 @@ function DemografiaLiveMapImpl({
                   <VulnerabilityBreakdownChart rows={breakdownRows} valueSuffix="%" height={breakdownRows.length * 26 + 12} compact />
                 </div>
               )}
-              <p className="border-t border-border pt-1.5 leading-snug text-muted-foreground">{HVI_EXPLAINER.what}</p>
+              <p className="border-t border-border pt-1.5 leading-snug text-muted-foreground">{IVH_EXPLAINER.what}</p>
             </div>
           ),
         })
       } else if (feature.layer.id === "vulnerabilidad-manzanas-columns") {
-        // Urban core — this one manzana's own HVI, not a municipio average.
+        // Urban core — this one manzana's own IVH, not a municipio average.
         // Every manzana in the same urban core shares its hazard tier, since
         // riesgo compuesto doesn't resolve finer than the "Casco Urbano" vereda.
         const props = feature.properties as unknown as {
           codigoManzana: string
           barrio: string | null
           municipio: string
-          hvi: number
+          ivh: number
           combinedLevel: string
           compoundLevel: string | null
         }
@@ -417,13 +417,13 @@ function DemografiaLiveMapImpl({
                   <span className="font-medium text-foreground">{props.combinedLevel}</span>
                 </p>
                 <p className="text-muted-foreground">
-                  HVI (por manzana): <span className="font-medium text-foreground">{props.hvi.toFixed(2)}</span>
+                  IVH (por manzana): <span className="font-medium text-foreground">{props.ivh.toFixed(2)}</span>
                   {" · "}
                   Amenaza del casco urbano:{" "}
                   <span className="font-medium text-foreground">{props.compoundLevel ?? "—"}</span>
                 </p>
               </div>
-              <p className="border-t border-border pt-1.5 leading-snug text-muted-foreground">{HVI_EXPLAINER.what}</p>
+              <p className="border-t border-border pt-1.5 leading-snug text-muted-foreground">{IVH_EXPLAINER.what}</p>
             </div>
           ),
         })
@@ -609,7 +609,7 @@ function DemografiaLiveMapImpl({
         <RailSection title="Fuente">
           <p className="text-muted-foreground">
             {indicator === "vulnerabilidad"
-              ? "HVI por manzana en cascos urbanos, por municipio en veredas rurales (DANE) × riesgo compuesto por vereda (este mismo sitio). Cada manzana o vereda se colorea con su propio valor — nunca un promedio único para todo el municipio."
+              ? "IVH por manzana en cascos urbanos, por municipio en veredas rurales (DANE) × riesgo compuesto por vereda (este mismo sitio). Cada manzana o vereda se colorea con su propio valor — nunca un promedio único para todo el municipio."
               : "DANE — Geoportal (IPM 2018 y Censo Nacional de Población y Vivienda 2018)."}
           </p>
         </RailSection>

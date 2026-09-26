@@ -29,7 +29,7 @@ function VulnerabilityExplainerSection() {
         <div className="mt-1.5 flex flex-col gap-1.5 text-sm text-muted-foreground">
           <p>
             <span className="font-medium text-foreground">Qué mide:</span> el Índice de Vulnerabilidad de Vivienda
-            (HVI) evalúa qué tan frágil es una vivienda a partir de 8 componentes del Censo 2018 — material de
+            (IVH) evalúa qué tan frágil es una vivienda a partir de 8 componentes del Censo 2018 — material de
             paredes y pisos, hacinamiento mitigable y no mitigable, y acceso a acueducto, alcantarillado, energía y
             recolección de basuras. Va de 0 (vivienda menos frágil) a 1 (más frágil).
           </p>
@@ -39,7 +39,7 @@ function VulnerabilityExplainerSection() {
             el censo no publica manzanas, se usa el promedio municipal de déficit habitacional.
           </p>
           <p>
-            <span className="font-medium text-foreground">Cómo se combina:</span> HVI × amenaza física (el nivel de{" "}
+            <span className="font-medium text-foreground">Cómo se combina:</span> IVH × amenaza física (el nivel de{" "}
             <a href="/?categoria=riesgo-compuesto" className="underline underline-offset-2 hover:text-foreground">
               riesgo compuesto
             </a>{" "}

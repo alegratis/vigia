@@ -2,15 +2,15 @@ import "server-only"
 
 /**
  * Step 1 of the vulnerability-index methodology (see v0_plans/grand-method.md,
- * Part 3) — Housing Vulnerability Index (HVI). Two resolutions, applied to
+ * Part 3) — Housing Vulnerability Index (IVH). Two resolutions, applied to
  * whichever geometry can actually support them:
  *
  * - **Urban cores ("Casco Urbano" pseudo-veredas)**: DANE's manzana-level
  *   IPM (lib/demografia/dane-geoportal.ts's `getPobrezaMultidimensional`,
  *   ~2,174 city blocks) is averaged per municipio and min-max normalized
  *   across the 4 study municipios — a genuinely finer, block-level-derived
- *   HVI specific to each municipio's urban core, distinct from its rural
- *   veredas. See `getUrbanHviByMunicipio`.
+ *   IVH specific to each municipio's urban core, distinct from its rural
+ *   veredas. See `getUrbanIvhByMunicipio`.
  * - **Rural veredas**: the manzana/IPM layer only covers urban/poblado
  *   blocks, not the dispersed rural veredas that make up most of these 4
  *   municipios' area, so no finer-than-municipio physical-fragility data
@@ -38,9 +38,9 @@ import "server-only"
  *
  * This *is* the walls/floors + overcrowding + services variable set the
  * instructions call for — DANE has just pre-aggregated it by municipio
- * instead of it being hand-rolled from raw manzana counts. HVI = min-max
+ * instead of it being hand-rolled from raw manzana counts. IVH = min-max
  * normalized average of these 8 components, one value per municipio; every
- * vereda inherits its municipio's HVI (see lib/vulnerabilidad/combined-score.ts).
+ * vereda inherits its municipio's IVH (see lib/vulnerabilidad/combined-score.ts).
  */
 
 import { STUDY_MUNICIPIO_CODES, getPobrezaMultidimensional } from "@/lib/demografia/dane-geoportal"
@@ -48,7 +48,7 @@ import { STUDY_MUNICIPIO_CODES, getPobrezaMultidimensional } from "@/lib/demogra
 const BASE_URL = "https://geoportal.dane.gov.co/mparcgis/rest/services/INDICADORES_COND_DE_VIDA"
 
 /** Service name suffix → the % field this app reads from its layer 4. */
-const HVI_COMPONENTS = {
+const IVH_COMPONENTS = {
   CompParedesExteriores: "PC_N_pared",
   CompMaterialPisos: "PC_N_pisos",
   CompHacinMitigable: "PC_N_defhacimiti",
@@ -66,54 +66,54 @@ const CODES_IN_LIST = Object.values(STUDY_MUNICIPIO_CODES)
   .map((code) => `'${code}'`)
   .join(",")
 
-export interface MunicipioHvi {
+export interface MunicipioIvh {
   municipio: string
   codigoMunicipio: string
   /** Raw average % across the 8 déficit habitacional components (0–100). */
   componentAvgPct: number
-  /** Min-max normalized HVI across the 4 study municipios (0–1, higher = more physically fragile housing stock). */
-  hvi: number
+  /** Min-max normalized IVH across the 4 study municipios (0–1, higher = more physically fragile housing stock). */
+  ivh: number
   /** The 8 raw component percentages behind `componentAvgPct`, for the rural-vereda breakdown chart — this municipio's finest available granularity. */
-  components: Record<keyof typeof HVI_COMPONENTS, number>
+  components: Record<keyof typeof IVH_COMPONENTS, number>
 }
 
-export interface ManzanaHvi {
+export interface ManzanaIvh {
   codigoManzana: string
   /** Nearest OSM place name to this manzana's centroid (see lib/demografia/osm-neighborhoods.ts), or `null`. Use this instead of `codigoManzana` for anything shown to a person. */
   barrio: string | null
   /** Raw IPM (%) for this manzana. */
   ipm: number
-  /** Min-max normalized HVI across every manzana in the 4 study municipios' urban cores (0–1) — the bar-chart height for this manzana. */
-  hvi: number
+  /** Min-max normalized IVH across every manzana in the 4 study municipios' urban cores (0–1) — the bar-chart height for this manzana. */
+  ivh: number
   /** This manzana's own polygon (from the IPM layer), so the map can render one true block-level feature per manzana instead of a single aggregated shape for the whole urban core. */
   geometry: GeoJSON.Geometry
 }
 
-export interface UrbanMunicipioHvi {
+export interface UrbanMunicipioIvh {
   municipio: string
   codigoMunicipio: string
   /** Manzana count backing this municipio's urban-core average, for transparency in the UI. */
   manzanaCount: number
   /** Raw average IPM (%) across every manzana in this municipio's urban core. */
   avgIpmPct: number
-  /** Min-max normalized HVI across the 4 study municipios' urban cores (0–1). */
-  hvi: number
-  /** Every manzana behind `avgIpmPct`, sorted by `hvi` descending — for the manzana-level breakdown bar chart. */
-  manzanas: ManzanaHvi[]
+  /** Min-max normalized IVH across the 4 study municipios' urban cores (0–1). */
+  ivh: number
+  /** Every manzana behind `avgIpmPct`, sorted by `ivh` descending — for the manzana-level breakdown bar chart. */
+  manzanas: ManzanaIvh[]
 }
 
 /**
- * Urban-core HVI: averages manzana-level IPM (multidimensional poverty,
+ * Urban-core IVH: averages manzana-level IPM (multidimensional poverty,
  * the finest DANE resolution available — see `getPobrezaMultidimensional`)
  * per municipio, then min-max normalizes across the 4 study municipios.
  * Used only for each municipio's "Casco Urbano" pseudo-vereda — rural
  * veredas have no manzana coverage and keep the coarser municipio-wide
- * déficit habitacional HVI from `getHousingVulnerabilityIndex`. Also keeps
- * every individual manzana's normalized HVI (`manzanas`) so the UI can
+ * déficit habitacional IVH from `getHousingVulnerabilityIndex`. Also keeps
+ * every individual manzana's normalized IVH (`manzanas`) so the UI can
  * chart the actual block-level distribution behind each municipio's
  * average, not just the average itself.
  */
-export async function getUrbanHviByMunicipio(): Promise<UrbanMunicipioHvi[]> {
+export async function getUrbanIvhByMunicipio(): Promise<UrbanMunicipioIvh[]> {
   const { features } = await getPobrezaMultidimensional()
 
   const ipmValues = features.map((f) => f.properties.ipm)
@@ -123,7 +123,7 @@ export async function getUrbanHviByMunicipio(): Promise<UrbanMunicipioHvi[]> {
 
   const byMunicipio = new Map<
     string,
-    { nombre: string; sum: number; count: number; manzanas: ManzanaHvi[] }
+    { nombre: string; sum: number; count: number; manzanas: ManzanaIvh[] }
   >()
   for (const f of features) {
     const entry =
@@ -135,7 +135,7 @@ export async function getUrbanHviByMunicipio(): Promise<UrbanMunicipioHvi[]> {
       codigoManzana: f.properties.codigoManzana,
       barrio: f.properties.barrio,
       ipm: f.properties.ipm,
-      hvi: normalizeIpm(f.properties.ipm),
+      ivh: normalizeIpm(f.properties.ipm),
       geometry: f.geometry,
     })
     byMunicipio.set(f.properties.codigoMunicipio, entry)
@@ -148,7 +148,7 @@ export async function getUrbanHviByMunicipio(): Promise<UrbanMunicipioHvi[]> {
       municipio: entry?.nombre ?? "",
       manzanaCount: entry?.count ?? 0,
       avgIpmPct: entry && entry.count > 0 ? entry.sum / entry.count : 0,
-      manzanas: (entry?.manzanas ?? []).slice().sort((a, b) => b.hvi - a.hvi),
+      manzanas: (entry?.manzanas ?? []).slice().sort((a, b) => b.ivh - a.ivh),
     }
   })
 
@@ -158,12 +158,12 @@ export async function getUrbanHviByMunicipio(): Promise<UrbanMunicipioHvi[]> {
 
   return rows.map((r) => ({
     ...r,
-    hvi: max > min ? (r.avgIpmPct - min) / (max - min) : 0.5,
+    ivh: max > min ? (r.avgIpmPct - min) / (max - min) : 0.5,
   }))
 }
 
-async function fetchComponent(service: keyof typeof HVI_COMPONENTS): Promise<Map<string, { nombre: string; pct: number }>> {
-  const field = HVI_COMPONENTS[service]
+async function fetchComponent(service: keyof typeof IVH_COMPONENTS): Promise<Map<string, { nombre: string; pct: number }>> {
+  const field = IVH_COMPONENTS[service]
   const params = new URLSearchParams({
     where: `MPIO_CCDGO IN (${CODES_IN_LIST})`,
     outFields: `MPIO_CCDGO,MPIO_CNMBR,${field}`,
@@ -194,8 +194,8 @@ async function fetchComponent(service: keyof typeof HVI_COMPONENTS): Promise<Map
  * instructions' "normalize to 0-1" step is scoped to the comparison set
  * this app actually maps).
  */
-export async function getHousingVulnerabilityIndex(): Promise<MunicipioHvi[]> {
-  const services = Object.keys(HVI_COMPONENTS) as (keyof typeof HVI_COMPONENTS)[]
+export async function getHousingVulnerabilityIndex(): Promise<MunicipioIvh[]> {
+  const services = Object.keys(IVH_COMPONENTS) as (keyof typeof IVH_COMPONENTS)[]
   const componentMaps = await Promise.all(services.map(fetchComponent))
 
   const codes = Object.values(STUDY_MUNICIPIO_CODES)
@@ -203,7 +203,7 @@ export async function getHousingVulnerabilityIndex(): Promise<MunicipioHvi[]> {
     let nombre = ""
     let sum = 0
     let count = 0
-    const components = {} as Record<keyof typeof HVI_COMPONENTS, number>
+    const components = {} as Record<keyof typeof IVH_COMPONENTS, number>
     services.forEach((service, i) => {
       const entry = componentMaps[i].get(codigo)
       const pct = entry?.pct ?? 0
@@ -223,6 +223,6 @@ export async function getHousingVulnerabilityIndex(): Promise<MunicipioHvi[]> {
 
   return rows.map((r) => ({
     ...r,
-    hvi: max > min ? (r.componentAvgPct - min) / (max - min) : 0.5,
+    ivh: max > min ? (r.componentAvgPct - min) / (max - min) : 0.5,
   }))
 }

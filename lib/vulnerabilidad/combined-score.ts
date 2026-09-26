@@ -2,10 +2,10 @@
  * Step 3 of the vulnerability-index methodology (see v0_plans/grand-method.md,
  * Part 3) — the Combined Vulnerability Score, per vereda:
  *
- *   Combined Score = HVI(vereda's municipio) × Hazard Score(vereda)
+ *   Combined Score = IVH(vereda's municipio) × Hazard Score(vereda)
  *
  * The same multiplicative Risk = Vulnerability × Hazard formula from the
- * instructions. `HVI` comes from lib/vulnerabilidad/hvi.ts (0–1, per
+ * instructions. `IVH` comes from lib/vulnerabilidad/ivh.ts (0–1, per
  * municipio). `Hazard Score` is this app's own `riesgo-compuesto`
  * `compoundScore`/`compoundLevel` (lib/riesgo-compuesto/compound-model.ts),
  * rescaled from its 5-tier vocabulary onto the instructions' 1–4 scale so
@@ -32,7 +32,7 @@ export function hazardScoreFromCompoundLevel(level: CompoundLevel): number {
 export const VULNERABILITY_LEVELS = ["Muy bajo", "Bajo", "Moderado", "Alto", "Muy alto"] as const
 export type VulnerabilityLevel = (typeof VULNERABILITY_LEVELS)[number]
 
-/** Combined score's theoretical range: HVI ∈ [0,1] × HazardScore ∈ [1,4] → [0,4]. Quintiles of that fixed range, matching the compound model's own 0.2-step scheme. */
+/** Combined score's theoretical range: IVH ∈ [0,1] × HazardScore ∈ [1,4] → [0,4]. Quintiles of that fixed range, matching the compound model's own 0.2-step scheme. */
 export function vulnerabilityLevelFromScore(combinedScore: number): VulnerabilityLevel {
   const normalized = combinedScore / 4
   if (normalized < 0.2) return "Muy bajo"
@@ -44,27 +44,27 @@ export function vulnerabilityLevelFromScore(combinedScore: number): Vulnerabilit
 
 export interface CombinedVulnerabilityInput {
   /** Housing Vulnerability Index for this vereda's municipio, 0–1 (higher = more physically fragile housing stock). */
-  hvi: number
+  ivh: number
   /** This vereda's existing riesgo-compuesto tier — the hazard side of the formula. */
   compoundLevel: CompoundLevel | null
 }
 
 export interface CombinedVulnerabilityResult {
-  hvi: number
+  ivh: number
   hazardScore: number | null
-  /** HVI × HazardScore, range [0, 4]. `null` if the vereda has no resolved hazard tier. */
+  /** IVH × HazardScore, range [0, 4]. `null` if the vereda has no resolved hazard tier. */
   combinedScore: number | null
   combinedLevel: VulnerabilityLevel | null
 }
 
 export function computeCombinedVulnerability(input: CombinedVulnerabilityInput): CombinedVulnerabilityResult {
   if (input.compoundLevel == null) {
-    return { hvi: input.hvi, hazardScore: null, combinedScore: null, combinedLevel: null }
+    return { ivh: input.ivh, hazardScore: null, combinedScore: null, combinedLevel: null }
   }
   const hazardScore = hazardScoreFromCompoundLevel(input.compoundLevel)
-  const combinedScore = input.hvi * hazardScore
+  const combinedScore = input.ivh * hazardScore
   return {
-    hvi: input.hvi,
+    ivh: input.ivh,
     hazardScore,
     combinedScore,
     combinedLevel: vulnerabilityLevelFromScore(combinedScore),
