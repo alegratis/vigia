@@ -130,7 +130,7 @@ export interface MunicipioIvs {
 
 export interface ManzanaIvs {
   codigoManzana: string
-  /** Nearest OSM place name to this manzana's centroid (see lib/demografia/osm-neighborhoods.ts), or `null`. Use this instead of `codigoManzana` for anything shown to a person. */
+  /** Name of the Sevilla barrio this manzana's centroid falls inside (point-in-polygon, see lib/barrios/boundaries.ts), or `null` outside Sevilla or outside every mapped barrio. Use this instead of `codigoManzana` for anything shown to a person. */
   barrio: string | null
   /** Raw IPM (%) for this manzana. */
   ipm: number

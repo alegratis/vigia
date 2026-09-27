@@ -36,6 +36,8 @@
  * ArcGIS fetch in this app (e.g. lib/inundaciones/streams.ts).
  */
 
+import { matchManzanasToBarrios } from "@/lib/barrios/boundaries"
+
 const BASE_URL = "https://geoportal.dane.gov.co/mparcgis/rest/services"
 const IPM_LAYER_URL = `${BASE_URL}/POBREZA_MULTIDIMENSIONAL/Serv_MGN2020_Integrado_IPM/FeatureServer/325`
 const MANZANA_LAYER_URL = `${BASE_URL}/MARCO_INTEGRADO/Serv_DatosCNPV2018_Integrados_MGN2018/MapServer/808`
@@ -70,7 +72,7 @@ export interface PobrezaFeature {
     ipm: number
     /** DANE's own pre-bucketed label, e.g. "Vulnerabilidad media-alta". */
     categoria: string
-    /** Nearest OpenStreetMap place name to this manzana's centroid (see osm-neighborhoods.ts), or `null` if none was found nearby. DANE's own manzana code is a cryptic cadastral id, not something to show a person. */
+    /** Name of the Sevilla barrio this manzana's centroid falls inside (point-in-polygon against `lib/barrios/boundaries.ts`), or `null` outside Sevilla or outside every mapped barrio. DANE's own manzana code is a cryptic cadastral id, not something to show a person. */
     barrio: string | null
   }
   geometry: GeoJSON.Geometry
@@ -127,11 +129,19 @@ export async function getPobrezaMultidimensional(): Promise<PobrezaFeatureCollec
     offset += pageSize
   }
 
-  // `barrio` stays null for now: the public Overpass API that would supply
-  // OSM place names is unreachable from this environment (blocks the request
-  // outright), so every lookup would resolve to null anyway. Revisit with a
-  // reachable named-places source. Callers already render a graceful
-  // fallback instead of the raw manzana code — see demografia-live-map.tsx.
+  // Point-in-polygon match against Sevilla's barrio layer (the only
+  // municipio with one published) — manzanas elsewhere, or outside every
+  // mapped barrio, keep `barrio: null`. Best-effort: a failed ArcGIS fetch
+  // here degrades every manzana to `null` rather than failing this indicator.
+  try {
+    const barrioByManzana = await matchManzanasToBarrios(features)
+    for (const f of features) {
+      f.properties.barrio = barrioByManzana.get(f.properties.codigoManzana) ?? null
+    }
+  } catch {
+    // Leave every manzana's `barrio` at its `null` default from above.
+  }
+
   return { type: "FeatureCollection", features }
 }
 

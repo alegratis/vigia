@@ -18,10 +18,14 @@ import "maplibre-gl/dist/maplibre-gl.css"
 if (typeof window !== "undefined") {
   setWorkerUrl("/maplibre-gl-worker.mjs")
 }
-import { Building2, Home, Users, TriangleAlert } from "lucide-react"
+import { Building2, Home, Users, TriangleAlert, MapPin } from "lucide-react"
 import { MapControlRail, RailSection } from "@/components/maps/map-control-rail"
 import { MapViewToggleControl } from "@/components/maps/map-view-toggle-control"
 import { MapBasemapControl } from "@/components/maps/map-basemap-control"
+import { MunicipioTogglePanelContent } from "@/components/maps/municipio-toggle-panel"
+import { useMunicipioToggles, isMunicipioActive } from "@/lib/veredas/municipio-toggles"
+import { boundsForActiveMunicipios } from "@/lib/demografia/municipio-bounds"
+import { useBarrios } from "@/lib/barrios/use-barrios"
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import { cn } from "@/lib/utils"
 import { maplibreMapStyle, defaultBasemapForCurrentTheme, type BasemapType } from "@/lib/maps/maplibre-basemap-style"
@@ -33,6 +37,7 @@ import { IVS_COMPONENT_LABELS, IVS_COMPONENT_ORDER } from "@/lib/vulnerabilidad/
 import { VulnerabilityBreakdownChart } from "@/components/charts/vulnerability-breakdown-chart"
 import type { VulnerabilidadVeredaProperties, VulnerabilidadResponse } from "@/lib/vulnerabilidad/api-types"
 import type { PobrezaFeatureProperties, ManzanaFeatureProperties } from "@/lib/demografia/geoportal-api-types"
+import type { BarrioProperties } from "@/lib/barrios/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
 
 // Same 4-municipio AOI as every other hazard map (Sevilla, Caicedonia, Zarzal, Roldanillo).
@@ -172,6 +177,10 @@ function DemografiaLiveMapImpl({
   const { data } = useDemografiaGeoportal(indicator !== "vulnerabilidad")
   const { data: vulnerabilidadData } = useVulnerabilidad(indicator === "vulnerabilidad")
 
+  // Sevilla starts on, the rest off — same convention as every other hazard
+  // map's "Municipios" control (lib/veredas/municipio-toggles.ts).
+  const { active: activeMunicipiosMap, activeMunicipios, toggle: toggleMunicipio } = useMunicipioToggles()
+
   const [manzanaField, setManzanaField] = useState<ManzanaField>("personas")
   const [levelColors, setLevelColors] = useState<Record<string, string> | null>(null)
   const [vulnColors, setVulnColors] = useState<Record<string, string> | null>(null)
@@ -181,6 +190,11 @@ function DemografiaLiveMapImpl({
   // the same municipio-wide value, reading as fabricated resolution next to
   // the genuine per-manzana urban data. See VulnerabilityLegend/rail copy below.
   const [showRuralVeredas, setShowRuralVeredas] = useState(false)
+  // Off by default, opt-in reference layer — only Sevilla has a published
+  // barrio layer (see lib/barrios/boundaries.ts), so it isn't emphasized by
+  // default on a map covering all 4 study-area municipios.
+  const [showBarrios, setShowBarrios] = useState(false)
+  const { data: barriosData } = useBarrios(showBarrios)
 
   useEffect(() => {
     setLevelColors(
@@ -304,13 +318,27 @@ function DemografiaLiveMapImpl({
     }
   }, [vulnerabilidadData, vulnColors])
 
+  // Sevilla's only, published boundary reference — kept out of the fetch
+  // gate for the DANE indicator layers above, since it isn't one of them.
+  const barriosGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
+    if (!barriosData) return { type: "FeatureCollection", features: [] }
+    return {
+      type: "FeatureCollection",
+      features: barriosData.barrios.features.filter((f) => isMunicipioActive(f.properties.municipio, activeMunicipios)),
+    }
+  }, [barriosData, activeMunicipios])
+
   const interactiveLayerIds = useMemo(() => {
-    if (indicator === "pobreza") return ["pobreza-columns"]
-    if (indicator === "manzanas") return ["manzanas-columns"]
-    return showRuralVeredas
-      ? ["vulnerabilidad-manzanas-columns", "vulnerabilidad-veredas-fill"]
-      : ["vulnerabilidad-manzanas-columns"]
-  }, [indicator, showRuralVeredas])
+    const base =
+      indicator === "pobreza"
+        ? ["pobreza-columns"]
+        : indicator === "manzanas"
+          ? ["manzanas-columns"]
+          : showRuralVeredas
+            ? ["vulnerabilidad-manzanas-columns", "vulnerabilidad-veredas-fill"]
+            : ["vulnerabilidad-manzanas-columns"]
+    return showBarrios ? [...base, "barrios-fill"] : base
+  }, [indicator, showRuralVeredas, showBarrios])
 
   const handleMapClick = useCallback(
     (e: MapLayerMouseEvent) => {
@@ -423,7 +451,9 @@ function DemografiaLiveMapImpl({
           content: (
             <div className="flex w-64 flex-col gap-2 text-xs">
               <div>
-                <p className="font-medium text-foreground">{props.municipio}</p>
+                <p className="font-medium text-foreground">
+                  {props.barrio ? `${props.barrio} · ${props.municipio}` : props.municipio}
+                </p>
                 <p className="text-muted-foreground">
                   Vulnerabilidad compuesta:{" "}
                   <span className="font-medium text-foreground">{props.combinedLevel}</span>
@@ -439,10 +469,65 @@ function DemografiaLiveMapImpl({
             </div>
           ),
         })
+      } else if (feature.layer.id === "barrios-fill") {
+        const props = feature.properties as unknown as BarrioProperties
+        setPopupInfo({
+          longitude: e.lngLat.lng,
+          latitude: e.lngLat.lat,
+          content: (
+            <div className="flex w-56 flex-col gap-1 text-xs">
+              <p className="font-medium text-foreground">
+                {props.nombre} <span className="text-muted-foreground">({props.municipio})</span>
+              </p>
+              {props.frecuenciaInundacion && (
+                <p className="text-muted-foreground">
+                  Frecuencia de inundación:{" "}
+                  <span className="font-medium text-foreground">{props.frecuenciaInundacion}</span>
+                </p>
+              )}
+              {props.frecuenciaMovimientoMasa && (
+                <p className="text-muted-foreground">
+                  Frecuencia de movimiento en masa:{" "}
+                  <span className="font-medium text-foreground">{props.frecuenciaMovimientoMasa}</span>
+                </p>
+              )}
+              <p className="border-t border-border pt-1.5 leading-snug text-muted-foreground">
+                Límite de barrio del Dashboard SIRD Sevilla (post-sismo), referencia únicamente.
+              </p>
+            </div>
+          ),
+        })
       }
     },
     [vulnerabilidadData],
   )
+
+  const isFirstMunicipioRender = useRef(true)
+  const previousMunicipioKey = useRef(activeMunicipios.join("|"))
+  useEffect(() => {
+    const key = activeMunicipios.join("|")
+    if (isFirstMunicipioRender.current) {
+      isFirstMunicipioRender.current = false
+      previousMunicipioKey.current = key
+      return
+    }
+    if (key === previousMunicipioKey.current) return
+    previousMunicipioKey.current = key
+
+    const boundsSource = indicator === "vulnerabilidad" ? vulnerabilidadManzanasGeoJson : pobrezaGeoJson
+    const bounds = boundsForActiveMunicipios(boundsSource, activeMunicipios)
+    if (!bounds) return
+    const map = mapRef.current?.getMap()
+    if (!map) return
+    const [[south, west], [north, east]] = bounds
+    map.fitBounds(
+      [
+        [west, south],
+        [east, north],
+      ],
+      { padding: 48, duration: 900, maxZoom: 14 },
+    )
+  }, [activeMunicipios, indicator, vulnerabilidadManzanasGeoJson, pobrezaGeoJson])
 
   const syncBounds = useCallback(() => {
     const map = mapRef.current?.getMap()
@@ -530,6 +615,28 @@ function DemografiaLiveMapImpl({
           </Source>
         )}
 
+        {showBarrios && (
+          <Source id="barrios-source" type="geojson" data={barriosGeoJson}>
+            <Layer
+              id="barrios-fill"
+              type="fill"
+              paint={{
+                "fill-color": resolveCssColor("var(--muted-foreground)"),
+                "fill-opacity": 0.12,
+              }}
+            />
+            <Layer
+              id="barrios-line"
+              type="line"
+              paint={{
+                "line-color": resolveCssColor("var(--foreground)"),
+                "line-width": 1.25,
+                "line-opacity": 0.7,
+              }}
+            />
+          </Source>
+        )}
+
         {popupInfo && (
           <Popup
             longitude={popupInfo.longitude}
@@ -545,7 +652,11 @@ function DemografiaLiveMapImpl({
       </Map>
 
       <MapControlRail>
-        <RailSection title="Indicador" first>
+        <RailSection title="Municipios" first>
+          <MunicipioTogglePanelContent active={activeMunicipiosMap} onToggle={toggleMunicipio} />
+        </RailSection>
+
+        <RailSection title="Indicador">
           <div className="flex flex-col gap-1">
             <label className="flex items-center gap-2 rounded-sm px-1.5 py-1 -mx-1.5 font-medium text-foreground transition-colors hover:bg-muted/70">
               <input
@@ -598,6 +709,22 @@ function DemografiaLiveMapImpl({
             </p>
           </RailSection>
         )}
+
+        <RailSection title="Barrios">
+          <label className="flex items-center gap-2 rounded-sm px-1.5 py-1 -mx-1.5 font-medium text-foreground transition-colors hover:bg-muted/70">
+            <input
+              type="checkbox"
+              checked={showBarrios}
+              onChange={(e) => setShowBarrios(e.target.checked)}
+              className="size-3.5 shrink-0 accent-primary"
+            />
+            <MapPin className="size-3.5 shrink-0 text-muted-foreground" />
+            <span className="text-pretty">Mostrar límites de barrios</span>
+          </label>
+          <p className="mt-1 text-muted-foreground">
+            Solo Sevilla tiene capa de barrios publicada por ahora. Referencia, sin datos propios.
+          </p>
+        </RailSection>
 
         {indicator === "manzanas" && (
           <RailSection title="Variable de extrusión">
