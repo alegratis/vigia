@@ -184,17 +184,17 @@ export function CompoundReportDialog({
                   <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
                     El nivel de riesgo compuesto es el mayor nivel entre las cinco amenazas (deslizamientos,
                     inundaciones, incendios, precipitación y sismología), cada una normalizada a una escala
-                    de 0 a 1 — la doctrina de la OMM/GDACS de que &quot;la amenaza más alta gobierna&quot;: un
+                    de 0 a 1, la doctrina de la OMM/GDACS de que &quot;la amenaza más alta gobierna&quot;: un
                     solo riesgo severo nunca se diluye con otras cuatro tranquilas. El puntaje (0–1) es, en
                     cambio, un promedio ponderado de las cinco (20% cada una, re-normalizado sobre las que sí
-                    tengan datos para esta vereda) — al estilo del Índice de Riesgo INFORM — y sirve para
+                    tengan datos para esta vereda), al estilo del Índice de Riesgo INFORM, y sirve para
                     comparar veredas dentro del mismo nivel, no para definir el nivel en sí. El nivel
                     compuesto se traduce además al marco de Informar/Prepararse/Actuar que ya usa IDEAM en
-                    sus propios boletines públicos. No incluye el pronóstico de caudal en vivo de GEOGLOWS —
+                    sus propios boletines públicos. No incluye el pronóstico de caudal en vivo de GEOGLOWS:
                     ese pronóstico es por tramo de río, no por vereda, y el modelo propio de inundación
                     (zonificación + cercanía a cauce + planicie del terreno) ya representa esa amenaza aquí,
                     igual que en las otras categorías. Sismología es la única de las cinco sin una
-                    zonificación por vereda publicada — su puntaje se calcula por distancia (decaimiento
+                    zonificación por vereda publicada, su puntaje se calcula por distancia (decaimiento
                     espacial) a los epicentros en vivo de USGS y al catálogo histórico de SGC.{" "}
                     <a href="/documentacion#metodologia" className="text-primary underline-offset-2 hover:underline">
                       Ver metodología completa

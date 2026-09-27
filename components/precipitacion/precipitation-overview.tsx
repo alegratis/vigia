@@ -225,7 +225,7 @@ export function PrecipitationOverview() {
       </p>
       {mode === "historico" && fuente === "ideam" && (
         <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-          Lecturas en tiempo real de las estaciones IDEAM Guayabal (Zarzal) y Hacienda La Graciosa (Bugalagrande) —
+          Lecturas en tiempo real de las estaciones IDEAM Guayabal (Zarzal) y Hacienda La Graciosa (Bugalagrande),
           más precisas donde alcanzan, pero sin cobertura en la mayoría de Caicedonia y parte de Sevilla. Usa NASA
           POWER para ver esas zonas.
         </p>

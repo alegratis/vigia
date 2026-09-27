@@ -207,7 +207,7 @@ export function LiveAreaPopulation({
         <div className="flex flex-col gap-3">
           <div className="flex items-baseline justify-between">
             <span className="text-sm text-muted-foreground">
-              {selectedVereda ? `Población total — ${selectedVereda.properties.municipio}` : "Población total"}
+              {selectedVereda ? `Población total, ${selectedVereda.properties.municipio}` : "Población total"}
             </span>
             <span className="text-lg font-semibold tabular-nums">
               {formatNumber(totalPoblacion)}
@@ -218,7 +218,7 @@ export function LiveAreaPopulation({
             <div className="flex flex-col gap-1 rounded-lg border border-primary/30 bg-primary/5 p-3">
               <div className="flex items-baseline justify-between gap-2">
                 <span className="text-sm font-medium text-foreground">
-                  Población estimada — vereda {selectedVereda.properties.nombre}
+                  Población estimada, vereda {selectedVereda.properties.nombre}
                 </span>
                 <span className="text-base font-semibold tabular-nums text-foreground">
                   {selectedVereda.properties.poblacion != null

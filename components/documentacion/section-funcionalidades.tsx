@@ -8,7 +8,7 @@ const FEATURES = [
     items: [
       "Mapa de amenaza por vereda coloreado por un modelo propio inspirado en LHASA (NASA): pendiente del terreno, proximidad a vías y proximidad a una falla geológica (SGC) como susceptibilidad estática, ajustada por un disparador de lluvia reciente frente a su normal histórica. Calculado en las veredas de los cuatro municipios, incluidos Zarzal y Roldanillo.",
       "Población, escuelas, hospitales, farmacias e infraestructura crítica expuestas por nivel de amenaza (RED LabOT, Sevilla y Caicedonia), independiente del color del mapa.",
-      "Capa opcional de fallas geológicas del SGC (líneas), la misma fuente que alimenta el factor de proximidad a fallas del modelo — mostrada como referencia visual, no como un cálculo aparte.",
+      "Capa opcional de fallas geológicas del SGC (líneas), la misma fuente que alimenta el factor de proximidad a fallas del modelo, mostrada como referencia visual, no como un cálculo aparte.",
       "Superposición de pronóstico de humedad del suelo de raíz (NASA SMAP L4), actualizada cada 3–4 días.",
       "\"Sitios críticos\": puntos de daño vial relevados en campo por la Secretaría de Infraestructura del Valle del Cauca.",
     ],
@@ -17,8 +17,8 @@ const FEATURES = [
     title: "Inundaciones",
     tags: ["Sevilla", "Caicedonia", "Zarzal", "Roldanillo"],
     items: [
-      "Polígonos de susceptibilidad estática a inundación por zona (RED LabOT) — solo cubre el área zonificada de Sevilla y Caicedonia.",
-      "Mapa de amenaza por vereda coloreado por un modelo propio de inundación: zonificación oficial (donde exista), distancia a la quebrada o río más próximo y planicie del terreno (pendiente reutilizada del modelo de deslizamiento). Calculado en las 89 veredas de los cuatro municipios, incluidos Zarzal y Roldanillo — la única capa de amenaza por inundación con esa cobertura.",
+      "Polígonos de susceptibilidad estática a inundación por zona (RED LabOT), solo cubre el área zonificada de Sevilla y Caicedonia.",
+      "Mapa de amenaza por vereda coloreado por un modelo propio de inundación: zonificación oficial (donde exista), distancia a la quebrada o río más próximo y planicie del terreno (pendiente reutilizada del modelo de deslizamiento). Calculado en las 89 veredas de los cuatro municipios, incluidos Zarzal y Roldanillo, la única capa de amenaza por inundación con esa cobertura.",
       "Pronóstico de caudal en vivo de GEOGLOWS, evaluado contra períodos de retorno calculados localmente (ajuste de Gumbel) sobre el registro retrospectivo del tramo de río más cercano.",
       "Superposición de tasa de precipitación en vivo (NASA GPM IMERG, actualizada cada ~30 minutos).",
     ],

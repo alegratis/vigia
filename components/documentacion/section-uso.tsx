@@ -20,9 +20,9 @@ const STEPS: GuideStep[] = [
     number: 1,
     title: "Elige una amenaza para vigilar",
     simple:
-      "Cuando abres Vigía, ya estás viendo un mapa. A la derecha hay seis franjas verticales con un ícono cada una: Deslizamientos, Inundaciones, Incendios, Precipitación, Clima y Sismología (más Riesgo compuesto, que junta las cinco amenazas). Clima es un reporte del tiempo, no una amenaza. Toca cualquier franja y el mapa completo cambia a esa vista — no se abre una página nueva, todo pasa en la misma pantalla.",
+      "Cuando abres Vigía, ya estás viendo un mapa. A la derecha hay seis franjas verticales con un ícono cada una: Deslizamientos, Inundaciones, Incendios, Precipitación, Clima y Sismología (más Riesgo compuesto, que junta las cinco amenazas). Clima es un reporte del tiempo, no una amenaza. Toca cualquier franja y el mapa completo cambia a esa vista, no se abre una página nueva, todo pasa en la misma pantalla.",
     technical:
-      "Cada amenaza carga su propio mapa MapLibre GL con capas independientes que se activan y desactivan desde un único panel de control acoplado al borde derecho del mapa (por ejemplo, \"Humedad del suelo (SMAP)\" o \"Fallas geológicas (SGC)\"), agrupadas por Municipios, capas satelitales y capas de referencia oficial. La leyenda de colores activa aparece dentro del mismo panel — de verde (muy bajo) a rojo (muy alto) — y el panel se puede colapsar a una franja de íconos para dejar el mapa a pantalla completa.",
+      "Cada amenaza carga su propio mapa MapLibre GL con capas independientes que se activan y desactivan desde un único panel de control acoplado al borde derecho del mapa (por ejemplo, \"Humedad del suelo (SMAP)\" o \"Fallas geológicas (SGC)\"), agrupadas por Municipios, capas satelitales y capas de referencia oficial. La leyenda de colores activa aparece dentro del mismo panel, de verde (muy bajo) a rojo (muy alto), y el panel se puede colapsar a una franja de íconos para dejar el mapa a pantalla completa.",
     image: {
       src: "/images/docs/panel-principal.png",
       alt: "Panel principal de Vigía mostrando el mapa de deslizamientos, la leyenda de colores y las franjas de las otras amenazas a la derecha",
@@ -34,12 +34,12 @@ const STEPS: GuideStep[] = [
     number: 2,
     title: "Descubre cuánta gente vive en riesgo",
     simple:
-      "En la franja de la derecha toca \"Demografía\". Verás cuántas personas viven en Sevilla, Caicedonia, Zarzal y Roldanillo, separadas por año, si viven en el pueblo o en el campo, y si son hombres o mujeres. Debajo del mapa encuentras además el Índice de Vulnerabilidad Habitacional (IVH) por manzana en el casco urbano y por vereda en el campo, con su explicación y un gráfico de las viviendas, hogares y personas de cada manzana o vereda que toques en el mapa.",
+      "En la franja de la derecha toca \"Demografía\". Verás cuántas personas viven en Sevilla, Caicedonia, Zarzal y Roldanillo, separadas por año, si viven en el pueblo o en el campo, y si son hombres o mujeres. Debajo del mapa encuentras además el Índice de Vulnerabilidad Social (IVS) por manzana en el casco urbano y, de forma opcional, por municipio en el campo, con su explicación y un gráfico de las viviendas, hogares y personas de cada manzana o vereda que toques en el mapa.",
     technical:
-      "Los números de población vienen de las proyecciones del DANE (2019–2026). El IVH cruza hacinamiento, materiales de la vivienda y acceso a servicios públicos del censo del DANE con el nivel de amenaza vigente de cada zona; en el casco urbano se calcula manzana por manzana (la resolución más fina que publica el DANE) y en el campo se agrega por vereda. Toda esta vista vive dentro del panel de inicio, en la misma pestaña del mapa — ya no se abre en una ventana aparte.",
+      "Los números de población vienen de las proyecciones del DANE (2019–2026). El IVS combina 4 dimensiones del censo, vivienda, servicios públicos, educación y trabajo, con el nivel de amenaza vigente de cada zona; en el casco urbano se calcula manzana por manzana (la resolución más fina que publica el DANE, aunque solo con vivienda y servicios) y en el campo se usa el promedio municipal con las 4 dimensiones, como una capa plana y opcional para no fingir precisión que el dato no tiene. Toda esta vista vive dentro del panel de inicio, en la misma pestaña del mapa, ya no se abre en una ventana aparte.",
     image: {
       src: "/images/docs/demografia.png",
-      alt: "Panel de demografía mostrando el mapa del Índice de Vulnerabilidad Habitacional por manzana, la explicación del índice y los datos de viviendas, hogares y personas debajo del mapa",
+      alt: "Panel de demografía mostrando el mapa del Índice de Vulnerabilidad Social por manzana, la explicación del índice y los datos de viviendas, hogares y personas debajo del mapa",
       width: 1180,
       height: 980,
     },
@@ -50,7 +50,7 @@ const STEPS: GuideStep[] = [
     simple:
       "El botón celeste \"Conoce tu nivel de exposición\", en la esquina superior izquierda del panel principal, es la forma más rápida de saber qué tan expuesto estás tú. Elige primero tu municipio y después tu vereda (o \"Casco Urbano\" si vives en el pueblo). El mapa se acerca a tu zona y muestra las cuatro amenazas juntas, ya activadas.",
     technical:
-      "Cada casilla de la leyenda (Deslizamientos, Inundaciones, Incendios, Precipitación) se puede apagar por separado para comparar una amenaza a la vez sobre la misma zona. El botón \"Exportar como PDF\" — visible en la esquina superior derecha de esta ventana — captura el mapa exactamente como lo estás viendo y genera un PDF descargable para guardar o imprimir.",
+      "Cada casilla de la leyenda (Deslizamientos, Inundaciones, Incendios, Precipitación) se puede apagar por separado para comparar una amenaza a la vez sobre la misma zona. El botón \"Exportar como PDF\", visible en la esquina superior derecha de esta ventana, captura el mapa exactamente como lo estás viendo y genera un PDF descargable para guardar o imprimir.",
     image: {
       src: "/images/docs/exposicion.png",
       alt: "Ventana de exposición con Sevilla y Casco Urbano seleccionados, el mapa de las cuatro amenazas y el botón Exportar como PDF",
@@ -64,7 +64,7 @@ const STEPS: GuideStep[] = [
     simple:
       "Dentro del mapa de \"Riesgo compuesto\", toca cualquier vereda coloreada. Se abre una ventana con el nombre del lugar, el nivel de riesgo (Bajo, Medio, Alto...), qué hacer al respecto (Informar, Prepararse o Actuar) y el detalle de cada una de las cinco amenazas por separado. También tiene su propio botón para exportar ese reporte a PDF.",
     technical:
-      "El nivel de riesgo compuesto es el mayor entre las cinco amenazas normalizadas (la amenaza más alta gobierna, siguiendo la doctrina de la OMM/GDACS), mientras que el puntaje de 0 a 1 es un promedio ponderado al estilo del Índice de Riesgo INFORM. El texto del reporte es una plantilla que se rellena con los mismos números que ya se ven en el mapa — no usa generación de lenguaje ni la puerta de enlace de IA de la app.",
+      "El nivel de riesgo compuesto es el mayor entre las cinco amenazas normalizadas (la amenaza más alta gobierna, siguiendo la doctrina de la OMM/GDACS), mientras que el puntaje de 0 a 1 es un promedio ponderado al estilo del Índice de Riesgo INFORM. El texto del reporte es una plantilla que se rellena con los mismos números que ya se ven en el mapa, no usa generación de lenguaje ni la puerta de enlace de IA de la app.",
     image: {
       src: "/images/docs/riesgo-compuesto-reporte.png",
       alt: "Reporte de riesgo compuesto para una vereda de Zarzal, con el nivel de riesgo, el desglose por amenaza y el botón Exportar PDF",
@@ -77,7 +77,7 @@ const STEPS: GuideStep[] = [
 const OTHER_TIPS = [
   {
     title: "Vistas completas por amenaza",
-    body: "Los enlaces del menú superior (Deslizamientos, Inundaciones, Incendios, Precipitación) abren la versión de página completa de cada mapa, con el mismo contenido que el panel de inicio pero con más espacio en pantalla — útil para monitoreo prolongado o pantallas grandes.",
+    body: "Los enlaces del menú superior (Deslizamientos, Inundaciones, Incendios, Precipitación) abren la versión de página completa de cada mapa, con el mismo contenido que el panel de inicio pero con más espacio en pantalla, útil para monitoreo prolongado o pantallas grandes.",
   },
   {
     title: "Tema claro y oscuro",
@@ -85,7 +85,7 @@ const OTHER_TIPS = [
   },
   {
     title: "Uso con teclado y lectores de pantalla",
-    body: "Todas las páginas incluyen un enlace \"Saltar al contenido principal\" al presionar Tab por primera vez, roles y etiquetas ARIA en los controles interactivos, y regiones aria-live en los paneles que se actualizan con datos en vivo — para que un lector de pantalla anuncie los cambios sin que el usuario tenga que buscarlos.",
+    body: "Todas las páginas incluyen un enlace \"Saltar al contenido principal\" al presionar Tab por primera vez, roles y etiquetas ARIA en los controles interactivos, y regiones aria-live en los paneles que se actualizan con datos en vivo, para que un lector de pantalla anuncie los cambios sin que el usuario tenga que buscarlos.",
   },
 ]
 

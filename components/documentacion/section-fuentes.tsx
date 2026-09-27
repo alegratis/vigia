@@ -10,7 +10,7 @@ const GROUPS: SourceGroup[] = [
   {
     title: "Índices de amenaza",
     description:
-      "Capas estáticas publicadas en ArcGIS Online por RED LabOT y la Secretaría de Infraestructura del Valle del Cauca — abiertas, sin autenticación.",
+      "Capas estáticas publicadas en ArcGIS Online por RED LabOT y la Secretaría de Infraestructura del Valle del Cauca: abiertas, sin autenticación.",
     sources: [
       {
         nombre: "Índice de susceptibilidad a deslizamientos",
@@ -27,15 +27,15 @@ const GROUPS: SourceGroup[] = [
         nombre: "Modelo propio de amenaza por deslizamiento",
         publicador: "Vigía (cálculo propio, inspirado en NASA LHASA v1)",
         descripcion:
-          "Combina pendiente del terreno (DEM Copernicus GLO-30, vía la API de elevación de Open-Meteo), distancia a la vía más cercana (red vial de OpenStreetMap/Overpass), distancia a la falla geológica más próxima (capa del SGC, ver la ficha siguiente), distancia al movimiento en masa histórico más próximo (inventario del SGC, ver la ficha siguiente) y una anomalía de lluvia reciente frente a su propia línea base histórica de 3 años (archivo histórico de Open-Meteo), calculado en el centroide de cada vereda. Reemplaza al índice de RED LabOT como fuente del color del mapa de deslizamientos — es un modelo propio de esta app, no un índice oficial publicado, pero documentado y con sus factores visibles en el popup de cada vereda. Ver la sección \"Metodología\" más abajo para el detalle completo, paso a paso, de cómo se calcula.",
+          "Combina pendiente del terreno (DEM Copernicus GLO-30, vía la API de elevación de Open-Meteo), distancia a la vía más cercana (red vial de OpenStreetMap/Overpass), distancia a la falla geológica más próxima (capa del SGC, ver la ficha siguiente), distancia al movimiento en masa histórico más próximo (inventario del SGC, ver la ficha siguiente) y una anomalía de lluvia reciente frente a su propia línea base histórica de 3 años (archivo histórico de Open-Meteo), calculado en el centroide de cada vereda. Reemplaza al índice de RED LabOT como fuente del color del mapa de deslizamientos: es un modelo propio de esta app, no un índice oficial publicado, pero documentado y con sus factores visibles en el popup de cada vereda. Ver la sección \"Metodología\" más abajo para el detalle completo, paso a paso, de cómo se calcula.",
         url: "https://open-meteo.com/en/docs/elevation-api",
         acceso: "Cálculo propio sobre APIs REST abiertas",
-        licencia: "N/A — calculado por la app a partir de fuentes abiertas",
+        licencia: "N/A: calculado por la app a partir de fuentes abiertas",
         cobertura: "Sevilla, Caicedonia, Zarzal, Roldanillo (~55 centroides de vereda)",
         actualizacion: "Pendiente y vías cambian poco (cache de 30 días y 6 horas); lluvia recalculada cada hora",
       },
       {
-        nombre: "Fallas geológicas — Atlas Geológico de Colombia",
+        nombre: "Fallas geológicas: Atlas Geológico de Colombia",
         publicador: "Servicio Geológico Colombiano (SGC)",
         descripcion:
           "37 trazas de falla (tipo y nombre, p. ej. \"Falla de Cauca-Almaguer\") que intersectan el área de estudio. Usada dos veces: como cuarto factor del modelo propio de amenaza (distancia real punto-a-segmento hasta la traza más próxima, 30% del factor estático) y como capa opcional independiente en el mapa (\"Fallas geológicas (SGC)\"), mostrada como líneas discontinuas con su tipo y nombre en el popup. Encontrada a partir de un enlace compartido por el equipo a datos.sgc.gov.co.",
@@ -49,7 +49,7 @@ const GROUPS: SourceGroup[] = [
         nombre: "Inventario de movimientos en masa",
         publicador: "Servicio Geológico Colombiano (SGC)",
         descripcion:
-          "55 puntos históricos (deslizamiento, caída, flujo, reptación y deformación gravitacional, con tipo y subtipo, pero sin fecha de ocurrencia confiable) dentro del área de estudio, derivados del inventario nacional SIMMA. Usada dos veces: como quinto factor del modelo propio de amenaza (distancia Haversine al punto más próximo, 30% del factor estático — el mayor peso del factor estático, por ser evidencia directa de inestabilidad pasada) y como capa opcional independiente en el mapa (\"Movimientos en masa históricos (SGC)\"), mostrada como puntos con su tipo y subtipo en el popup. Solo 55 puntos en toda la zona de estudio: es un complemento a los otros factores, no un sustituto — nunca fue pensada como un catálogo exhaustivo de eventos.",
+          "55 puntos históricos (deslizamiento, caída, flujo, reptación y deformación gravitacional, con tipo y subtipo, pero sin fecha de ocurrencia confiable) dentro del área de estudio, derivados del inventario nacional SIMMA. Usada dos veces: como quinto factor del modelo propio de amenaza (distancia Haversine al punto más próximo, 30% del factor estático, el mayor peso del factor estático, por ser evidencia directa de inestabilidad pasada) y como capa opcional independiente en el mapa (\"Movimientos en masa históricos (SGC)\"), mostrada como puntos con su tipo y subtipo en el popup. Solo 55 puntos en toda la zona de estudio: es un complemento a los otros factores, no un sustituto, pues nunca fue pensada como un catálogo exhaustivo de eventos.",
         url: "https://services1.arcgis.com/Og2nrTKe5bptW02d/arcgis/rest/services/Inventario_de_movimientos_en_masa/FeatureServer/0",
         acceso: "ArcGIS FeatureServer",
         licencia: "Datos abiertos, sin autenticación",
@@ -60,7 +60,7 @@ const GROUPS: SourceGroup[] = [
         nombre: "Amenaza por incendios forestales (zonificación oficial)",
         publicador: "RED LabOT",
         descripcion:
-          "Polígonos de amenaza por incendio forestal, por vereda rural — digitalización estática del plan de uso del suelo (PBOT) 2014 de cada municipio, sin un modelo computacional detrás. Ya no se muestra en el mapa de incendios (ver el modelo propio, abajo, que la reemplaza como única fuente del color); sigue disponible como capa de referencia en el mapa de exposición.",
+          "Polígonos de amenaza por incendio forestal, por vereda rural: digitalización estática del plan de uso del suelo (PBOT) 2014 de cada municipio, sin un modelo computacional detrás. Ya no se muestra en el mapa de incendios (ver el modelo propio, abajo, que la reemplaza como única fuente del color); sigue disponible como capa de referencia en el mapa de exposición.",
         url: "https://services8.arcgis.com/UYEK9SUzH1am9mbk/arcgis/rest/services/AmenazaIncendios/FeatureServer",
         acceso: "ArcGIS FeatureServer",
         licencia: "Datos abiertos, sin autenticación",
@@ -74,7 +74,7 @@ const GROUPS: SourceGroup[] = [
           "Combina pendiente y cercanía a vías (reutilizadas del modelo propio de deslizamiento), recurrencia histórica de focos de NASA FIRMS (ver la ficha siguiente) y el Índice Meteorológico de Incendio (FWI) de hoy (ver la ficha siguiente), calculado en el centroide de cada vereda. Reemplaza a AmenazaIncendios como fuente del color del mapa de incendios y extiende la cobertura a los cuatro municipios, incluidos Zarzal y Roldanillo, que esa capa nunca cubrió. Ver la sección \"Metodología\" más abajo para el detalle completo, paso a paso.",
         url: "https://firms.modaps.eosdis.nasa.gov/api/",
         acceso: "Cálculo propio sobre APIs REST abiertas",
-        licencia: "N/A — calculado por la app a partir de fuentes abiertas",
+        licencia: "N/A: calculado por la app a partir de fuentes abiertas",
         cobertura: "Sevilla, Caicedonia, Zarzal, Roldanillo (~89 centroides de vereda)",
         actualizacion: "Pendiente y vías reutilizadas del modelo de deslizamiento; recurrencia histórica cada 6 horas; FWI cada hora",
       },
@@ -82,7 +82,7 @@ const GROUPS: SourceGroup[] = [
         nombre: "Recurrencia histórica de focos activos (VIIRS + MODIS)",
         publicador: "NASA FIRMS (LANCE, EOSDIS)",
         descripcion:
-          "Detecciones de las cuatro fuentes FIRMS (VIIRS_SNPP_NRT, VIIRS_NOAA20_NRT, VIIRS_NOAA21_NRT y MODIS_NRT — las mismas que la capa en vivo \"Focos activos\" ofrece) de los últimos 150 días, obtenidas paginando el mismo endpoint area/csv en bloques de 5 días por fuente (el límite de esta clave de mapa), y deduplicadas entre plataformas de la misma familia de sensor antes de contar. Usada como el factor de mayor peso (60% del factor estático) del modelo propio de amenaza por incendios: evidencia directa de dónde ha ardido antes, en vez de un indicio indirecto.",
+          "Detecciones de las cuatro fuentes FIRMS (VIIRS_SNPP_NRT, VIIRS_NOAA20_NRT, VIIRS_NOAA21_NRT y MODIS_NRT, las mismas que la capa en vivo \"Focos activos\" ofrece) de los últimos 150 días, obtenidas paginando el mismo endpoint area/csv en bloques de 5 días por fuente (el límite de esta clave de mapa), y deduplicadas entre plataformas de la misma familia de sensor antes de contar. Usada como el factor de mayor peso (60% del factor estático) del modelo propio de amenaza por incendios: evidencia directa de dónde ha ardido antes, en vez de un indicio indirecto.",
         url: "https://firms.modaps.eosdis.nasa.gov/api/",
         acceso: "API CSV (requiere clave gratuita)",
         licencia: "Datos públicos de la NASA",
@@ -93,10 +93,10 @@ const GROUPS: SourceGroup[] = [
         nombre: "Índice Meteorológico de Incendio (FWI), calculado por esta app",
         publicador: "Vigía (implementación propia del sistema del Servicio Forestal de Canadá)",
         descripcion:
-          "Las ecuaciones estándar del Sistema Canadiense de Índices Forestales de Incendio (Van Wagner, 1987; Van Wagner y Pickett, 1985) — las mismas detrás de la capa de pronóstico FWI de Copernicus GWIS/EFFIS ya disponible en el mapa — calculadas de forma independiente a partir de temperatura, humedad, viento y lluvia diaria de los últimos 60 días por centroide (archivo histórico de Open-Meteo), en vez de leídas de esa capa: su WMS es solo de teselas, sin consulta por punto (GetCapabilities la marca queryable=\"0\").",
+          "Las ecuaciones estándar del Sistema Canadiense de Índices Forestales de Incendio (Van Wagner, 1987; Van Wagner y Pickett, 1985), las mismas detrás de la capa de pronóstico FWI de Copernicus GWIS/EFFIS ya disponible en el mapa, calculadas de forma independiente a partir de temperatura, humedad, viento y lluvia diaria de los últimos 60 días por centroide (archivo histórico de Open-Meteo), en vez de leídas de esa capa: su WMS es solo de teselas, sin consulta por punto (GetCapabilities la marca queryable=\"0\").",
         url: "https://open-meteo.com/en/docs/historical-weather-api",
         acceso: "Cálculo propio sobre la API de archivo histórico de Open-Meteo",
-        licencia: "N/A — calculado por la app a partir de datos abiertos",
+        licencia: "N/A: calculado por la app a partir de datos abiertos",
         cobertura: "Sevilla, Caicedonia, Zarzal, Roldanillo (~89 centroides de vereda)",
         actualizacion: "Diaria, con 60 días de arranque por centroide; la app cachea 1 hora",
       },
@@ -115,10 +115,10 @@ const GROUPS: SourceGroup[] = [
         nombre: "Modelo propio de amenaza por inundación",
         publicador: "Vigía (cálculo propio)",
         descripcion:
-          "Combina la clase de zonificación oficial (donde exista, 50%), distancia a la quebrada o río más próximo (capa pública de hidrografía, ver la ficha siguiente, 30%) y planicie del terreno —reutilizando la pendiente ya calculada por el modelo de amenaza por deslizamiento, 20%—, calculado en el centroide de cada vereda. Extiende la zonificación oficial a los cuatro municipios, incluidos Zarzal y Roldanillo, con nivel de detalle por vereda. Ver la sección \"Metodología\" más abajo para el detalle completo, paso a paso.",
+          "Combina la clase de zonificación oficial (donde exista, 50%), distancia a la quebrada o río más próximo (capa pública de hidrografía, ver la ficha siguiente, 30%) y planicie del terreno (reutilizando la pendiente ya calculada por el modelo de amenaza por deslizamiento, 20%), calculado en el centroide de cada vereda. Extiende la zonificación oficial a los cuatro municipios, incluidos Zarzal y Roldanillo, con nivel de detalle por vereda. Ver la sección \"Metodología\" más abajo para el detalle completo, paso a paso.",
         url: "https://services8.arcgis.com/UYEK9SUzH1am9mbk/arcgis/rest/services/Quebradas/FeatureServer",
         acceso: "Cálculo propio sobre capas ArcGIS abiertas",
-        licencia: "N/A — calculado por la app a partir de fuentes abiertas",
+        licencia: "N/A: calculado por la app a partir de fuentes abiertas",
         cobertura: "Sevilla, Caicedonia, Zarzal, Roldanillo (89 centroides de vereda)",
         actualizacion: "Zonificación e hidrografía cambian poco (cache de 1 hora y 30 días); pendiente reutilizada del modelo de deslizamiento",
       },
@@ -126,7 +126,7 @@ const GROUPS: SourceGroup[] = [
         nombre: "Quebradas y ríos con nombre",
         publicador: "RED LabOT",
         descripcion:
-          "19 trazas de quebrada o río con nombre (p. ej. \"Río Palomino\", \"Quebrada Morelia\") que cubren toda el área de estudio, incluida Zarzal. Usada como segundo factor del modelo propio de amenaza por inundación (distancia real punto-a-segmento hasta la traza más próxima, 30% del puntaje) — es el único factor de ese modelo con cobertura completa en Zarzal. Cada traza también trae un identificador (rivid) que coincide con el esquema de tramos de GEOGLOWS, ya usado en el mismo mapa para el pronóstico de caudal en vivo — un posible cruce futuro, señalado en la metodología pero no implementado todavía.",
+          "19 trazas de quebrada o río con nombre (p. ej. \"Río Palomino\", \"Quebrada Morelia\") que cubren toda el área de estudio, incluida Zarzal. Usada como segundo factor del modelo propio de amenaza por inundación (distancia real punto-a-segmento hasta la traza más próxima, 30% del puntaje): es el único factor de ese modelo con cobertura completa en Zarzal. Cada traza también trae un identificador (rivid) que coincide con el esquema de tramos de GEOGLOWS, ya usado en el mismo mapa para el pronóstico de caudal en vivo, un posible cruce futuro, señalado en la metodología pero no implementado todavía.",
         url: "https://services8.arcgis.com/UYEK9SUzH1am9mbk/arcgis/rest/services/Quebradas/FeatureServer",
         acceso: "ArcGIS FeatureServer",
         licencia: "Datos abiertos, sin autenticación",
@@ -137,7 +137,7 @@ const GROUPS: SourceGroup[] = [
         nombre: "Sitios críticos (daño vial)",
         publicador: "Secretaría de Infraestructura del Valle del Cauca",
         descripcion:
-          "94 puntos de daño vial relevados en campo en un único levantamiento (2019-07-15) — información histórica de sitios conocidos, no un monitoreo en vivo.",
+          "94 puntos de daño vial relevados en campo en un único levantamiento (2019-07-15): información histórica de sitios conocidos, no un monitoreo en vivo.",
         url: "https://infraestructura.valledelcauca.gov.co/server/rest/services",
         acceso: "ArcGIS Server (REST)",
         licencia: "Datos abiertos, sin autenticación",
@@ -195,7 +195,7 @@ const GROUPS: SourceGroup[] = [
         nombre: "Lluvia acumulada por punto (PRECTOTCORR)",
         publicador: "NASA POWER (LARC)",
         descripcion:
-          "Precipitación diaria puntual por reanálisis MERRA-2 (datos asentados) o GEOS-IT (últimos días, casi en tiempo real) — no es GPM/satelital directo. Consultada una vez por centroide de vereda para el acumulado de 7 días del mapa de precipitación.",
+          "Precipitación diaria puntual por reanálisis MERRA-2 (datos asentados) o GEOS-IT (últimos días, casi en tiempo real): no es GPM/satelital directo. Consultada una vez por centroide de vereda para el acumulado de 7 días del mapa de precipitación.",
         url: "https://power.larc.nasa.gov/",
         acceso: "API REST (JSON)",
         licencia: "Datos públicos de la NASA",
@@ -217,7 +217,7 @@ const GROUPS: SourceGroup[] = [
         nombre: "Lluvia mensual del año en curso (archivo histórico)",
         publicador: "Open-Meteo",
         descripcion:
-          "Precipitación diaria por análisis ECMWF IFS HRES (últimos ~2 meses, asimila observaciones reales de estaciones y radiosondas) con reanálisis ERA5/ERA5-Land más atrás en el año — no es una lectura satelital directa. Usada para la línea de comparación del año en curso en el histograma de climatología, en lugar de NASA POWER: su capa casi en tiempo real (derivada de GPM IMERG) mostró sobrestimaciones notables de lluvia en este terreno montañoso durante las pruebas.",
+          "Precipitación diaria por análisis ECMWF IFS HRES (últimos ~2 meses, asimila observaciones reales de estaciones y radiosondas) con reanálisis ERA5/ERA5-Land más atrás en el año: no es una lectura satelital directa. Usada para la línea de comparación del año en curso en el histograma de climatología, en lugar de NASA POWER: su capa casi en tiempo real (derivada de GPM IMERG) mostró sobrestimaciones notables de lluvia en este terreno montañoso durante las pruebas.",
         url: "https://open-meteo.com/en/docs/historical-weather-api",
         acceso: "API REST (JSON)",
         licencia: "Uso no comercial gratuito, sin clave",
@@ -228,7 +228,7 @@ const GROUPS: SourceGroup[] = [
         nombre: "Pronóstico del tiempo por vereda (forecast)",
         publicador: "Open-Meteo",
         descripcion:
-          "Pronóstico meteorológico por punto (temperatura actual, sensación térmica, código de estado del cielo WMO y pronóstico a 7 días con máx/mín y probabilidad de lluvia), derivado de modelos numéricos del ECMWF y otros — no es observación directa. Consultado una vez por centroide de vereda para el mapa de clima, que es un reporte del tiempo de referencia y no una capa de amenaza.",
+          "Pronóstico meteorológico por punto (temperatura actual, sensación térmica, código de estado del cielo WMO y pronóstico a 7 días con máx/mín y probabilidad de lluvia), derivado de modelos numéricos del ECMWF y otros: no es observación directa. Consultado una vez por centroide de vereda para el mapa de clima, que es un reporte del tiempo de referencia y no una capa de amenaza.",
         url: "https://open-meteo.com/en/docs",
         acceso: "API REST (JSON)",
         licencia: "Uso no comercial gratuito, sin clave",
@@ -264,7 +264,7 @@ const GROUPS: SourceGroup[] = [
       },
       {
         nombre: "Zona urbana (cabeceras municipales)",
-        publicador: "DANE — Marco Geoestadístico Nacional",
+        publicador: "DANE, Marco Geoestadístico Nacional",
         descripcion:
           "Límites de la cabecera municipal de cada municipio, usados para el pseudo-vereda \"Casco Urbano\" del selector de exposición.",
         url: "https://portalgis.dane.gov.co/mparcgis/rest/services/Hosted/Serv_ZonaUrbana_MGN_2025/FeatureServer",
@@ -296,7 +296,7 @@ const GROUPS: SourceGroup[] = [
           "Comercios, oficinas, y equipamiento de salud, financiero, gubernamental y social, clasificados en cinco categorías para el desglose de \"Infraestructura por categoría\".",
         url: "https://wiki.openstreetmap.org/wiki/Overpass_API",
         acceso: "API Overpass (POST)",
-        licencia: "Open Database License (ODbL) — © colaboradores de OpenStreetMap",
+        licencia: "Open Database License (ODbL), © colaboradores de OpenStreetMap",
         cobertura: "Sevilla, Caicedonia, Zarzal, Roldanillo",
         actualizacion: "Consultada cada 6 horas",
       },
@@ -309,9 +309,9 @@ const GROUPS: SourceGroup[] = [
     sources: [
       {
         nombre: "Feed sísmico casi en tiempo real (RSNC)",
-        publicador: "Red Sismológica Nacional de Colombia — Servicio Geológico Colombiano (SGC)",
+        publicador: "Red Sismológica Nacional de Colombia, Servicio Geológico Colombiano (SGC)",
         descripcion:
-          "Fuente en vivo principal: todos los eventos localizados por la red nacional en los últimos 5 días, desde ~M0.4 — magnitud, profundidad, ubicación, lugar descriptivo y estado de revisión (manual/automático). Al ser la red local del país, detecta los microsismos (M1–M4) que el catálogo global del USGS no registra. Cuando un mismo sismo aparece también en el USGS, se conserva el registro del SGC para no duplicarlo. Feed público sin clave; se recomienda coordinar con el SGC el uso automatizado sostenido.",
+          "Fuente en vivo principal: todos los eventos localizados por la red nacional en los últimos 5 días, desde ~M0.4, con magnitud, profundidad, ubicación, lugar descriptivo y estado de revisión (manual/automático). Al ser la red local del país, detecta los microsismos (M1–M4) que el catálogo global del USGS no registra. Cuando un mismo sismo aparece también en el USGS, se conserva el registro del SGC para no duplicarlo. Feed público sin clave; se recomienda coordinar con el SGC el uso automatizado sostenido.",
         url: "https://www.sgc.gov.co/sismos",
         acceso: "Feed GeoJSON público, sin clave",
         licencia: "Datos abiertos del Estado colombiano",
@@ -322,7 +322,7 @@ const GROUPS: SourceGroup[] = [
         nombre: "Catálogo sísmico en vivo (FDSN Event Web Service)",
         publicador: "USGS (Servicio Geológico de Estados Unidos)",
         descripcion:
-          "Verificación independiente y ventana más larga (90 días): eventos sísmicos globales dentro de la zona de estudio, sin magnitud mínima — magnitud, profundidad, ubicación y lugar descriptivo. Confirma los eventos regionales de mayor magnitud, aunque su cobertura para Colombia baja de forma fiable solo hasta ~M4.",
+          "Verificación independiente y ventana más larga (90 días): eventos sísmicos globales dentro de la zona de estudio, sin magnitud mínima, con magnitud, profundidad, ubicación y lugar descriptivo. Confirma los eventos regionales de mayor magnitud, aunque su cobertura para Colombia baja de forma fiable solo hasta ~M4.",
         url: "https://earthquake.usgs.gov/fdsnws/event/1/",
         acceso: "API REST pública (GeoJSON), sin clave",
         licencia: "Dominio público (USGS)",
@@ -333,7 +333,7 @@ const GROUPS: SourceGroup[] = [
         nombre: "Catálogo de sismos histórico",
         publicador: "Servicio Geológico Colombiano (SGC)",
         descripcion:
-          "Registro sísmico oficial de Colombia — magnitud, profundidad y ubicación de eventos históricos en la región. No es un feed en vivo.",
+          "Registro sísmico oficial de Colombia, con magnitud, profundidad y ubicación de eventos históricos en la región. No es un feed en vivo.",
         url: "http://geoportal.sgc.gov.co/arcgis/rest/services/catalogo_sismos/catalogo_de_sismos_2/FeatureServer",
         acceso: "ArcGIS FeatureServer",
         licencia: "Datos abiertos del Estado colombiano",
@@ -342,9 +342,9 @@ const GROUPS: SourceGroup[] = [
       },
       {
         nombre: "Reportes de daños (Sevilla)",
-        publicador: "UVGeomatica — formulario de campo comunitario (Survey123)",
+        publicador: "UVGeomatica, formulario de campo comunitario (Survey123)",
         descripcion:
-          "Reportes de daños por sismo, agregados por barrio — solo conteos y estado de la vivienda; nunca direcciones ni cifras de heridos o fallecidos por hogar.",
+          "Reportes de daños por sismo, agregados por barrio: solo conteos y estado de la vivienda; nunca direcciones ni cifras de heridos o fallecidos por hogar.",
         url: "/documentacion#metodologia",
         acceso: "ArcGIS FeatureServer, agregado en el servidor antes de exponerse",
         licencia: "Datos comunitarios, sin verificar",
@@ -356,16 +356,16 @@ const GROUPS: SourceGroup[] = [
   {
     title: "Riesgo compuesto (multiamenaza)",
     description:
-      "Sin fuente externa propia — esta categoría solo combina, en el servidor, los cinco modelos de amenaza que ya alimentan las categorías anteriores.",
+          "Sin fuente externa propia: esta categoría solo combina, en el servidor, los cinco modelos de amenaza que ya alimentan las categorías anteriores.",
     sources: [
       {
         nombre: "Riesgo compuesto por vereda",
         publicador: "Vigía (cálculo propio, siguiendo la doctrina OMM/GDACS y el estilo del Índice de Riesgo INFORM)",
         descripcion:
-          "Combina el puntaje/nivel de deslizamientos, el puntaje/nivel de inundaciones (modelo propio), el nivel de incendios forestales (AmenazaIncendios, cruzado por centroide de vereda), el nivel de precipitación (acumulado de 7 días, NASA POWER) y el puntaje de exposición sísmica (decaimiento espacial desde epicentros USGS/SGC) en un nivel compuesto (el mayor de los cinco, normalizado 0–1) y un puntaje compuesto (promedio ponderado 20%/20%/20%/20%/20%, re-normalizado sobre los que resolvieron), más un reporte narrativo en español generado con plantillas de texto deterministas — nunca con un modelo de lenguaje. Ver la sección \"Metodología\" más abajo para el detalle completo.",
+          "Combina el puntaje/nivel de deslizamientos, el puntaje/nivel de inundaciones (modelo propio), el nivel de incendios forestales (AmenazaIncendios, cruzado por centroide de vereda), el nivel de precipitación (acumulado de 7 días, NASA POWER) y el puntaje de exposición sísmica (decaimiento espacial desde epicentros USGS/SGC) en un nivel compuesto (el mayor de los cinco, normalizado de 0 a 1) y un puntaje compuesto (promedio ponderado 20%/20%/20%/20%/20%, re-normalizado sobre los que resolvieron), más un reporte narrativo en español generado con plantillas de texto deterministas, nunca con un modelo de lenguaje. Ver la sección \"Metodología\" más abajo para el detalle completo.",
         url: "/documentacion#metodologia",
         acceso: "Cálculo propio, composición de las cinco categorías existentes",
-        licencia: "N/A — calculado por la app a partir de sus propios modelos",
+        licencia: "N/A: calculado por la app a partir de sus propios modelos",
         cobertura: "Sevilla, Caicedonia, Zarzal, Roldanillo (~55 centroides de vereda)",
         actualizacion: "Hereda el caché de cada insumo (30 días / 6 horas / 1 hora / 3 horas / 5 min-1 día)",
       },

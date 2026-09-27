@@ -86,8 +86,8 @@ export function PrecipitacionPanelContent({
           >
             NASA POWER
           </a>{" "}
-          (reanálisis MERRA-2/GEOS-IT, no satelital directo, ~0.5° de resolución), o —
-          eligiendo la fuente IDEAM en el mapa — de las estaciones automáticas de{" "}
+          (reanálisis MERRA-2/GEOS-IT, no satelital directo, ~0.5° de resolución), o,
+          eligiendo la fuente IDEAM en el mapa, de las estaciones automáticas de{" "}
           <a
             href="https://www.datos.gov.co/resource/s54a-sgyg.json"
             target="_blank"

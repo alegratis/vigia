@@ -41,7 +41,7 @@ const FACTORS = [
     label: "4. Cercanía a un movimiento en masa histórico",
     weight: "30% del factor estático",
     detail:
-      "Distancia Haversine hasta el punto más próximo del inventario nacional de movimientos en masa del SGC (derivado de SIMMA) dentro de la zona de estudio — solo 55 puntos, sin fecha de ocurrencia confiable. Deja de influir a partir de 2 km. Es evidencia directa de inestabilidad pasada, por eso recibe el mayor peso del factor estático, pero su baja densidad lo hace un complemento, no un sustituto, de los otros factores. También disponible como capa independiente en el mapa.",
+      "Distancia Haversine hasta el punto más próximo del inventario nacional de movimientos en masa del SGC (derivado de SIMMA) dentro de la zona de estudio, solo 55 puntos, sin fecha de ocurrencia confiable. Deja de influir a partir de 2 km. Es evidencia directa de inestabilidad pasada, por eso recibe el mayor peso del factor estático, pero su baja densidad lo hace un complemento, no un sustituto, de los otros factores. También disponible como capa independiente en el mapa.",
   },
   {
     label: "5. Anomalía de lluvia reciente",
@@ -98,7 +98,7 @@ export function HazardModelPanel({ className, selectedVereda, onClearSelection }
           Cómo se calcula la amenaza
         </h3>
         <p className="text-xs leading-relaxed text-muted-foreground">
-          El color de cada vereda en el mapa no viene de un índice publicado por RED LabOT — lo calcula esta
+          El color de cada vereda en el mapa no viene de un índice publicado por RED LabOT, lo calcula esta
           misma app, combinando los tres factores de abajo.{" "}
           <a
             href="/documentacion#metodologia"

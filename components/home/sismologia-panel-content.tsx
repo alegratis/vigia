@@ -88,7 +88,7 @@ export function SismologiaPanelContent({
           >
             Servicio Geológico Colombiano
           </a>
-          , el registro sísmico oficial de Colombia — se muestra como una capa aparte, punteada en el
+          , el registro sísmico oficial de Colombia, se muestra como una capa aparte, punteada en el
           mapa. El{" "}
           <a
             href="https://osso.univalle.edu.co"
@@ -100,10 +100,10 @@ export function SismologiaPanelContent({
           </a>{" "}
           publica boletines propios sin un servicio de datos abierto; se referencia aquí como fuente
           adicional. Los reportes de daños de Sevilla provienen de un formulario de campo comunitario
-          (Survey123) agregado por barrio — sin verificar, y sin exponer direcciones ni cifras de
+          (Survey123) agregado por barrio, sin verificar, y sin exponer direcciones ni cifras de
           heridos o fallecidos por hogar. Esta categoría no tiene una zonificación de amenaza sísmica
           por vereda publicada; el aporte al riesgo compuesto se calcula por distancia a los
-          epicentros — ver{" "}
+          epicentros, ver{" "}
           <a href="/?categoria=riesgo-compuesto" className="underline underline-offset-2 hover:text-foreground">
             Riesgo compuesto
           </a>

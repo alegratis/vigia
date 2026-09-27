@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { getHousingVulnerabilityIndex, getUrbanIvhByMunicipio } from "@/lib/vulnerabilidad/ivh"
+import { getSocialVulnerabilityIndex, getUrbanIvsByMunicipio } from "@/lib/vulnerabilidad/ivs"
 import { computeCombinedVulnerability } from "@/lib/vulnerabilidad/combined-score"
 import { getRiesgoCompuestoVeredas } from "@/lib/riesgo-compuesto/server"
 import { isCompoundLevel } from "@/lib/riesgo-compuesto/levels"
@@ -14,23 +14,23 @@ const SOURCE =
 const SOURCE_URL = "https://geoportal.dane.gov.co/"
 
 /**
- * Joins per-vereda riesgo-compuesto results with IVH — vereda → municipio
+ * Joins per-vereda riesgo-compuesto results with IVS — vereda → municipio
  * via the existing vereda feature's `properties.municipio`, no new spatial
  * join needed, the vereda data already carries its municipio name (see
  * lib/vulnerabilidad/combined-score.ts for the formula). Each municipio's
- * "Casco Urbano" pseudo-vereda gets the manzana-derived urban IVH instead
+ * "Casco Urbano" pseudo-vereda gets the manzana-derived urban IVS instead
  * of the coarser municipio-wide one, since that's the finer resolution
- * DANE actually supports there (see lib/vulnerabilidad/ivh.ts).
+ * DANE actually supports there (see lib/vulnerabilidad/ivs.ts).
  */
 export async function GET() {
   try {
-    const [ivhRows, urbanIvhRows, compound] = await Promise.all([
-      getHousingVulnerabilityIndex(),
-      getUrbanIvhByMunicipio(),
+    const [ivsRows, urbanIvsRows, compound] = await Promise.all([
+      getSocialVulnerabilityIndex(),
+      getUrbanIvsByMunicipio(),
       getRiesgoCompuestoVeredas(),
     ])
 
-    const ivhByMunicipio = new Map(ivhRows.map((row) => [row.municipio.toUpperCase(), row.ivh]))
+    const ivsByMunicipio = new Map(ivsRows.map((row) => [row.municipio.toUpperCase(), row.ivs]))
 
     // Urban cores are rendered manzana-by-manzana below, so the vereda layer
     // keeps only rural veredas — each still a single, honest municipio-wide value.
@@ -38,11 +38,11 @@ export async function GET() {
       .filter((feature) => !feature.properties.esCascoUrbano)
       .map((feature) => {
         const municipioKey = feature.properties.municipio.toUpperCase()
-        const ivh = ivhByMunicipio.get(municipioKey) ?? 0.5
+        const ivs = ivsByMunicipio.get(municipioKey) ?? 0.5
         const compoundLevel = isCompoundLevel(feature.properties.compoundLevel ?? "")
           ? feature.properties.compoundLevel
           : null
-        const result = computeCombinedVulnerability({ ivh, compoundLevel })
+        const result = computeCombinedVulnerability({ ivs, compoundLevel })
 
         return {
           type: "Feature",
@@ -52,8 +52,8 @@ export async function GET() {
             nombre: feature.properties.nombre,
             municipio: feature.properties.municipio,
             esCascoUrbano: feature.properties.esCascoUrbano,
-            ivh: result.ivh,
-            ivhResolution: "municipio" as const,
+            ivs: result.ivs,
+            ivsResolution: "municipio" as const,
             hazardScore: result.hazardScore,
             combinedScore: result.combinedScore,
             combinedLevel: result.combinedLevel,
@@ -65,18 +65,18 @@ export async function GET() {
 
     // Each "Casco Urbano" pseudo-vereda carries the urban core's hazard tier
     // — every manzana inside it shares that same physical-hazard exposure,
-    // so we fan it out to each manzana's own IVH instead of one shared value.
+    // so we fan it out to each manzana's own IVS instead of one shared value.
     const cascoCompoundLevelByMunicipio = new Map(
       compound.features
         .filter((feature) => feature.properties.esCascoUrbano)
         .map((feature) => [feature.properties.municipio.toUpperCase(), feature.properties.compoundLevel ?? null]),
     )
 
-    const manzanaFeatures: ManzanaVulnerabilidadFeatureCollection["features"] = urbanIvhRows.flatMap((row) => {
+    const manzanaFeatures: ManzanaVulnerabilidadFeatureCollection["features"] = urbanIvsRows.flatMap((row) => {
       const rawCompoundLevel = cascoCompoundLevelByMunicipio.get(row.municipio.toUpperCase()) ?? null
       const compoundLevel = isCompoundLevel(rawCompoundLevel ?? "") ? rawCompoundLevel : null
       return row.manzanas.map((manzana) => {
-        const result = computeCombinedVulnerability({ ivh: manzana.ivh, compoundLevel })
+        const result = computeCombinedVulnerability({ ivs: manzana.ivs, compoundLevel })
         return {
           type: "Feature",
           id: `${row.codigoMunicipio}-${manzana.codigoManzana}`,
@@ -85,7 +85,7 @@ export async function GET() {
             barrio: manzana.barrio,
             codigoMunicipio: row.codigoMunicipio,
             municipio: row.municipio,
-            ivh: result.ivh,
+            ivs: result.ivs,
             hazardScore: result.hazardScore,
             combinedScore: result.combinedScore,
             combinedLevel: result.combinedLevel,
@@ -100,8 +100,8 @@ export async function GET() {
       generatedAt: new Date().toISOString(),
       veredas: { type: "FeatureCollection", features },
       manzanas: { type: "FeatureCollection", features: manzanaFeatures },
-      ivhPorMunicipio: ivhRows,
-      ivhUrbanoPorMunicipio: urbanIvhRows,
+      ivsPorMunicipio: ivsRows,
+      ivsUrbanoPorMunicipio: urbanIvsRows,
       source: SOURCE,
       sourceUrl: SOURCE_URL,
     }

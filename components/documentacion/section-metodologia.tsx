@@ -21,29 +21,29 @@ const STEPS: Step[] = [
       "La pendiente final es el mayor de los dos gradientes, en grados.",
       "Para el puntaje, la pendiente se acota a 45°: 45° o más equivale a un puntaje de pendiente de 1.0 (pendiente_score = min(1, pendiente° / 45)).",
     ],
-    nota: "Open-Meteo no ofrece un endpoint de pendiente directo — se deriva localmente de 5 lecturas de elevación por punto, no de una consulta ya calculada.",
+    nota: "Open-Meteo no ofrece un endpoint de pendiente directo, se deriva localmente de 5 lecturas de elevación por punto, no de una consulta ya calculada.",
   },
   {
     title: "2. Cercanía a la vía más cercana",
     entrada: "Red vial de OpenStreetMap (vías motorway, trunk, primary, secondary, tertiary, unclassified, residential, track y path) para toda el área de estudio, vía la API Overpass.",
     proceso: [
-      "Una sola consulta Overpass por toda el área de estudio (no por vereda) recupera cada vértice de geometría de cada vía —no solo sus extremos— usando out geom.",
+      "Una sola consulta Overpass por toda el área de estudio (no por vereda) recupera cada vértice de geometría de cada vía no solo sus extremos, usando out geom.",
       "Para cada centroide se calcula la distancia Haversine al vértice más cercano de toda la red vial recuperada.",
       "El puntaje decrece linealmente con la distancia y llega a 0 al superar 1 km: vía_score = max(0, 1 − distancia_km / 1).",
     ],
-    nota: "Es una aproximación al vértice más cercano, no la distancia exacta punto-a-línea — el error es despreciable porque OSM traza vías con vértices cada pocas decenas de metros, muy por debajo del radio de influencia de 1 km.",
+    nota: "Es una aproximación al vértice más cercano, no la distancia exacta punto-a-línea, el error es despreciable porque OSM traza vías con vértices cada pocas decenas de metros, muy por debajo del radio de influencia de 1 km.",
   },
   {
     title: "3. Cercanía a una falla geológica",
     entrada:
       "Trazas de falla del Servicio Geológico Colombiano (SGC), capa \"Fallas\" del Atlas Geológico de Colombia, publicada como un FeatureServer de ArcGIS público y sin autenticación (tipo de falla y nombre por traza).",
     proceso: [
-      "Una sola consulta por toda el área de estudio (envolvente de las cuatro municipalidades) recupera cada traza de falla que la intersecta, con su geometría completa de vértices (esri JSON \"paths\") — no solo sus extremos.",
+      "Una sola consulta por toda el área de estudio (envolvente de las cuatro municipalidades) recupera cada traza de falla que la intersecta, con su geometría completa de vértices (esri JSON \"paths\"), no solo sus extremos.",
       "Para cada centroide se calcula la distancia real punto-a-segmento (no al vértice más cercano) contra cada segmento de cada traza, proyectando localmente a kilómetros alrededor de la latitud del punto: se toma el mínimo sobre todos los segmentos de todas las trazas.",
       "El puntaje decrece linealmente con la distancia y llega a 0 al superar 2 km: falla_score = max(0, 1 − distancia_km / 2).",
     ],
     nota:
-      "A diferencia de la cercanía a vías (donde el vértice más cercano es una aproximación aceptable porque OSM traza vías con vértices muy próximos), las trazas de falla del SGC tienen vértices mucho más espaciados sobre líneas mucho más largas — usar solo el vértice más cercano habría sobrestimado la distancia real a una traza que pasa cerca de un punto entre dos de sus vértices. Por eso este factor sí calcula la distancia real al segmento.",
+      "A diferencia de la cercanía a vías (donde el vértice más cercano es una aproximación aceptable porque OSM traza vías con vértices muy próximos), las trazas de falla del SGC tienen vértices mucho más espaciados sobre líneas mucho más largas, usar solo el vértice más cercano habría sobrestimado la distancia real a una traza que pasa cerca de un punto entre dos de sus vértices. Por eso este factor sí calcula la distancia real al segmento.",
   },
   {
     title: "4. Cercanía a un movimiento en masa histórico",
@@ -51,11 +51,11 @@ const STEPS: Step[] = [
       "Inventario nacional de movimientos en masa del SGC (derivado de SIMMA), 55 puntos dentro del área de estudio, cada uno con tipo y subtipo (deslizamiento, caída, flujo, reptación, deformación gravitacional) pero sin fecha de ocurrencia confiable.",
     proceso: [
       "Una sola consulta por toda el área de estudio recupera cada punto del inventario que cae dentro de la envolvente de las cuatro municipalidades.",
-      "Para cada centroide se calcula la distancia Haversine al punto más cercano de todo el inventario recuperado — a diferencia de las fallas, cada registro aquí es un evento puntual, no una traza continua, así que no hace falta la distancia punto-a-segmento.",
+      "Para cada centroide se calcula la distancia Haversine al punto más cercano de todo el inventario recuperado, a diferencia de las fallas, cada registro aquí es un evento puntual, no una traza continua, así que no hace falta la distancia punto-a-segmento.",
       "El puntaje decrece linealmente con la distancia y llega a 0 al superar 2 km: histórico_score = max(0, 1 − distancia_km / 2).",
     ],
     nota:
-      "Es evidencia directa de inestabilidad pasada, no un proxy geomorfológico indirecto como los otros tres factores — por eso recibe el mayor peso del factor estático. Pero con solo 55 puntos dispersos y sin fecha en toda la zona de estudio, es un inventario disperso y no exhaustivo, no un catálogo completo de eventos: complementa a los otros factores, no los sustituye.",
+      "Es evidencia directa de inestabilidad pasada, no un proxy geomorfológico indirecto como los otros tres factores, por eso recibe el mayor peso del factor estático. Pero con solo 55 puntos dispersos y sin fecha en toda la zona de estudio, es un inventario disperso y no exhaustivo, no un catálogo completo de eventos: complementa a los otros factores, no los sustituye.",
   },
   {
     title: "5. Factor estático combinado",
@@ -69,12 +69,12 @@ const STEPS: Step[] = [
     title: "6. Disparador de lluvia reciente",
     entrada: "Precipitación diaria histórica de la API de archivo histórico de Open-Meteo (misma fuente que la climatología del mapa de precipitación), consultada una sola vez por centroide en un rango continuo de varios años.",
     proceso: [
-      "Índice antecedente actual: suma ponderada por decaimiento de la lluvia diaria de los últimos 15 días, con vida media de 4 días — el día más reciente pesa más que el resto de la ventana (peso = 0.5^(días_atrás / 4)).",
+      "Índice antecedente actual: suma ponderada por decaimiento de la lluvia diaria de los últimos 15 días, con vida media de 4 días, el día más reciente pesa más que el resto de la ventana (peso = 0.5^(días_atrás / 4)).",
       "Línea base histórica: se calcula el mismo índice de 15 días, con la misma fecha de cierre pero retrocedida 1, 2 y 3 años, y se promedian los tres resultados.",
       "Razón = índice actual / índice base. Si la base es 0 (sin lluvia histórica registrada en esa ventana), se trata como caso aparte: razón nula, con puntaje 1 si hay lluvia actual o 0 si no la hay.",
       "El puntaje del disparador satura en razón = 2 (el doble de lo normal para la época): disparador_score = clamp((razón − 1) / (2 − 1), 0, 1).",
     ],
-    nota: "Compara contra la propia estacionalidad del punto, no contra un umbral absoluto de milímetros — una tormenta moderada en un mes normalmente seco puede pesar más que la misma tormenta en un mes normalmente lluvioso.",
+    nota: "Compara contra la propia estacionalidad del punto, no contra un umbral absoluto de milímetros, una tormenta moderada en un mes normalmente seco puede pesar más que la misma tormenta en un mes normalmente lluvioso.",
   },
   {
     title: "7. Puntaje final y nivel de amenaza",
@@ -84,7 +84,7 @@ const STEPS: Step[] = [
       "El puntaje 0–1 resultante se traduce al esquema de 5 niveles ya usado en toda la plataforma: Muy bajo (< 0.2), Bajo (< 0.4), Medio (< 0.6), Alto (< 0.8), Muy alto (≥ 0.8).",
       "Se calcula una sola vez por centroide de vereda (~55 en total entre Sevilla, Caicedonia, Zarzal y Roldanillo) al resolver /api/veredas, no por punto de grilla.",
     ],
-    nota: "Si absolutamente ningún factor resolvió para una vereda, el resultado es nulo en todos los campos — nunca un puntaje inventado — siguiendo la misma convención de \"sin datos\" que ya usaba la integración de RED LabOT para Zarzal.",
+    nota: "Si absolutamente ningún factor resolvió para una vereda, el resultado es nulo en todos los campos, nunca un puntaje inventado, siguiendo la misma convención de \"sin datos\" que ya usaba la integración de RED LabOT para Zarzal.",
   },
 ]
 
@@ -100,22 +100,22 @@ const FLOOD_STEPS: Step[] = [
   {
     title: "1. Zonificación oficial",
     entrada:
-      "Capa pública susceptibilidad_inundaciones (ArcGIS Online, RED LabOT) — polígonos disueltos con 5 clases de susceptibilidad, cubriendo el área zonificada de Sevilla y Caicedonia.",
+      "Capa pública susceptibilidad_inundaciones (ArcGIS Online, RED LabOT), polígonos disueltos con 5 clases de susceptibilidad, cubriendo el área zonificada de Sevilla y Caicedonia.",
     proceso: [
       "Para cada centroide de vereda se hace una prueba punto-en-polígono (turf) contra los polígonos de zonificación.",
       "Si el centroide cae dentro de un polígono, su clase (Muy alta/Alta/Moderada/Baja/Muy baja) se traduce a un puntaje 0–1: zonificación_score = 1 − índice_de_clase / 4 (Muy alta = 1, Muy baja = 0).",
-      "Si el centroide no cae dentro de ningún polígono —el caso de las 19 veredas de Zarzal— el factor queda sin resolver, no en 0.",
+      "Si el centroide no cae dentro de ningún polígono el caso de las 19 veredas de Zarzal, el factor queda sin resolver, no en 0.",
     ],
     nota:
-      "Es la única evidencia oficial directa que entra al modelo, por eso recibe el mayor peso individual (50%) — pero se limita a ese 50%, en vez de un peso mayor, precisamente para que una vereda sin esta cobertura (todo Zarzal) no quede con un puntaje degenerado por depender de un solo factor ausente.",
+      "Es la única evidencia oficial directa que entra al modelo, por eso recibe el mayor peso individual (50%), pero se limita a ese 50%, en vez de un peso mayor, precisamente para que una vereda sin esta cobertura (todo Zarzal) no quede con un puntaje degenerado por depender de un solo factor ausente.",
   },
   {
     title: "2. Cercanía a una quebrada o río",
     entrada:
-      "Capa pública de hidrografía \"Quebradas\" (ArcGIS Online, mismo publicador que la zonificación oficial) — 19 cauces con nombre que cubren toda el área de estudio, incluida Zarzal.",
+      "Capa pública de hidrografía \"Quebradas\" (ArcGIS Online, mismo publicador que la zonificación oficial), 19 cauces con nombre que cubren toda el área de estudio, incluida Zarzal.",
     proceso: [
       "Una sola consulta recupera las 19 trazas completas, con su geometría de vértices (esri JSON \"paths\").",
-      "Para cada centroide se calcula la distancia real punto-a-segmento (no al vértice más cercano) contra cada segmento de cada traza, misma proyección local a kilómetros que usa el factor de fallas geológicas del modelo de deslizamiento — se toma el mínimo sobre todos los segmentos de todas las trazas.",
+      "Para cada centroide se calcula la distancia real punto-a-segmento (no al vértice más cercano) contra cada segmento de cada traza, misma proyección local a kilómetros que usa el factor de fallas geológicas del modelo de deslizamiento, se toma el mínimo sobre todos los segmentos de todas las trazas.",
       "El puntaje decrece linealmente con la distancia y llega a 0 al superar 1 km: quebrada_score = max(0, 1 − distancia_km / 1).",
     ],
     nota:
@@ -126,8 +126,8 @@ const FLOOD_STEPS: Step[] = [
     entrada: "El mismo valor de pendiente ya calculado por el modelo de amenaza por deslizamiento (paso 1 de esa metodología), en el mismo centroide.",
     proceso: [
       "No se vuelve a consultar la API de elevación: se reutiliza directamente el resultado ya calculado para ese centroide.",
-      "A diferencia del modelo de deslizamiento, aquí el efecto se invierte — terreno plano cerca de un cauce se inunda con más facilidad; terreno empinado drena en vez de encharcar: planicie_score = 1 − min(1, pendiente° / 8).",
-      "El puntaje llega a 0 a partir de 8° de pendiente — un umbral mucho más bajo que el de 45° del factor de pendiente del modelo de deslizamiento, porque aquí lo relevante es si el terreno puede retener agua, no si puede colapsar.",
+      "A diferencia del modelo de deslizamiento, aquí el efecto se invierte, terreno plano cerca de un cauce se inunda con más facilidad; terreno empinado drena en vez de encharcar: planicie_score = 1 − min(1, pendiente° / 8).",
+      "El puntaje llega a 0 a partir de 8° de pendiente, un umbral mucho más bajo que el de 45° del factor de pendiente del modelo de deslizamiento, porque aquí lo relevante es si el terreno puede retener agua, no si puede colapsar.",
     ],
   },
   {
@@ -135,12 +135,12 @@ const FLOOD_STEPS: Step[] = [
     entrada: "Los tres factores anteriores.",
     proceso: [
       "Promedio ponderado: puntaje_final = (zonificación_score × 0.5 + quebrada_score × 0.3 + planicie_score × 0.2) / peso_total.",
-      "Si la zonificación oficial no resolvió para una vereda (fuera de su cobertura, o si el propio factor de zonificación falló al cargar), el peso se renormaliza sobre los otros dos — nunca se descarta la vereda entera solo por no tener zonificación oficial.",
+      "Si la zonificación oficial no resolvió para una vereda (fuera de su cobertura, o si el propio factor de zonificación falló al cargar), el peso se renormaliza sobre los otros dos, nunca se descarta la vereda entera solo por no tener zonificación oficial.",
       "El puntaje 0–1 resultante se traduce al mismo vocabulario de 5 niveles que ya usa la zonificación oficial (Muy alta/Alta/Moderada/Baja/Muy baja), en vez de inventar una escala nueva.",
       "Se calcula una sola vez por centroide de vereda (89 en total entre Sevilla, Caicedonia, Zarzal y Roldanillo, incluyendo los cascos urbanos) al resolver /api/veredas.",
     ],
     nota:
-      "Ninguna vereda queda sin puntaje: incluso sin zonificación oficial, los otros dos factores por sí solos ya producen un resultado no degenerado en toda vereda de Zarzal — es la extensión de cobertura que motivó este modelo.",
+      "Ninguna vereda queda sin puntaje: incluso sin zonificación oficial, los otros dos factores por sí solos ya producen un resultado no degenerado en toda vereda de Zarzal, es la extensión de cobertura que motivó este modelo.",
   },
 ]
 
@@ -156,20 +156,20 @@ const FIRE_STEPS: Step[] = [
     entrada: "Los mismos valores de pendiente y distancia a la vía más cercana ya calculados por el modelo de amenaza por deslizamiento (pasos 1 y 2 de esa metodología), en el mismo centroide.",
     proceso: [
       "No se vuelve a consultar la API de elevación ni Overpass: se reutilizan directamente los resultados ya calculados para ese centroide.",
-      "pendiente_score = min(1, pendiente° / 45) — mismo tope de 45° que el modelo de deslizamiento: terreno más empinado propaga el fuego más rápido.",
-      "vía_score = max(0, 1 − distancia_km / 1) — mismo radio de influencia de 1 km. La mayoría de los incendios forestales en Colombia son de origen humano (quemas agrícolas, fuego escapado), así que la cercanía a una vía es un indicio real de riesgo de ignición, no solo de propagación.",
+      "pendiente_score = min(1, pendiente° / 45), mismo tope de 45° que el modelo de deslizamiento: terreno más empinado propaga el fuego más rápido.",
+      "vía_score = max(0, 1 − distancia_km / 1), mismo radio de influencia de 1 km. La mayoría de los incendios forestales en Colombia son de origen humano (quemas agrícolas, fuego escapado), así que la cercanía a una vía es un indicio real de riesgo de ignición, no solo de propagación.",
     ],
   },
   {
     title: "2. Recurrencia histórica de incendios",
-      entrada: "Detecciones activas de las cuatro fuentes FIRMS de NASA (VIIRS_SNPP_NRT, VIIRS_NOAA20_NRT, VIIRS_NOAA21_NRT y MODIS_NRT — las mismas que la capa en vivo \"Focos activos\" ofrece), paginadas hacia atrás en bloques de 5 días (el límite de la clave de este mapa) para cubrir una ventana de 150 días.",
+      entrada: "Detecciones activas de las cuatro fuentes FIRMS de NASA (VIIRS_SNPP_NRT, VIIRS_NOAA20_NRT, VIIRS_NOAA21_NRT y MODIS_NRT, las mismas que la capa en vivo \"Focos activos\" ofrece), paginadas hacia atrás en bloques de 5 días (el límite de la clave de este mapa) para cubrir una ventana de 150 días.",
     proceso: [
-      "Se pagina el endpoint area/csv de FIRMS con su parámetro de fecha final para cada una de las cuatro fuentes, retrocediendo en bloques de 5 días hasta cubrir 150 días — hasta 120 solicitudes (4 fuentes × ~30 bloques) con concurrencia limitada (8 a la vez) en vez de una sola consulta.",
+      "Se pagina el endpoint area/csv de FIRMS con su parámetro de fecha final para cada una de las cuatro fuentes, retrocediendo en bloques de 5 días hasta cubrir 150 días, hasta 120 solicitudes (4 fuentes × ~30 bloques) con concurrencia limitada (8 a la vez) en vez de una sola consulta.",
       "Detecciones repetidas de plataformas VIIRS distintas sobre el mismo punto y día se deduplican antes de contar, para no inflar la recurrencia por cobertura multisatélite de un mismo incendio.",
       "Para cada centroide se cuentan las detecciones dentro de 2 km, en toda la ventana de 150 días.",
       "El conteo se convierte a un puntaje 0–1 que satura en 3 detecciones o más: recurrencia_score = min(1, focos / 3).",
     ],
-    nota: "Es evidencia directa de dónde ha ardido antes, no un indicio geomorfológico indirecto como los otros dos factores estáticos — por eso recibe el mayor peso del factor estático (60%), el mismo rol que cumple el inventario histórico de movimientos en masa en el modelo de deslizamiento.",
+    nota: "Es evidencia directa de dónde ha ardido antes, no un indicio geomorfológico indirecto como los otros dos factores estáticos, por eso recibe el mayor peso del factor estático (60%), el mismo rol que cumple el inventario histórico de movimientos en masa en el modelo de deslizamiento.",
   },
   {
     title: "3. Factor estático combinado",
@@ -183,22 +183,22 @@ const FIRE_STEPS: Step[] = [
     title: "4. Índice Meteorológico de Incendio (FWI) de hoy",
     entrada: "Temperatura máxima, humedad relativa mínima, viento máximo y lluvia diaria de los últimos 60 días por centroide, de la API de archivo histórico de Open-Meteo (misma fuente que el disparador de lluvia del modelo de deslizamiento).",
     proceso: [
-      "Se calculan los tres códigos de humedad de combustible del Sistema Canadiense de Índices Forestales de Incendio (Van Wagner, 1987) día por día, en orden, arrancando desde los valores estándar de primavera del Servicio Forestal de Canadá (FFMC=85, DMC=6, DC=15): el Código de Humedad de Combustibles Finos (FFMC), el Código de Humedad de la Hojarasca (DMC) y el Código de Sequía (DC) — cada uno depende recursivamente del valor del día anterior.",
-      "60 días de \"arranque\" antes de leer el valor de hoy — necesarios para que el DC (el código de decaimiento más lento) converja desde su valor inicial arbitrario, ya que este sistema no publica un valor de arranque propio para el trópico ecuatorial.",
-      "Con los códigos de hoy ya calculados, se obtiene el Índice de Propagación Inicial (ISI, de FFMC y viento) y el Índice de Combustible Disponible (BUI, de DMC y DC), y con ambos el Índice Meteorológico de Incendio (FWI) final — las mismas ecuaciones, con los mismos números de ecuación y las mismas constantes, que la implementación de referencia en R del Servicio Forestal de Canadá (paquete cffdrs).",
-      "El FWI se normaliza a un puntaje 0–1 que satura en FWI = 30 — el límite de la clase \"Extremo\" del sistema original de Van Wagner: fwi_score = min(1, FWI / 30).",
+      "Se calculan los tres códigos de humedad de combustible del Sistema Canadiense de Índices Forestales de Incendio (Van Wagner, 1987) día por día, en orden, arrancando desde los valores estándar de primavera del Servicio Forestal de Canadá (FFMC=85, DMC=6, DC=15): el Código de Humedad de Combustibles Finos (FFMC), el Código de Humedad de la Hojarasca (DMC) y el Código de Sequía (DC), cada uno depende recursivamente del valor del día anterior.",
+      "60 días de \"arranque\" antes de leer el valor de hoy, necesarios para que el DC (el código de decaimiento más lento) converja desde su valor inicial arbitrario, ya que este sistema no publica un valor de arranque propio para el trópico ecuatorial.",
+      "Con los códigos de hoy ya calculados, se obtiene el Índice de Propagación Inicial (ISI, de FFMC y viento) y el Índice de Combustible Disponible (BUI, de DMC y DC), y con ambos el Índice Meteorológico de Incendio (FWI) final, las mismas ecuaciones, con los mismos números de ecuación y las mismas constantes, que la implementación de referencia en R del Servicio Forestal de Canadá (paquete cffdrs).",
+      "El FWI se normaliza a un puntaje 0–1 que satura en FWI = 30, el límite de la clase \"Extremo\" del sistema original de Van Wagner: fwi_score = min(1, FWI / 30).",
     ],
-    nota: "Es la misma familia de ecuaciones detrás de la capa de pronóstico FWI de Copernicus GWIS/EFFIS ya disponible como superposición en este mapa — pero esa capa WMS no permite extraer un valor por punto (su GetCapabilities la marca queryable=\"0\", la misma limitación que ya tiene su capa de cobertura del suelo), así que este factor calcula las mismas ecuaciones de forma independiente a partir de datos meteorológicos crudos, en vez de leer el resultado de GWIS.",
+    nota: "Es la misma familia de ecuaciones detrás de la capa de pronóstico FWI de Copernicus GWIS/EFFIS ya disponible como superposición en este mapa, pero esa capa WMS no permite extraer un valor por punto (su GetCapabilities la marca queryable=\"0\", la misma limitación que ya tiene su capa de cobertura del suelo), así que este factor calcula las mismas ecuaciones de forma independiente a partir de datos meteorológicos crudos, en vez de leer el resultado de GWIS.",
   },
   {
     title: "5. Puntaje final y nivel de amenaza",
     entrada: "El factor estático (paso 3) y el FWI de hoy (paso 4).",
     proceso: [
       "Puntaje final = (factor_estático × 0.6 + fwi_score × 0.4) / peso_total, con la misma renormalización de pesos si alguno de los dos factores falló.",
-      "El puntaje 0–1 resultante se traduce al mismo vocabulario de 4 niveles que ya usaba la capa oficial AmenazaIncendios (Muy bajo < 0.25, Bajo < 0.5, Medio < 0.75, Alto ≥ 0.75) y a los mismos tokens de color — sin introducir un quinto nivel ni nuevas variables CSS.",
+      "El puntaje 0–1 resultante se traduce al mismo vocabulario de 4 niveles que ya usaba la capa oficial AmenazaIncendios (Muy bajo < 0.25, Bajo < 0.5, Medio < 0.75, Alto ≥ 0.75) y a los mismos tokens de color, sin introducir un quinto nivel ni nuevas variables CSS.",
       "Se calcula una sola vez por centroide de vereda (~89 en total entre Sevilla, Caicedonia, Zarzal y Roldanillo) al resolver /api/veredas.",
     ],
-    nota: "Si absolutamente ningún factor resolvió para una vereda, el resultado es nulo en todos los campos — nunca un puntaje inventado.",
+    nota: "Si absolutamente ningún factor resolvió para una vereda, el resultado es nulo en todos los campos, nunca un puntaje inventado.",
   },
 ]
 
@@ -214,21 +214,21 @@ const COMPOUND_STEPS: Step[] = [
     entrada:
       "Los cinco modelos de amenaza que esta app ya calcula por vereda: deslizamientos, inundaciones, incendios forestales y sismología (cada uno con su propio puntaje 0–1 continuo) y precipitación (solo con un nivel de 4 categorías, sin puntaje continuo propio).",
     proceso: [
-      "Deslizamientos, inundaciones e incendios: se reutiliza directamente el puntaje 0–1 ya calculado por cada modelo propio — nunca se recalcula.",
-      "Precipitación (4 niveles: Bajo/Moderado/Alto/Muy alto): sin puntaje continuo publicado, se usa el índice ordinal del nivel sobre el total de niveles como puntaje sustituto — la misma técnica que el modelo de inundación ya usa para traducir la clase de zonificación oficial a un puntaje.",
-      "Incendios se resuelve en el mismo centroide de vereda que los otros cuatro directamente desde aggregateVeredas() (lib/veredas/aggregate.ts), que ya calcula el modelo propio de incendios junto con los de deslizamiento e inundación — no hace falta un cruce aparte contra ninguna capa oficial.",
+      "Deslizamientos, inundaciones e incendios: se reutiliza directamente el puntaje 0–1 ya calculado por cada modelo propio, nunca se recalcula.",
+      "Precipitación (4 niveles: Bajo/Moderado/Alto/Muy alto): sin puntaje continuo publicado, se usa el índice ordinal del nivel sobre el total de niveles como puntaje sustituto, la misma técnica que el modelo de inundación ya usa para traducir la clase de zonificación oficial a un puntaje.",
+      "Incendios se resuelve en el mismo centroide de vereda que los otros cuatro directamente desde aggregateVeredas() (lib/veredas/aggregate.ts), que ya calcula el modelo propio de incendios junto con los de deslizamiento e inundación, no hace falta un cruce aparte contra ninguna capa oficial.",
       "Precipitación reutiliza /api/precipitacion/amenaza en su modo histórico de 7 días con NASA POWER, ya calculado por vereda.",
-      "Sismología: sin zonificación por vereda publicada, se calcula un puntaje propio de exposición por decaimiento espacial desde los epicentros de USGS (en vivo) y SGC (histórico) — ver lib/sismologia/exposure-score.ts.",
+      "Sismología: sin zonificación por vereda publicada, se calcula un puntaje propio de exposición por decaimiento espacial desde los epicentros de USGS (en vivo) y SGC (histórico), ver lib/sismologia/exposure-score.ts.",
     ],
     nota:
-      "Ninguna de las cinco amenazas se recalcula desde cero — el módulo compuesto solo importa y combina las funciones ya exportadas por cada categoría existente (sismología incluida, con su propio módulo de exposición).",
+      "Ninguna de las cinco amenazas se recalcula desde cero, el módulo compuesto solo importa y combina las funciones ya exportadas por cada categoría existente (sismología incluida, con su propio módulo de exposición).",
   },
   {
     title: "2. Nivel compuesto: la amenaza más alta gobierna",
     entrada: "Los cinco puntajes normalizados del paso 1.",
     proceso: [
       "Cada puntaje normalizado se traduce individualmente al mismo esquema de 5 niveles usado en toda la plataforma (Muy bajo <0.2, Bajo <0.4, Moderado <0.6, Alto <0.8, Muy alto ≥0.8).",
-      "El nivel compuesto de la vereda es el mayor de esos cinco niveles — no un promedio — siguiendo la doctrina de la OMM y GDACS (Global Disaster Alert and Coordination System) de que la amenaza más severa determina la alerta general, sin diluirla con amenazas más tranquilas.",
+      "El nivel compuesto de la vereda es el mayor de esos cinco niveles, no un promedio, siguiendo la doctrina de la OMM y GDACS (Global Disaster Alert and Coordination System) de que la amenaza más severa determina la alerta general, sin diluirla con amenazas más tranquilas.",
       "La amenaza \"dominante\" reportada es la que alcanzó ese nivel máximo (en caso de empate entre niveles, la de mayor puntaje normalizado).",
     ],
   },
@@ -236,9 +236,9 @@ const COMPOUND_STEPS: Step[] = [
     title: "3. Puntaje compuesto: promedio ponderado al estilo INFORM",
     entrada: "Los mismos cinco puntajes normalizados del paso 1.",
     proceso: [
-      "Puntaje compuesto = promedio ponderado de los cinco puntajes, con peso igual de 20% cada uno por defecto — al estilo del Índice de Riesgo INFORM (composición ponderada de componentes de riesgo).",
-      "Si una amenaza no tiene datos para una vereda (p. ej. incendios fuera de su cobertura en Sevilla/Caicedonia, o precipitación sin lectura válida), su peso se renormaliza sobre las que sí resolvieron — la misma convención de \"sin datos nunca inventados\" que usa cada modelo individual. Sismología siempre resuelve (es un fenómeno regional, no zonificado), por lo que casi nunca deja de aportar su 20%.",
-      "Este puntaje no define el nivel compuesto (eso lo hace el paso 2) — solo ordena veredas dentro de un mismo nivel para color de intensidad o priorización relativa.",
+      "Puntaje compuesto = promedio ponderado de los cinco puntajes, con peso igual de 20% cada uno por defecto, al estilo del Índice de Riesgo INFORM (composición ponderada de componentes de riesgo).",
+      "Si una amenaza no tiene datos para una vereda (p. ej. incendios fuera de su cobertura en Sevilla/Caicedonia, o precipitación sin lectura válida), su peso se renormaliza sobre las que sí resolvieron, la misma convención de \"sin datos nunca inventados\" que usa cada modelo individual. Sismología siempre resuelve (es un fenómeno regional, no zonificado), por lo que casi nunca deja de aportar su 20%.",
+      "Este puntaje no define el nivel compuesto (eso lo hace el paso 2), solo ordena veredas dentro de un mismo nivel para color de intensidad o priorización relativa.",
     ],
   },
   {
@@ -246,7 +246,7 @@ const COMPOUND_STEPS: Step[] = [
     entrada: "El nivel compuesto del paso 2.",
     proceso: [
       "El nivel se traduce a las tres categorías de acción que IDEAM ya usa en sus boletines públicos: Informar (Muy bajo/Bajo), Prepararse (Moderado), Actuar (Alto/Muy alto).",
-      "Un reporte narrativo en español se genera con plantillas de texto deterministas (lib/riesgo-compuesto/narrative.ts) rellenadas con los números ya calculados — nunca con un modelo de lenguaje: un resumen de una línea (nivel + amenaza dominante), un desglose por amenaza y un párrafo de exposición demográfica (reutilizando los mismos conteos de población/infraestructura de RED LabOT que ya usa /api/veredas).",
+      "Un reporte narrativo en español se genera con plantillas de texto deterministas (lib/riesgo-compuesto/narrative.ts) rellenadas con los números ya calculados, nunca con un modelo de lenguaje: un resumen de una línea (nivel + amenaza dominante), un desglose por amenaza y un párrafo de exposición demográfica (reutilizando los mismos conteos de población/infraestructura de RED LabOT que ya usa /api/veredas).",
     ],
     nota: "Cero riesgo de alucinación y sin necesidad de una nueva integración de IA: es texto de plantilla, no generación de lenguaje.",
   },
@@ -312,7 +312,7 @@ export function SectionMetodologia() {
       <div className="flex flex-col gap-3">
         <h3 className="text-lg font-semibold tracking-tight">Caché por factor</h3>
         <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
-          Cada insumo del modelo se cachea de forma independiente, según qué tan rápido cambia — solo la
+          Cada insumo del modelo se cachea de forma independiente, según qué tan rápido cambia, solo la
           primera solicitud dentro de cada ventana de caché paga el costo completo de recalcular los ~55
           centroides.
         </p>
@@ -321,7 +321,7 @@ export function SectionMetodologia() {
             <div key={c.fuente}>
               <dt className="font-medium text-foreground">{c.fuente}</dt>
               <dd className="mt-0.5 text-muted-foreground">
-                {c.ttl} — {c.motivo}
+                {c.ttl}, {c.motivo}
               </dd>
             </div>
           ))}
@@ -334,7 +334,7 @@ export function SectionMetodologia() {
           <li className="flex gap-2">
             <span className="mt-2 size-1 shrink-0 rounded-full bg-muted-foreground" aria-hidden="true" />
             <span className="text-pretty">
-              No es una calibración validada contra deslizamientos ocurridos en la zona — los pesos y umbrales
+              No es una calibración validada contra deslizamientos ocurridos en la zona, los pesos y umbrales
               (0.35/0.15/0.2/0.3, 0.6/0.4, 45°, 1 km, 2 km, 2 km, razón de saturación 2) son elegidos por
               criterio propio siguiendo la estructura de LHASA v1, no ajustados con datos locales.
             </span>
@@ -344,8 +344,8 @@ export function SectionMetodologia() {
             <span className="text-pretty">
               LHASA v1 usa cinco predictores estáticos; este modelo reproduce tres de ellos (pendiente, vías y
               fallas geológicas) y suma un cuarto factor propio (movimientos en masa históricos) que LHASA v1
-              no incluye. Cobertura de suelo (ESA WorldCover) — el único predictor de LHASA que sigue
-              faltando — se evaluó pero se descartó: solo existe como archivo raster satelital (COG/GeoTIFF)
+              no incluye. Cobertura de suelo (ESA WorldCover), el único predictor de LHASA que sigue
+              faltando, se evaluó pero se descartó: solo existe como archivo raster satelital (COG/GeoTIFF)
               sin una API de consulta por punto viable desde una función serverless. Geología/fallas y el
               inventario histórico se habían descartado por el mismo motivo hasta encontrar sus respectivas
               capas del SGC, que resultaron ser la excepción: vectores pequeños y directamente consultables,
@@ -356,7 +356,7 @@ export function SectionMetodologia() {
             <span className="mt-2 size-1 shrink-0 rounded-full bg-muted-foreground" aria-hidden="true" />
             <span className="text-pretty">
               El inventario de movimientos históricos solo tiene 55 puntos en toda la zona de estudio y sin
-              fecha de ocurrencia confiable — es evidencia real de inestabilidad pasada, pero disperso y no
+              fecha de ocurrencia confiable, es evidencia real de inestabilidad pasada, pero disperso y no
               exhaustivo. Que una vereda quede lejos de los 55 puntos conocidos no significa que nunca haya
               tenido un movimiento en masa, solo que ninguno quedó registrado en este inventario.
             </span>
@@ -364,7 +364,7 @@ export function SectionMetodologia() {
           <li className="flex gap-2">
             <span className="mt-2 size-1 shrink-0 rounded-full bg-muted-foreground" aria-hidden="true" />
             <span className="text-pretty">
-              Se calcula en el centroide de cada vereda, no en una grilla densa — una sola pendiente y
+              Se calcula en el centroide de cada vereda, no en una grilla densa, una sola pendiente y
               distancia a vía representan a toda la vereda, a diferencia de los ~11.721 puntos que sí tenía
               la capa de RED LabOT dentro de su área de cobertura.
             </span>
@@ -379,7 +379,7 @@ export function SectionMetodologia() {
         </div>
         <p className="max-w-3xl text-pretty leading-relaxed text-muted-foreground">
           La capa &quot;Modelo propio de inundación&quot; del mapa de inundaciones extiende la zonificación
-          oficial de RED LabOT —que solo cubre el área zonificada de Sevilla y Caicedonia— a los cuatro
+          oficial de RED LabOT que solo cubre el área zonificada de Sevilla y Caicedonia, a los cuatro
           municipios, incluidos Zarzal y Roldanillo, calculando un puntaje propio por vereda. La zonificación oficial no
           se descarta: es, al contrario, el insumo de mayor peso del modelo, donde tiene cobertura.
         </p>
@@ -424,7 +424,7 @@ export function SectionMetodologia() {
             <div key={c.fuente}>
               <dt className="font-medium text-foreground">{c.fuente}</dt>
               <dd className="mt-0.5 text-muted-foreground">
-                {c.ttl} — {c.motivo}
+                {c.ttl}, {c.motivo}
               </dd>
             </div>
           ))}
@@ -437,7 +437,7 @@ export function SectionMetodologia() {
           <li className="flex gap-2">
             <span className="mt-2 size-1 shrink-0 rounded-full bg-muted-foreground" aria-hidden="true" />
             <span className="text-pretty">
-              No es un modelo hidráulico ni hidrológico — no simula caudal, láminas de agua ni tiempos de
+              No es un modelo hidráulico ni hidrológico, no simula caudal, láminas de agua ni tiempos de
               llegada de una creciente. Es una susceptibilidad relativa por vereda, del mismo tipo que la
               zonificación oficial que extiende, no un pronóstico de inundación (para eso está el pronóstico
               de caudal en vivo de GEOGLOWS, ya en el mismo mapa).
@@ -447,7 +447,7 @@ export function SectionMetodologia() {
             <span className="mt-2 size-1 shrink-0 rounded-full bg-muted-foreground" aria-hidden="true" />
             <span className="text-pretty">
               La capa de hidrografía usada para el factor de cercanía a cauces solo tiene 19 trazas con
-              nombre — es una aproximación a la red de drenaje real, no un mapa completo de todo arroyo o
+              nombre, es una aproximación a la red de drenaje real, no un mapa completo de todo arroyo o
               canal menor.
             </span>
           </li>
@@ -463,7 +463,7 @@ export function SectionMetodologia() {
             <span className="mt-2 size-1 shrink-0 rounded-full bg-muted-foreground" aria-hidden="true" />
             <span className="text-pretty">
               Cada traza de cauce de la capa de hidrografía trae también un identificador (rivid) que
-              coincide con el esquema de tramos que ya usa el pronóstico de GEOGLOWS en este mapa — un
+              coincide con el esquema de tramos que ya usa el pronóstico de GEOGLOWS en este mapa, un
               posible factor dinámico futuro (p. ej. ponderar por el período de retorno en vivo del tramo
               más cercano), señalado aquí pero no implementado: a diferencia de cada otro insumo de este
               modelo, que es una sola consulta cacheada, eso implicaría decenas de consultas individuales por
@@ -480,13 +480,13 @@ export function SectionMetodologia() {
         </div>
         <p className="max-w-3xl text-pretty leading-relaxed text-muted-foreground">
           El color del mapa de incendios ya no proviene de la zonificación oficial (PBOT 2014,
-          `AmenazaIncendios`) — a diferencia de las capas de zonificación que sí siguen aportando al modelo
+          `AmenazaIncendios`), a diferencia de las capas de zonificación que sí siguen aportando al modelo
           de deslizamiento y de inundación, esa capa es una digitalización estática de un plan de uso del
           suelo de 2014, sin ningún modelo computacional detrás que replicar. En su lugar, esta sección
           documenta el modelo propio que esta misma app calcula: pendiente y cercanía a vías (reutilizadas
           del modelo de deslizamiento), recurrencia histórica de NASA FIRMS y el Índice Meteorológico de
           Incendio (FWI) de hoy, calculado con las ecuaciones estándar del Sistema Canadiense de Índices
-          Forestales de Incendio (Van Wagner, 1987) — el mismo sistema detrás de la capa de pronóstico FWI
+          Forestales de Incendio (Van Wagner, 1987), el mismo sistema detrás de la capa de pronóstico FWI
           de Copernicus GWIS/EFFIS ya disponible en el mapa, pero calculado aquí de forma independiente a
           partir de datos meteorológicos crudos.
         </p>
@@ -531,7 +531,7 @@ export function SectionMetodologia() {
             <div key={c.fuente}>
               <dt className="font-medium text-foreground">{c.fuente}</dt>
               <dd className="mt-0.5 text-muted-foreground">
-                {c.ttl} — {c.motivo}
+                {c.ttl}, {c.motivo}
               </dd>
             </div>
           ))}
@@ -544,7 +544,7 @@ export function SectionMetodologia() {
           <li className="flex gap-2">
             <span className="mt-2 size-1 shrink-0 rounded-full bg-muted-foreground" aria-hidden="true" />
             <span className="text-pretty">
-              No es una calibración validada contra incendios ocurridos en la zona — los pesos y umbrales
+              No es una calibración validada contra incendios ocurridos en la zona, los pesos y umbrales
               (0.25/0.15/0.6, 0.6/0.4, 45°, 1 km, 2 km, 3 detecciones, FWI = 30, 60 días de arranque) son
               elegidos por criterio propio siguiendo la misma estructura de factor estático + disparador
               dinámico que el modelo de deslizamiento, no ajustados con datos locales de incendios ocurridos.
@@ -553,7 +553,7 @@ export function SectionMetodologia() {
           <li className="flex gap-2">
             <span className="mt-2 size-1 shrink-0 rounded-full bg-muted-foreground" aria-hidden="true" />
             <span className="text-pretty">
-              Las ecuaciones del FWI en sí no son una invención de esta app — son el sistema estándar
+              Las ecuaciones del FWI en sí no son una invención de esta app, son el sistema estándar
               publicado por el Servicio Forestal de Canadá (Van Wagner, 1987), transcritas ecuación por
               ecuación desde la implementación de referencia en R (paquete cffdrs). Lo que sí es propio de
               esta app es calcularlas aquí, en vez de leerlas de la capa WMS de GWIS/EFFIS (que no permite
@@ -566,14 +566,14 @@ export function SectionMetodologia() {
             <span className="text-pretty">
               La ventana de recurrencia histórica (150 días, las cuatro fuentes FIRMS) es una muestra de
               detecciones activas recientes, no un catálogo completo de todo incendio ocurrido alguna vez
-              en la zona — un incendio anterior a esa ventana, o demasiado pequeño/breve para cualquiera
+              en la zona, un incendio anterior a esa ventana, o demasiado pequeño/breve para cualquiera
               de los sensores satelitales de FIRMS, no cuenta hacia este factor.
             </span>
           </li>
           <li className="flex gap-2">
             <span className="mt-2 size-1 shrink-0 rounded-full bg-muted-foreground" aria-hidden="true" />
             <span className="text-pretty">
-              Se calcula en el centroide de cada vereda, no en una grilla densa — un solo valor de FWI y un
+              Se calcula en el centroide de cada vereda, no en una grilla densa, un solo valor de FWI y un
               solo conteo de recurrencia representan a toda la vereda.
             </span>
           </li>
@@ -587,9 +587,9 @@ export function SectionMetodologia() {
         </div>
         <p className="max-w-3xl text-pretty leading-relaxed text-muted-foreground">
           La capa &quot;Riesgo compuesto&quot; combina las cinco amenazas que esta app ya modela por
-          vereda —deslizamientos, inundaciones (modelo propio), incendios forestales (modelo propio),
+          vereda deslizamientos, inundaciones (modelo propio), incendios forestales (modelo propio),
           precipitación y
-          sismología— en una sola evaluación, siguiendo dos enfoques ya usados en la práctica internacional
+          sismología, en una sola evaluación, siguiendo dos enfoques ya usados en la práctica internacional
           en vez de inventar
           uno nuevo: la doctrina de la OMM/GDACS de que &quot;la amenaza más alta gobierna&quot; para el
           nivel de alerta, y la composición ponderada al estilo del Índice de Riesgo INFORM para un puntaje
@@ -633,7 +633,7 @@ export function SectionMetodologia() {
       <div className="flex flex-col gap-3">
         <h3 className="text-lg font-semibold tracking-tight">Caché por insumo</h3>
         <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
-          Este módulo no introduce nuevas fuentes externas — cada insumo hereda el caché que ya tenía en su
+          Este módulo no introduce nuevas fuentes externas, cada insumo hereda el caché que ya tenía en su
           propia categoría.
         </p>
         <dl className="grid grid-cols-1 gap-2 rounded-lg bg-muted/50 p-3 text-xs sm:grid-cols-3">
@@ -641,7 +641,7 @@ export function SectionMetodologia() {
             <div key={c.fuente}>
               <dt className="font-medium text-foreground">{c.fuente}</dt>
               <dd className="mt-0.5 text-muted-foreground">
-                {c.ttl} — {c.motivo}
+                {c.ttl}, {c.motivo}
               </dd>
             </div>
           ))}
@@ -656,7 +656,7 @@ export function SectionMetodologia() {
             <span className="text-pretty">
               No incluye el pronóstico de caudal en vivo de GEOGLOWS. Ese pronóstico es por tramo de río, no
               por vereda, y cruzarlo con ~55 veredas exigiría decenas de consultas de identificación de tramo
-              en vivo por solicitud — una integración pesada y frágil fuera del alcance de esta primera
+              en vivo por solicitud, una integración pesada y frágil fuera del alcance de esta primera
               versión. La amenaza &quot;inundaciones&quot; en el riesgo compuesto es, en cambio, el modelo
               propio de inundación por vereda (zonificación + cercanía a cauce + planicie del terreno) que
               ya representa esa amenaza en las otras tres categorías.
@@ -667,7 +667,7 @@ export function SectionMetodologia() {
             <span className="text-pretty">
               No usa un modelo de lenguaje ni la puerta de enlace de IA de esta app. El reporte narrativo es
               texto de plantilla determinista, relleno con los mismos números que ya se muestran en el mapa
-              y el panel — nunca generación libre.
+              y el panel, nunca generación libre.
             </span>
           </li>
           <li className="flex gap-2">
@@ -675,7 +675,7 @@ export function SectionMetodologia() {
             <span className="text-pretty">
               Los pesos iguales de 25% por amenaza y los umbrales de nivel (0.2/0.4/0.6/0.8) son una elección
               de diseño razonable, no una calibración validada contra eventos multiamenaza ocurridos en la
-              zona — igual que cada modelo individual que combina.
+              zona, igual que cada modelo individual que combina.
             </span>
           </li>
           <li className="flex gap-2">

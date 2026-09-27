@@ -16,14 +16,14 @@ export function DocFooter() {
           >
             <Image
               src="/images/redlabot-lockup-light.png"
-              alt="RED LabOT — Red de Laboratorios de Observación de la Tierra de las Américas, para la Inteligencia Territorial de las Américas"
+              alt="RED LabOT. Red de Laboratorios de Observación de la Tierra de las Américas, para la Inteligencia Territorial de las Américas"
               width={977}
               height={476}
               className="block h-16 w-auto dark:hidden"
             />
             <Image
               src="/images/redlabot-lockup-dark.png"
-              alt="RED LabOT — Red de Laboratorios de Observación de la Tierra de las Américas, para la Inteligencia Territorial de las Américas"
+              alt="RED LabOT. Red de Laboratorios de Observación de la Tierra de las Américas, para la Inteligencia Territorial de las Américas"
               width={977}
               height={476}
               className="hidden h-16 w-auto dark:block"

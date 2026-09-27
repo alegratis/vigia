@@ -95,7 +95,7 @@ export function CompoundModelPanel({ className, selectedVereda, onClearSelection
           Cómo se calcula el riesgo compuesto
         </h3>
         <p className="text-xs leading-relaxed text-muted-foreground">
-          Combina los cinco modelos de amenaza de esta app en una sola evaluación por vereda — el nivel más
+          Combina los cinco modelos de amenaza de esta app en una sola evaluación por vereda, el nivel más
           alto entre las cinco gobierna el resultado.{" "}
           <a href="/documentacion#metodologia" className="text-primary underline-offset-2 hover:underline">
             Ver metodología completa
@@ -177,9 +177,9 @@ export function CompoundModelPanel({ className, selectedVereda, onClearSelection
           <p className="text-pretty text-xs leading-relaxed text-muted-foreground">
             Pesos iguales por defecto, re-normalizados sobre las amenazas que sí tengan datos para cada
             vereda. El nivel mostrado en el mapa es el mayor nivel entre las cinco (doctrina OMM/GDACS), no
-            el promedio — el puntaje 0–1 es el promedio ponderado (estilo INFORM) y solo ordena veredas
+            el promedio, el puntaje 0–1 es el promedio ponderado (estilo INFORM) y solo ordena veredas
             dentro de un mismo nivel. A diferencia de las otras cuatro, sismología no tiene una zonificación
-            por vereda publicada — su puntaje se calcula por distancia a los epicentros de USGS y SGC.
+            por vereda publicada, su puntaje se calcula por distancia a los epicentros de USGS y SGC.
           </p>
         </div>
       </CardContent>

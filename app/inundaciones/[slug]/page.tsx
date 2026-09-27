@@ -17,9 +17,9 @@ export async function generateMetadata({
 }) {
   const { slug } = await params
   const station = getStationBySlug(slug)
-  if (!station) return { title: "Estación no encontrada — Vigía" }
+  if (!station) return { title: "Estación no encontrada. Vigía" }
   return {
-    title: `${station.name} — Vigía`,
+    title: `${station.name}. Vigía`,
     description: `Pronóstico de inundaciones para ${station.river} en ${station.municipality}, ${station.department}.`,
   }
 }

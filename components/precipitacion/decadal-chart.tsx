@@ -144,7 +144,7 @@ export function DecadalChart({ vereda }: DecadalChartProps) {
           <div className="flex items-center gap-2">
             <CloudRain className="size-4 text-muted-foreground" aria-hidden="true" />
             <h3 className="font-semibold tracking-tight">
-              Histograma de lluvia por décadas —{" "}
+              Histograma de lluvia por décadas {" "}
               {mode === "vereda" && vereda
                 ? `${vereda.nombre} (${vereda.municipio})`
                 : `${municipio} (territorio completo)`}
@@ -207,8 +207,8 @@ export function DecadalChart({ vereda }: DecadalChartProps) {
         </div>
         <p className="text-xs text-muted-foreground">
           {mode === "vereda" && vereda
-            ? "Open-Meteo — promedios mensuales por década en el centroide de la vereda seleccionada."
-            : `Open-Meteo — promedios mensuales por década, promediados entre las ${data?.ubicacion.veredasPromediadas ?? ""} veredas rurales de ${municipio}.`}
+            ? "Open-Meteo, promedios mensuales por década en el centroide de la vereda seleccionada."
+            : `Open-Meteo, promedios mensuales por década, promediados entre las ${data?.ubicacion.veredasPromediadas ?? ""} veredas rurales de ${municipio}.`}
           {showActual && " Línea: acumulado real de este año (Open-Meteo)."}
           {enabledYears.size > 0 &&
             ` Comparando con ${[...enabledYears].sort((a, b) => b - a).join(", ")} (acumulado completo del año, Open-Meteo).`}
@@ -340,7 +340,7 @@ export function DecadalChart({ vereda }: DecadalChartProps) {
           >
             Open-Meteo
           </a>{" "}
-            (análisis ECMWF IFS y reanálisis ERA5) a lo largo de una década completa — 10 años, para una mirada
+            (análisis ECMWF IFS y reanálisis ERA5) a lo largo de una década completa, 10 años, para una mirada
             mucho más larga al pasado (50 años en total) que el histograma de quinquenios abajo; cada década tiene su
           propio color, en orden cronológico según la leyenda. El año {currentYear} y los dos anteriores se
           dejan fuera de las barras a propósito y se muestran como líneas individuales (misma convención que

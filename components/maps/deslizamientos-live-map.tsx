@@ -147,7 +147,7 @@ function ProtectedAreasLegend() {
 function CriticalSitesLegend() {
   return (
     <div className="flex flex-col gap-1">
-      <p className="font-medium text-foreground">Sitios críticos — severidad</p>
+      <p className="font-medium text-foreground">Sitios críticos, severidad</p>
       <ul className="flex flex-col gap-1">
         {Object.values(CRITICAL_SITE_SEVERITY_STYLES).map((style) => (
           <li key={style.code} className="flex items-center gap-2 text-muted-foreground">
@@ -439,7 +439,7 @@ function DeslizamientosLiveMapImpl({
               <strong>{props.tipo ?? "Movimiento sin tipo"}</strong>
               <span>{props.subtipo ?? "Subtipo no especificado"}</span>
               <span style={{ color: "#888" }}>
-                Inventario de movimientos en masa, Servicio Geológico Colombiano (SGC) — sin fecha registrada
+                Inventario de movimientos en masa, Servicio Geológico Colombiano (SGC), sin fecha registrada
               </span>
             </div>
           ),

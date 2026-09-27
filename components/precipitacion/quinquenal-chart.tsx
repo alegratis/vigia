@@ -151,7 +151,7 @@ export function QuinquenalChart({ vereda }: QuinquenalChartProps) {
           <div className="flex items-center gap-2">
             <CloudRain className="size-4 text-muted-foreground" aria-hidden="true" />
             <h3 className="font-semibold tracking-tight">
-              Histograma de lluvia por quinquenios —{" "}
+              Histograma de lluvia por quinquenios {" "}
               {mode === "vereda" && vereda
                 ? `${vereda.nombre} (${vereda.municipio})`
                 : `${municipio} (territorio completo)`}
@@ -214,8 +214,8 @@ export function QuinquenalChart({ vereda }: QuinquenalChartProps) {
         </div>
         <p className="text-xs text-muted-foreground">
           {mode === "vereda" && vereda
-            ? "Open-Meteo — promedios mensuales por quinquenio en el centroide de la vereda seleccionada."
-            : `Open-Meteo — promedios mensuales por quinquenio, promediados entre las ${data?.ubicacion.veredasPromediadas ?? ""} veredas rurales de ${municipio}.`}
+            ? "Open-Meteo, promedios mensuales por quinquenio en el centroide de la vereda seleccionada."
+            : `Open-Meteo, promedios mensuales por quinquenio, promediados entre las ${data?.ubicacion.veredasPromediadas ?? ""} veredas rurales de ${municipio}.`}
           {showActual && " Línea: acumulado real de este año (Open-Meteo)."}
           {enabledYears.size > 0 &&
             ` Comparando con ${[...enabledYears].sort((a, b) => b - a).join(", ")} (acumulado completo del año, Open-Meteo).`}
@@ -347,8 +347,8 @@ export function QuinquenalChart({ vereda }: QuinquenalChartProps) {
           >
             Open-Meteo
           </a>{" "}
-          (análisis ECMWF IFS y reanálisis ERA5) a lo largo de un quinquenio completo — 5 años, no 10 como en
-          el histograma decadal arriba — para ver si un mes viene subiendo o bajando en años recientes, algo
+          (análisis ECMWF IFS y reanálisis ERA5) a lo largo de un quinquenio completo, 5 años, no 10 como en
+          el histograma decadal arriba, para ver si un mes viene subiendo o bajando en años recientes, algo
           que una sola normal de varias décadas puede ocultar; cada quinquenio tiene su propio color, en
           orden cronológico según la leyenda. El año {currentYear} y los dos anteriores se dejan fuera de las barras a propósito y se
           muestran como líneas individuales (misma convención que el otro histograma) para no diluir la

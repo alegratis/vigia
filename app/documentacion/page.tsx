@@ -6,6 +6,7 @@ import { SectionUso } from "@/components/documentacion/section-uso"
 import { SectionFuncionalidades } from "@/components/documentacion/section-funcionalidades"
 import { SectionFuentes } from "@/components/documentacion/section-fuentes"
 import { SectionMetodologia } from "@/components/documentacion/section-metodologia"
+import { SectionMarcoTeorico } from "@/components/documentacion/section-marco-teorico"
 import { SectionArquitectura } from "@/components/documentacion/section-arquitectura"
 import { SectionLicencias } from "@/components/documentacion/section-licencias"
 
@@ -43,6 +44,7 @@ export default function DocumentacionPage() {
             <SectionFuncionalidades />
             <SectionFuentes />
             <SectionMetodologia />
+            <SectionMarcoTeorico />
             <SectionArquitectura />
             <SectionLicencias />
           </div>
