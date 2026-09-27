@@ -313,11 +313,8 @@ function DemografiaLiveMapImpl({
           longitude: e.lngLat.lng,
           latitude: e.lngLat.lat,
           content: (
-            <div className="flex flex-col gap-1 text-xs">
-              <p className="font-medium text-foreground">
-                {props.barrio ?? "Manzana sin nombre cercano"}{" "}
-                <span className="text-muted-foreground">({props.municipio})</span>
-              </p>
+            <div className="flex w-56 flex-col gap-1 text-xs">
+              <p className="font-medium text-foreground">{props.municipio}</p>
               <p className="text-muted-foreground">
                 IPM: <span className="font-medium text-foreground">{props.ipm.toFixed(1)}%</span>
               </p>
@@ -337,8 +334,7 @@ function DemografiaLiveMapImpl({
           longitude: e.lngLat.lng,
           latitude: e.lngLat.lat,
           content: (
-            <div className="flex flex-col gap-1 text-xs">
-              <p className="font-medium text-foreground">{props.barrio ?? "Manzana sin nombre cercano"}</p>
+            <div className="flex w-56 flex-col gap-1 text-xs">
               <p className="text-muted-foreground">
                 Viviendas: <span className="font-medium text-foreground">{props.viviendas.toLocaleString("es-CO")}</span>
               </p>
@@ -415,10 +411,7 @@ function DemografiaLiveMapImpl({
           content: (
             <div className="flex w-64 flex-col gap-2 text-xs">
               <div>
-                <p className="font-medium text-foreground">
-                  {props.barrio ?? "Manzana sin nombre cercano"}{" "}
-                  <span className="text-muted-foreground">({props.municipio})</span>
-                </p>
+                <p className="font-medium text-foreground">{props.municipio}</p>
                 <p className="text-muted-foreground">
                   Vulnerabilidad compuesta:{" "}
                   <span className="font-medium text-foreground">{props.combinedLevel}</span>
