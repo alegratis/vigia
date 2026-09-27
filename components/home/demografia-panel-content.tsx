@@ -91,6 +91,8 @@ function VulnerabilityExplainerSection() {
 interface DemografiaPanelContentProps {
   /** Bubbles the map's viewport up to the workspace's shared sidebar card. */
   onBoundsChange?: (bounds: MapBounds) => void
+  /** IP-geolocation match for the map's default view — see app/page.tsx. */
+  detectedMunicipio?: string | null
 }
 
 /**
@@ -98,7 +100,7 @@ interface DemografiaPanelContentProps {
  * `SismologiaPanelContent`'s structure: the 3D indicator map fills the full
  * first fold; a short explainer and source caption scroll in below.
  */
-export function DemografiaPanelContent({ onBoundsChange }: DemografiaPanelContentProps) {
+export function DemografiaPanelContent({ onBoundsChange, detectedMunicipio }: DemografiaPanelContentProps) {
   const captionRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<HTMLDivElement>(null)
   const [reportOpen, setReportOpen] = useState(false)
@@ -119,7 +121,11 @@ export function DemografiaPanelContent({ onBoundsChange }: DemografiaPanelConten
           del mapa hay una explicación completa de cada índice y un panel de consulta de población por
           municipio, residencia, sexo y exposición a amenazas.
         </p>
-        <DemografiaLiveMap className="relative isolate h-full w-full" onBoundsChange={onBoundsChange} />
+        <DemografiaLiveMap
+          className="relative isolate h-full w-full"
+          onBoundsChange={onBoundsChange}
+          detectedMunicipio={detectedMunicipio}
+        />
         <ScrollHintButton targetRef={captionRef} label="Ver más sobre estos indicadores" />
       </div>
       <div ref={captionRef} className="flex flex-col gap-6 p-4 sm:p-6">

@@ -26,9 +26,17 @@ export interface MunicipioToggleState {
   toggle: (municipio: string) => void
 }
 
-/** Independent on/off toggles for each study-area municipality (Sevilla default on). */
-export function useMunicipioToggles(): MunicipioToggleState {
-  const [active, setActive] = useState<Record<string, boolean>>(() => ({ ...DEFAULT_ACTIVE_MUNICIPIOS }))
+/**
+ * Independent on/off toggles for each study-area municipality. Sevilla
+ * starts on by default; pass `initialActive` (e.g. an IP-geolocation match)
+ * to start with a different single municipality on instead — used by the
+ * Demografía map to open on a visitor's own municipio.
+ */
+export function useMunicipioToggles(initialActive?: string): MunicipioToggleState {
+  const [active, setActive] = useState<Record<string, boolean>>(() => {
+    if (!initialActive) return { ...DEFAULT_ACTIVE_MUNICIPIOS }
+    return Object.fromEntries(MUNICIPIOS.map((m) => [m, m === initialActive])) as Record<string, boolean>
+  })
 
   const toggle = useCallback((municipio: string) => {
     setActive((prev) => ({ ...prev, [municipio]: !prev[municipio] }))
