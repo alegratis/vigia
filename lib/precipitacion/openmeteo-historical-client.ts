@@ -1,5 +1,7 @@
 import "server-only"
 
+import { unstable_cache } from "next/cache"
+
 /**
  * Client for Open-Meteo's Historical Weather API (archive-api.open-meteo.com)
  * — used for the "current year" comparison line on the climatology chart
@@ -49,8 +51,26 @@ export interface CurrentYearMonthlyPoint {
  * month's value is a partial-month sum flagged with `isPartial` so the UI
  * can label it as still in progress. For any past year, the full Jan 1 –
  * Dec 31 range is fetched and every month is a complete total.
+ *
+ * Wrapped in `unstable_cache` (keyed by rounded lon/lat/year) because both
+ * /api/precipitacion/climatologia-decadal and .../climatologia-quinquenal
+ * call this for the exact same points and years — without a shared cache
+ * entry, each route independently re-requests every vereda from Open-Meteo,
+ * doubling upstream load, and since fetch failures are swallowed per-vereda
+ * (see the batch function below), the two routes could end up averaging a
+ * different subset of veredas and showing visibly different numbers for
+ * what's supposed to be identical data. One cache entry per point+year
+ * guarantees both charts read the same value.
  */
-export async function getYearMonthlyPrecipitation(
+export const getYearMonthlyPrecipitation = unstable_cache(
+  async (lon: number, lat: number, year: number): Promise<CurrentYearMonthlyPoint[]> => {
+    return fetchYearMonthlyPrecipitation(lon, lat, year)
+  },
+  ["year-monthly-precipitation"],
+  { revalidate: REVALIDATE_SECONDS },
+)
+
+async function fetchYearMonthlyPrecipitation(
   lon: number,
   lat: number,
   year: number,
