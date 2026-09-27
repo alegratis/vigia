@@ -340,11 +340,22 @@
   --demografia-indicador-moderado: oklch(0.71 0.15 62);
   --demografia-indicador-alto: oklch(0.58 0.16 45);
   --demografia-indicador-muy-alto: oklch(0.42 0.15 32);
-  --vulnerabilidad-muy-bajo: oklch(0.88 0.07 175);
-  --vulnerabilidad-bajo: oklch(0.78 0.11 178);
-  --vulnerabilidad-moderado: oklch(0.66 0.15 182);
-  --vulnerabilidad-alto: oklch(0.54 0.17 186);
-  --vulnerabilidad-muy-alto: oklch(0.4 0.16 190);
+  /*
+   * IVS (índice de vulnerabilidad compuesto) ramp: pale rose to deep
+   * blood-red/maroon, an urgency-coded warm ramp — teal read as calm/
+   * health, wrong signal for a vulnerability score. Hue arc (30°→355°,
+   * i.e. red) stays clear of this category's two closest neighbors in the
+   * category rail and report: riesgo-compuesto (violet-rose, 300-345°)
+   * and sismología (blue, 230-258°). It sits nearest demografia-indicador
+   * (amber, 32-80°) and danos-destruida (25°), but those never render as
+   * a competing choropleth on the same map as this one, and the muted
+   * pale-to-near-black progression here reads distinctly from both.
+   */
+  --vulnerabilidad-muy-bajo: oklch(0.91 0.05 30);
+  --vulnerabilidad-bajo: oklch(0.8 0.11 18);
+  --vulnerabilidad-moderado: oklch(0.65 0.19 10);
+  --vulnerabilidad-alto: oklch(0.5 0.22 2);
+  --vulnerabilidad-muy-alto: oklch(0.32 0.18 355);
 }
 
 .dark {
@@ -483,11 +494,11 @@
   --demografia-indicador-moderado: oklch(0.65 0.16 62);
   --demografia-indicador-alto: oklch(0.56 0.18 45);
   --demografia-indicador-muy-alto: oklch(0.46 0.17 32);
-  --vulnerabilidad-muy-bajo: oklch(0.8 0.07 175);
-  --vulnerabilidad-bajo: oklch(0.72 0.12 178);
-  --vulnerabilidad-moderado: oklch(0.62 0.16 182);
-  --vulnerabilidad-alto: oklch(0.56 0.2 186);
-  --vulnerabilidad-muy-alto: oklch(0.5 0.19 190);
+  --vulnerabilidad-muy-bajo: oklch(0.82 0.06 30);
+  --vulnerabilidad-bajo: oklch(0.72 0.13 18);
+  --vulnerabilidad-moderado: oklch(0.62 0.2 10);
+  --vulnerabilidad-alto: oklch(0.54 0.22 2);
+  --vulnerabilidad-muy-alto: oklch(0.44 0.19 355);
 }
 
 /*
