@@ -5,6 +5,7 @@ import Map, {
   Source,
   Layer,
   Popup,
+  Marker,
   NavigationControl,
   AttributionControl,
   type MapRef,
@@ -435,6 +436,16 @@ function SismologiaLiveMapImpl({
     }
   }, [veredas, showVeredas, exposureColors, noDataColor, activeMunicipios])
 
+  // Single most-recent event among whatever is currently visible (sources
+  // and time window both apply), so the badge always tracks what's on
+  // screen rather than a fixed catalog-wide latest.
+  const latestEvent = useMemo<SeismicEvent | null>(() => {
+    if (visibleEvents.length === 0) return null
+    return visibleEvents.reduce((latest, event) =>
+      new Date(event.time).getTime() > new Date(latest.time).getTime() ? event : latest,
+    )
+  }, [visibleEvents])
+
   const eventsGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
     if (!resolvedColors) return { type: "FeatureCollection", features: [] }
     return {
@@ -783,6 +794,15 @@ function SismologiaLiveMapImpl({
               }}
             />
           </Source>
+        )}
+
+        {latestEvent && (
+          <Marker longitude={latestEvent.lon} latitude={latestEvent.lat} anchor="center">
+            <div className="pointer-events-none relative flex h-4 w-4 items-center justify-center">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[oklch(0.7_0.19_25)] opacity-60" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full border-2 border-white bg-[oklch(0.7_0.19_25)] shadow-[0_0_0_2px_rgba(0,0,0,0.35)]" />
+            </div>
+          </Marker>
         )}
 
         {osmPoints && osmPoints.length > 0 && (
