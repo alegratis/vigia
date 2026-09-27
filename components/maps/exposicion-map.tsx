@@ -23,7 +23,8 @@ if (typeof window !== "undefined") {
 import useSWR from "swr"
 import { Download, Loader2, Mountain, Droplets, Flame, CloudRain } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { maplibreMapStyle, defaultBasemapForCurrentTheme, type BasemapType } from "@/lib/maps/maplibre-basemap-style"
+import { maplibreMapStyle, type BasemapType } from "@/lib/maps/maplibre-basemap-style"
+import { useThemeSyncedBasemap } from "@/lib/maps/use-theme-synced-basemap"
 import { wmsRasterSource } from "@/lib/maps/wms-raster-source"
 import { SUSCEPTIBILITY_LEVELS, levelColorToken } from "@/lib/deslizamientos/levels"
 import { useVeredas } from "@/lib/veredas/use-veredas"
@@ -179,7 +180,7 @@ function HazardToggleControl({ active, onToggle }: HazardToggleControlProps) {
 function ExposicionMapImpl({ vereda }: { vereda: VeredaListEntry }) {
   const mapRef = useRef<MapRef>(null)
   const [is3D, setIs3D] = useState(false)
-  const [basemap, setBasemap] = useState<BasemapType>(defaultBasemapForCurrentTheme)
+  const [basemap, setBasemap] = useThemeSyncedBasemap()
   const mapStyle = useMemo(() => maplibreMapStyle(basemap, is3D), [basemap, is3D])
   const setMapPitch = useCallback((next: boolean) => {
     const map = mapRef.current?.getMap()
