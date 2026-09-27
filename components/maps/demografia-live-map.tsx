@@ -168,7 +168,7 @@ function DemografiaLiveMapImpl({
   className?: string
 }) {
   const mapRef = useRef<MapRef>(null)
-  const [indicator, setIndicator] = useState<Indicator>("pobreza")
+  const [indicator, setIndicator] = useState<Indicator>("vulnerabilidad")
   const { data } = useDemografiaGeoportal(indicator !== "vulnerabilidad")
   const { data: vulnerabilidadData } = useVulnerabilidad(indicator === "vulnerabilidad")
 
@@ -551,6 +551,17 @@ function DemografiaLiveMapImpl({
               <input
                 type="radio"
                 name="demografia-indicator"
+                checked={indicator === "vulnerabilidad"}
+                onChange={() => setIndicator("vulnerabilidad")}
+                className="size-3.5 shrink-0 accent-primary"
+              />
+              <TriangleAlert className="size-3.5 shrink-0 text-muted-foreground" />
+              <span className="text-pretty">Índice de vulnerabilidad compuesto</span>
+            </label>
+            <label className="flex items-center gap-2 rounded-sm px-1.5 py-1 -mx-1.5 font-medium text-foreground transition-colors hover:bg-muted/70">
+              <input
+                type="radio"
+                name="demografia-indicator"
                 checked={indicator === "pobreza"}
                 onChange={() => setIndicator("pobreza")}
                 className="size-3.5 shrink-0 accent-primary"
@@ -566,17 +577,6 @@ function DemografiaLiveMapImpl({
                 className="size-3.5 shrink-0 accent-primary"
               />
               <span className="text-pretty">Viviendas, hogares y personas</span>
-            </label>
-            <label className="flex items-center gap-2 rounded-sm px-1.5 py-1 -mx-1.5 font-medium text-foreground transition-colors hover:bg-muted/70">
-              <input
-                type="radio"
-                name="demografia-indicator"
-                checked={indicator === "vulnerabilidad"}
-                onChange={() => setIndicator("vulnerabilidad")}
-                className="size-3.5 shrink-0 accent-primary"
-              />
-              <TriangleAlert className="size-3.5 shrink-0 text-muted-foreground" />
-              <span className="text-pretty">Índice de vulnerabilidad compuesto</span>
             </label>
           </div>
         </RailSection>
