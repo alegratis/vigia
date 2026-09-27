@@ -4,6 +4,7 @@ const SECTIONS = [
   { id: "funcionalidades", label: "Funcionalidades" },
   { id: "fuentes", label: "Fuentes de datos" },
   { id: "metodologia", label: "Metodología del modelo de amenaza" },
+  { id: "marco-teorico", label: "Marco teórico" },
   { id: "arquitectura", label: "Arquitectura" },
   { id: "licencias", label: "Licencias de código abierto" },
 ]

@@ -34,12 +34,12 @@ const STEPS: GuideStep[] = [
     number: 2,
     title: "Descubre cuánta gente vive en riesgo",
     simple:
-      "En la franja de la derecha toca \"Demografía\". Verás cuántas personas viven en Sevilla, Caicedonia, Zarzal y Roldanillo, separadas por año, si viven en el pueblo o en el campo, y si son hombres o mujeres. Debajo del mapa encuentras además el Índice de Vulnerabilidad Habitacional (IVH) por manzana en el casco urbano y por vereda en el campo, con su explicación y un gráfico de las viviendas, hogares y personas de cada manzana o vereda que toques en el mapa.",
+      "En la franja de la derecha toca \"Demografía\". Verás cuántas personas viven en Sevilla, Caicedonia, Zarzal y Roldanillo, separadas por año, si viven en el pueblo o en el campo, y si son hombres o mujeres. Debajo del mapa encuentras además el Índice de Vulnerabilidad Social (IVS) por manzana en el casco urbano y, de forma opcional, por municipio en el campo, con su explicación y un gráfico de las viviendas, hogares y personas de cada manzana o vereda que toques en el mapa.",
     technical:
-      "Los números de población vienen de las proyecciones del DANE (2019–2026). El IVH cruza hacinamiento, materiales de la vivienda y acceso a servicios públicos del censo del DANE con el nivel de amenaza vigente de cada zona; en el casco urbano se calcula manzana por manzana (la resolución más fina que publica el DANE) y en el campo se agrega por vereda. Toda esta vista vive dentro del panel de inicio, en la misma pestaña del mapa — ya no se abre en una ventana aparte.",
+      "Los números de población vienen de las proyecciones del DANE (2019–2026). El IVS combina 4 dimensiones del censo — vivienda, servicios públicos, educación y trabajo — con el nivel de amenaza vigente de cada zona; en el casco urbano se calcula manzana por manzana (la resolución más fina que publica el DANE, aunque solo con vivienda y servicios) y en el campo se usa el promedio municipal con las 4 dimensiones, como una capa plana y opcional para no fingir precisión que el dato no tiene. Toda esta vista vive dentro del panel de inicio, en la misma pestaña del mapa — ya no se abre en una ventana aparte.",
     image: {
       src: "/images/docs/demografia.png",
-      alt: "Panel de demografía mostrando el mapa del Índice de Vulnerabilidad Habitacional por manzana, la explicación del índice y los datos de viviendas, hogares y personas debajo del mapa",
+      alt: "Panel de demografía mostrando el mapa del Índice de Vulnerabilidad Social por manzana, la explicación del índice y los datos de viviendas, hogares y personas debajo del mapa",
       width: 1180,
       height: 980,
     },

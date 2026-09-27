@@ -5,11 +5,17 @@ export function SectionResumen() {
     <section id="resumen" className="flex flex-col gap-4 scroll-mt-24">
       <h2 className="text-2xl font-semibold tracking-tight">Resumen</h2>
       <p className="text-pretty leading-relaxed text-muted-foreground">
-        Vigía es una plataforma de código abierto para la evaluación y gestión de riesgos en cuatro
-        municipios del Valle del Cauca, Colombia: Sevilla, Caicedonia, Zarzal y Roldanillo. Cruza amenazas
-        naturales de deslizamiento, inundación e incendio forestal con la población y la
-        infraestructura crítica expuestas, combinando índices de amenaza estáticos con pronósticos
-        y monitoreo en vivo de fuentes abiertas.
+        Vigía es una plataforma de código abierto para la transformación de condiciones de
+        vulnerabilidad social frente a amenazas naturales en cuatro municipios del Valle del
+        Cauca, Colombia: Sevilla, Caicedonia, Zarzal y Roldanillo. Cruza fenómenos naturales de
+        deslizamiento, inundación e incendio forestal con la población y la infraestructura
+        crítica expuestas, combinando índices de amenaza estáticos con pronósticos y monitoreo en
+        vivo de fuentes abiertas — y ese cruce se completa con el Índice de Vulnerabilidad Social
+        (IVS) del panel de{" "}
+        <a href="/?categoria=demografia" className="text-primary hover:underline">
+          Demografía
+        </a>
+        , que mide la condición social previa de la población, no el peligro del lugar.
       </p>
       <p className="text-pretty leading-relaxed text-muted-foreground">
         La aplicación no mantiene una base de datos propia: cada vista es una capa de agregación

@@ -1,10 +1,13 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { useRef } from "react"
+import { useRef, useState } from "react"
+import { FileText } from "lucide-react"
 import { ScrollHintButton } from "@/components/home/scroll-hint-button"
 import { BackToTopButton } from "@/components/home/back-to-top-button"
+import { Button } from "@/components/ui/button"
 import { DemografiaPopulationSection } from "@/components/demografia/demografia-population-section"
+import { SocialVulnerabilityReportDialog } from "@/components/demografia/social-vulnerability-report-dialog"
 import type { MapBounds } from "@/lib/map-bounds"
 
 const DemografiaLiveMap = dynamic(
@@ -25,21 +28,45 @@ function VulnerabilityExplainerSection() {
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-border bg-card/50 p-4">
       <div>
+        <p className="text-sm font-medium text-foreground">
+          Por qué hablamos de vulnerabilidad social, no de desastres naturales
+        </p>
+        <div className="mt-1.5 flex flex-col gap-1.5 text-sm text-muted-foreground">
+          <p>
+            Un mismo fenómeno natural — una crecida, un sismo, un deslizamiento — no afecta igual a todos los
+            hogares de un municipio. Lo que decide si se vuelve una tragedia es la condición social previa de quien
+            lo recibe: el estado de su vivienda, si tiene acueducto y alcantarillado, si sus hijos van a la escuela,
+            si el hogar depende de una sola fuente de ingreso. Por eso este panel no mide "qué tan peligrosa es
+            Sevilla, Caicedonia, Zarzal o Roldanillo", sino qué tan preparada está su población para resistir el
+            fenómeno cuando llegue.
+          </p>
+          <p>
+            El Índice de Vulnerabilidad Social (IVS) reúne esa condición social en un solo número por manzana o
+            vereda, combinable con el riesgo compuesto para ver dónde coinciden la peor condición social y la mayor
+            exposición física — el cruce que de verdad debería guiar dónde invertir primero.
+          </p>
+        </div>
+      </div>
+      <div>
         <p className="text-sm font-medium text-foreground">Índice de vulnerabilidad compuesto — qué es y cómo leerlo</p>
         <div className="mt-1.5 flex flex-col gap-1.5 text-sm text-muted-foreground">
           <p>
-            <span className="font-medium text-foreground">Qué mide:</span> el Índice de Vulnerabilidad de Vivienda
-            (IVH) evalúa qué tan frágil es una vivienda a partir de 8 componentes del Censo 2018 — material de
-            paredes y pisos, hacinamiento mitigable y no mitigable, y acceso a acueducto, alcantarillado, energía y
-            recolección de basuras. Va de 0 (vivienda menos frágil) a 1 (más frágil).
+            <span className="font-medium text-foreground">Qué mide:</span> el Índice de Vulnerabilidad Social (IVS)
+            combina 4 dimensiones del Censo 2018 — Vivienda (25%: paredes, pisos, hacinamiento), Servicios públicos
+            (25%: acueducto, alcantarillado, energía, basuras), Educación (20%: inasistencia escolar) y Trabajo
+            (15%: dependencia económica del hogar) — renormalizadas porque la quinta dimensión, Salud, se excluye a
+            propósito: el DANE no publica afiliación a salud ni mortalidad infantil a nivel municipal para el año
+            2018 en estos 4 municipios, y prefirimos dejar ese vacío visible antes que inventar un número. Va de 0
+            (condición social menos precaria) a 1 (más precaria).
           </p>
           <p>
             <span className="font-medium text-foreground">Resolución:</span> en los cascos urbanos se calcula
-            manzana por manzana a partir del IPM del DANE — la escala más fina disponible. En veredas rurales, donde
-            el censo no publica manzanas, se usa el promedio municipal de déficit habitacional.
+            manzana por manzana, aunque solo con Vivienda y Servicios — Educación y Trabajo no se publican a esa
+            escala. En veredas rurales, donde el censo no publica manzanas, se usan las 4 dimensiones pero a nivel
+            de todo el municipio.
           </p>
           <p>
-            <span className="font-medium text-foreground">Cómo se combina:</span> IVH × amenaza física (el nivel de{" "}
+            <span className="font-medium text-foreground">Cómo se combina:</span> IVS × amenaza física (el nivel de{" "}
             <a href="/?categoria=riesgo-compuesto" className="underline underline-offset-2 hover:text-foreground">
               riesgo compuesto
             </a>{" "}
@@ -47,11 +74,16 @@ function VulnerabilityExplainerSection() {
           </p>
           <p>
             <span className="font-medium text-foreground">Para qué sirve:</span> identifica dónde la población vive
-            en peores condiciones de vivienda Y está más expuesta al peligro físico — la combinación que debería
+            en peores condiciones sociales Y está más expuesta al peligro físico — la combinación que debería
             priorizarse al asignar recursos de mitigación, reasentamiento o mejoramiento de vivienda.
           </p>
         </div>
       </div>
+      <p className="border-t border-border pt-2.5 text-sm leading-relaxed text-muted-foreground">
+        Este dato busca informar decisiones de inversión, reasentamiento y mejora de servicios — no estigmatizar
+        lugares ni a quienes viven en ellos. Un municipio con IVS alto es un municipio que necesita más inversión
+        social, no uno "más peligroso" por naturaleza.
+      </p>
     </div>
   )
 }
@@ -69,6 +101,7 @@ interface DemografiaPanelContentProps {
 export function DemografiaPanelContent({ onBoundsChange }: DemografiaPanelContentProps) {
   const captionRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<HTMLDivElement>(null)
+  const [reportOpen, setReportOpen] = useState(false)
 
   return (
     <div className="flex flex-col overflow-y-auto lg:min-h-0 lg:flex-1">
@@ -108,15 +141,22 @@ export function DemografiaPanelContent({ onBoundsChange }: DemografiaPanelConten
         </div>
         <VulnerabilityExplainerSection />
         <div className="flex flex-col gap-4 border-t border-border pt-6">
-          <div>
-            <p className="text-sm font-medium text-foreground">Población, sexo y exposición por amenaza</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Proyecciones de población del DANE por municipio, residencia (urbano/rural) y sexo, cruzadas con la
-              exposición actual a inundaciones, incendios forestales y deslizamientos.
-            </p>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium text-foreground">Población, sexo y exposición por amenaza</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Proyecciones de población del DANE por municipio, residencia (urbano/rural) y sexo, cruzadas con la
+                exposición actual a inundaciones, incendios forestales y deslizamientos.
+              </p>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => setReportOpen(true)} className="shrink-0">
+              <FileText data-icon="inline-start" aria-hidden="true" />
+              Ver informe de vulnerabilidad social
+            </Button>
           </div>
           <DemografiaPopulationSection />
         </div>
+        <SocialVulnerabilityReportDialog open={reportOpen} onOpenChange={setReportOpen} />
         <p className="text-xs text-muted-foreground">
           Fuente:{" "}
           <a
