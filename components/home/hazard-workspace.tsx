@@ -71,7 +71,14 @@ const CATEGORY_BASIS: Record<string, { basis: "urbano" | "rural"; basisLabel: st
  * already turned on. Whichever category is active also drives the
  * sidebar's demographics card via onBoundsChange/onZoneSelect.
  */
-export function HazardWorkspace({ initialCategory }: { initialCategory: string }) {
+export function HazardWorkspace({
+  initialCategory,
+  detectedMunicipio,
+}: {
+  initialCategory: string
+  /** IP-geolocation match for Demografía's default view — see app/page.tsx. */
+  detectedMunicipio?: string | null
+}) {
   const [activeSlug, setActiveSlug] = useState(initialCategory)
   const [bounds, setBounds] = useState<MapBounds | null>(null)
   const [selectedMunicipio, setSelectedMunicipio] = useState<string | null>(null)
@@ -385,7 +392,9 @@ export function HazardWorkspace({ initialCategory }: { initialCategory: string }
                 {model.slug === "riesgo-compuesto" && (
                   <RiesgoCompuestoPanelContent onBoundsChange={setBounds} activeOsmPoints={activeOsmPoints} />
                 )}
-                {model.slug === "demografia" && <DemografiaPanelContent onBoundsChange={setBounds} />}
+                {model.slug === "demografia" && (
+            <DemografiaPanelContent onBoundsChange={setBounds} detectedMunicipio={detectedMunicipio} />
+          )}
               </CategoryPanel>
             )
         })}

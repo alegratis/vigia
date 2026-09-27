@@ -25,6 +25,7 @@ import { MapBasemapControl } from "@/components/maps/map-basemap-control"
 import { MunicipioTogglePanelContent } from "@/components/maps/municipio-toggle-panel"
 import { useMunicipioToggles, isMunicipioActive } from "@/lib/veredas/municipio-toggles"
 import { boundsForActiveMunicipios } from "@/lib/demografia/municipio-bounds"
+import { SEVILLA_CASCO_URBANO_BOUNDS, boundsForDetectedMunicipio, type DetectableMunicipio } from "@/lib/demografia/geo-detect"
 import { useBarrios } from "@/lib/barrios/use-barrios"
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import { cn } from "@/lib/utils"
@@ -39,12 +40,6 @@ import type { VulnerabilidadVeredaProperties, VulnerabilidadResponse } from "@/l
 import type { PobrezaFeatureProperties, ManzanaFeatureProperties } from "@/lib/demografia/geoportal-api-types"
 import type { BarrioProperties } from "@/lib/barrios/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
-
-// Same 4-municipio AOI as every other hazard map (Sevilla, Caicedonia, Zarzal, Roldanillo).
-const AOI_BOUNDS: [[number, number], [number, number]] = [
-  [-76.06, 3.88],
-  [-75.72, 4.44],
-]
 
 type Indicator = "pobreza" | "manzanas" | "vulnerabilidad"
 type ManzanaField = "viviendas" | "hogares" | "personas"
@@ -168,18 +163,36 @@ function VulnerabilityLegend() {
 function DemografiaLiveMapImpl({
   onBoundsChange,
   className,
+  detectedMunicipio,
 }: {
   onBoundsChange?: (bounds: MapBounds) => void
   className?: string
+  /** IP-geolocation match for the default view — see app/page.tsx and lib/demografia/geo-detect.ts. */
+  detectedMunicipio?: string | null
 }) {
   const mapRef = useRef<MapRef>(null)
   const [indicator, setIndicator] = useState<Indicator>("vulnerabilidad")
   const { data } = useDemografiaGeoportal(indicator !== "vulnerabilidad")
   const { data: vulnerabilidadData } = useVulnerabilidad(indicator === "vulnerabilidad")
 
-  // Sevilla starts on, the rest off — same convention as every other hazard
-  // map's "Municipios" control (lib/veredas/municipio-toggles.ts).
-  const { active: activeMunicipiosMap, activeMunicipios, toggle: toggleMunicipio } = useMunicipioToggles()
+  // Sevilla starts on unless a visitor's IP places them in one of the other
+  // three municipios, in which case *that* one starts on instead — same
+  // convention as every other hazard map's "Municipios" control
+  // (lib/veredas/municipio-toggles.ts), just with a per-visitor default.
+  const {
+    active: activeMunicipiosMap,
+    activeMunicipios,
+    toggle: toggleMunicipio,
+  } = useMunicipioToggles(detectedMunicipio ?? undefined)
+
+  // Default view: a detected visitor's own municipio, or Sevilla's casco
+  // urbano for everyone else. Computed once on mount, since react-map-gl's
+  // `initialViewState` only ever applies at mount time.
+  const initialBounds = useRef(
+    detectedMunicipio === "Caicedonia" || detectedMunicipio === "Zarzal" || detectedMunicipio === "Roldanillo"
+      ? boundsForDetectedMunicipio(detectedMunicipio as DetectableMunicipio)
+      : SEVILLA_CASCO_URBANO_BOUNDS,
+  ).current
 
   const [manzanaField, setManzanaField] = useState<ManzanaField>("personas")
   const [levelColors, setLevelColors] = useState<Record<string, string> | null>(null)
@@ -541,7 +554,12 @@ function DemografiaLiveMapImpl({
       <Map
         ref={mapRef}
         mapStyle={mapStyle}
-        initialViewState={{ bounds: AOI_BOUNDS, pitch: 55, bearing: -12 }}
+        initialViewState={{
+          bounds: initialBounds,
+          fitBoundsOptions: { padding: 48, maxZoom: 14 },
+          pitch: 55,
+          bearing: -12,
+        }}
         attributionControl={false}
         cursor={cursor}
         interactiveLayerIds={interactiveLayerIds}
@@ -777,6 +795,7 @@ function DemografiaLiveMapImpl({
 export function DemografiaLiveMap(props: {
   onBoundsChange?: (bounds: MapBounds) => void
   className?: string
+  detectedMunicipio?: string | null
 }) {
   return <DemografiaLiveMapImpl {...props} />
 }
