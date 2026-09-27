@@ -87,6 +87,7 @@ export function QuinquenalChart({ vereda }: QuinquenalChartProps) {
   // specific year to compare against.
   const [enabledYears, setEnabledYears] = useState<Set<number>>(new Set())
   const [mode, setMode] = useState<"vereda" | "municipio">("municipio")
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
   function toggleYear(anio: number, checked: boolean) {
     setEnabledYears((prev) => {
@@ -109,6 +110,10 @@ export function QuinquenalChart({ vereda }: QuinquenalChartProps) {
   const { data, error, isLoading, mutate, isValidating } = useSWR<ClimatologiaQuinquenalResponse>(query, fetcher, {
     revalidateOnFocus: false,
   })
+
+  useEffect(() => {
+    if (data) setLastUpdated(new Date())
+  }, [data])
 
   const quinquenios = data?.quinquenios ?? []
   const aniosRecientes = data?.aniosRecientes ?? []
@@ -335,6 +340,11 @@ export function QuinquenalChart({ vereda }: QuinquenalChartProps) {
         ) : (
           <p className="py-10 text-center text-sm text-muted-foreground">
             Open-Meteo no tiene datos históricos suficientes para este punto exacto.
+          </p>
+        )}
+        {lastUpdated && (
+          <p className="mt-1.5 text-right text-[11px] text-muted-foreground/70">
+            Actualizado {lastUpdated.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
           </p>
         )}
         <p className="mt-3 text-xs leading-snug text-muted-foreground">
