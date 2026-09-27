@@ -51,8 +51,14 @@ const CARTO_API_KEY = process.env.NEXT_PUBLIC_CARTO_API_KEY
 const CARTO_DARK_STYLE_URL = CARTO_API_KEY
   ? `https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json?key=${CARTO_API_KEY}`
   : null
-const CARTO_DARK_RASTER_TILE_URL = CARTO_API_KEY
-  ? `https://basemaps.cartocdn.com/rastertiles/dark_matter/{z}/{x}/{y}.png?key=${CARTO_API_KEY}`
+// Raster tiles use CARTO's older `{s}.basemaps.cartocdn.com/<style>/{z}/{x}/{y}.png`
+// path (style name `dark_all`), NOT the `/rastertiles/dark_matter/...` path — that
+// one 404s even with a valid key. `{s}` is expanded into the four CDN subdomains
+// (a-d) the same way `OSM_TILE_URL` expands OSM's.
+const CARTO_DARK_RASTER_TILE_URLS = CARTO_API_KEY
+  ? ["a", "b", "c", "d"].map(
+      (s) => `https://${s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png?key=${CARTO_API_KEY}`,
+    )
   : null
 const CARTO_ATTRIBUTION = "© CARTO, © OpenStreetMap contributors"
 
@@ -119,8 +125,8 @@ export function maplibreMapStyle(basemap: BasemapType, is3D: boolean): StyleSpec
       layers.push({ id: "osm", type: "raster", source: "osm" })
       break
     case "dark":
-      if (CARTO_DARK_RASTER_TILE_URL) {
-        sources["carto-dark"] = rasterSource([CARTO_DARK_RASTER_TILE_URL], CARTO_ATTRIBUTION)
+      if (CARTO_DARK_RASTER_TILE_URLS) {
+        sources["carto-dark"] = rasterSource(CARTO_DARK_RASTER_TILE_URLS, CARTO_ATTRIBUTION)
         layers.push({ id: "carto-dark", type: "raster", source: "carto-dark" })
         break
       }
