@@ -4,7 +4,7 @@ import { ThemeProvider } from '@/components/theme-provider'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Vigía — Vulnerabilidad social y riesgo compuesto',
+  title: 'Vigía. Vulnerabilidad social y riesgo compuesto',
   description:
     'Plataforma de código abierto para la transformación de condiciones de vulnerabilidad social frente a amenazas naturales, conectada a un backend QGIS.',
   generator: 'v0.app',

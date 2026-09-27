@@ -33,7 +33,7 @@ function VulnerabilityExplainerSection() {
         </p>
         <div className="mt-1.5 flex flex-col gap-1.5 text-sm text-muted-foreground">
           <p>
-            Un mismo fenómeno natural — una crecida, un sismo, un deslizamiento — no afecta igual a todos los
+            Un mismo fenómeno natural, una crecida, un sismo, un deslizamiento, no afecta igual a todos los
             hogares de un municipio. Lo que decide si se vuelve una tragedia es la condición social previa de quien
             lo recibe: el estado de su vivienda, si tiene acueducto y alcantarillado, si sus hijos van a la escuela,
             si el hogar depende de una sola fuente de ingreso. Por eso este panel no mide "qué tan peligrosa es
@@ -43,25 +43,25 @@ function VulnerabilityExplainerSection() {
           <p>
             El Índice de Vulnerabilidad Social (IVS) reúne esa condición social en un solo número por manzana o
             vereda, combinable con el riesgo compuesto para ver dónde coinciden la peor condición social y la mayor
-            exposición física — el cruce que de verdad debería guiar dónde invertir primero.
+            exposición física, el cruce que de verdad debería guiar dónde invertir primero.
           </p>
         </div>
       </div>
       <div>
-        <p className="text-sm font-medium text-foreground">Índice de vulnerabilidad compuesto — qué es y cómo leerlo</p>
+        <p className="text-sm font-medium text-foreground">Índice de vulnerabilidad compuesto, qué es y cómo leerlo</p>
         <div className="mt-1.5 flex flex-col gap-1.5 text-sm text-muted-foreground">
           <p>
             <span className="font-medium text-foreground">Qué mide:</span> el Índice de Vulnerabilidad Social (IVS)
-            combina 4 dimensiones del Censo 2018 — Vivienda (25%: paredes, pisos, hacinamiento), Servicios públicos
+            combina 4 dimensiones del Censo 2018. Vivienda (25%: paredes, pisos, hacinamiento), Servicios públicos
             (25%: acueducto, alcantarillado, energía, basuras), Educación (20%: inasistencia escolar) y Trabajo
-            (15%: dependencia económica del hogar) — renormalizadas porque la quinta dimensión, Salud, se excluye a
+            (15%: dependencia económica del hogar), renormalizadas porque la quinta dimensión, Salud, se excluye a
             propósito: el DANE no publica afiliación a salud ni mortalidad infantil a nivel municipal para el año
             2018 en estos 4 municipios, y prefirimos dejar ese vacío visible antes que inventar un número. Va de 0
             (condición social menos precaria) a 1 (más precaria).
           </p>
           <p>
             <span className="font-medium text-foreground">Resolución:</span> en los cascos urbanos se calcula
-            manzana por manzana, aunque solo con Vivienda y Servicios — Educación y Trabajo no se publican a esa
+            manzana por manzana, aunque solo con Vivienda y Servicios. Educación y Trabajo no se publican a esa
             escala. En veredas rurales, donde el censo no publica manzanas, se usan las 4 dimensiones pero a nivel
             de todo el municipio.
           </p>
@@ -74,13 +74,13 @@ function VulnerabilityExplainerSection() {
           </p>
           <p>
             <span className="font-medium text-foreground">Para qué sirve:</span> identifica dónde la población vive
-            en peores condiciones sociales Y está más expuesta al peligro físico — la combinación que debería
+            en peores condiciones sociales Y está más expuesta al peligro físico, la combinación que debería
             priorizarse al asignar recursos de mitigación, reasentamiento o mejoramiento de vivienda.
           </p>
         </div>
       </div>
       <p className="border-t border-border pt-2.5 text-sm leading-relaxed text-muted-foreground">
-        Este dato busca informar decisiones de inversión, reasentamiento y mejora de servicios — no estigmatizar
+        Este dato busca informar decisiones de inversión, reasentamiento y mejora de servicios, no estigmatizar
         lugares ni a quienes viven en ellos. Un municipio con IVS alto es un municipio que necesita más inversión
         social, no uno "más peligroso" por naturaleza.
       </p>
@@ -127,7 +127,7 @@ export function DemografiaPanelContent({ onBoundsChange }: DemografiaPanelConten
           <p>
             Las columnas 3D representan, según el indicador activo en el panel de la derecha, el
             índice de pobreza multidimensional (IPM) por manzana censal (donde el DANE lo publica) o
-            el número de viviendas, hogares o personas por manzana censal — mientras más alta y más
+            el número de viviendas, hogares o personas por manzana censal, mientras más alta y más
             intensa la columna, mayor el valor del indicador en ese lugar.
           </p>
           <p>
@@ -167,7 +167,7 @@ export function DemografiaPanelContent({ onBoundsChange }: DemografiaPanelConten
           >
             Geoportal del DANE
           </a>{" "}
-          — índice de pobreza multidimensional (
+         , índice de pobreza multidimensional (
           <a
             href="https://geoportal.dane.gov.co/visipm"
             target="_blank"

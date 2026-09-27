@@ -10,7 +10,7 @@ export function SectionResumen() {
         Cauca, Colombia: Sevilla, Caicedonia, Zarzal y Roldanillo. Cruza fenómenos naturales de
         deslizamiento, inundación e incendio forestal con la población y la infraestructura
         crítica expuestas, combinando índices de amenaza estáticos con pronósticos y monitoreo en
-        vivo de fuentes abiertas — y ese cruce se completa con el Índice de Vulnerabilidad Social
+        vivo de fuentes abiertas, y ese cruce se completa con el Índice de Vulnerabilidad Social
         (IVS) del panel de{" "}
         <a href="/?categoria=demografia" className="text-primary hover:underline">
           Demografía
@@ -19,7 +19,7 @@ export function SectionResumen() {
       </p>
       <p className="text-pretty leading-relaxed text-muted-foreground">
         La aplicación no mantiene una base de datos propia: cada vista es una capa de agregación
-        en tiempo real sobre servicios geoespaciales públicos (ArcGIS, WMS, WMTS, APIs REST) —
+        en tiempo real sobre servicios geoespaciales públicos (ArcGIS, WMS, WMTS, APIs REST),
         descrito en detalle en{" "}
         <a href="#arquitectura" className="text-primary hover:underline">
           Arquitectura
@@ -48,14 +48,14 @@ export function SectionResumen() {
         >
           <Image
             src="/images/redlabot-mark-light.png"
-            alt="RED LabOT — Red de Laboratorios de Observación de la Tierra de las Américas"
+            alt="RED LabOT. Red de Laboratorios de Observación de la Tierra de las Américas"
             width={175}
             height={79}
             className="block h-16 w-auto dark:hidden"
           />
           <Image
             src="/images/redlabot-mark-dark.png"
-            alt="RED LabOT — Red de Laboratorios de Observación de la Tierra de las Américas"
+            alt="RED LabOT. Red de Laboratorios de Observación de la Tierra de las Américas"
             width={175}
             height={79}
             className="hidden h-16 w-auto dark:block"

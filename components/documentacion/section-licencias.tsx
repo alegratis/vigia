@@ -67,7 +67,7 @@ export function SectionLicencias() {
       <p className="text-pretty leading-relaxed text-muted-foreground">
         El repositorio de Vigía es público para que cualquiera pueda leer su código, auditarlo y
         aprender de él, creado por Alejandro Pino (SIG &middot; Director Técnico). La plataforma en
-        sí — el sitio que estás usando — es de uso público y gratuito. El código fuente, en
+        sí, el sitio que estás usando, es de uso público y gratuito. El código fuente, en
         cambio, todavía no tiene una licencia de código abierto: las dependencias que trae la app
         sí la tienen y se listan a continuación, agrupadas por su propia licencia.
       </p>
@@ -127,29 +127,29 @@ export function SectionLicencias() {
         <CardContent>
           <ul className="flex flex-col gap-2 text-sm leading-relaxed text-muted-foreground">
             <li>
-              <span className="font-medium text-foreground">OpenStreetMap</span> — Open Database
+              <span className="font-medium text-foreground">OpenStreetMap</span>. Open Database
               License (ODbL). Todo uso debe atribuir a{" "}
               <span className="text-foreground">&copy; colaboradores de OpenStreetMap</span>.
             </li>
             <li>
-              <span className="font-medium text-foreground">NASA (FIRMS, GIBS)</span> — datos
+              <span className="font-medium text-foreground">NASA (FIRMS, GIBS)</span>, datos
               públicos financiados con fondos federales de EE. UU., de libre uso y redistribución.
             </li>
             <li>
-              <span className="font-medium text-foreground">Copernicus (GWIS/EFFIS)</span> — bajo
+              <span className="font-medium text-foreground">Copernicus (GWIS/EFFIS)</span>, bajo
               la política de datos gratuitos, plenos y abiertos del programa Copernicus de la
               Unión Europea.
             </li>
             <li>
-              <span className="font-medium text-foreground">DANE y Esri Colombia</span> — datos
+              <span className="font-medium text-foreground">DANE y Esri Colombia</span>, datos
               abiertos publicados por el Estado colombiano y su red de datos abiertos.
             </li>
             <li>
-              <span className="font-medium text-foreground">GEOGLOWS (ECMWF)</span> — acceso
+              <span className="font-medium text-foreground">GEOGLOWS (ECMWF)</span>, acceso
               abierto a través de su API pública v2.
             </li>
             <li>
-              <span className="font-medium text-foreground">RED LabOT</span> — índices de
+              <span className="font-medium text-foreground">RED LabOT</span>, índices de
               susceptibilidad publicados abiertamente en ArcGIS Online; ver{" "}
               <a href="https://redlabot.org" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
                 redlabot.org

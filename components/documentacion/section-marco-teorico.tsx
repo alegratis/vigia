@@ -8,7 +8,7 @@ const PRIORIDADES = [
   {
     titulo: "Municipios con IVS combinado alto",
     texto:
-      "Donde el IVS coincide con un riesgo compuesto alto o muy alto: inversión pública extraordinaria en infraestructura básica, mejoramiento integral de vivienda y regularización de tenencia de la tierra — antes que reasentamiento forzoso.",
+      "Donde el IVS coincide con un riesgo compuesto alto o muy alto: inversión pública extraordinaria en infraestructura básica, mejoramiento integral de vivienda y regularización de tenencia de la tierra, antes que reasentamiento forzoso.",
   },
   {
     titulo: "Control urbano preventivo",
@@ -18,12 +18,12 @@ const PRIORIDADES = [
   {
     titulo: "Universalización de servicios",
     texto:
-      "Acueducto y alcantarillado como derecho, no como mercancía — es la dimensión con mayor peso individual (25%) en el IVS precisamente porque su ausencia es la más directamente atribuible a decisión pública, no a geografía.",
+      "Acueducto y alcantarillado como derecho, no como mercancía, es la dimensión con mayor peso individual (25%) en el IVS precisamente porque su ausencia es la más directamente atribuible a decisión pública, no a geografía.",
   },
   {
     titulo: "Cobertura educativa y dependencia económica",
     texto:
-      "Donde Educación o Trabajo dominan el IVS de un municipio, la respuesta no es un mapa: es transporte escolar subsidiado y programas de formalización laboral — el dato solo señala dónde falta esa inversión.",
+      "Donde Educación o Trabajo dominan el IVS de un municipio, la respuesta no es un mapa: es transporte escolar subsidiado y programas de formalización laboral, el dato solo señala dónde falta esa inversión.",
   },
 ]
 
@@ -50,13 +50,13 @@ export function SectionMarcoTeorico() {
           1. Crítica a la categoría "desastre natural"
         </h3>
         <p className="text-pretty leading-relaxed text-muted-foreground">
-          La categoría "desastre natural" naturaliza lo que en realidad es producto histórico —
+          La categoría "desastre natural" naturaliza lo que en realidad es producto histórico:
           presenta como inevitable una pérdida que resulta de decisiones concretas sobre dónde se
           permite construir, qué vivienda se ofrece a quién y qué servicios públicos se mantienen
           durante décadas. También individualiza la responsabilidad: culpa a quien "vive en un
           lugar peligroso" en vez de preguntar por qué vive ahí. Esta plataforma no predice
-          desastres naturales porque, en ese sentido, no existen: existen fenómenos naturales —una
-          crecida, un sismo, un deslizamiento— y existen condiciones sociales previas que convierten
+          desastres naturales porque, en ese sentido, no existen: existen fenómenos naturales una
+          crecida, un sismo, un deslizamiento, y existen condiciones sociales previas que convierten
           ese fenómeno en catástrofe para una población específica y no para otra.
         </p>
       </div>
@@ -87,7 +87,7 @@ export function SectionMarcoTeorico() {
           hacia laderas inestables, que mercantilizan la vivienda hasta volver inaccesible el suelo
           seguro, y que precarizan el trabajo hasta volver imposible invertir en mejorar una casa.
           Un mismo aguacero (tesis) sobre una misma ladera no produce el mismo resultado en dos
-          hogares con vulnerabilidad social distinta (antítesis) — lo que llamamos "desastre" es esa
+          hogares con vulnerabilidad social distinta (antítesis), lo que llamamos "desastre" es esa
           exposición diferencial a la pérdida, no una síntesis natural.
         </p>
       </div>
@@ -95,7 +95,7 @@ export function SectionMarcoTeorico() {
       <div className="flex flex-col gap-2">
         <h3 className="text-base font-semibold text-foreground">4. Qué implica esto para decidir</h3>
         <p className="text-pretty leading-relaxed text-muted-foreground">
-          El IVS por sí solo no prioriza nada — cruzado con el riesgo físico compuesto que ya calcula
+          El IVS por sí solo no prioriza nada, cruzado con el riesgo físico compuesto que ya calcula
           esta plataforma, sí señala dónde invertir primero. Cuatro frentes concretos, en orden
           decreciente de urgencia cuando el IVS y el riesgo físico coinciden en un mismo lugar:
         </p>
@@ -112,13 +112,13 @@ export function SectionMarcoTeorico() {
         <h3 className="text-base font-semibold text-foreground">5. Límites de este índice</h3>
         <p className="text-pretty leading-relaxed text-muted-foreground">
           Ningún índice cuantitativo captura la totalidad de una experiencia vivida. Los datos del
-          IVS provienen del Censo Nacional de Población y Vivienda 2018 del DANE — tienen un rezago
+          IVS provienen del Censo Nacional de Población y Vivienda 2018 del DANE, tienen un rezago
           de varios años y no incluyen la dimensión de Salud, que esta plataforma excluye
           explícitamente en vez de inventarla, por falta de un dato municipal 2018 confiable para
           estos 4 municipios (ver la explicación completa en el panel de Demografía). Georeferenciar
           la vulnerabilidad puede estigmatizar un territorio si se usa sin este contexto. El
           compromiso de esta plataforma es que el dato se use para exigir transformación de
-          condiciones, no para etiquetar poblaciones como "en riesgo" — la vulnerabilidad mide
+          condiciones, no para etiquetar poblaciones como "en riesgo", la vulnerabilidad mide
           ausencia de derechos, no ausencia de capacidad humana.
         </p>
       </div>

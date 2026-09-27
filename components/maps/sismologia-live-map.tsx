@@ -205,7 +205,7 @@ function DamageReportsPanel({
       )}
     >
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border/70 px-3 py-2">
-        <p className="font-medium text-foreground">Reportes de daños — Sevilla</p>
+        <p className="font-medium text-foreground">Reportes de daños. Sevilla</p>
         <button
           type="button"
           onClick={() => setCollapsed(true)}
@@ -893,7 +893,7 @@ function SismologiaLiveMapImpl({
           {showVeredas && <ExposureLegend />}
           <RailToggleRow
             icon={FileWarning}
-            label="Reportes de daños (Sevilla) — 3D"
+            label="Reportes de daños (Sevilla), 3D"
             checked={showDamage}
             onChange={setShowDamage}
           />

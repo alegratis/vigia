@@ -27,7 +27,7 @@ const FACTORS = [
     label: "1. Zonificación oficial",
     weight: "50% del puntaje",
     detail:
-      "Clase de la capa pública susceptibilidad_inundaciones (ArcGIS Online), por punto-en-polígono sobre el centroide de la vereda. Es la única evidencia oficial directa, pero solo cubre el área zonificada de Sevilla y Caicedonia — ninguna vereda de Zarzal tiene esta cobertura.",
+      "Clase de la capa pública susceptibilidad_inundaciones (ArcGIS Online), por punto-en-polígono sobre el centroide de la vereda. Es la única evidencia oficial directa, pero solo cubre el área zonificada de Sevilla y Caicedonia, ninguna vereda de Zarzal tiene esta cobertura.",
   },
   {
     label: "2. Cercanía a una quebrada o río",
@@ -39,7 +39,7 @@ const FACTORS = [
     label: "3. Planicie del terreno",
     weight: "20% del puntaje",
     detail:
-      "Mismo valor de pendiente ya calculado por el modelo de amenaza por deslizamiento (DEM Copernicus GLO-30, vía Open-Meteo) en el mismo centroide — sin una segunda consulta. A diferencia de ese modelo, aquí se invierte: terreno plano cerca de un cauce se inunda con más facilidad; terreno empinado drena en vez de encharcar. Satura en 8°.",
+      "Mismo valor de pendiente ya calculado por el modelo de amenaza por deslizamiento (DEM Copernicus GLO-30, vía Open-Meteo) en el mismo centroide, sin una segunda consulta. A diferencia de ese modelo, aquí se invierte: terreno plano cerca de un cauce se inunda con más facilidad; terreno empinado drena en vez de encharcar. Satura en 8°.",
   },
 ]
 
@@ -94,7 +94,7 @@ export function FloodModelPanel({ className, selectedVereda, onClearSelection }:
         </h3>
         <p className="text-xs leading-relaxed text-muted-foreground">
           El color de cada vereda en la capa &quot;Modelo propio de inundación&quot; no viene de un índice
-          publicado — lo calcula esta misma app, combinando los tres factores de abajo, para extender la
+          publicado, lo calcula esta misma app, combinando los tres factores de abajo, para extender la
           zonificación oficial a los cuatro municipios, incluidos Zarzal y Roldanillo.{" "}
           <a href="/documentacion#metodologia" className="text-primary underline-offset-2 hover:underline">
             Ver metodología completa
@@ -149,7 +149,7 @@ export function FloodModelPanel({ className, selectedVereda, onClearSelection }:
                   <dd className="font-medium text-foreground">
                     {selectedProps.floodZoningCovered
                       ? selectedProps.floodZoningLevel ?? "—"
-                      : "Sin cobertura — solo modelo propio"}
+                      : "Sin cobertura, solo modelo propio"}
                   </dd>
                 </div>
               </dl>

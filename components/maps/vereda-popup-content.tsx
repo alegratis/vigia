@@ -99,7 +99,7 @@ export function VeredaPopupContent({ feature, hazardKind = "deslizamientos", col
         <span style={{ color: "#888" }}>
           {props.floodZoningCovered
             ? `Con zonificación oficial: ${props.floodZoningLevel ?? "—"}`
-            : "Sin zonificación oficial — solo modelo propio"}
+            : "Sin zonificación oficial, solo modelo propio"}
         </span>
       )}
       {colored && hazardKind === "incendios" && props.fireLevel && (

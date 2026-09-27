@@ -80,7 +80,7 @@ export function ExposicionPanel() {
                   {/*
                     The Select's value is the vereda's code (needed for the
                     dependent-vereda lookup), so this resolves it back to the
-                    vereda's name instead of showing the raw code — falling
+                    vereda's name instead of showing the raw code, falling
                     back to the same placeholder copy used before any
                     municipio/vereda is picked.
                   */}

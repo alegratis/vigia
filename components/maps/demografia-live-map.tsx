@@ -75,7 +75,7 @@ function vulnerabilityLevelFromNormalized(value: number): (typeof VULNERABILITY_
 const IVS_EXPLAINER = {
   what: "El IVS mide la magnitud de privación social acumulada: vivienda, servicios públicos, inasistencia escolar y dependencia económica del hogar.",
   read: "0 = la condición social menos precaria de los 4 municipios estudiados; 1 = la más precaria. En cascos urbanos se calcula manzana por manzana (solo vivienda y servicios); en veredas rurales, por municipio completo (las 4 dimensiones).",
-  use: "Multiplicado por la amenaza física (riesgo compuesto) da la vulnerabilidad combinada: dónde la gente vive en peores condiciones sociales Y está más expuesta a un fenómeno natural — la prioridad más alta para intervención.",
+  use: "Multiplicado por la amenaza física (riesgo compuesto) da la vulnerabilidad combinada: dónde la gente vive en peores condiciones sociales Y está más expuesta a un fenómeno natural, la prioridad más alta para intervención.",
 }
 
 /**
@@ -334,7 +334,7 @@ function DemografiaLiveMapImpl({
                 Categoría: <span className="font-medium text-foreground">{props.categoria}</span>
               </p>
               <p className="border-t border-border pt-1.5 leading-snug text-muted-foreground">
-                Índice de Pobreza Multidimensional (IPM) del DANE, calculado por manzana censal — el porcentaje de
+                Índice de Pobreza Multidimensional (IPM) del DANE, calculado por manzana censal, el porcentaje de
                 privaciones (vivienda, servicios, educación, salud) que sufren los hogares de esta manzana.
               </p>
             </div>
@@ -470,7 +470,7 @@ function DemografiaLiveMapImpl({
         <NavigationControl position="top-left" />
         <MapViewToggleControl is3D={is3D} onToggle={() => setMapPitch(!is3D)} />
         <MapBasemapControl basemap={basemap} onChange={setBasemap} />
-        <AttributionControl position="bottom-left" customAttribution="MapLibre © OpenStreetMap / CARTO — DANE" compact />
+        <AttributionControl position="bottom-left" customAttribution="MapLibre © OpenStreetMap / CARTO. DANE" compact />
 
         {indicator === "pobreza" && levelColors && (
           <Source id="pobreza-source" type="geojson" data={pobrezaGeoJson}>
@@ -593,7 +593,7 @@ function DemografiaLiveMapImpl({
               <span className="text-pretty">Mostrar veredas rurales (nivel municipal)</span>
             </label>
             <p className="mt-1 text-muted-foreground">
-              Capa plana, opcional — cada vereda comparte el mismo valor de todo su municipio, sin desglose por
+              Capa plana, opcional, cada vereda comparte el mismo valor de todo su municipio, sin desglose por
               vereda individual.
             </p>
           </RailSection>
@@ -638,8 +638,8 @@ function DemografiaLiveMapImpl({
         <RailSection title="Fuente">
           <p className="text-muted-foreground">
             {indicator === "vulnerabilidad"
-              ? "IVS por manzana en cascos urbanos (DANE) × riesgo compuesto por vereda (este mismo sitio) — resolución real de bloque. En veredas rurales, DANE solo publica el dato a nivel de municipio completo; por eso esa capa es plana y opcional, no una columna 3D con falsa precisión."
-              : "DANE — Geoportal (IPM 2018 y Censo Nacional de Población y Vivienda 2018)."}
+              ? "IVS por manzana en cascos urbanos (DANE) × riesgo compuesto por vereda (este mismo sitio), resolución real de bloque. En veredas rurales, DANE solo publica el dato a nivel de municipio completo; por eso esa capa es plana y opcional, no una columna 3D con falsa precisión."
+              : "DANE. Geoportal (IPM 2018 y Censo Nacional de Población y Vivienda 2018)."}
           </p>
         </RailSection>
       </MapControlRail>
