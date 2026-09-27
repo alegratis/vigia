@@ -34,8 +34,27 @@ const OSM_ATTRIBUTION = "© OpenStreetMap contributors"
 // a complete style document, so it can't have the terrain/hillshade/sky
 // block below merged into it; the 3D dark variant swaps to the raster Esri
 // Dark Gray Canvas pair instead (see `ESRI_DARK_*` below) so 3D dark can
-// still carry real elevation.
+// still carry real elevation. This is the fallback used whenever
+// `NEXT_PUBLIC_CARTO_API_KEY` isn't configured — see `CARTO_DARK_*` below
+// for the preferred, better-labeled CARTO alternative.
 const DARK_STYLE_URL = "https://tiles.openfreemap.org/styles/dark"
+
+// CARTO's "Dark Matter" basemap — now requires a free API key on both its
+// vector and raster services (carto.com/basemaps/apikey). Used in place of
+// OpenFreeMap (2D) and the Esri Dark Gray Canvas pair (3D) for every `dark`
+// basemap instance across the app whenever a key is configured; falls back
+// to the keyless alternatives above otherwise so the app still works
+// without one. The vector `style.json` is fetched wholesale by MapLibre and
+// can't have the terrain/hillshade block merged into it, so 3D dark uses
+// the raster tile variant instead — same constraint as the Esri fallback.
+const CARTO_API_KEY = process.env.NEXT_PUBLIC_CARTO_API_KEY
+const CARTO_DARK_STYLE_URL = CARTO_API_KEY
+  ? `https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json?key=${CARTO_API_KEY}`
+  : null
+const CARTO_DARK_RASTER_TILE_URL = CARTO_API_KEY
+  ? `https://basemaps.cartocdn.com/rastertiles/dark_matter/{z}/{x}/{y}.png?key=${CARTO_API_KEY}`
+  : null
+const CARTO_ATTRIBUTION = "© CARTO, © OpenStreetMap contributors"
 
 // Esri's keyless "World Imagery" REST tile service — used for both the
 // plain `satellite` theme and as the imagery half of `hybrid`.
@@ -89,7 +108,7 @@ function rasterSource(tileUrls: string[], attribution: string) {
  * isn't usable as a live basemap tile source here.
  */
 export function maplibreMapStyle(basemap: BasemapType, is3D: boolean): StyleSpecification | string {
-  if (basemap === "dark" && !is3D) return DARK_STYLE_URL
+  if (basemap === "dark" && !is3D) return CARTO_DARK_STYLE_URL ?? DARK_STYLE_URL
 
   const sources: StyleSpecification["sources"] = {}
   const layers: StyleSpecification["layers"] = []
@@ -100,6 +119,11 @@ export function maplibreMapStyle(basemap: BasemapType, is3D: boolean): StyleSpec
       layers.push({ id: "osm", type: "raster", source: "osm" })
       break
     case "dark":
+      if (CARTO_DARK_RASTER_TILE_URL) {
+        sources["carto-dark"] = rasterSource([CARTO_DARK_RASTER_TILE_URL], CARTO_ATTRIBUTION)
+        layers.push({ id: "carto-dark", type: "raster", source: "carto-dark" })
+        break
+      }
       sources["esri-dark-base"] = rasterSource([ESRI_DARK_BASE_TILE_URL], ESRI_DARK_ATTRIBUTION)
       sources["esri-dark-reference"] = rasterSource([ESRI_DARK_REFERENCE_TILE_URL], ESRI_DARK_ATTRIBUTION)
       layers.push({ id: "esri-dark-base", type: "raster", source: "esri-dark-base" })

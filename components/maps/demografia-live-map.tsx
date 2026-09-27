@@ -78,7 +78,12 @@ const IVS_EXPLAINER = {
   use: "Multiplicado por la amenaza física (riesgo compuesto) da la vulnerabilidad combinada: dónde la gente vive en peores condiciones sociales Y está más expuesta a un fenómeno natural — la prioridad más alta para intervención.",
 }
 
-/** Shared legend for both DANE indicators — same 5-tier normalized scale, just relabeled per indicator. */
+/**
+ * Shared legend for both DANE indicators — same 5-tier normalized scale,
+ * just relabeled per indicator. Rendered inline inside a `RailSection` of
+ * `MapControlRail` (not as a floating map overlay), so it never competes
+ * with the bottom-left `AttributionControl` for screen space.
+ */
 function IndicatorLegend({ title }: { title: string }) {
   const [colors, setColors] = useState<string[] | null>(null)
 
@@ -87,8 +92,8 @@ function IndicatorLegend({ title }: { title: string }) {
   }, [])
 
   return (
-    <div className="pointer-events-none rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
-      <p className="mb-1.5 font-medium text-foreground">{title}</p>
+    <div className="flex flex-col gap-1.5">
+      <p className="font-medium text-foreground">{title}</p>
       <ul className="flex flex-col gap-1">
         {INDICATOR_LEVELS.map((level, i) => (
           <li key={level} className="flex items-center gap-2 text-muted-foreground">
@@ -105,7 +110,13 @@ function IndicatorLegend({ title }: { title: string }) {
   )
 }
 
-/** Legend for the combined-vulnerability layer — its own teal ramp (lib/vulnerabilidad/levels.ts), deliberately distinct from sismología's blue and riesgo-compuesto's violet so the three never read as the same color on the map or category rail. */
+/**
+ * Legend for the combined-vulnerability layer — its own teal ramp
+ * (lib/vulnerabilidad/levels.ts), deliberately distinct from sismología's
+ * blue and riesgo-compuesto's violet so the three never read as the same
+ * color on the map or category rail. Rendered inline inside the rail, same
+ * as `IndicatorLegend` above.
+ */
 function VulnerabilityLegend() {
   const [colors, setColors] = useState<string[] | null>(null)
 
@@ -114,9 +125,10 @@ function VulnerabilityLegend() {
   }, [])
 
   return (
-    <div className="pointer-events-none rounded-md border border-border bg-card/95 px-3 py-2 text-xs shadow-sm backdrop-blur">
-      <p className="font-medium text-foreground">Índice de vulnerabilidad compuesto</p>
-      <p className="mb-1.5 text-[11px] text-muted-foreground">Magnitud de privación social acumulada, por manzana en cascos urbanos</p>
+    <div className="flex flex-col gap-1.5">
+      <p className="text-[11px] text-muted-foreground">
+        Magnitud de privación social acumulada, por manzana en cascos urbanos
+      </p>
       <ul className="flex flex-col gap-1">
         {VULNERABILITY_LEVELS.map((level, i) => (
           <li key={level} className="flex items-center gap-2 text-muted-foreground">
@@ -524,22 +536,13 @@ function DemografiaLiveMapImpl({
             latitude={popupInfo.latitude}
             onClose={() => setPopupInfo(null)}
             closeOnClick={false}
+            maxWidth="320px"
             className="z-[500]"
           >
             {popupInfo.content}
           </Popup>
         )}
       </Map>
-
-      <div className="pointer-events-none absolute bottom-3 left-3 z-[400] max-sm:hidden">
-        {indicator === "vulnerabilidad" ? (
-          <VulnerabilityLegend />
-        ) : (
-          <IndicatorLegend
-            title={indicator === "pobreza" ? "Pobreza multidimensional (IPM)" : MANZANA_FIELD_LABEL[manzanaField]}
-          />
-        )}
-      </div>
 
       <MapControlRail>
         <RailSection title="Indicador" first>
@@ -621,6 +624,16 @@ function DemografiaLiveMapImpl({
             </div>
           </RailSection>
         )}
+
+        <RailSection title="Leyenda">
+          {indicator === "vulnerabilidad" ? (
+            <VulnerabilityLegend />
+          ) : (
+            <IndicatorLegend
+              title={indicator === "pobreza" ? "Pobreza multidimensional (IPM)" : MANZANA_FIELD_LABEL[manzanaField]}
+            />
+          )}
+        </RailSection>
 
         <RailSection title="Fuente">
           <p className="text-muted-foreground">
