@@ -35,7 +35,8 @@ import { MapBasemapControl } from "@/components/maps/map-basemap-control"
 import { useVeredas } from "@/lib/veredas/use-veredas"
 import { useMunicipioToggles, isMunicipioActive } from "@/lib/veredas/municipio-toggles"
 import { boundsForActiveMunicipios } from "@/lib/veredas/municipio-bounds"
-import { maplibreMapStyle, defaultBasemapForCurrentTheme, type BasemapType } from "@/lib/maps/maplibre-basemap-style"
+import { maplibreMapStyle, type BasemapType } from "@/lib/maps/maplibre-basemap-style"
+import { useThemeSyncedBasemap } from "@/lib/maps/use-theme-synced-basemap"
 import { wmsRasterSource } from "@/lib/maps/wms-raster-source"
 import { WmsLegendChip } from "@/components/maps/wms-legend-chip"
 import { GWIS_WMS_URL } from "@/lib/incendios/gwis"
@@ -134,7 +135,7 @@ function PrecipitacionLiveMapImpl({
 }) {
   const mapRef = useRef<MapRef>(null)
   const [is3D, setIs3D] = useState(false)
-  const [basemap, setBasemap] = useState<BasemapType>(defaultBasemapForCurrentTheme)
+  const [basemap, setBasemap] = useThemeSyncedBasemap()
   const mapStyle = useMemo(() => maplibreMapStyle(basemap, is3D), [basemap, is3D])
   const setMapPitch = useCallback((next: boolean) => {
     const map = mapRef.current?.getMap()

@@ -29,7 +29,8 @@ import { SEVILLA_CASCO_URBANO_BOUNDS, boundsForDetectedMunicipio, type Detectabl
 import { useBarrios } from "@/lib/barrios/use-barrios"
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import { cn } from "@/lib/utils"
-import { maplibreMapStyle, defaultBasemapForCurrentTheme, type BasemapType } from "@/lib/maps/maplibre-basemap-style"
+import { maplibreMapStyle, type BasemapType } from "@/lib/maps/maplibre-basemap-style"
+import { useThemeSyncedBasemap } from "@/lib/maps/use-theme-synced-basemap"
 import { useDemografiaGeoportal } from "@/lib/demografia/use-geoportal"
 import { useVulnerabilidad } from "@/lib/vulnerabilidad/use-vulnerabilidad"
 import { INDICATOR_LEVELS, INDICATOR_LEVEL_TOKENS, normalize, indicatorLevel, indicatorHeight } from "@/lib/demografia/indicator-levels"
@@ -222,7 +223,7 @@ function DemografiaLiveMapImpl({
 
   // Always tilted — flat 2D fill-extrusion columns are invisible from directly overhead.
   const [is3D, setIs3D] = useState(true)
-  const [basemap, setBasemap] = useState<BasemapType>(defaultBasemapForCurrentTheme)
+  const [basemap, setBasemap] = useThemeSyncedBasemap()
   const mapStyle = useMemo(() => maplibreMapStyle(basemap, is3D), [basemap, is3D])
   const setMapPitch = useCallback((next: boolean) => {
     const map = mapRef.current?.getMap()
