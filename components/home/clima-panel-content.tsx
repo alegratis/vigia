@@ -17,6 +17,8 @@ import {
 import { ClimaLiveMapLoader } from "@/components/maps/clima-live-map-loader"
 import { ScrollHintButton } from "@/components/home/scroll-hint-button"
 import { BackToTopButton } from "@/components/home/back-to-top-button"
+import { DecadalChart } from "@/components/clima/decadal-chart"
+import { QuinquenalChart } from "@/components/clima/quinquenal-chart"
 import { WEATHER_GROUP_LABELS } from "@/lib/clima/weather-codes"
 import type { ClimaVeredaProperties, WeatherGroup } from "@/lib/clima/api-types"
 import type { OsmPoint } from "@/lib/osm/api-types"
@@ -183,6 +185,24 @@ export function ClimaPanelContent({
       <div ref={captionRef} className="flex flex-col gap-6 p-4 sm:p-6">
         <div aria-live="polite">
           <WeatherReportCard vereda={selectedClima} />
+        </div>
+        <div aria-live="polite">
+          <DecadalChart
+            vereda={
+              selectedClima
+                ? { codigoVereda: selectedClima.codigoVereda, nombre: selectedClima.nombre, municipio: selectedClima.municipio }
+                : null
+            }
+          />
+        </div>
+        <div aria-live="polite">
+          <QuinquenalChart
+            vereda={
+              selectedClima
+                ? { codigoVereda: selectedClima.codigoVereda, nombre: selectedClima.nombre, municipio: selectedClima.municipio }
+                : null
+            }
+          />
         </div>
         <p className="text-xs text-muted-foreground">
           Reporte meteorológico por vereda con datos de{" "}

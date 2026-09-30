@@ -80,6 +80,18 @@
   --color-clima-templado: var(--clima-templado);
   --color-clima-calido: var(--clima-calido);
   --color-clima-caluroso: var(--clima-caluroso);
+  --color-clima-historico-1: var(--clima-historico-1);
+  --color-clima-historico-2: var(--clima-historico-2);
+  --color-clima-quinquenio-1: var(--clima-quinquenio-1);
+  --color-clima-quinquenio-2: var(--clima-quinquenio-2);
+  --color-clima-quinquenio-3: var(--clima-quinquenio-3);
+  --color-clima-quinquenio-4: var(--clima-quinquenio-4);
+  --color-clima-quinquenio-5: var(--clima-quinquenio-5);
+  --color-clima-decada-1: var(--clima-decada-1);
+  --color-clima-decada-2: var(--clima-decada-2);
+  --color-clima-decada-3: var(--clima-decada-3);
+  --color-clima-decada-4: var(--clima-decada-4);
+  --color-clima-decada-5: var(--clima-decada-5);
   --color-osm-business: var(--osm-business);
   --color-osm-health: var(--osm-health);
   --color-osm-financial: var(--osm-financial);
@@ -283,6 +295,47 @@
   --clima-caluroso: oklch(0.62 0.2 28);
 
   /*
+   * Clima temperature histograms' recent-past-years comparison lines
+   * (año en curso's dashed "sensación térmica" companion aside, these are
+   * the two extra toggleable individual years): magenta and cyan-teal,
+   * clear of the decada/quinquenio bar arcs below and of the precipitación
+   * histograms' own historico-1/2/3 hues (170/300/348) so a viewer
+   * switching between the rain and temperature histograms doesn't
+   * mistake one chart's lines for the other's.
+   */
+  --clima-historico-1: oklch(0.58 0.18 320);
+  --clima-historico-2: oklch(0.55 0.14 190);
+
+  /*
+   * Second clima histogram's 5-year-bin bars (see
+   * openmeteo-quinquenal-climatology.ts): a cool-to-warm thermal arc like
+   * the decada bars below, but shifted to different intermediate hues
+   * (indigo → blue-cyan → teal-green → yellow → orange-red, vs. the decada
+   * arc's blue → cyan → green → amber → red) so the two temperature
+   * histograms stay visually distinguishable from each other at a glance,
+   * the same way the precipitación decada/quinquenio arcs are.
+   */
+  --clima-quinquenio-1: oklch(0.5 0.17 265);
+  --clima-quinquenio-2: oklch(0.56 0.13 220);
+  --clima-quinquenio-3: oklch(0.6 0.14 160);
+  --clima-quinquenio-4: oklch(0.64 0.16 85);
+  --clima-quinquenio-5: oklch(0.54 0.19 35);
+
+  /*
+   * Top clima histogram's 10-year-bin bars (see
+   * openmeteo-decadal-climatology.ts): a cool-to-warm thermal arc, oldest
+   * decade coolest (blue) to most recent decade warmest (red), so a
+   * long-run warming trend reads as the bars visually "heating up" left
+   * to right across the legend — reinforcing, rather than just labeling,
+   * the 50-year trend this chart exists to show.
+   */
+  --clima-decada-1: oklch(0.55 0.16 250);
+  --clima-decada-2: oklch(0.58 0.14 205);
+  --clima-decada-3: oklch(0.62 0.15 130);
+  --clima-decada-4: oklch(0.62 0.17 70);
+  --clima-decada-5: oklch(0.55 0.2 25);
+
+  /*
    * OSM infrastructure categories (Overpass): five identity colors distinct
    * from every hazard ramp above, since these render alongside a hazard's
    * own legend in the same card stack.
@@ -440,6 +493,20 @@
   --precipitacion-quinquenio-3: oklch(0.54 0.16 250);
   --precipitacion-quinquenio-4: oklch(0.58 0.19 20);
   --precipitacion-quinquenio-5: oklch(0.58 0.18 340);
+
+  /* Clima temperature histograms: same thermal arcs as light mode, lightened for dark surfaces. */
+  --clima-historico-1: oklch(0.68 0.18 320);
+  --clima-historico-2: oklch(0.65 0.14 190);
+  --clima-quinquenio-1: oklch(0.6 0.17 265);
+  --clima-quinquenio-2: oklch(0.66 0.13 220);
+  --clima-quinquenio-3: oklch(0.7 0.14 160);
+  --clima-quinquenio-4: oklch(0.74 0.16 85);
+  --clima-quinquenio-5: oklch(0.64 0.19 35);
+  --clima-decada-1: oklch(0.66 0.16 250);
+  --clima-decada-2: oklch(0.68 0.14 205);
+  --clima-decada-3: oklch(0.72 0.15 130);
+  --clima-decada-4: oklch(0.72 0.17 70);
+  --clima-decada-5: oklch(0.65 0.2 25);
 
   /* Sismología magnitude ramp: kept vivid and legible on dark surfaces. */
   --sismologia-micro: oklch(0.8 0.06 230);

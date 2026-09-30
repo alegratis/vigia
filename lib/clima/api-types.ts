@@ -119,3 +119,102 @@ export interface ClimaForecastResponse {
 export interface ClimaForecastErrorResponse {
   error: string
 }
+
+/** Shared month-label constant for the clima climatology charts (decadal-chart.tsx / quinquenal-chart.tsx). */
+export const MONTH_LABELS_ES = [
+  "Ene",
+  "Feb",
+  "Mar",
+  "Abr",
+  "May",
+  "Jun",
+  "Jul",
+  "Ago",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dic",
+] as const
+
+/** A non-overlapping 10-year window, e.g. { inicio: 1994, fin: 2003 } — see lib/clima/openmeteo-decadal-climatology.ts. */
+export interface TempDecadaBin {
+  inicio: number
+  fin: number
+}
+
+/** One month of /api/clima/climatologia-decadal. */
+export interface TempDecadaMesPunto {
+  month: number
+  monthLabel: string
+  /** This month's average daily-mean temperature (°C, Open-Meteo) across the years inside each 10-year bin, same order as `ClimaClimatologiaDecadalResponse.decadas`, or null if no bin had valid data. */
+  decadas: Array<TempDecadaBin & { tempC: number | null }>
+  /** This calendar year's average daily-mean temperature (°C, Open-Meteo) for this month, or null if the month hasn't started yet. */
+  tempActual: number | null
+  /** This calendar year's average apparent ("feels-like") temperature (°C, Open-Meteo) for this month, or null. */
+  sensacionActual: number | null
+  /** True only for the current, still-in-progress month — tempActual/sensacionActual are partial-month averages. */
+  esMesEnCurso: boolean
+  /** This month's average daily-mean temperature (°C, Open-Meteo) for each of the two calendar years just before the current one, same order as `ClimaClimatologiaDecadalResponse.aniosRecientes`. */
+  reciente: Array<{ anio: number; tempC: number | null }>
+}
+
+export interface ClimaClimatologiaDecadalResponse {
+  /** "vereda" for a single clicked vereda, "municipio" for an averaged whole-territory view. */
+  scope: "vereda" | "municipio"
+  ubicacion: {
+    nombre: string
+    municipio: string
+    codigoVereda?: string
+    veredasPromediadas?: number
+  }
+  generatedAt: string
+  /** 1-12, this calendar year's current month. */
+  mesEnCurso: number
+  /** The 10-year bins plotted in `meses[].decadas`, oldest first. */
+  decadas: TempDecadaBin[]
+  /** The two individually-plotted recent years, most recent first. */
+  aniosRecientes: number[]
+  meses: TempDecadaMesPunto[]
+}
+
+export interface ClimaClimatologiaDecadalErrorResponse {
+  error: string
+}
+
+/** A non-overlapping 5-year window, e.g. { inicio: 1999, fin: 2003 } — see lib/clima/openmeteo-quinquenal-climatology.ts. */
+export interface TempQuinquenioBin {
+  inicio: number
+  fin: number
+}
+
+/** One month of /api/clima/climatologia-quinquenal. */
+export interface TempQuinquenioMesPunto {
+  month: number
+  monthLabel: string
+  /** This month's average daily-mean temperature (°C, Open-Meteo) across the years inside each 5-year bin, same order as `ClimaClimatologiaQuinquenalResponse.quinquenios`, or null if no bin had valid data. */
+  quinquenios: Array<TempQuinquenioBin & { tempC: number | null }>
+  tempActual: number | null
+  sensacionActual: number | null
+  esMesEnCurso: boolean
+  reciente: Array<{ anio: number; tempC: number | null }>
+}
+
+export interface ClimaClimatologiaQuinquenalResponse {
+  scope: "vereda" | "municipio"
+  ubicacion: {
+    nombre: string
+    municipio: string
+    codigoVereda?: string
+    veredasPromediadas?: number
+  }
+  generatedAt: string
+  mesEnCurso: number
+  /** The 5-year bins plotted in `meses[].quinquenios`, oldest first. */
+  quinquenios: TempQuinquenioBin[]
+  aniosRecientes: number[]
+  meses: TempQuinquenioMesPunto[]
+}
+
+export interface ClimaClimatologiaQuinquenalErrorResponse {
+  error: string
+}

@@ -115,3 +115,37 @@ export async function getClimaForecast(): Promise<{
     veredas: { type: "FeatureCollection", features },
   }
 }
+
+/**
+ * Looks up one vereda's centroid by its `codigoVereda`, for the clima
+ * climatology routes — same boundaries fetch and centroid math as
+ * getClimaForecast above, just for a single vereda.
+ */
+export async function getVeredaCentroidByCode(
+  codigoVereda: string,
+): Promise<{ lon: number; lat: number; nombre: string; municipio: string } | null> {
+  const boundaries = await getVeredaBoundaries()
+  const boundary = boundaries.find((b) => b.codigoVereda === codigoVereda)
+  if (!boundary) return null
+  const [lon, lat] = centroid(multiPolygon(boundary.polygons)).geometry.coordinates
+  return { lon, lat, nombre: boundary.nombre, municipio: boundary.municipio }
+}
+
+/**
+ * Looks up one municipio's "Casco Urbano" pseudo-vereda centroid, for the
+ * clima climatology routes' municipio-scoped queries. Sevilla in particular
+ * spans lowland valley floor to cool highland terrain, so averaging every
+ * rural vereda skews the temperature trend cooler than what most of the
+ * population — concentrated in the urban core — actually experiences.
+ * Matching is case-insensitive.
+ */
+export async function getMunicipioCascoUrbano(
+  municipio: string,
+): Promise<{ lon: number; lat: number; nombre: string } | null> {
+  const boundaries = await getVeredaBoundaries()
+  const target = municipio.trim().toLowerCase()
+  const match = boundaries.find((b) => b.esCascoUrbano && b.municipio.toLowerCase() === target)
+  if (!match) return null
+  const [lon, lat] = centroid(multiPolygon(match.polygons)).geometry.coordinates
+  return { lon, lat, nombre: match.nombre }
+}
