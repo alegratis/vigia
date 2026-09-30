@@ -5,6 +5,7 @@ import { CompoundLiveMapLoader } from "@/components/maps/compound-live-map-loade
 import { CompoundModelPanel } from "@/components/riesgo-compuesto/compound-model-panel"
 import { ScrollHintButton } from "@/components/home/scroll-hint-button"
 import { BackToTopButton } from "@/components/home/back-to-top-button"
+import { CollapsibleMobileSection } from "@/components/home/collapsible-mobile-section"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
 import type { CompoundFeature } from "@/lib/riesgo-compuesto/api-types"
@@ -52,10 +53,12 @@ export function RiesgoCompuestoPanelContent({ onBoundsChange, activeOsmPoints }:
       </div>
       <div ref={statsRef} className="flex flex-col gap-4 p-4 sm:p-6">
         <CompoundModelPanel selectedVereda={selectedVereda} onClearSelection={() => setSelectedVereda(null)} />
-        <p className="text-xs text-muted-foreground">
-          Haz clic en &quot;Ver reporte completo&quot; dentro del popup de cualquier vereda para el desglose
-          narrativo de las cinco amenazas, la exposición demográfica y la metodología detallada.
-        </p>
+        <CollapsibleMobileSection title="Fuentes y metodología">
+          <p className="text-xs text-muted-foreground">
+            Haz clic en &quot;Ver reporte completo&quot; dentro del popup de cualquier vereda para el desglose
+            narrativo de las cinco amenazas, la exposición demográfica y la metodología detallada.
+          </p>
+        </CollapsibleMobileSection>
         <BackToTopButton targetRef={mapRef} />
       </div>
     </div>

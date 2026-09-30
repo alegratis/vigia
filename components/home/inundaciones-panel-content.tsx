@@ -7,6 +7,7 @@ import { BackToTopButton } from "@/components/home/back-to-top-button"
 import { FloodOverview } from "@/components/flood/flood-overview"
 import { MunicipioFloodSummary } from "@/components/flood/municipio-flood-summary"
 import { FloodModelPanel } from "@/components/inundaciones/flood-model-panel"
+import { CollapsibleMobileSection } from "@/components/home/collapsible-mobile-section"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
 import type { VeredaFeature } from "@/lib/veredas/api-types"
@@ -82,24 +83,26 @@ export function InundacionesPanelContent({
             onClearSelection={() => onVeredaSelect?.(null)}
           />
         </div>
-        <p className="text-xs text-muted-foreground">
-          Pronóstico de río servido en vivo por GEOGLOWS / Esri Living Atlas (capa pública
-          GlobalWaterModel_Medium). Susceptibilidad a inundación: capa pública{" "}
-          <code className="text-foreground">susceptibilidad_inundaciones</code>, publicada en
-          ArcGIS Online. Haz clic sobre cualquier tramo del río o zona para ver su detalle. Esta
-          zonificación oficial no cubre Zarzal ni Roldanillo; activa la capa &quot;Modelo propio de
-          inundación&quot; en el mapa para ver una amenaza por vereda calculada por esta misma
-          app en los cuatro municipios, incluidos Zarzal y Roldanillo (ver el panel &quot;Cómo se calcula la
-          amenaza por inundación&quot; arriba). La categoría{" "}
-          <a
-            href="/?categoria=precipitacion"
-            className="underline underline-offset-2 hover:text-foreground"
-          >
-            Precipitación
-          </a>{" "}
-          también ofrece un dato de contexto (lluvia acumulada por vereda) para los tres
-          municipios.
-        </p>
+        <CollapsibleMobileSection title="Fuentes y metodología">
+          <p className="text-xs text-muted-foreground">
+            Pronóstico de río servido en vivo por GEOGLOWS / Esri Living Atlas (capa pública
+            GlobalWaterModel_Medium). Susceptibilidad a inundación: capa pública{" "}
+            <code className="text-foreground">susceptibilidad_inundaciones</code>, publicada en
+            ArcGIS Online. Haz clic sobre cualquier tramo del río o zona para ver su detalle. Esta
+            zonificación oficial no cubre Zarzal ni Roldanillo; activa la capa &quot;Modelo propio de
+            inundación&quot; en el mapa para ver una amenaza por vereda calculada por esta misma
+            app en los cuatro municipios, incluidos Zarzal y Roldanillo (ver el panel &quot;Cómo se calcula la
+            amenaza por inundación&quot; arriba). La categoría{" "}
+            <a
+              href="/?categoria=precipitacion"
+              className="underline underline-offset-2 hover:text-foreground"
+            >
+              Precipitación
+            </a>{" "}
+            también ofrece un dato de contexto (lluvia acumulada por vereda) para los tres
+            municipios.
+          </p>
+        </CollapsibleMobileSection>
         <BackToTopButton targetRef={mapRef} />
       </div>
     </div>

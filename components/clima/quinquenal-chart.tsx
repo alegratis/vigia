@@ -29,8 +29,10 @@ const fetcher = async (url: string): Promise<ClimaClimatologiaQuinquenalResponse
 }
 
 const CHART_CONFIG = {
-  tempActual: { label: "Año en curso", color: "var(--chart-4)" },
-  sensacionActual: { label: "Sensación térmica (año en curso)", color: "var(--chart-4)" },
+  tempMeanActual: { label: "Media (año en curso)", color: "var(--chart-4)" },
+  tempMaxActual: { label: "Máxima (año en curso)", color: "var(--clima-actual-max)" },
+  tempMinActual: { label: "Mínima (año en curso)", color: "var(--clima-actual-min)" },
+  sensacionActual: { label: "Sensación térmica (año en curso)", color: "var(--clima-actual-max)" },
 } as const
 
 /** Data key for a 5-year bin in chart rows/config, e.g. "bin_1999_2003". */
@@ -67,10 +69,11 @@ function recienteColor(rankFromMostRecent: number) {
  * lib/clima/openmeteo-quinquenal-climatology.ts) — finer bins make a
  * recent warming/cooling shift visible in a way the 50-year decadal chart
  * above it smooths away. The current year and the two years right before
- * it are shown as individual lines instead of folded into a bin (current
- * year on by default with a dashed "feels-like" companion line; the two
- * prior years off by default and individually toggleable, actual
- * temperature only).
+ * it are shown as individual lines instead of folded into a bin: the
+ * current year on by default as three lines — mean, maximum, and minimum
+ * daily temperature — plus an optional dashed "feels-like" companion for
+ * the maximum; the two prior years off by default and individually
+ * toggleable, mean temperature only.
  *
  * Same two ways to choose what's plotted as the decadal chart: click a
  * vereda on the map, or pick a municipio tab for the whole-territory
@@ -121,7 +124,9 @@ export function QuinquenalChart({ vereda }: QuinquenalChartProps) {
         const recienteValues = Object.fromEntries(m.reciente.map((r) => [recienteKey(r.anio), r.tempC]))
         return {
           monthLabel: m.monthLabel,
-          tempActual: m.tempActual,
+          tempMeanActual: m.tempMeanActual,
+          tempMaxActual: m.tempMaxActual,
+          tempMinActual: m.tempMinActual,
           sensacionActual: m.sensacionActual,
           esMesEnCurso: m.esMesEnCurso,
           ...binValues,
@@ -206,7 +211,7 @@ export function QuinquenalChart({ vereda }: QuinquenalChartProps) {
                 disabled={!showActual}
               />
               <Label htmlFor="show-sensacion-quinquenal-clima" className="text-sm font-medium text-foreground">
-                Sensación térmica
+                Sensación térmica (máxima)
               </Label>
             </div>
             {aniosRecientes.map((anio) => (
@@ -225,12 +230,13 @@ export function QuinquenalChart({ vereda }: QuinquenalChartProps) {
         </div>
         <p className="text-xs text-muted-foreground">
           {mode === "vereda" && vereda
-            ? "Open-Meteo, promedios mensuales de temperatura máxima diaria en el centroide de la vereda seleccionada."
-            : `Open-Meteo, promedios mensuales de temperatura máxima diaria en el centro poblado de ${municipio}.`}
-          {showActual && showSensacion && " Línea sólida: temperatura máxima diaria promedio de este año; línea punteada: sensación térmica máxima (Open-Meteo)."}
-          {showActual && !showSensacion && " Línea sólida: temperatura máxima diaria promedio de este año."}
+            ? "Open-Meteo, promedios mensuales de temperatura media diaria en el centroide de la vereda seleccionada."
+            : `Open-Meteo, promedios mensuales de temperatura media diaria en el centro poblado de ${municipio}.`}
+          {showActual &&
+            " Líneas sólidas del año en curso: media, máxima y mínima diaria promedio de cada mes."}
+          {showActual && showSensacion && " Línea punteada: sensación térmica máxima (Open-Meteo)."}
           {enabledYears.size > 0 &&
-            ` Comparando con ${[...enabledYears].sort((a, b) => b - a).join(", ")} (temperatura máxima diaria promedio, Open-Meteo).`}
+            ` Comparando con ${[...enabledYears].sort((a, b) => b - a).join(", ")} (temperatura media diaria promedio, Open-Meteo).`}
         </p>
       </CardHeader>
       <CardContent className="pt-4">
@@ -285,12 +291,28 @@ export function QuinquenalChart({ vereda }: QuinquenalChartProps) {
                             />
                           )
                         })}
-                        {showActual && row.tempActual != null && (
+                        {showActual && row.tempMeanActual != null && (
                           <TooltipRow
                             swatchClassName="rounded-full"
-                            color="var(--color-tempActual)"
-                            label={CHART_CONFIG.tempActual.label}
-                            value={`${row.tempActual} °C${row.esMesEnCurso ? " (mes en curso, parcial)" : ""}`}
+                            color="var(--color-tempMeanActual)"
+                            label={CHART_CONFIG.tempMeanActual.label}
+                            value={`${row.tempMeanActual} °C${row.esMesEnCurso ? " (mes en curso, parcial)" : ""}`}
+                          />
+                        )}
+                        {showActual && row.tempMaxActual != null && (
+                          <TooltipRow
+                            swatchClassName="rounded-full"
+                            color="var(--color-tempMaxActual)"
+                            label={CHART_CONFIG.tempMaxActual.label}
+                            value={`${row.tempMaxActual} °C`}
+                          />
+                        )}
+                        {showActual && row.tempMinActual != null && (
+                          <TooltipRow
+                            swatchClassName="rounded-full"
+                            color="var(--color-tempMinActual)"
+                            label={CHART_CONFIG.tempMinActual.label}
+                            value={`${row.tempMinActual} °C`}
                           />
                         )}
                         {showActual && showSensacion && row.sensacionActual != null && (
@@ -328,10 +350,28 @@ export function QuinquenalChart({ vereda }: QuinquenalChartProps) {
               })}
               {showActual && (
                 <Line
-                  dataKey="tempActual"
-                  stroke="var(--color-tempActual)"
+                  dataKey="tempMeanActual"
+                  stroke="var(--color-tempMeanActual)"
                   strokeWidth={2.5}
-                  dot={{ r: 3, fill: "var(--color-tempActual)" }}
+                  dot={{ r: 3, fill: "var(--color-tempMeanActual)" }}
+                  connectNulls
+                />
+              )}
+              {showActual && (
+                <Line
+                  dataKey="tempMaxActual"
+                  stroke="var(--color-tempMaxActual)"
+                  strokeWidth={2}
+                  dot={{ r: 2.5, fill: "var(--color-tempMaxActual)" }}
+                  connectNulls
+                />
+              )}
+              {showActual && (
+                <Line
+                  dataKey="tempMinActual"
+                  stroke="var(--color-tempMinActual)"
+                  strokeWidth={2}
+                  dot={{ r: 2.5, fill: "var(--color-tempMinActual)" }}
                   connectNulls
                 />
               )}
@@ -375,7 +415,7 @@ export function QuinquenalChart({ vereda }: QuinquenalChartProps) {
           </p>
         )}
         <p className="mt-3 text-xs leading-snug text-muted-foreground">
-          Cada barra es el promedio mensual de temperatura máxima diaria de{" "}
+          Cada barra es el promedio mensual de temperatura media diaria de{" "}
           <a
             href="https://open-meteo.com"
             target="_blank"
@@ -389,7 +429,9 @@ export function QuinquenalChart({ vereda }: QuinquenalChartProps) {
           que una sola normal de varias décadas puede ocultar; cada quinquenio tiene su propio color en un
           degradado de frío a cálido, en orden cronológico. El año {currentYear} y los dos anteriores se
           dejan fuera de las barras a propósito y se muestran como líneas individuales (misma convención que
-          el otro histograma); la línea punteada del año en curso es la sensación térmica máxima.
+          el otro histograma); el año en curso se compara en el mismo pie (media) que las barras, y añade la
+          máxima y la mínima diaria promedio como líneas adicionales; la línea punteada opcional es su
+          sensación térmica máxima.
         </p>
       </CardContent>
     </Card>

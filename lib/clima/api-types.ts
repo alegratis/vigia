@@ -149,10 +149,14 @@ export interface TempDecadaMesPunto {
   /** This month's average daily-mean temperature (°C, Open-Meteo) across the years inside each 10-year bin, same order as `ClimaClimatologiaDecadalResponse.decadas`, or null if no bin had valid data. */
   decadas: Array<TempDecadaBin & { tempC: number | null }>
   /** This calendar year's average daily-mean temperature (°C, Open-Meteo) for this month, or null if the month hasn't started yet. */
-  tempActual: number | null
-  /** This calendar year's average apparent ("feels-like") temperature (°C, Open-Meteo) for this month, or null. */
+  tempMeanActual: number | null
+  /** This calendar year's average daily-maximum temperature (°C, Open-Meteo) for this month, or null. */
+  tempMaxActual: number | null
+  /** This calendar year's average daily-minimum temperature (°C, Open-Meteo) for this month, or null. */
+  tempMinActual: number | null
+  /** This calendar year's average apparent ("feels-like") maximum temperature (°C, Open-Meteo) for this month, or null. */
   sensacionActual: number | null
-  /** True only for the current, still-in-progress month — tempActual/sensacionActual are partial-month averages. */
+  /** True only for the current, still-in-progress month — the tempXActual fields are partial-month averages. */
   esMesEnCurso: boolean
   /** This month's average daily-mean temperature (°C, Open-Meteo) for each of the two calendar years just before the current one, same order as `ClimaClimatologiaDecadalResponse.aniosRecientes`. */
   reciente: Array<{ anio: number; tempC: number | null }>
@@ -193,7 +197,9 @@ export interface TempQuinquenioMesPunto {
   monthLabel: string
   /** This month's average daily-mean temperature (°C, Open-Meteo) across the years inside each 5-year bin, same order as `ClimaClimatologiaQuinquenalResponse.quinquenios`, or null if no bin had valid data. */
   quinquenios: Array<TempQuinquenioBin & { tempC: number | null }>
-  tempActual: number | null
+  tempMeanActual: number | null
+  tempMaxActual: number | null
+  tempMinActual: number | null
   sensacionActual: number | null
   esMesEnCurso: boolean
   reciente: Array<{ anio: number; tempC: number | null }>
