@@ -133,7 +133,7 @@ export function DemografiaPanelContent({ onBoundsChange, detectedMunicipio }: De
       <div ref={captionRef} className="flex flex-col gap-6 p-4 sm:p-6">
         <div className="flex flex-col gap-2 text-sm text-muted-foreground">
           <p>
-            Por defecto, las columnas 3D representan nuestro propio Índice de Vulnerabilidad Social
+            Las columnas 3D representan nuestro propio Índice de Vulnerabilidad Social
             (IVS): un número por manzana censal o vereda que resume qué tan preparada está esa
             población, por vivienda, servicios públicos, educación y trabajo, para resistir un
             desastre natural cuando ocurre, sin medir el peligro físico en sí. Mientras más alta y más

@@ -39,7 +39,7 @@ lib/            Clientes de datos y lógica por dominio (lib/<amenaza>)
 public/         Imágenes de las teselas y recursos estáticos
 ```
 
-Cada amenaza sigue el mismo patrón: un cliente de datos y un ensamblador por servidor en `lib/<amenaza>/`, un endpoint en `app/api/<amenaza>/`, un mapa en `components/maps/` y un panel en `components/home/`. El listado central de modelos vive en `lib/maps.ts`; añadir una entrada allí registra automáticamente el slug en la página principal.
+Cada amenaza sigue el mismo patrón: un cliente de datos y un ensamblador por servidor en `lib/<amenaza>/`, un endpoint en `app/api/<amenaza>/`, un mapa en `components/maps/` y un panel en `components/home/`. Los componentes específicos de cada amenaza (tarjetas de datos en vivo, paneles de modelo, gráficas) viven en una única carpeta por categoría, `components/<amenaza>/`, usando siempre el slug en español (`clima`, `demografia`, `deslizamientos`, `incendios`, `inundaciones`, `precipitacion`, `riesgo-compuesto`, `sismologia`) — no debe crearse una segunda carpeta en inglés para la misma categoría. El listado central de modelos vive en `lib/maps.ts`; añadir una entrada allí registra automáticamente el slug en la página principal.
 
 ## Primeros pasos
 
