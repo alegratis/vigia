@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Image from "next/image"
+import { usePathname, useRouter } from "next/navigation"
 import {
   ArrowRight,
   Activity,
@@ -81,6 +82,8 @@ export function HazardWorkspace({
   /** IP-geolocation match for Demografía's default view — see app/page.tsx. */
   detectedMunicipio?: string | null
 }) {
+  const router = useRouter()
+  const pathname = usePathname()
   const [activeSlug, setActiveSlug] = useState(initialCategory)
   const [bounds, setBounds] = useState<MapBounds | null>(null)
   const [selectedMunicipio, setSelectedMunicipio] = useState<string | null>(null)
@@ -126,6 +129,8 @@ export function HazardWorkspace({
     setBounds(null)
     setSelectedMunicipio(null)
     setSelectedVereda(null)
+    // Keeps the URL shareable/copyable per category without a full navigation or scroll reset.
+    router.replace(`${pathname}?categoria=${slug}`, { scroll: false })
   }
 
   return (
