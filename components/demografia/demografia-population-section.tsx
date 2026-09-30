@@ -7,7 +7,7 @@ import { AlertTriangle, Droplets, Flame, Mountain, RefreshCw } from "lucide-reac
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
-import { LevelBadge } from "@/components/flood/level-badge"
+import { LevelBadge } from "@/components/inundaciones/level-badge"
 import { DemografiaFilters } from "@/components/demografia/demografia-filters"
 import { formatNumber, formatShare } from "@/lib/demografia/ui"
 import {

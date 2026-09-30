@@ -3,7 +3,7 @@ import { notFound } from "next/navigation"
 import { ArrowLeft, MapPin } from "lucide-react"
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
-import { StationDetail } from "@/components/flood/station-detail"
+import { StationDetail } from "@/components/inundaciones/station-detail"
 import { STATIONS, getStationBySlug } from "@/lib/geoglows/stations"
 
 export function generateStaticParams() {
