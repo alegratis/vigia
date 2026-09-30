@@ -28,10 +28,12 @@ function mergeMeses(
     month: i + 1,
     monthLabel,
     quinquenios: quinquenios.map((q) => ({ inicio: q.inicio, fin: q.fin, tempC: q.meses[i]?.tempC ?? null })),
-    tempActual: currentYear[i]?.tempC ?? null,
+    tempMeanActual: currentYear[i]?.tempMeanC ?? null,
+    tempMaxActual: currentYear[i]?.tempMaxC ?? null,
+    tempMinActual: currentYear[i]?.tempMinC ?? null,
     sensacionActual: currentYear[i]?.sensacionC ?? null,
     esMesEnCurso: currentYear[i]?.isPartial ?? false,
-    reciente: aniosRecientes.map((anio, yi) => ({ anio, tempC: recentSeries[yi]?.[i]?.tempC ?? null })),
+    reciente: aniosRecientes.map((anio, yi) => ({ anio, tempC: recentSeries[yi]?.[i]?.tempMeanC ?? null })),
   }))
 }
 

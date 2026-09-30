@@ -82,6 +82,8 @@
   --color-clima-caluroso: var(--clima-caluroso);
   --color-clima-historico-1: var(--clima-historico-1);
   --color-clima-historico-2: var(--clima-historico-2);
+  --color-clima-actual-max: var(--clima-actual-max);
+  --color-clima-actual-min: var(--clima-actual-min);
   --color-clima-quinquenio-1: var(--clima-quinquenio-1);
   --color-clima-quinquenio-2: var(--clima-quinquenio-2);
   --color-clima-quinquenio-3: var(--clima-quinquenio-3);
@@ -307,6 +309,16 @@
   --clima-historico-2: oklch(0.55 0.14 190);
 
   /*
+   * Current-year máxima/mínima lines that flank the chart-4 "año en curso"
+   * mean line once the bars went back to monthly means: a warm red (max)
+   * and a cool blue (min) reading as a thermometer's two ends, kept clear
+   * of chart-4's own orange (hue 45), the historico-1/2 hues above, and
+   * the decada/quinquenio bar arcs below.
+   */
+  --clima-actual-max: oklch(0.6 0.21 15);
+  --clima-actual-min: oklch(0.62 0.14 235);
+
+  /*
    * Second clima histogram's 5-year-bin bars (see
    * openmeteo-quinquenal-climatology.ts): a cool-to-warm thermal arc like
    * the decada bars below, but shifted to different intermediate hues
@@ -497,6 +509,8 @@
   /* Clima temperature histograms: same thermal arcs as light mode, lightened for dark surfaces. */
   --clima-historico-1: oklch(0.68 0.18 320);
   --clima-historico-2: oklch(0.65 0.14 190);
+  --clima-actual-max: oklch(0.68 0.2 15);
+  --clima-actual-min: oklch(0.72 0.13 235);
   --clima-quinquenio-1: oklch(0.6 0.17 265);
   --clima-quinquenio-2: oklch(0.66 0.13 220);
   --clima-quinquenio-3: oklch(0.7 0.14 160);

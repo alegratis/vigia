@@ -34,8 +34,10 @@ const fetcher = async (url: string): Promise<ClimaClimatologiaDecadalResponse> =
 }
 
 const CHART_CONFIG = {
-  tempActual: { label: "Año en curso", color: "var(--chart-4)" },
-  sensacionActual: { label: "Sensación térmica (año en curso)", color: "var(--chart-4)" },
+  tempMeanActual: { label: "Media (año en curso)", color: "var(--chart-4)" },
+  tempMaxActual: { label: "Máxima (año en curso)", color: "var(--clima-actual-max)" },
+  tempMinActual: { label: "Mínima (año en curso)", color: "var(--clima-actual-min)" },
+  sensacionActual: { label: "Sensación térmica (año en curso)", color: "var(--clima-actual-max)" },
 } as const
 
 /** Data key for a 10-year bin in chart rows/config, e.g. "bin_1974_1983". */
@@ -66,10 +68,12 @@ function recienteColor(rankFromMostRecent: number) {
  * lib/clima/openmeteo-decadal-climatology.ts), five consecutive decades in
  * chronological, cool-to-warm bar colors so a long-run warming trend reads
  * at a glance. The current year and the two years right before it are left
- * out of the bins and shown as individual lines instead (current year on
- * by default, with a dashed companion line for its apparent "feels-like"
- * temperature; the two prior years off by default and individually
- * toggleable, actual temperature only).
+ * out of the bins and shown as individual lines instead: the current year
+ * on by default as three lines on the same mean footing as the bars — mean,
+ * maximum, and minimum daily temperature — plus an optional dashed
+ * "feels-like" companion for the maximum; the two prior years off by
+ * default and individually toggleable, mean temperature only, to keep the
+ * chart legible when several years are compared at once.
  *
  * Same two ways to choose what's plotted as the precipitación charts:
  * click a vereda on the map, or pick a municipio tab for the whole-territory
@@ -120,7 +124,9 @@ export function DecadalChart({ vereda }: DecadalChartProps) {
         const recienteValues = Object.fromEntries(m.reciente.map((r) => [recienteKey(r.anio), r.tempC]))
         return {
           monthLabel: m.monthLabel,
-          tempActual: m.tempActual,
+          tempMeanActual: m.tempMeanActual,
+          tempMaxActual: m.tempMaxActual,
+          tempMinActual: m.tempMinActual,
           sensacionActual: m.sensacionActual,
           esMesEnCurso: m.esMesEnCurso,
           ...binValues,
@@ -202,7 +208,7 @@ export function DecadalChart({ vereda }: DecadalChartProps) {
                 disabled={!showActual}
               />
               <Label htmlFor="show-sensacion-decadal-clima" className="text-sm font-medium text-foreground">
-                Sensación térmica
+                Sensación térmica (máxima)
               </Label>
             </div>
             {aniosRecientes.map((anio) => (
@@ -221,12 +227,13 @@ export function DecadalChart({ vereda }: DecadalChartProps) {
         </div>
         <p className="text-xs text-muted-foreground">
           {mode === "vereda" && vereda
-            ? "Open-Meteo, promedios mensuales de temperatura máxima diaria en el centroide de la vereda seleccionada."
-            : `Open-Meteo, promedios mensuales de temperatura máxima diaria en el centro poblado de ${municipio}.`}
-          {showActual && showSensacion && " Línea sólida: temperatura máxima diaria promedio de este año; línea punteada: sensación térmica máxima (Open-Meteo)."}
-          {showActual && !showSensacion && " Línea sólida: temperatura máxima diaria promedio de este año."}
+            ? "Open-Meteo, promedios mensuales de temperatura media diaria en el centroide de la vereda seleccionada."
+            : `Open-Meteo, promedios mensuales de temperatura media diaria en el centro poblado de ${municipio}.`}
+          {showActual &&
+            " Líneas sólidas del año en curso: media, máxima y mínima diaria promedio de cada mes."}
+          {showActual && showSensacion && " Línea punteada: sensación térmica máxima (Open-Meteo)."}
           {enabledYears.size > 0 &&
-            ` Comparando con ${[...enabledYears].sort((a, b) => b - a).join(", ")} (temperatura máxima diaria promedio, Open-Meteo).`}
+            ` Comparando con ${[...enabledYears].sort((a, b) => b - a).join(", ")} (temperatura media diaria promedio, Open-Meteo).`}
         </p>
       </CardHeader>
       <CardContent className="pt-4">
@@ -281,12 +288,28 @@ export function DecadalChart({ vereda }: DecadalChartProps) {
                             />
                           )
                         })}
-                        {showActual && row.tempActual != null && (
+                        {showActual && row.tempMeanActual != null && (
                           <TooltipRow
                             swatchClassName="rounded-full"
-                            color="var(--color-tempActual)"
-                            label={CHART_CONFIG.tempActual.label}
-                            value={`${row.tempActual} °C${row.esMesEnCurso ? " (mes en curso, parcial)" : ""}`}
+                            color="var(--color-tempMeanActual)"
+                            label={CHART_CONFIG.tempMeanActual.label}
+                            value={`${row.tempMeanActual} °C${row.esMesEnCurso ? " (mes en curso, parcial)" : ""}`}
+                          />
+                        )}
+                        {showActual && row.tempMaxActual != null && (
+                          <TooltipRow
+                            swatchClassName="rounded-full"
+                            color="var(--color-tempMaxActual)"
+                            label={CHART_CONFIG.tempMaxActual.label}
+                            value={`${row.tempMaxActual} °C`}
+                          />
+                        )}
+                        {showActual && row.tempMinActual != null && (
+                          <TooltipRow
+                            swatchClassName="rounded-full"
+                            color="var(--color-tempMinActual)"
+                            label={CHART_CONFIG.tempMinActual.label}
+                            value={`${row.tempMinActual} °C`}
                           />
                         )}
                         {showActual && showSensacion && row.sensacionActual != null && (
@@ -324,10 +347,28 @@ export function DecadalChart({ vereda }: DecadalChartProps) {
               })}
               {showActual && (
                 <Line
-                  dataKey="tempActual"
-                  stroke="var(--color-tempActual)"
+                  dataKey="tempMeanActual"
+                  stroke="var(--color-tempMeanActual)"
                   strokeWidth={2.5}
-                  dot={{ r: 3, fill: "var(--color-tempActual)" }}
+                  dot={{ r: 3, fill: "var(--color-tempMeanActual)" }}
+                  connectNulls
+                />
+              )}
+              {showActual && (
+                <Line
+                  dataKey="tempMaxActual"
+                  stroke="var(--color-tempMaxActual)"
+                  strokeWidth={2}
+                  dot={{ r: 2.5, fill: "var(--color-tempMaxActual)" }}
+                  connectNulls
+                />
+              )}
+              {showActual && (
+                <Line
+                  dataKey="tempMinActual"
+                  stroke="var(--color-tempMinActual)"
+                  strokeWidth={2}
+                  dot={{ r: 2.5, fill: "var(--color-tempMinActual)" }}
                   connectNulls
                 />
               )}
@@ -371,7 +412,7 @@ export function DecadalChart({ vereda }: DecadalChartProps) {
           </p>
         )}
         <p className="mt-3 text-xs leading-snug text-muted-foreground">
-          Cada barra es el promedio mensual de temperatura máxima diaria de{" "}
+          Cada barra es el promedio mensual de temperatura media diaria de{" "}
           <a
             href="https://open-meteo.com"
             target="_blank"
@@ -385,7 +426,9 @@ export function DecadalChart({ vereda }: DecadalChartProps) {
           tiene su propio color en un degradado de frío a cálido, en orden cronológico, para que un
           calentamiento gradual se note a simple vista. El año {currentYear} y los dos anteriores se dejan
           fuera de las barras a propósito y se muestran como líneas individuales (misma convención que el
-          histograma de quinquenios); la línea punteada del año en curso es la sensación térmica máxima.
+          histograma de quinquenios); el año en curso se compara en el mismo pie (media) que las barras, y
+          añade la máxima y la mínima diaria promedio como líneas adicionales; la línea punteada opcional es
+          su sensación térmica máxima.
         </p>
       </CardContent>
     </Card>

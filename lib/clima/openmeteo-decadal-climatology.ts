@@ -3,10 +3,13 @@ import "server-only"
 /**
  * First histogram above the clima report card: temperature counterpart to
  * lib/precipitacion/openmeteo-decadal-climatology.ts. Instead of summing
- * rainfall per month, this averages Open-Meteo's daily *maximum* temperature
+ * rainfall per month, this averages Open-Meteo's daily *mean* temperature
  * across each month, bucketed into five consecutive 10-year windows (50
  * years total) — a long look-back meant to make a gradual warming trend
- * visible in a way a single normal period would smooth away.
+ * visible in a way a single normal period would smooth away. The
+ * accompanying "año en curso" lines (see openmeteo-historical-client.ts)
+ * add the daily maximum and minimum on top of this same mean, so the bars
+ * and the current-year mean line stay on the same footing.
  *
  * Same archive endpoint as lib/clima/openmeteo-historical-client.ts.
  */
@@ -49,7 +52,7 @@ export function getDecadaBins(referenceDate: Date = new Date()): DecadaBin[] {
 
 export interface DecadaMonthlyTempPoint {
   month: number
-  /** Average of daily maximum temperature (°C) across this month, averaged again across the bin's 10 years, or null if none had valid data. */
+  /** Average of daily mean temperature (°C) across this month, averaged again across the bin's 10 years, or null if none had valid data. */
   tempC: number | null
 }
 
@@ -76,7 +79,7 @@ export async function getDecadaMonthlyTempClimatology(
   const params = new URLSearchParams({
     latitude: lat.toFixed(2),
     longitude: lon.toFixed(2),
-    daily: "temperature_2m_max",
+    daily: "temperature_2m_mean",
     timezone: "America/Bogota",
     start_date: `${startYear}-01-01`,
     end_date: `${endYear}-12-31`,
@@ -90,11 +93,11 @@ export async function getDecadaMonthlyTempClimatology(
   }
   const data = await res.json()
   const times = (data?.daily?.time ?? []) as string[]
-  const maxes = (data?.daily?.temperature_2m_max ?? []) as Array<number | null>
+  const means = (data?.daily?.temperature_2m_mean ?? []) as Array<number | null>
 
   const dailyByYearMonth = new Map<string, number[]>()
   for (let i = 0; i < times.length; i++) {
-    const value = maxes[i]
+    const value = means[i]
     if (typeof value !== "number") continue
     const year = times[i].slice(0, 4)
     const month = times[i].slice(5, 7)
