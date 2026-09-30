@@ -118,67 +118,9 @@ async function fetchYearMonthlyTemperature(
   return months
 }
 
-/** Batched version of getYearMonthlyTemperature, for averaging across every vereda in a municipio. */
-export async function getYearMonthlyTemperatureBatch(
-  points: Array<{ lon: number; lat: number }>,
-  year: number,
-  concurrency = 6,
-): Promise<Array<CurrentYearMonthlyTempPoint[] | null>> {
-  const results: Array<CurrentYearMonthlyTempPoint[] | null> = new Array(points.length).fill(null)
-  let cursor = 0
-
-  async function worker() {
-    while (cursor < points.length) {
-      const index = cursor++
-      const p = points[index]
-      try {
-        results[index] = await getYearMonthlyTemperature(p.lon, p.lat, year)
-      } catch {
-        results[index] = null
-      }
-    }
-  }
-
-  await Promise.all(Array.from({ length: Math.min(concurrency, points.length) }, worker))
-  return results
-}
-
 /** This calendar year's data, for the chart's "año en curso" line — see getYearMonthlyTemperature. */
 export async function getCurrentYearMonthlyTemperature(lon: number, lat: number): Promise<CurrentYearMonthlyTempPoint[]> {
   return getYearMonthlyTemperature(lon, lat, new Date().getUTCFullYear())
-}
-
-/** Batched version of getCurrentYearMonthlyTemperature. */
-export async function getCurrentYearMonthlyTemperatureBatch(
-  points: Array<{ lon: number; lat: number }>,
-  concurrency = 6,
-): Promise<Array<CurrentYearMonthlyTempPoint[] | null>> {
-  return getYearMonthlyTemperatureBatch(points, new Date().getUTCFullYear(), concurrency)
-}
-
-/**
- * Averages a batch of per-vereda year-series (see
- * getYearMonthlyTemperatureBatch) into one series, skipping any vereda that
- * failed to resolve — shared by both climatología routes for their "current
- * year" and "recent individual years" lines.
- */
-export function averageYearMonthlyTempSeries(
-  batch: Array<CurrentYearMonthlyTempPoint[] | null>,
-): CurrentYearMonthlyTempPoint[] {
-  const valid = batch.filter((series): series is CurrentYearMonthlyTempPoint[] => series != null)
-  return Array.from({ length: 12 }, (_, i) => {
-    const month = i + 1
-    const temps = valid.map((s) => s[i]?.tempC).filter((v): v is number => v != null)
-    const apparents = valid.map((s) => s[i]?.sensacionC).filter((v): v is number => v != null)
-    return {
-      month,
-      tempC: temps.length > 0 ? Math.round((temps.reduce((sum, v) => sum + v, 0) / temps.length) * 10) / 10 : null,
-      sensacionC:
-        apparents.length > 0 ? Math.round((apparents.reduce((sum, v) => sum + v, 0) / apparents.length) * 10) / 10 : null,
-      validDays: Math.max(...valid.map((s) => s[i]?.validDays ?? 0), 0),
-      isPartial: valid.some((s) => s[i]?.isPartial),
-    }
-  })
 }
 
 /**

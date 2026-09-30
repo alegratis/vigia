@@ -128,28 +128,3 @@ export async function getDecadaMonthlyTempClimatology(
     return { ...bin, meses }
   })
 }
-
-/** Batched version of getDecadaMonthlyTempClimatology, for averaging across every vereda in a municipio. */
-export async function getDecadaMonthlyTempClimatologyBatch(
-  points: Array<{ lon: number; lat: number }>,
-  referenceDate: Date = new Date(),
-  concurrency = 6,
-): Promise<Array<DecadaTempSeries[] | null>> {
-  const results: Array<DecadaTempSeries[] | null> = new Array(points.length).fill(null)
-  let cursor = 0
-
-  async function worker() {
-    while (cursor < points.length) {
-      const index = cursor++
-      const p = points[index]
-      try {
-        results[index] = await getDecadaMonthlyTempClimatology(p.lon, p.lat, referenceDate)
-      } catch {
-        results[index] = null
-      }
-    }
-  }
-
-  await Promise.all(Array.from({ length: Math.min(concurrency, points.length) }, worker))
-  return results
-}

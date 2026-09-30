@@ -155,7 +155,7 @@ export function QuinquenalChart({ vereda }: QuinquenalChartProps) {
               Histograma de temperatura por quinquenios {" "}
               {mode === "vereda" && vereda
                 ? `${vereda.nombre} (${vereda.municipio})`
-                : `${municipio} (territorio completo)`}
+                : `${municipio} (casco urbano)`}
             </h3>
           </div>
           <button

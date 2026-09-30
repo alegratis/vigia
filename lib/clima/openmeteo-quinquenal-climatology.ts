@@ -129,28 +129,3 @@ export async function getQuinquenioMonthlyTempClimatology(
     return { ...bin, meses }
   })
 }
-
-/** Batched version of getQuinquenioMonthlyTempClimatology, for averaging across every vereda in a municipio. */
-export async function getQuinquenioMonthlyTempClimatologyBatch(
-  points: Array<{ lon: number; lat: number }>,
-  referenceDate: Date = new Date(),
-  concurrency = 6,
-): Promise<Array<QuinquenioTempSeries[] | null>> {
-  const results: Array<QuinquenioTempSeries[] | null> = new Array(points.length).fill(null)
-  let cursor = 0
-
-  async function worker() {
-    while (cursor < points.length) {
-      const index = cursor++
-      const p = points[index]
-      try {
-        results[index] = await getQuinquenioMonthlyTempClimatology(p.lon, p.lat, referenceDate)
-      } catch {
-        results[index] = null
-      }
-    }
-  }
-
-  await Promise.all(Array.from({ length: Math.min(concurrency, points.length) }, worker))
-  return results
-}

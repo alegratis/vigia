@@ -151,7 +151,7 @@ export function DecadalChart({ vereda }: DecadalChartProps) {
               Histograma de temperatura por décadas {" "}
               {mode === "vereda" && vereda
                 ? `${vereda.nombre} (${vereda.municipio})`
-                : `${municipio} (territorio completo)`}
+                : `${municipio} (casco urbano)`}
             </h3>
           </div>
           <button
