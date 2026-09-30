@@ -3,7 +3,7 @@ import "server-only"
 /**
  * First histogram above the clima report card: temperature counterpart to
  * lib/precipitacion/openmeteo-decadal-climatology.ts. Instead of summing
- * rainfall per month, this averages Open-Meteo's daily mean temperature
+ * rainfall per month, this averages Open-Meteo's daily *maximum* temperature
  * across each month, bucketed into five consecutive 10-year windows (50
  * years total) — a long look-back meant to make a gradual warming trend
  * visible in a way a single normal period would smooth away.
@@ -49,7 +49,7 @@ export function getDecadaBins(referenceDate: Date = new Date()): DecadaBin[] {
 
 export interface DecadaMonthlyTempPoint {
   month: number
-  /** Average of daily mean temperature (°C) across this month, averaged again across the bin's 10 years, or null if none had valid data. */
+  /** Average of daily maximum temperature (°C) across this month, averaged again across the bin's 10 years, or null if none had valid data. */
   tempC: number | null
 }
 
@@ -76,7 +76,7 @@ export async function getDecadaMonthlyTempClimatology(
   const params = new URLSearchParams({
     latitude: lat.toFixed(2),
     longitude: lon.toFixed(2),
-    daily: "temperature_2m_mean",
+    daily: "temperature_2m_max",
     timezone: "America/Bogota",
     start_date: `${startYear}-01-01`,
     end_date: `${endYear}-12-31`,
@@ -90,11 +90,11 @@ export async function getDecadaMonthlyTempClimatology(
   }
   const data = await res.json()
   const times = (data?.daily?.time ?? []) as string[]
-  const means = (data?.daily?.temperature_2m_mean ?? []) as Array<number | null>
+  const maxes = (data?.daily?.temperature_2m_max ?? []) as Array<number | null>
 
   const dailyByYearMonth = new Map<string, number[]>()
   for (let i = 0; i < times.length; i++) {
-    const value = means[i]
+    const value = maxes[i]
     if (typeof value !== "number") continue
     const year = times[i].slice(0, 4)
     const month = times[i].slice(5, 7)

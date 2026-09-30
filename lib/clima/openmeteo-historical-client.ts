@@ -5,10 +5,12 @@ import { unstable_cache } from "next/cache"
 /**
  * Client for Open-Meteo's Historical Weather API (archive-api.open-meteo.com),
  * temperature counterpart to lib/precipitacion/openmeteo-historical-client.ts:
- * instead of a monthly rainfall sum, this averages daily mean temperature
- * (and "feels-like" apparent temperature) across each month — the "current
- * year" and "recent past years" comparison lines on the clima climatology
- * charts (decadal-chart.tsx / quinquenal-chart.tsx).
+ * instead of a monthly rainfall sum, this averages each day's *maximum*
+ * temperature (and "feels-like" apparent maximum) across each month — a
+ * daily high reads as a more intuitive, more dramatic warming signal than a
+ * 24-hour mean — for the "current year" and "recent past years" comparison
+ * lines on the clima climatology charts (decadal-chart.tsx /
+ * quinquenal-chart.tsx).
  *
  * Same archive endpoint as the precipitación client (ECMWF IFS analysis for
  * the most recent ~2 months, ERA5/ERA5-Land reanalysis further back — an
@@ -29,9 +31,9 @@ function formatDate(d: Date): string {
 
 export interface CurrentYearMonthlyTempPoint {
   month: number
-  /** Average of daily mean temperature (°C) across this month, or null if Open-Meteo has no data for it yet. */
+  /** Average of daily maximum temperature (°C) across this month, or null if Open-Meteo has no data for it yet. */
   tempC: number | null
-  /** Average of daily mean apparent ("feels-like") temperature (°C) across this month, or null. */
+  /** Average of daily maximum apparent ("feels-like") temperature (°C) across this month, or null. */
   sensacionC: number | null
   validDays: number
   /** True only for the current, still-in-progress month (a partial-month average, not a full-month one). */
@@ -70,7 +72,7 @@ async function fetchYearMonthlyTemperature(
   const params = new URLSearchParams({
     latitude: lat.toFixed(2),
     longitude: lon.toFixed(2),
-    daily: "temperature_2m_mean,apparent_temperature_mean",
+    daily: "temperature_2m_max,apparent_temperature_max",
     timezone: "America/Bogota",
     start_date: `${year}-01-01`,
     end_date: isCurrentYear ? formatDate(now) : `${year}-12-31`,
@@ -84,15 +86,15 @@ async function fetchYearMonthlyTemperature(
   }
   const data = await res.json()
   const times = (data?.daily?.time ?? []) as string[]
-  const means = (data?.daily?.temperature_2m_mean ?? []) as Array<number | null>
-  const apparents = (data?.daily?.apparent_temperature_mean ?? []) as Array<number | null>
+  const maxes = (data?.daily?.temperature_2m_max ?? []) as Array<number | null>
+  const apparents = (data?.daily?.apparent_temperature_max ?? []) as Array<number | null>
 
   const byMonth = new Map<number, { temps: number[]; apparents: number[] }>()
   for (let i = 0; i < times.length; i++) {
     const month = Number(times[i].slice(5, 7))
     if (!byMonth.has(month)) byMonth.set(month, { temps: [], apparents: [] })
     const bucket = byMonth.get(month)!
-    if (typeof means[i] === "number") bucket.temps.push(means[i] as number)
+    if (typeof maxes[i] === "number") bucket.temps.push(maxes[i] as number)
     if (typeof apparents[i] === "number") bucket.apparents.push(apparents[i] as number)
   }
 

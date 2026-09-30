@@ -149,9 +149,7 @@ export function DecadalChart({ vereda }: DecadalChartProps) {
             <Thermometer className="size-4 text-muted-foreground" aria-hidden="true" />
             <h3 className="font-semibold tracking-tight">
               Histograma de temperatura por décadas {" "}
-              {mode === "vereda" && vereda
-                ? `${vereda.nombre} (${vereda.municipio})`
-                : `${municipio} (casco urbano)`}
+              {mode === "vereda" && vereda ? `${vereda.nombre} (${vereda.municipio})` : municipio}
             </h3>
           </div>
           <button
@@ -211,11 +209,11 @@ export function DecadalChart({ vereda }: DecadalChartProps) {
         </div>
         <p className="text-xs text-muted-foreground">
           {mode === "vereda" && vereda
-            ? "Open-Meteo, promedios mensuales de temperatura por década en el centroide de la vereda seleccionada."
-            : `Open-Meteo, promedios mensuales de temperatura por década, promediados entre las ${data?.ubicacion.veredasPromediadas ?? ""} veredas rurales de ${municipio}.`}
-          {showActual && " Línea sólida: temperatura promedio real de este año; línea punteada: sensación térmica (Open-Meteo)."}
+            ? "Open-Meteo, promedios mensuales de temperatura máxima diaria en el centroide de la vereda seleccionada."
+            : `Open-Meteo, promedios mensuales de temperatura máxima diaria en el centro poblado de ${municipio}.`}
+          {showActual && " Línea sólida: temperatura máxima diaria promedio de este año; línea punteada: sensación térmica máxima (Open-Meteo)."}
           {enabledYears.size > 0 &&
-            ` Comparando con ${[...enabledYears].sort((a, b) => b - a).join(", ")} (temperatura promedio real, Open-Meteo).`}
+            ` Comparando con ${[...enabledYears].sort((a, b) => b - a).join(", ")} (temperatura máxima diaria promedio, Open-Meteo).`}
         </p>
       </CardHeader>
       <CardContent className="pt-4">
@@ -360,7 +358,7 @@ export function DecadalChart({ vereda }: DecadalChartProps) {
           </p>
         )}
         <p className="mt-3 text-xs leading-snug text-muted-foreground">
-          Cada barra es el promedio mensual de temperatura media diaria de{" "}
+          Cada barra es el promedio mensual de temperatura máxima diaria de{" "}
           <a
             href="https://open-meteo.com"
             target="_blank"
@@ -374,7 +372,7 @@ export function DecadalChart({ vereda }: DecadalChartProps) {
           tiene su propio color en un degradado de frío a cálido, en orden cronológico, para que un
           calentamiento gradual se note a simple vista. El año {currentYear} y los dos anteriores se dejan
           fuera de las barras a propósito y se muestran como líneas individuales (misma convención que el
-          histograma de quinquenios); la línea punteada del año en curso es la sensación térmica.
+          histograma de quinquenios); la línea punteada del año en curso es la sensación térmica máxima.
         </p>
       </CardContent>
     </Card>

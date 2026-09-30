@@ -3,8 +3,8 @@ import "server-only"
 /**
  * Second histogram above the clima report card: temperature counterpart to
  * lib/precipitacion/openmeteo-quinquenal-climatology.ts. Instead of the
- * decadal chart's 10-year windows, this averages Open-Meteo's daily mean
- * temperature across consecutive 5-year windows starting in 1999 — finer
+ * decadal chart's 10-year windows, this averages Open-Meteo's daily
+ * *maximum* temperature across consecutive 5-year windows starting in 1999 — finer
  * bins make a recent warming/cooling shift visible in a way the 50-year
  * decadal chart above it smooths away, at the cost of each bucket resting
  * on only 5 years of data.
@@ -50,7 +50,7 @@ export function getQuinquenioBins(referenceDate: Date = new Date()): QuinquenioB
 
 export interface QuinquenioMonthlyTempPoint {
   month: number
-  /** Average of daily mean temperature (°C) across this month, averaged again across the bin's 5 years, or null if none had valid data. */
+  /** Average of daily maximum temperature (°C) across this month, averaged again across the bin's 5 years, or null if none had valid data. */
   tempC: number | null
 }
 
@@ -77,7 +77,7 @@ export async function getQuinquenioMonthlyTempClimatology(
   const params = new URLSearchParams({
     latitude: lat.toFixed(2),
     longitude: lon.toFixed(2),
-    daily: "temperature_2m_mean",
+    daily: "temperature_2m_max",
     timezone: "America/Bogota",
     start_date: `${startYear}-01-01`,
     end_date: `${endYear}-12-31`,
@@ -91,11 +91,11 @@ export async function getQuinquenioMonthlyTempClimatology(
   }
   const data = await res.json()
   const times = (data?.daily?.time ?? []) as string[]
-  const means = (data?.daily?.temperature_2m_mean ?? []) as Array<number | null>
+  const maxes = (data?.daily?.temperature_2m_max ?? []) as Array<number | null>
 
   const dailyByYearMonth = new Map<string, number[]>()
   for (let i = 0; i < times.length; i++) {
-    const value = means[i]
+    const value = maxes[i]
     if (typeof value !== "number") continue
     const year = times[i].slice(0, 4)
     const month = times[i].slice(5, 7)
