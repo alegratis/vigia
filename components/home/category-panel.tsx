@@ -35,11 +35,16 @@ const SLIDE_DURATION_MS = 500
  * it still mount and unmount (heavy map content only exists while active),
  * each fading in on mount so the swap doesn't feel like an abrupt cut.
  *
- * On desktop, the collapsed photo-strip below is only ever shown on mobile
- * (`lg:hidden`) — the right-docked `CategoryTab` rail in `HazardWorkspace`
- * is what represents inactive categories at that breakpoint, so the active
- * panel is the only one visible in the map row and can simply claim all of
- * it (`lg:flex-1`) instead of sharing space with collapsed siblings.
+ * The collapsed photo-strip below only ever renders below the `lg`
+ * breakpoint. On desktop, the right-docked `CategoryTab` rail in
+ * `HazardWorkspace` is what represents inactive categories — so this
+ * component renders nothing there (`hidden` with no `lg:flex` override),
+ * instead of stacking a second, redundant strip next to that rail. On
+ * mobile, category switching happens from `MobileHeader`'s hamburger sheet
+ * instead, so an inactive panel renders nothing there either and never eats
+ * vertical space above the fold; the active panel is the only one visible
+ * in the map row and can simply claim all of it (`lg:flex-1`) instead of
+ * sharing space with collapsed siblings on either breakpoint.
  *
  * `children` (the map) is deliberately not mounted the instant a panel
  * activates: Leaflet/MapLibre measure their container's pixel size once at
@@ -70,7 +75,7 @@ export function CategoryPanel({ model, icon: Icon, isActive, onActivate, childre
         // instead — basis-auto (the default) plus the active map's explicit h-[70vh] achieves the same
         // "map fills the first fold" result without a flex-grow chain that has nothing to grow against.
         "relative flex flex-col overflow-hidden transition-[flex-grow,flex-basis] duration-500 ease-in-out lg:min-h-0",
-        isActive ? "shrink basis-auto lg:flex-1 lg:basis-0" : "grow-0 shrink-0 basis-16 lg:hidden",
+        isActive ? "shrink basis-auto lg:flex-1 lg:basis-0" : "hidden",
       )}
     >
       {isActive ? (
@@ -111,22 +116,22 @@ export function CategoryPanel({ model, icon: Icon, isActive, onActivate, childre
           type="button"
           onClick={onActivate}
           aria-label={`Mostrar ${model.title}`}
-          className="group relative flex h-full w-full items-center overflow-hidden text-left animate-in fade-in duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset lg:flex-col lg:justify-center"
+          className="group relative flex h-full w-full items-center overflow-hidden text-left animate-in fade-in duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
         >
           <Image
             src={model.image || "/placeholder.svg"}
             alt=""
             fill
-            sizes="(max-width: 1024px) 100vw, 96px"
+            sizes="100vw"
             className="object-cover transition-transform duration-500 group-hover:scale-105"
           />
           <div
             className="absolute inset-0 bg-white/65 transition-colors duration-300 group-hover:bg-white/50 dark:bg-black/55 dark:group-hover:bg-black/40"
             aria-hidden="true"
           />
-          <div className="relative z-10 flex w-full items-center gap-3 px-5 lg:flex-col lg:gap-4 lg:px-0">
+          <div className="relative z-10 flex w-full items-center gap-3 px-5">
             <Icon className="size-5 shrink-0 text-black dark:text-white" aria-hidden="true" />
-            <span className="text-sm font-semibold uppercase tracking-wide text-black lg:[writing-mode:vertical-rl] lg:rotate-180 dark:text-white">
+            <span className="text-sm font-semibold uppercase tracking-wide text-black dark:text-white">
               {model.title}
             </span>
           </div>

@@ -6,6 +6,7 @@ import { LiveThreatPopulation } from "@/components/deslizamientos/live-threat-po
 import { HazardModelPanel } from "@/components/deslizamientos/hazard-model-panel"
 import { ScrollHintButton } from "@/components/home/scroll-hint-button"
 import { BackToTopButton } from "@/components/home/back-to-top-button"
+import { CollapsibleMobileSection } from "@/components/home/collapsible-mobile-section"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
 import type { VeredaFeature } from "@/lib/veredas/api-types"
@@ -70,15 +71,17 @@ export function DeslizamientosPanelContent({
           <LiveThreatPopulation />
           <HazardModelPanel selectedVereda={selectedVereda} onClearSelection={() => onVeredaSelect(null)} />
         </div>
-        <p className="text-xs text-muted-foreground">
-          El panel de población de la izquierda sigue leyendo el índice{" "}
-          <code className="text-foreground">VIGIA_Amenaza_IS</code> de RED LabOT directamente, con su propia
-          clasificación, solo cubre Sevilla y Caicedonia. Activa la capa de humedad del suelo (NASA SMAP) para
-          contrastar la señal de disparo del modelo propio, o la capa de sitios críticos para ver puntos de daño
-          vial verificados en campo (hundimientos, derrumbes, erosión, grietas de tracción) del levantamiento de
-          2019 de la Secretaría de Infraestructura del Valle del Cauca, un complemento puntual e histórico, no
-          una capa en vivo.
-        </p>
+        <CollapsibleMobileSection title="Fuentes y metodología">
+          <p className="text-xs text-muted-foreground">
+            El panel de población de la izquierda sigue leyendo el índice{" "}
+            <code className="text-foreground">VIGIA_Amenaza_IS</code> de RED LabOT directamente, con su propia
+            clasificación, solo cubre Sevilla y Caicedonia. Activa la capa de humedad del suelo (NASA SMAP) para
+            contrastar la señal de disparo del modelo propio, o la capa de sitios críticos para ver puntos de daño
+            vial verificados en campo (hundimientos, derrumbes, erosión, grietas de tracción) del levantamiento de
+            2019 de la Secretaría de Infraestructura del Valle del Cauca, un complemento puntual e histórico, no
+            una capa en vivo.
+          </p>
+        </CollapsibleMobileSection>
         <BackToTopButton targetRef={mapRef} />
       </div>
     </div>

@@ -19,6 +19,7 @@ import { ScrollHintButton } from "@/components/home/scroll-hint-button"
 import { BackToTopButton } from "@/components/home/back-to-top-button"
 import { DecadalChart } from "@/components/clima/decadal-chart"
 import { QuinquenalChart } from "@/components/clima/quinquenal-chart"
+import { CollapsibleMobileSection } from "@/components/home/collapsible-mobile-section"
 import { WEATHER_GROUP_LABELS } from "@/lib/clima/weather-codes"
 import type { ClimaVeredaProperties, WeatherGroup } from "@/lib/clima/api-types"
 import type { OsmPoint } from "@/lib/osm/api-types"
@@ -204,21 +205,23 @@ export function ClimaPanelContent({
             }
           />
         </div>
-        <p className="text-xs text-muted-foreground">
-          Reporte meteorológico por vereda con datos de{" "}
-          <a
-            href="https://open-meteo.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline underline-offset-2 hover:text-foreground"
-          >
-            Open-Meteo
-          </a>{" "}
-          (temperatura, código de estado del tiempo WMO y pronóstico a 7 días, a partir de modelos numéricos de
-          pronóstico del tiempo, no de observación directa). A diferencia de la mayoría de las capas, esta cubre
-          Zarzal y Roldanillo con el mismo detalle que Sevilla y Caicedonia. Haz clic sobre cualquier vereda para ver
-          su pronóstico completo.
-        </p>
+        <CollapsibleMobileSection title="Fuentes y metodología">
+          <p className="text-xs text-muted-foreground">
+            Reporte meteorológico por vereda con datos de{" "}
+            <a
+              href="https://open-meteo.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:text-foreground"
+            >
+              Open-Meteo
+            </a>{" "}
+            (temperatura, código de estado del tiempo WMO y pronóstico a 7 días, a partir de modelos numéricos de
+            pronóstico del tiempo, no de observación directa). A diferencia de la mayoría de las capas, esta cubre
+            Zarzal y Roldanillo con el mismo detalle que Sevilla y Caicedonia. Haz clic sobre cualquier vereda para
+            ver su pronóstico completo.
+          </p>
+        </CollapsibleMobileSection>
         <BackToTopButton targetRef={mapRef} />
       </div>
     </div>

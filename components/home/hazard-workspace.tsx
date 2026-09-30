@@ -17,8 +17,10 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { CategoryPanel } from "@/components/home/category-panel"
 import { CategoryRail } from "@/components/home/category-rail"
+import { MobileHeader } from "@/components/home/mobile-header"
 import { DeslizamientosPanelContent } from "@/components/home/deslizamientos-panel-content"
 import { InundacionesPanelContent } from "@/components/home/inundaciones-panel-content"
 import { IncendiosPanelContent } from "@/components/home/incendios-panel-content"
@@ -132,19 +134,25 @@ export function HazardWorkspace({
       tabIndex={-1}
       className="flex flex-1 flex-col focus-visible:outline-none lg:min-h-0 lg:flex-row"
     >
+      <MobileHeader
+        models={mapModels}
+        icons={hazardIcons}
+        fallbackIcon={Mountain}
+        activeSlug={activeSlug}
+        onActivate={activate}
+      />
+
       <div
         className={cn(
-          "relative flex flex-col border-b border-border bg-card transition-[width,padding,gap] duration-300 ease-in-out lg:shrink-0 lg:overflow-y-auto lg:border-b-0 lg:border-r",
-          sidebarCollapsed
-            ? "items-center gap-4 p-3 pt-11 lg:w-16 xl:w-16"
-            : "gap-6 p-6 pt-11 sm:p-8 sm:pt-11 lg:w-80 xl:w-96",
+          "relative order-2 flex flex-col border-b border-border bg-card transition-[width,padding,gap] duration-300 ease-in-out lg:order-1 lg:shrink-0 lg:overflow-y-auto lg:border-b-0 lg:border-r",
+          sidebarCollapsed ? "lg:w-16 lg:items-center lg:gap-4 lg:p-3 lg:pt-11 xl:w-16" : "lg:w-80 lg:gap-6 lg:p-6 lg:pt-11 xl:w-96",
         )}
       >
         <button
           type="button"
           onClick={() => setSidebarCollapsed((collapsed) => !collapsed)}
           aria-label={sidebarCollapsed ? "Mostrar panel lateral" : "Ocultar panel lateral"}
-          className="absolute right-2 top-2 z-10 flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="absolute right-2 top-2 z-10 hidden size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:flex"
         >
           {sidebarCollapsed ? (
             <PanelLeftOpen className="size-4" aria-hidden="true" />
@@ -153,8 +161,14 @@ export function HazardWorkspace({
           )}
         </button>
 
+        {/*
+          Everything below is desktop-only (`hidden lg:flex`): the branding, mission copy, CTA, and
+          live sidebar cards that fit naturally in a tall always-visible column. Mobile gets its own
+          accordion rendering of the same underlying cards further down, since a screen that size
+          can't afford this much always-open vertical space above the fold.
+        */}
         {sidebarCollapsed ? (
-          <div className="flex w-full flex-col items-center gap-4 animate-in fade-in duration-300">
+          <div className="hidden w-full flex-col items-center gap-4 animate-in fade-in duration-300 lg:flex">
             <div className="flex flex-col items-center gap-3">
               <span className="relative flex h-7 items-center justify-center">
                 <Image
@@ -203,7 +217,7 @@ export function HazardWorkspace({
             />
           </div>
         ) : (
-          <div className="flex w-full flex-col items-center gap-6 animate-in fade-in duration-300">
+          <div className="hidden w-full flex-col items-center gap-6 animate-in fade-in duration-300 lg:flex">
             <div className="flex flex-col items-center gap-6 text-center">
               <div className="flex items-center gap-4">
                 <span className="relative flex h-12 items-center justify-center">
@@ -319,6 +333,100 @@ export function HazardWorkspace({
             />
           </div>
         )}
+
+        {/*
+          Mobile-only (`lg:hidden`) accordion rendering of the same live sidebar cards. Everything
+          starts collapsed: the mission blurb, CTA, and collaborator logos aren't repeated here since
+          MobileHeader already carries the brand marks, and population/infrastructure are exactly the
+          kind of "info that might not be relevant right now" the redesign asks to tuck away, so the
+          map (rendered first via order-1 below) gets the whole first fold to itself.
+        */}
+        <div className="px-4 pb-2 lg:hidden">
+          <Accordion multiple>
+            <AccordionItem value="poblacion">
+              <AccordionTrigger>Población en el área visible</AccordionTrigger>
+              <AccordionContent>
+                <LiveAreaPopulation
+                  bounds={bounds}
+                  basis={activeConfig.basis}
+                  basisLabel={activeConfig.basisLabel}
+                  selectedMunicipio={selectedMunicipio}
+                  selectedVereda={selectedVereda}
+                  onClearSelection={clearSidebarSelection}
+                />
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="infraestructura">
+              <AccordionTrigger>Infraestructura visible</AccordionTrigger>
+              <AccordionContent>
+                <div className="flex flex-col gap-4">
+                  <LiveInfrastructureCategories
+                    bounds={bounds}
+                    points={osmPoints}
+                    isLoading={osmLoading}
+                    error={osmError}
+                    activeCategories={activeOsmCategories}
+                    onToggleCategory={toggleOsmCategory}
+                  />
+                  <LiveInfrastructureBuildings
+                    bounds={bounds}
+                    points={osmPoints}
+                    activeCategories={activeOsmCategories}
+                  />
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="sobre-vigia">
+              <AccordionTrigger>Sobre Vigía</AccordionTrigger>
+              <AccordionContent>
+                <div className="flex flex-col gap-4">
+                  <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
+                    Observación satelital e inteligencia geoespacial para anticipar amenazas y fortalecer
+                    la respuesta ante emergencias en Sevilla, Caicedonia, Zarzal y Roldanillo.
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={() => openInfoPopup("/exposicion/popup", "vigia-exposicion", { width: 1180, height: 980 })}
+                    className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-md bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  >
+                    Conoce tu nivel de exposición
+                    <ArrowRight className="size-4" aria-hidden="true" />
+                  </button>
+
+                  <div className="flex flex-col items-center gap-1.5">
+                    <span className="text-xs font-medium text-muted-foreground">En colaboración con</span>
+                    <a
+                      href="https://nasalifelines.org"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                    >
+                      <Image
+                        src="/images/nasa-lifelines-wordmark-darkblue.png"
+                        alt="NASA Lifelines"
+                        width={5112}
+                        height={643}
+                        className="block h-5 w-auto dark:hidden"
+                      />
+                      <Image
+                        src="/images/nasa-lifelines-wordmark-white.png"
+                        alt="NASA Lifelines"
+                        width={5112}
+                        height={643}
+                        className="hidden h-5 w-auto dark:block"
+                      />
+                    </a>
+                    <div className="h-px w-8 bg-border" aria-hidden="true" />
+                    <AlejandroPinoLogo className="h-6" />
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </div>
       </div>
 
       {/*
@@ -328,8 +436,12 @@ export function HazardWorkspace({
         should size itself off its children's own explicit heights (the active category's h-[70vh] map,
         the collapsed strips' basis-20) instead of being forced into a min-height:0 flex item that has no
         ambient space to grow into, which is what was collapsing the active map to a sliver.
+
+        order-1/lg:order-2 puts this row before the sidebar above on mobile, so the active category's
+        map claims the first fold instead of appearing three screens down below all the sidebar cards;
+        on desktop the sidebar keeps its usual left position via lg:order-1 there.
       */}
-      <div className="flex flex-col lg:min-h-0 lg:flex-1 lg:flex-row">
+      <div className="order-1 flex flex-col lg:order-2 lg:min-h-0 lg:flex-1 lg:flex-row">
         {mapModels.map((model: MapModel) => {
           const isActive = model.slug === activeSlug
           return (

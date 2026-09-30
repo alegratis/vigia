@@ -6,16 +6,19 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import { BETA_VERSION } from "@/lib/version"
 
 /**
- * Minimal top bar for the homepage workspace. The full SiteHeader (logo +
- * hazard nav + mobile menu) doesn't fit a single-viewport accordion layout,
- * so this keeps only what still needs a home on "/": the theme toggle and
- * an opener for the documentation page. Demografía now lives entirely
- * inside its own workspace panel (below its map), so it no longer needs a
- * separate popup entry point here.
+ * Minimal top bar for the homepage workspace, desktop-only (`hidden
+ * lg:flex`) — `MobileHeader`, rendered inside `HazardWorkspace`, covers the
+ * same "brand marks + menu" role below that breakpoint with a hamburger
+ * category sheet instead of the rail/strip navigation this bar assumes.
+ * The full SiteHeader (logo + hazard nav + mobile menu) doesn't fit a
+ * single-viewport accordion layout, so this keeps only what still needs a
+ * home on "/": the theme toggle and an opener for the documentation page.
+ * Demografía now lives entirely inside its own workspace panel (below its
+ * map), so it no longer needs a separate popup entry point here.
  */
 export function HomeTopBar() {
   return (
-    <div className="flex h-12 shrink-0 items-center justify-end gap-4 border-b border-border px-4 sm:px-6">
+    <div className="hidden h-12 shrink-0 items-center justify-end gap-4 border-b border-border px-4 sm:px-6 lg:flex">
       <span
         className="hidden select-none text-[10px] font-medium uppercase tracking-wide text-muted-foreground/50 sm:inline"
         title="Vigía está en fase beta"

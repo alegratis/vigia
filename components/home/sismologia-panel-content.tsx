@@ -5,6 +5,7 @@ import { SismologiaLiveMapLoader } from "@/components/maps/sismologia-live-map-l
 import { ScrollHintButton } from "@/components/home/scroll-hint-button"
 import { BackToTopButton } from "@/components/home/back-to-top-button"
 import { SismologiaOverview } from "@/components/sismologia/sismologia-overview"
+import { CollapsibleMobileSection } from "@/components/home/collapsible-mobile-section"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
 import type { VeredaFeature } from "@/lib/veredas/api-types"
@@ -57,58 +58,60 @@ export function SismologiaPanelContent({
         <div aria-live="polite">
           <SismologiaOverview />
         </div>
-        <p className="text-xs text-muted-foreground">
-          Fuente en vivo principal (últimos 5 días): feed casi en tiempo real de la{" "}
-          <a
-            href="https://www.sgc.gov.co/sismos"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline underline-offset-2 hover:text-foreground"
-          >
-            Red Sismológica Nacional de Colombia (SGC)
-          </a>
-          , la red oficial del país, con cobertura local suficiente para registrar los microsismos
-          (M1–M4) que el catálogo global no detecta. Los sismos no se pueden pronosticar: esto mejora
-          la detección en vivo, no la predicción. Como verificación independiente se conserva el
-          servicio público{" "}
-          <a
-            href="https://earthquake.usgs.gov/fdsnws/event/1/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline underline-offset-2 hover:text-foreground"
-          >
-            USGS FDSN Event Web Service
-          </a>{" "}
-          (últimos 90 días). Catálogo histórico: servicio abierto del{" "}
-          <a
-            href="https://www.sgc.gov.co"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline underline-offset-2 hover:text-foreground"
-          >
-            Servicio Geológico Colombiano
-          </a>
-          , el registro sísmico oficial de Colombia, se muestra como una capa aparte, punteada en el
-          mapa. El{" "}
-          <a
-            href="https://osso.univalle.edu.co"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline underline-offset-2 hover:text-foreground"
-          >
-            Observatorio Sismológico del Suroccidente (OSSO/Univalle)
-          </a>{" "}
-          publica boletines propios sin un servicio de datos abierto; se referencia aquí como fuente
-          adicional. Los reportes de daños de Sevilla provienen de un formulario de campo comunitario
-          (Survey123) agregado por barrio, sin verificar, y sin exponer direcciones ni cifras de
-          heridos o fallecidos por hogar. Esta categoría no tiene una zonificación de amenaza sísmica
-          por vereda publicada; el aporte al riesgo compuesto se calcula por distancia a los
-          epicentros, ver{" "}
-          <a href="/?categoria=riesgo-compuesto" className="underline underline-offset-2 hover:text-foreground">
-            Riesgo compuesto
-          </a>
-          .
-        </p>
+        <CollapsibleMobileSection title="Fuentes y metodología">
+          <p className="text-xs text-muted-foreground">
+            Fuente en vivo principal (últimos 5 días): feed casi en tiempo real de la{" "}
+            <a
+              href="https://www.sgc.gov.co/sismos"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:text-foreground"
+            >
+              Red Sismológica Nacional de Colombia (SGC)
+            </a>
+            , la red oficial del país, con cobertura local suficiente para registrar los microsismos
+            (M1–M4) que el catálogo global no detecta. Los sismos no se pueden pronosticar: esto mejora
+            la detección en vivo, no la predicción. Como verificación independiente se conserva el
+            servicio público{" "}
+            <a
+              href="https://earthquake.usgs.gov/fdsnws/event/1/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:text-foreground"
+            >
+              USGS FDSN Event Web Service
+            </a>{" "}
+            (últimos 90 días). Catálogo histórico: servicio abierto del{" "}
+            <a
+              href="https://www.sgc.gov.co"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:text-foreground"
+            >
+              Servicio Geológico Colombiano
+            </a>
+            , el registro sísmico oficial de Colombia, se muestra como una capa aparte, punteada en el
+            mapa. El{" "}
+            <a
+              href="https://osso.univalle.edu.co"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:text-foreground"
+            >
+              Observatorio Sismológico del Suroccidente (OSSO/Univalle)
+            </a>{" "}
+            publica boletines propios sin un servicio de datos abierto; se referencia aquí como fuente
+            adicional. Los reportes de daños de Sevilla provienen de un formulario de campo comunitario
+            (Survey123) agregado por barrio, sin verificar, y sin exponer direcciones ni cifras de
+            heridos o fallecidos por hogar. Esta categoría no tiene una zonificación de amenaza sísmica
+            por vereda publicada; el aporte al riesgo compuesto se calcula por distancia a los
+            epicentros, ver{" "}
+            <a href="/?categoria=riesgo-compuesto" className="underline underline-offset-2 hover:text-foreground">
+              Riesgo compuesto
+            </a>
+            .
+          </p>
+        </CollapsibleMobileSection>
         <BackToTopButton targetRef={mapRef} />
       </div>
     </div>

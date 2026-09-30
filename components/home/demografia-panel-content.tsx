@@ -8,6 +8,7 @@ import { BackToTopButton } from "@/components/home/back-to-top-button"
 import { Button } from "@/components/ui/button"
 import { DemografiaPopulationSection } from "@/components/demografia/demografia-population-section"
 import { SocialVulnerabilityReportDialog } from "@/components/demografia/social-vulnerability-report-dialog"
+import { CollapsibleMobileSection } from "@/components/home/collapsible-mobile-section"
 import type { MapBounds } from "@/lib/map-bounds"
 
 const DemografiaLiveMap = dynamic(
@@ -145,7 +146,9 @@ export function DemografiaPanelContent({ onBoundsChange, detectedMunicipio }: De
             , se añade como una tercera capa en este mismo mapa.
           </p>
         </div>
-        <VulnerabilityExplainerSection />
+        <CollapsibleMobileSection title="Por qué hablamos de vulnerabilidad social">
+          <VulnerabilityExplainerSection />
+        </CollapsibleMobileSection>
         <div className="flex flex-col gap-4 border-t border-border pt-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -163,36 +166,38 @@ export function DemografiaPanelContent({ onBoundsChange, detectedMunicipio }: De
           <DemografiaPopulationSection />
         </div>
         <SocialVulnerabilityReportDialog open={reportOpen} onOpenChange={setReportOpen} />
-        <p className="text-xs text-muted-foreground">
-          Fuente:{" "}
-          <a
-            href="https://geoportal.dane.gov.co/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline underline-offset-2 hover:text-foreground"
-          >
-            Geoportal del DANE
-          </a>{" "}
-         , índice de pobreza multidimensional (
-          <a
-            href="https://geoportal.dane.gov.co/visipm"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline underline-offset-2 hover:text-foreground"
-          >
-            visipm
-          </a>
-          ) y estadísticas integradas del Censo Nacional de Población y Vivienda 2018 (
-          <a
-            href="https://geoportal.dane.gov.co/geovisores/sociedad/estadisticas-integradas/?cod_dimension=1"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline underline-offset-2 hover:text-foreground"
-          >
-            estadísticas integradas
-          </a>
-          ). Ambos son servicios públicos de ArcGIS del DANE, consultados por código de municipio.
-        </p>
+        <CollapsibleMobileSection title="Fuentes">
+          <p className="text-xs text-muted-foreground">
+            Fuente:{" "}
+            <a
+              href="https://geoportal.dane.gov.co/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:text-foreground"
+            >
+              Geoportal del DANE
+            </a>{" "}
+            , índice de pobreza multidimensional (
+            <a
+              href="https://geoportal.dane.gov.co/visipm"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:text-foreground"
+            >
+              visipm
+            </a>
+            ) y estadísticas integradas del Censo Nacional de Población y Vivienda 2018 (
+            <a
+              href="https://geoportal.dane.gov.co/geovisores/sociedad/estadisticas-integradas/?cod_dimension=1"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:text-foreground"
+            >
+              estadísticas integradas
+            </a>
+            ). Ambos son servicios públicos de ArcGIS del DANE, consultados por código de municipio.
+          </p>
+        </CollapsibleMobileSection>
         <BackToTopButton targetRef={mapRef} />
       </div>
     </div>

@@ -7,6 +7,7 @@ import { BackToTopButton } from "@/components/home/back-to-top-button"
 import { PrecipitationOverview } from "@/components/precipitacion/precipitation-overview"
 import { DecadalChart, type SelectedVereda } from "@/components/precipitacion/decadal-chart"
 import { QuinquenalChart } from "@/components/precipitacion/quinquenal-chart"
+import { CollapsibleMobileSection } from "@/components/home/collapsible-mobile-section"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
 import type { VeredaFeature } from "@/lib/veredas/api-types"
@@ -75,45 +76,47 @@ export function PrecipitacionPanelContent({
         <div aria-live="polite">
           <PrecipitationOverview />
         </div>
-        <p className="text-xs text-muted-foreground">
-          Modo histórico: lluvia acumulada por vereda en la ventana de días elegida (7,
-          14 o 30), con el dato más reciente válido de{" "}
-          <a
-            href="https://power.larc.nasa.gov"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline underline-offset-2 hover:text-foreground"
-          >
-            NASA POWER
-          </a>{" "}
-          (reanálisis MERRA-2/GEOS-IT, no satelital directo, ~0.5° de resolución), o,
-          eligiendo la fuente IDEAM en el mapa, de las estaciones automáticas de{" "}
-          <a
-            href="https://www.datos.gov.co/resource/s54a-sgyg.json"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline underline-offset-2 hover:text-foreground"
-          >
-            IDEAM
-          </a>{" "}
-          (lecturas cada 10 min, más precisas pero solo cerca de Zarzal y Bugalagrande;
-          las demás veredas quedan sin cobertura). Modo pronóstico: lluvia prevista por
-          vereda a 7 o 14 días de{" "}
-          <a
-            href="https://open-meteo.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline underline-offset-2 hover:text-foreground"
-          >
-            Open-Meteo
-          </a>{" "}
-          (modelos numéricos de pronóstico del tiempo, no observación directa). Capa
-          satelital de tasa de precipitación: GPM IMERG vía NASA GIBS. A diferencia de las
-  demás capas de amenaza, esta cubre Zarzal y Roldanillo con el mismo detalle que Sevilla y
-  Caicedonia. Los umbrales de nivel son un criterio simple de referencia, no un
-          modelo de amenaza calibrado. Haz clic sobre cualquier vereda para ver su detalle
-          y actualizar los histogramas de lluvia mensual que aparecen arriba.
-        </p>
+        <CollapsibleMobileSection title="Fuentes y metodología">
+          <p className="text-xs text-muted-foreground">
+            Modo histórico: lluvia acumulada por vereda en la ventana de días elegida (7,
+            14 o 30), con el dato más reciente válido de{" "}
+            <a
+              href="https://power.larc.nasa.gov"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:text-foreground"
+            >
+              NASA POWER
+            </a>{" "}
+            (reanálisis MERRA-2/GEOS-IT, no satelital directo, ~0.5° de resolución), o,
+            eligiendo la fuente IDEAM en el mapa, de las estaciones automáticas de{" "}
+            <a
+              href="https://www.datos.gov.co/resource/s54a-sgyg.json"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:text-foreground"
+            >
+              IDEAM
+            </a>{" "}
+            (lecturas cada 10 min, más precisas pero solo cerca de Zarzal y Bugalagrande;
+            las demás veredas quedan sin cobertura). Modo pronóstico: lluvia prevista por
+            vereda a 7 o 14 días de{" "}
+            <a
+              href="https://open-meteo.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:text-foreground"
+            >
+              Open-Meteo
+            </a>{" "}
+            (modelos numéricos de pronóstico del tiempo, no observación directa). Capa
+            satelital de tasa de precipitación: GPM IMERG vía NASA GIBS. A diferencia de las
+            demás capas de amenaza, esta cubre Zarzal y Roldanillo con el mismo detalle que Sevilla y
+            Caicedonia. Los umbrales de nivel son un criterio simple de referencia, no un
+            modelo de amenaza calibrado. Haz clic sobre cualquier vereda para ver su detalle
+            y actualizar los histogramas de lluvia mensual que aparecen arriba.
+          </p>
+        </CollapsibleMobileSection>
         <BackToTopButton targetRef={mapRef} />
       </div>
     </div>

@@ -6,6 +6,7 @@ import { ScrollHintButton } from "@/components/home/scroll-hint-button"
 import { BackToTopButton } from "@/components/home/back-to-top-button"
 import { FireOverview } from "@/components/fires/fire-overview"
 import { FireModelPanel } from "@/components/incendios/fire-model-panel"
+import { CollapsibleMobileSection } from "@/components/home/collapsible-mobile-section"
 import type { OsmPoint } from "@/lib/osm/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
 import type { VeredaFeature } from "@/lib/veredas/api-types"
@@ -73,30 +74,32 @@ export function IncendiosPanelContent({
         <div aria-live="polite">
           <FireModelPanel selectedVereda={selectedVereda} onClearSelection={() => onVeredaSelect?.(null)} />
         </div>
-        <p className="text-xs text-muted-foreground">
-          Amenaza por vereda (modelo propio, única fuente del color de este mapa): pendiente y cercanía a vías
-          (reutilizadas del modelo de deslizamiento), recurrencia histórica de focos de las cuatro fuentes de
-          NASA FIRMS y el Índice Meteorológico de Incendio (FWI) de hoy, calculado con las ecuaciones estándar
-          del Sistema Canadiense a partir de datos meteorológicos históricos de Open-Meteo. Pronóstico FWI en
-          vivo y focos activos de Sentinel-3: servicio abierto{" "}
-          <a
-            href="https://gwis.jrc.ec.europa.eu"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline underline-offset-2 hover:text-foreground"
-          >
-            GWIS / Copernicus EFFIS
-          </a>{" "}
-          (Centro Común de Investigación de la UE). Focos activos de MODIS y VIIRS: NASA FIRMS. El modelo
-          propio cubre los cuatro municipios, incluidos Zarzal y Roldanillo; la categoría{" "}
-          <a
-            href="/?categoria=precipitacion"
-            className="underline underline-offset-2 hover:text-foreground"
-          >
-            Precipitación
-          </a>{" "}
-          también ofrece un dato de contexto (lluvia acumulada por vereda) para los cuatro municipios.
-        </p>
+        <CollapsibleMobileSection title="Fuentes y metodología">
+          <p className="text-xs text-muted-foreground">
+            Amenaza por vereda (modelo propio, única fuente del color de este mapa): pendiente y cercanía a vías
+            (reutilizadas del modelo de deslizamiento), recurrencia histórica de focos de las cuatro fuentes de
+            NASA FIRMS y el Índice Meteorológico de Incendio (FWI) de hoy, calculado con las ecuaciones estándar
+            del Sistema Canadiense a partir de datos meteorológicos históricos de Open-Meteo. Pronóstico FWI en
+            vivo y focos activos de Sentinel-3: servicio abierto{" "}
+            <a
+              href="https://gwis.jrc.ec.europa.eu"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:text-foreground"
+            >
+              GWIS / Copernicus EFFIS
+            </a>{" "}
+            (Centro Común de Investigación de la UE). Focos activos de MODIS y VIIRS: NASA FIRMS. El modelo
+            propio cubre los cuatro municipios, incluidos Zarzal y Roldanillo; la categoría{" "}
+            <a
+              href="/?categoria=precipitacion"
+              className="underline underline-offset-2 hover:text-foreground"
+            >
+              Precipitación
+            </a>{" "}
+            también ofrece un dato de contexto (lluvia acumulada por vereda) para los cuatro municipios.
+          </p>
+        </CollapsibleMobileSection>
         <BackToTopButton targetRef={mapRef} />
       </div>
     </div>
