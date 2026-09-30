@@ -115,12 +115,13 @@ export function DemografiaPanelContent({ onBoundsChange, detectedMunicipio }: De
         className="relative h-[70vh] min-h-[420px] shrink-0 lg:h-full"
       >
         <p className="sr-only">
-          Mapa interactivo en 3D con indicadores del geoportal de DANE: el índice de pobreza
-          multidimensional por manzana censal en los cascos urbanos, las cifras de viviendas, hogares
-          y personas por manzana censal, y el índice de vulnerabilidad compuesto por manzana en cascos
-          urbanos o por vereda en zonas rurales, para Sevilla, Caicedonia, Zarzal y Roldanillo. Debajo
-          del mapa hay una explicación completa de cada índice y un panel de consulta de población por
-          municipio, residencia, sexo y exposición a amenazas.
+          Mapa interactivo en 3D con indicadores propios y del geoportal de DANE: el Índice de
+          Vulnerabilidad Social (IVS), nuestro propio índice por manzana censal en los cascos urbanos o
+          por vereda en zonas rurales, el índice de pobreza multidimensional (IPM) por manzana censal
+          (donde el DANE lo publica), y las cifras de viviendas, hogares y personas por manzana censal,
+          para Sevilla, Caicedonia, Zarzal y Roldanillo. Debajo del mapa hay una explicación completa de
+          cada índice y un panel de consulta de población por municipio, residencia, sexo y exposición a
+          amenazas.
         </p>
         <DemografiaLiveMap
           className="relative isolate h-full w-full"
@@ -132,18 +133,24 @@ export function DemografiaPanelContent({ onBoundsChange, detectedMunicipio }: De
       <div ref={captionRef} className="flex flex-col gap-6 p-4 sm:p-6">
         <div className="flex flex-col gap-2 text-sm text-muted-foreground">
           <p>
-            Las columnas 3D representan, según el indicador activo en el panel de la derecha, el
-            índice de pobreza multidimensional (IPM) por manzana censal (donde el DANE lo publica) o
-            el número de viviendas, hogares o personas por manzana censal, mientras más alta y más
-            intensa la columna, mayor el valor del indicador en ese lugar.
+            Por defecto, las columnas 3D representan nuestro propio Índice de Vulnerabilidad Social
+            (IVS): un número por manzana censal o vereda que resume qué tan preparada está esa
+            población, por vivienda, servicios públicos, educación y trabajo, para resistir un
+            desastre natural cuando ocurre, sin medir el peligro físico en sí. Mientras más alta y más
+            intensa la columna, más precaria la condición social en ese lugar.
           </p>
           <p>
-            El índice de vulnerabilidad compuesto, que combina esta condición social con el riesgo
-            físico ya calculado en{" "}
+            Desde el panel de la derecha también se puede cambiar el indicador activo para ver, en su
+            lugar, el índice de pobreza multidimensional (IPM) del DANE por manzana censal (donde el
+            DANE lo publica), o el número de viviendas, hogares y personas por manzana censal.
+          </p>
+          <p>
+            El IVS se puede combinar con el riesgo físico ya calculado en{" "}
             <a href="/?categoria=riesgo-compuesto" className="underline underline-offset-2 hover:text-foreground">
               Riesgo compuesto
-            </a>
-            , se añade como una tercera capa en este mismo mapa.
+            </a>{" "}
+            para obtener la vulnerabilidad combinada, la capa que de verdad debería guiar dónde invertir
+            primero.
           </p>
         </div>
         <CollapsibleMobileSection title="Por qué hablamos de vulnerabilidad social">
