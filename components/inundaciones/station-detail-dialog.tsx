@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { StationDetail } from "@/components/flood/station-detail"
+import { StationDetail } from "@/components/inundaciones/station-detail"
 import type { Station } from "@/lib/geoglows/stations"
 
 /**

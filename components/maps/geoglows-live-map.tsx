@@ -42,7 +42,7 @@ import {
   type ReachInfo,
 } from "@/lib/geoglows/live-map"
 import { STATIONS, type Station } from "@/lib/geoglows/stations"
-import { StationDetailDialog } from "@/components/flood/station-detail-dialog"
+import { StationDetailDialog } from "@/components/inundaciones/station-detail-dialog"
 import { FLOOD_SUSCEPTIBILITY_LEVELS, floodSusceptibilityColorToken } from "@/lib/inundaciones/levels"
 import { IMERG_TILE_URL, IMERG_WORLDVIEW_URL } from "@/lib/precipitacion/imerg"
 import { resolveCssColor } from "@/lib/resolve-css-color"

@@ -123,7 +123,7 @@ export function getStationByReachId(reachId: number): Station | undefined {
  * that actually crosses or borders the municipal seat) plus, for Sevilla
  * and Caicedonia, one or two smaller tributary stations. This is the
  * representative station for the permanent per-municipio flood summary
- * (see components/flood/municipio-flood-summary.tsx) — the one always
+ * (see components/inundaciones/municipio-flood-summary.tsx) — the one always
  * plotted, with the others one click away.
  */
 export const MUNICIPIO_PRIMARY_STATION_SLUG: Record<string, string> = {
