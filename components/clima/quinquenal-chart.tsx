@@ -79,6 +79,7 @@ function recienteColor(rankFromMostRecent: number) {
 export function QuinquenalChart({ vereda }: QuinquenalChartProps) {
   const [municipio, setMunicipio] = useState<Municipio>("Sevilla")
   const [showActual, setShowActual] = useState(true)
+  const [showSensacion, setShowSensacion] = useState(true)
   // Off by default, same rationale as the other histogram's recent-year toggles.
   const [enabledYears, setEnabledYears] = useState<Set<number>>(new Set())
   const [mode, setMode] = useState<"vereda" | "municipio">("municipio")
@@ -197,6 +198,17 @@ export function QuinquenalChart({ vereda }: QuinquenalChartProps) {
                 {currentYear} (año en curso)
               </Label>
             </div>
+            <div className="flex items-center gap-2">
+              <Switch
+                id="show-sensacion-quinquenal-clima"
+                checked={showSensacion}
+                onCheckedChange={setShowSensacion}
+                disabled={!showActual}
+              />
+              <Label htmlFor="show-sensacion-quinquenal-clima" className="text-sm font-medium text-foreground">
+                Sensación térmica
+              </Label>
+            </div>
             {aniosRecientes.map((anio) => (
               <div key={anio} className="flex items-center gap-2">
                 <Switch
@@ -215,7 +227,8 @@ export function QuinquenalChart({ vereda }: QuinquenalChartProps) {
           {mode === "vereda" && vereda
             ? "Open-Meteo, promedios mensuales de temperatura máxima diaria en el centroide de la vereda seleccionada."
             : `Open-Meteo, promedios mensuales de temperatura máxima diaria en el centro poblado de ${municipio}.`}
-          {showActual && " Línea sólida: temperatura máxima diaria promedio de este año; línea punteada: sensación térmica máxima (Open-Meteo)."}
+          {showActual && showSensacion && " Línea sólida: temperatura máxima diaria promedio de este año; línea punteada: sensación térmica máxima (Open-Meteo)."}
+          {showActual && !showSensacion && " Línea sólida: temperatura máxima diaria promedio de este año."}
           {enabledYears.size > 0 &&
             ` Comparando con ${[...enabledYears].sort((a, b) => b - a).join(", ")} (temperatura máxima diaria promedio, Open-Meteo).`}
         </p>
@@ -280,7 +293,7 @@ export function QuinquenalChart({ vereda }: QuinquenalChartProps) {
                             value={`${row.tempActual} °C${row.esMesEnCurso ? " (mes en curso, parcial)" : ""}`}
                           />
                         )}
-                        {showActual && row.sensacionActual != null && (
+                        {showActual && showSensacion && row.sensacionActual != null && (
                           <TooltipRow
                             swatchClassName="rounded-full"
                             color="var(--color-sensacionActual)"
@@ -322,7 +335,7 @@ export function QuinquenalChart({ vereda }: QuinquenalChartProps) {
                   connectNulls
                 />
               )}
-              {showActual && (
+              {showActual && showSensacion && (
                 <Line
                   dataKey="sensacionActual"
                   stroke="var(--color-sensacionActual)"
