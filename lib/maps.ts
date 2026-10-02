@@ -107,6 +107,18 @@ const declaredMapModels: MapModel[] = [
     ready: true,
   },
   {
+    slug: "hidrantes",
+    title: "Hidrantes",
+    hook: "Ubicamos el hidrante más cercano a un bombero en segundos, con ruta incluida.",
+    description:
+      "Mapa operativo con cada hidrante del casco urbano de Sevilla: geolocaliza al usuario (o toma un punto elegido en el mapa) y resalta el hidrante más próximo junto con una ruta aproximada por calles. Disponible solo para Sevilla, casco urbano.",
+    image: "/images/hidrantes-map.png",
+    imageAlt: "Mapa urbano con marcadores de hidrantes de incendio y una ruta trazada por calles",
+    tag: "Herramienta operativa",
+    href: "/?categoria=hidrantes",
+    ready: true,
+  },
+  {
     slug: "demografia",
     title: "Demografía",
     hook: "Los indicadores sociodemográficos de DANE, en 3D, municipio por municipio y manzana por manzana.",

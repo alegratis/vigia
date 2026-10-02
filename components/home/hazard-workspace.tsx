@@ -12,6 +12,7 @@ import {
   Flame,
   Mountain,
   ShieldAlert,
+  Siren,
   Users,
   PanelLeftClose,
   PanelLeftOpen,
@@ -30,6 +31,7 @@ import { ClimaPanelContent } from "@/components/home/clima-panel-content"
 import { SismologiaPanelContent } from "@/components/home/sismologia-panel-content"
 import { RiesgoCompuestoPanelContent } from "@/components/home/riesgo-compuesto-panel-content"
 import { DemografiaPanelContent } from "@/components/home/demografia-panel-content"
+import { HidrantesPanelContent } from "@/components/home/hidrantes-panel-content"
 import { LiveAreaPopulation } from "@/components/maps/live-area-population"
 import { LiveInfrastructureCategories } from "@/components/maps/live-infrastructure-categories"
 import { LiveInfrastructureBuildings } from "@/components/maps/live-infrastructure-buildings"
@@ -50,6 +52,7 @@ const hazardIcons: Record<string, LucideIcon> = {
   sismologia: Activity,
   "riesgo-compuesto": ShieldAlert,
   demografia: Users,
+  hidrantes: Siren,
   }
 
 /** Which DANE population category the shared sidebar card preselects for each hazard. */
@@ -62,6 +65,7 @@ const CATEGORY_BASIS: Record<string, { basis: "urbano" | "rural"; basisLabel: st
   sismologia: { basis: "rural", basisLabel: "Población rural" },
   "riesgo-compuesto": { basis: "rural", basisLabel: "Población rural" },
   demografia: { basis: "urbano", basisLabel: "Población urbana" },
+  hidrantes: { basis: "urbano", basisLabel: "Población urbana" },
   }
 
 /**
@@ -512,6 +516,7 @@ export function HazardWorkspace({
                 {model.slug === "demografia" && (
             <DemografiaPanelContent onBoundsChange={setBounds} detectedMunicipio={detectedMunicipio} />
           )}
+                {model.slug === "hidrantes" && <HidrantesPanelContent />}
               </CategoryPanel>
             )
         })}

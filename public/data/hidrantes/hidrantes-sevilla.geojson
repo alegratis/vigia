@@ -1,0 +1,36 @@
+{
+  "type": "FeatureCollection",
+  "_comment": "PLACEHOLDER DATA — replace this entire file with the real Sevilla casco urbano hydrant inventory, keeping this exact path (public/data/hidrantes/hidrantes-sevilla.geojson) and the FeatureCollection/Point shape. Every feature below is fake (drop the \"muestra\": true property, or leave it off, once real data lands) and exists only so the Hidrantes map has something to render while the real layer is prepared.",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "id": 1, "nombre": "Hidrante de muestra 1", "direccion": "Dato de muestra", "tipo": "Hidrante de columna", "estado": "muestra", "muestra": true },
+      "geometry": { "type": "Point", "coordinates": [-75.9318, 4.2698] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": 2, "nombre": "Hidrante de muestra 2", "direccion": "Dato de muestra", "tipo": "Hidrante de columna", "estado": "muestra", "muestra": true },
+      "geometry": { "type": "Point", "coordinates": [-75.9296, 4.2672] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": 3, "nombre": "Hidrante de muestra 3", "direccion": "Dato de muestra", "tipo": "Hidrante de arqueta", "estado": "muestra", "muestra": true },
+      "geometry": { "type": "Point", "coordinates": [-75.9341, 4.2714] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": 4, "nombre": "Hidrante de muestra 4", "direccion": "Dato de muestra", "tipo": "Hidrante de columna", "estado": "muestra", "muestra": true },
+      "geometry": { "type": "Point", "coordinates": [-75.9275, 4.2731] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": 5, "nombre": "Hidrante de muestra 5", "direccion": "Dato de muestra", "tipo": "Hidrante de arqueta", "estado": "muestra", "muestra": true },
+      "geometry": { "type": "Point", "coordinates": [-75.9357, 4.2665] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": 6, "nombre": "Hidrante de muestra 6", "direccion": "Dato de muestra", "tipo": "Hidrante de columna", "estado": "muestra", "muestra": true },
+      "geometry": { "type": "Point", "coordinates": [-75.9302, 4.2749] }
+    }
+  ]
+}
