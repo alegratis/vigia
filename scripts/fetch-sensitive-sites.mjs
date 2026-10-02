@@ -31,20 +31,45 @@ const OVERPASS_URLS = [
 const QUERY = `
   [out:json][timeout:25];
   (
-    nwr["amenity"~"^(school|university|college|kindergarten)$"](${BBOX});
-    nwr["amenity"="hospital"](${BBOX});
+    nwr["amenity"~"^(school|university|college|kindergarten|childcare)$"](${BBOX});
+    nwr["amenity"~"^(hospital|clinic)$"](${BBOX});
     nwr["amenity"~"^(townhall|courthouse|public_building)$"](${BBOX});
     nwr["office"="government"](${BBOX});
+    nwr["building"~"^(school|university|college|kindergarten)$"](${BBOX});
+    nwr["building"="hospital"](${BBOX});
+    nwr["healthcare"~"^(hospital|clinic)$"](${BBOX});
   );
   out geom;
 `.trim()
 
+// Ruins / historic monuments sometimes carry a building=hospital or
+// building=school tag even though the site is no longer in use — skip those
+// so the layer only highlights active institutions.
+function isActive(tags) {
+  return !tags.historic && !tags.disused && !tags.abandoned
+}
+
 function classify(tags) {
+  if (!isActive(tags)) return null
+
   const amenity = tags.amenity
-  if (amenity === "school" || amenity === "university" || amenity === "college" || amenity === "kindergarten") {
+  const building = tags.building
+  if (
+    amenity === "school" ||
+    amenity === "university" ||
+    amenity === "college" ||
+    amenity === "kindergarten" ||
+    amenity === "childcare" ||
+    building === "school" ||
+    building === "university" ||
+    building === "college" ||
+    building === "kindergarten"
+  ) {
     return "educacion"
   }
-  if (amenity === "hospital") return "salud"
+  if (amenity === "hospital" || amenity === "clinic" || building === "hospital" || tags.healthcare === "hospital" || tags.healthcare === "clinic") {
+    return "salud"
+  }
   if (amenity === "townhall" || amenity === "courthouse" || amenity === "public_building" || tags.office === "government") {
     return "gobierno"
   }
