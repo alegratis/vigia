@@ -20,6 +20,7 @@ if (typeof window !== "undefined") {
 }
 import useSWR from "swr"
 import distance from "@turf/distance"
+import buffer from "@turf/buffer"
 import { point } from "@turf/helpers"
 import { LocateFixed, MapPin, Siren, TriangleAlert } from "lucide-react"
 import { MapControlRail, RailSection } from "@/components/maps/map-control-rail"
@@ -126,6 +127,7 @@ export default function HidrantesLiveMap({ className }: { className?: string }) 
   /** Explicit "ir a este hidrante" pick from a popup — overrides both automatic highlights below. */
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
   const [cursor, setCursor] = useState("")
+  const [showCoverage, setShowCoverage] = useState(false)
   const hasFlownToUser = useRef(false)
 
   const requestLocation = useCallback(() => {
@@ -277,6 +279,21 @@ export default function HidrantesLiveMap({ className }: { className?: string }) 
     }
   }, [hidrantes, selectedIndex, nearestByDistance, nearestByRouteIndex])
 
+  /**
+   * 150 m coverage circles around every hydrant — the typical reach of a fire
+   * hose — so gaps in coverage become visually obvious. Off by default and
+   * toggled via the rail control below; only computed once the layer is shown.
+   */
+  const coverageGeoJson = useMemo<GeoJSON.FeatureCollection | null>(() => {
+    if (!showCoverage || !hidrantes || hidrantes.features.length === 0) return null
+    return {
+      type: "FeatureCollection",
+      features: hidrantes.features.map((f) =>
+        buffer(point(f.geometry.coordinates), 150, { units: "meters", steps: 32 }),
+      ) as GeoJSON.Feature[],
+    }
+  }, [showCoverage, hidrantes])
+
   const toRouteGeoJson = (route: HidranteRoute | undefined | null): GeoJSON.Feature | null =>
     route ? { type: "Feature", properties: {}, geometry: route.geometry } : null
 
@@ -354,6 +371,21 @@ export default function HidrantesLiveMap({ className }: { className?: string }) 
                 "line-opacity": 0.85,
                 "line-dasharray": selectedRoute && !selectedRoute.followsStreets ? [1, 1.5] : [1, 0],
               }}
+            />
+          </Source>
+        )}
+
+        {coverageGeoJson && (
+          <Source id="hidrantes-coverage-source" type="geojson" data={coverageGeoJson}>
+            <Layer
+              id="hidrantes-coverage-fill"
+              type="fill"
+              paint={{ "fill-color": "#dc2626", "fill-opacity": 0.12 }}
+            />
+            <Layer
+              id="hidrantes-coverage-outline"
+              type="line"
+              paint={{ "line-color": "#dc2626", "line-width": 1, "line-opacity": 0.5 }}
             />
           </Source>
         )}
@@ -538,8 +570,40 @@ export default function HidrantesLiveMap({ className }: { className?: string }) 
           </RailSection>
         )}
 
+        <RailSection title="Cobertura">
+          <div className="flex flex-col gap-2">
+            <label className="flex cursor-pointer items-center justify-between gap-2">
+              <span className="text-foreground">Radio de manguera (150 m)</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={showCoverage}
+                onClick={() => setShowCoverage((v) => !v)}
+                className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-colors ${
+                  showCoverage ? "border-primary bg-primary" : "border-border bg-muted"
+                }`}
+              >
+                <span
+                  className={`inline-block size-3.5 transform rounded-full bg-background shadow transition-transform ${
+                    showCoverage ? "translate-x-[18px]" : "translate-x-1"
+                  }`}
+                />
+              </button>
+            </label>
+            <p className="text-muted-foreground">
+              Muestra el área que cubre cada hidrante con una manguera de 150 m, útil para detectar puntos ciegos.
+            </p>
+          </div>
+        </RailSection>
+
         <RailSection title="Leyenda">
           <ul className="flex flex-col gap-1.5">
+            {showCoverage && (
+              <li className="flex items-center gap-2 text-muted-foreground">
+                <span className="size-2.5 shrink-0 rounded-full border border-[#dc2626]/60 bg-[#dc2626]/20" aria-hidden="true" />
+                Cobertura (150 m)
+              </li>
+            )}
             <li className="flex items-center gap-2 text-muted-foreground">
               <span className="size-2.5 shrink-0 rounded-full border border-white/60 bg-[#dc2626]" aria-hidden="true" />
               Hidrantes
