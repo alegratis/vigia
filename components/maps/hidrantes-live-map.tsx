@@ -280,7 +280,7 @@ export default function HidrantesLiveMap({ className }: { className?: string }) 
   }, [hidrantes, selectedIndex, nearestByDistance, nearestByRouteIndex])
 
 /** Hose reach used for each coverage circle — two circles overlap once their hydrants are closer than twice this. */
-const COVERAGE_RADIUS_M = 150
+ const COVERAGE_RADIUS_M = 80
 
 /**
  * Maps __overlapCount (how many neighboring hydrants' circles intersect this
@@ -307,7 +307,7 @@ const COVERAGE_DENSITY_COLOR_EXPRESSION = [
 ] as unknown as string
 
   /**
-   * 150 m coverage circles around every hydrant — the typical reach of a fire
+   * 80 m coverage circles around every hydrant — the typical reach of a fire
    * hose — so gaps in coverage become visually obvious. Off by default and
    * toggled via the rail control below; only computed once the layer is shown.
    *
@@ -620,7 +620,7 @@ const COVERAGE_DENSITY_COLOR_EXPRESSION = [
         <RailSection title="Cobertura">
           <div className="flex flex-col gap-2">
             <label className="flex cursor-pointer items-center justify-between gap-2">
-              <span className="text-foreground">Radio de manguera (150 m)</span>
+              <span className="text-foreground">Radio de manguera (80 m)</span>
               <button
                 type="button"
                 role="switch"
@@ -638,7 +638,7 @@ const COVERAGE_DENSITY_COLOR_EXPRESSION = [
               </button>
             </label>
             <p className="text-muted-foreground">
-              Muestra el área que cubre cada hidrante con una manguera de 150 m, útil para detectar puntos ciegos.
+              Muestra el área que cubre cada hidrante con una manguera de 80 m, útil para detectar puntos ciegos.
             </p>
           </div>
         </RailSection>
@@ -648,7 +648,7 @@ const COVERAGE_DENSITY_COLOR_EXPRESSION = [
             {showCoverage && (
               <li className="flex items-center gap-2 text-muted-foreground">
                 <span className="size-2.5 shrink-0 rounded-full border border-[#dc2626]/60 bg-[#dc2626]/20" aria-hidden="true" />
-                Cobertura (150 m)
+                Cobertura (80 m)
               </li>
             )}
             <li className="flex items-center gap-2 text-muted-foreground">
