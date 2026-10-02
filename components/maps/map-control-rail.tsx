@@ -1,8 +1,11 @@
 "use client"
 
-import { useState, type ReactNode, type ComponentType } from "react"
+import { useEffect, useState, type ReactNode, type ComponentType } from "react"
 import { PanelRightClose, PanelRightOpen } from "lucide-react"
 import { cn } from "@/lib/utils"
+
+/** Matches Tailwind's `sm` breakpoint (the same one the `max-sm:` bottom-sheet classes below key off). */
+const MOBILE_QUERY = "(max-width: 639px)"
 
 interface MapControlRailProps {
   /** Stacked sections — municipio toggles, layer groups, active legends — in one scroll area. */
@@ -24,6 +27,15 @@ interface MapControlRailProps {
  */
 export function MapControlRail({ children, defaultCollapsed = false, className }: MapControlRailProps) {
   const [collapsed, setCollapsed] = useState(defaultCollapsed)
+
+  // Starts compact on phones regardless of `defaultCollapsed` — the rail competes with the map
+  // for the whole viewport there, so it opens on demand instead of covering the map by default.
+  // Checked post-mount (not via a lazy useState initializer) so server and client markup match.
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.matchMedia(MOBILE_QUERY).matches) {
+      setCollapsed(true)
+    }
+  }, [])
 
   if (collapsed) {
     return (

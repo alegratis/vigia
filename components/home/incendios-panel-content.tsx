@@ -51,7 +51,7 @@ export function IncendiosPanelContent({
         ref={mapRef}
         role="region"
         aria-label="Mapa de amenaza por incendios forestales"
-        className="relative h-[70vh] min-h-[420px] shrink-0 lg:h-full"
+        className="relative h-[calc(100dvh-3.5rem)] min-h-[420px] shrink-0 lg:h-full"
       >
         <p className="sr-only">
           Mapa interactivo de amenaza por incendios forestales, con pronóstico del

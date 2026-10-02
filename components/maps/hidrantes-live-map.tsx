@@ -88,12 +88,24 @@ function formatDuration(s: number): string {
 }
 
 /**
+ * How many straight-line-nearest hydrants get an actual OSRM route fetched.
+ * Checking driving distance for every hydrant on every reference-point
+ * change isn't practical against OSRM's free public instance, so this
+ * narrows to a short list first — the physically closest hydrant and the
+ * fastest-to-drive-to one are both assumed to be within this set.
+ */
+const ROUTE_CANDIDATE_COUNT = 8
+
+/**
  * Sevilla-only fire-hydrant map: geolocates the user (falling back to a
- * map click anywhere, which always overrides geolocation once used),
- * highlights the closest hydrant from that reference point, and draws a
- * street-following route line to it via OSRM — straight-line distance
- * alone if OSRM is unreachable. See hidrantes-panel-content.tsx for the
- * surrounding explanatory copy.
+ * map click anywhere, which always overrides geolocation once used) and
+ * highlights two distinct hydrants from that reference point — the one
+ * that's physically closest, and (when it differs) the one that's
+ * actually fastest to drive to via OSRM, since Sevilla's street layout can
+ * make the nearest-by-air hydrant a detour. Either highlighted hydrant, or
+ * any other hydrant on the map, can also be picked explicitly for
+ * directions — an explicit pick always overrides the automatic pair. See
+ * hidrantes-panel-content.tsx for the surrounding explanatory copy.
  */
 export default function HidrantesLiveMap({ className }: { className?: string }) {
   const mapRef = useRef<MapRef>(null)
@@ -111,6 +123,8 @@ export default function HidrantesLiveMap({ className }: { className?: string }) 
   const [userPosition, setUserPosition] = useState<{ lat: number; lon: number; accuracy: number } | null>(null)
   const [clickedPoint, setClickedPoint] = useState<{ lat: number; lon: number } | null>(null)
   const [popupHidrante, setPopupHidrante] = useState<HidranteFeature | null>(null)
+  /** Explicit "ir a este hidrante" pick from a popup — overrides both automatic highlights below. */
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
   const [cursor, setCursor] = useState("")
   const hasFlownToUser = useRef(false)
 
@@ -148,43 +162,80 @@ export default function HidrantesLiveMap({ className }: { className?: string }) 
     return null
   }, [clickedPoint, userPosition, geoStatus])
 
-  const nearest = useMemo(() => {
-    if (!referencePoint || !hidrantes || hidrantes.features.length === 0) return null
-    let best: HidranteFeature | null = null
-    let bestIndex = -1
-    let bestKm = Infinity
-    for (let index = 0; index < hidrantes.features.length; index++) {
-      const feature = hidrantes.features[index]
-      const [lon, lat] = feature.geometry.coordinates
-      const km = distance(point([referencePoint.lon, referencePoint.lat]), point([lon, lat]), {
-        units: "kilometers",
+  /** All hydrants ranked by straight-line distance from the reference point — cheap, no network calls. */
+  const rankedByDistance = useMemo(() => {
+    if (!referencePoint || !hidrantes || hidrantes.features.length === 0) return []
+    return hidrantes.features
+      .map((feature, index) => {
+        const [lon, lat] = feature.geometry.coordinates
+        const distanceKm = distance(point([referencePoint.lon, referencePoint.lat]), point([lon, lat]), {
+          units: "kilometers",
+        })
+        return { feature, index, distanceKm }
       })
-      if (km < bestKm) {
-        bestKm = km
-        best = feature
-        bestIndex = index
-      }
-    }
-    return best ? { feature: best, index: bestIndex, distanceKm: bestKm } : null
+      .sort((a, b) => a.distanceKm - b.distanceKm)
   }, [referencePoint, hidrantes])
 
-  const routeKey = useMemo(() => {
-    if (!referencePoint || !nearest) return null
-    const [hLon, hLat] = nearest.feature.geometry.coordinates
-    return ["hidrantes-route", referencePoint.lon, referencePoint.lat, hLon, hLat] as const
-  }, [referencePoint, nearest])
+  const nearestByDistance = rankedByDistance[0] ?? null
 
-  const { data: route } = useSWR(
-    routeKey,
-    async ([, lon1, lat1, lon2, lat2]: NonNullable<typeof routeKey>) => {
-      try {
-        return await fetchOsrmRoute(lon1, lat1, lon2, lat2)
-      } catch {
-        return straightLineFallback(lon1, lat1, lon2, lat2)
-      }
+  // Only the short candidate list gets an OSRM route fetched — either the user's explicit pick
+  // (one request) or the N physically-nearest hydrants, so the "fastest to actually drive to"
+  // highlight below can differ from the "nearest in a straight line" one.
+  const routeTargets = useMemo(() => {
+    if (selectedIndex != null && hidrantes?.features[selectedIndex]) {
+      return [{ feature: hidrantes.features[selectedIndex], index: selectedIndex }]
+    }
+    return rankedByDistance.slice(0, ROUTE_CANDIDATE_COUNT)
+  }, [selectedIndex, hidrantes, rankedByDistance])
+
+  const routesKey = useMemo(() => {
+    if (!referencePoint || routeTargets.length === 0) return null
+    return [
+      "hidrantes-routes",
+      referencePoint.lon,
+      referencePoint.lat,
+      routeTargets.map((t) => t.index).join(","),
+    ] as const
+  }, [referencePoint, routeTargets])
+
+  const { data: routesByIndex } = useSWR(
+    routesKey,
+    async ([, lon1, lat1]: NonNullable<typeof routesKey>) => {
+      const entries = await Promise.all(
+        routeTargets.map(async ({ feature, index }) => {
+          const [lon2, lat2] = feature.geometry.coordinates
+          try {
+            return [index, await fetchOsrmRoute(lon1, lat1, lon2, lat2)] as const
+          } catch {
+            return [index, straightLineFallback(lon1, lat1, lon2, lat2)] as const
+          }
+        }),
+      )
+      return new globalThis.Map(entries)
     },
     { revalidateOnFocus: false },
   )
+
+  // The fastest-to-drive hydrant among the candidates — only counts actual OSRM results, since
+  // comparing straight-line fallbacks against each other wouldn't reflect driving distance.
+  const nearestByRouteIndex = useMemo(() => {
+    if (selectedIndex != null || !routesByIndex) return null
+    let bestIndex: number | null = null
+    let bestDistanceM = Infinity
+    for (const { index } of rankedByDistance.slice(0, ROUTE_CANDIDATE_COUNT)) {
+      const route = routesByIndex.get(index)
+      if (route?.followsStreets && route.distanceM < bestDistanceM) {
+        bestDistanceM = route.distanceM
+        bestIndex = index
+      }
+    }
+    return bestIndex
+  }, [selectedIndex, routesByIndex, rankedByDistance])
+
+  const selectedFeature = selectedIndex != null ? hidrantes?.features[selectedIndex] ?? null : null
+  const routeByRouteFeature =
+    nearestByRouteIndex != null ? hidrantes?.features[nearestByRouteIndex] ?? null : null
+  const sameNearest = nearestByDistance != null && nearestByRouteIndex === nearestByDistance.index
 
   const handleMapClick = useCallback(
     (e: MapLayerMouseEvent) => {
@@ -207,21 +258,39 @@ export default function HidrantesLiveMap({ className }: { className?: string }) 
 
   const hidrantesGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
     if (!hidrantes) return { type: "FeatureCollection", features: [] }
-    const nearestIndex = nearest?.index ?? -1
+    const distanceIndex = selectedIndex == null ? nearestByDistance?.index ?? -1 : -1
+    const routeIndex = selectedIndex == null ? nearestByRouteIndex ?? -1 : -1
     return {
       type: "FeatureCollection",
-      features: hidrantes.features.map((f, index) => ({
-        type: "Feature",
-        properties: { ...f.properties, __nearest: index === nearestIndex },
-        geometry: f.geometry,
-      })),
+      features: hidrantes.features.map((f, index) => {
+        let highlight: "none" | "distance" | "route" | "both" | "selected" = "none"
+        if (selectedIndex === index) highlight = "selected"
+        else if (index === distanceIndex && index === routeIndex) highlight = "both"
+        else if (index === distanceIndex) highlight = "distance"
+        else if (index === routeIndex) highlight = "route"
+        return {
+          type: "Feature",
+          properties: { ...f.properties, __index: index, __highlight: highlight },
+          geometry: f.geometry,
+        }
+      }),
     }
-  }, [hidrantes, nearest])
+  }, [hidrantes, selectedIndex, nearestByDistance, nearestByRouteIndex])
 
-  const routeGeoJson = useMemo<GeoJSON.Feature | null>(() => {
-    if (!route) return null
-    return { type: "Feature", properties: {}, geometry: route.geometry }
-  }, [route])
+  const toRouteGeoJson = (route: HidranteRoute | undefined | null): GeoJSON.Feature | null =>
+    route ? { type: "Feature", properties: {}, geometry: route.geometry } : null
+
+  const selectedRoute = selectedIndex != null ? routesByIndex?.get(selectedIndex) : null
+  const distanceRoute =
+    selectedIndex == null && nearestByDistance ? routesByIndex?.get(nearestByDistance.index) : null
+  const routeRoute =
+    selectedIndex == null && nearestByRouteIndex != null && !sameNearest
+      ? routesByIndex?.get(nearestByRouteIndex)
+      : null
+
+  const selectedRouteGeoJson = toRouteGeoJson(selectedRoute)
+  const distanceRouteGeoJson = toRouteGeoJson(distanceRoute)
+  const routeRouteGeoJson = toRouteGeoJson(routeRoute)
 
   return (
     <div className={className ?? "relative isolate h-full min-h-[420px] w-full overflow-hidden rounded-xl border border-border"}>
@@ -244,16 +313,46 @@ export default function HidrantesLiveMap({ className }: { className?: string }) 
         <MapBasemapControl basemap={basemap} onChange={setBasemap} />
         <AttributionControl position="bottom-left" customAttribution="MapLibre © OpenStreetMap / CARTO / OSRM" compact />
 
-        {routeGeoJson && (
-          <Source id="route-source" type="geojson" data={routeGeoJson}>
+        {distanceRouteGeoJson && (
+          <Source id="route-distance-source" type="geojson" data={distanceRouteGeoJson}>
             <Layer
-              id="route-line"
+              id="route-distance-line"
               type="line"
               paint={{
-                "line-color": "#2563eb",
+                "line-color": "#f59e0b",
                 "line-width": 4,
                 "line-opacity": 0.85,
-                "line-dasharray": route && !route.followsStreets ? [1, 1.5] : [1, 0],
+                "line-dasharray": distanceRoute && !distanceRoute.followsStreets ? [1, 1.5] : [1, 0],
+              }}
+            />
+          </Source>
+        )}
+
+        {routeRouteGeoJson && (
+          <Source id="route-fastest-source" type="geojson" data={routeRouteGeoJson}>
+            <Layer
+              id="route-fastest-line"
+              type="line"
+              paint={{
+                "line-color": "#16a34a",
+                "line-width": 4,
+                "line-opacity": 0.85,
+                "line-dasharray": routeRoute && !routeRoute.followsStreets ? [1, 1.5] : [1, 0],
+              }}
+            />
+          </Source>
+        )}
+
+        {selectedRouteGeoJson && (
+          <Source id="route-selected-source" type="geojson" data={selectedRouteGeoJson}>
+            <Layer
+              id="route-selected-line"
+              type="line"
+              paint={{
+                "line-color": "#7c3aed",
+                "line-width": 4,
+                "line-opacity": 0.85,
+                "line-dasharray": selectedRoute && !selectedRoute.followsStreets ? [1, 1.5] : [1, 0],
               }}
             />
           </Source>
@@ -264,10 +363,22 @@ export default function HidrantesLiveMap({ className }: { className?: string }) 
             id="hidrantes-points"
             type="circle"
             paint={{
-              "circle-radius": ["case", ["get", "__nearest"], 9, 6],
-              "circle-color": ["case", ["get", "__nearest"], "#f59e0b", "#dc2626"],
+              "circle-radius": ["match", ["get", "__highlight"], "selected", 11, "none", 6, 9],
+              "circle-color": [
+                "match",
+                ["get", "__highlight"],
+                "selected",
+                "#7c3aed",
+                "both",
+                "#f59e0b",
+                "distance",
+                "#f59e0b",
+                "route",
+                "#16a34a",
+                "#dc2626",
+              ],
               "circle-stroke-color": "#ffffff",
-              "circle-stroke-width": ["case", ["get", "__nearest"], 3, 1.5],
+              "circle-stroke-width": ["match", ["get", "__highlight"], "none", 1.5, 3],
             }}
           />
         </Source>
@@ -291,12 +402,37 @@ export default function HidrantesLiveMap({ className }: { className?: string }) 
             closeButton
             closeOnClick={false}
           >
-            <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 2 }}>
+            <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 4 }}>
               <strong>{popupHidrante.properties.nombre ?? "Hidrante"}</strong>
               {popupHidrante.properties.direccion && <span>{popupHidrante.properties.direccion}</span>}
               {popupHidrante.properties.tipo && <span>{popupHidrante.properties.tipo}</span>}
               {popupHidrante.properties.muestra && (
                 <span style={{ color: "#b45309" }}>Dato de muestra — no corresponde a un hidrante real</span>
+              )}
+              {referencePoint && typeof popupHidrante.properties.__index === "number" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedIndex(popupHidrante.properties.__index as number)
+                    setPopupHidrante(null)
+                  }}
+                  style={{
+                    marginTop: 2,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 4,
+                    borderRadius: 6,
+                    border: "1px solid #7c3aed",
+                    background: "#7c3aed",
+                    color: "#fff",
+                    padding: "4px 8px",
+                    fontWeight: 500,
+                    fontSize: 12,
+                  }}
+                >
+                  Dirígeme a este hidrante
+                </button>
               )}
             </div>
           </Popup>
@@ -336,20 +472,71 @@ export default function HidrantesLiveMap({ className }: { className?: string }) 
           </div>
         </RailSection>
 
-        <RailSection title="Hidrante más cercano">
-          {!referencePoint && <p className="text-muted-foreground">Elige tu ubicación o haz clic en el mapa.</p>}
-          {referencePoint && !nearest && <p className="text-muted-foreground">Cargando capa de hidrantes…</p>}
-          {referencePoint && nearest && (
+        {selectedIndex != null && selectedFeature ? (
+          <RailSection title="Hidrante elegido">
             <div className="flex flex-col gap-1">
-              <p className="font-medium text-foreground">{nearest.feature.properties.nombre ?? "Hidrante"}</p>
+              <p className="font-medium text-foreground">{selectedFeature.properties.nombre ?? "Hidrante"}</p>
               <p className="text-muted-foreground">
-                {route ? formatDistance(route.distanceM) : `${nearest.distanceKm.toFixed(2)} km`}
-                {route && route.followsStreets && route.durationS > 0 && ` · ${formatDuration(route.durationS)} en vehículo`}
-                {route && !route.followsStreets && " · línea recta (ruta por calles no disponible)"}
+                {selectedRoute ? formatDistance(selectedRoute.distanceM) : "Calculando ruta…"}
+                {selectedRoute?.followsStreets &&
+                  selectedRoute.durationS > 0 &&
+                  ` · ${formatDuration(selectedRoute.durationS)} en vehículo`}
+                {selectedRoute && !selectedRoute.followsStreets && " · línea recta (ruta por calles no disponible)"}
               </p>
+              <button
+                type="button"
+                onClick={() => setSelectedIndex(null)}
+                className="mt-1 inline-flex w-fit items-center justify-center rounded-md border border-border bg-background px-2.5 py-1 font-medium text-foreground transition-colors hover:bg-muted"
+              >
+                Volver a los más cercanos
+              </button>
             </div>
-          )}
-        </RailSection>
+          </RailSection>
+        ) : (
+          <RailSection title="Hidrantes más cercanos">
+            {!referencePoint && <p className="text-muted-foreground">Elige tu ubicación o haz clic en el mapa.</p>}
+            {referencePoint && !nearestByDistance && (
+              <p className="text-muted-foreground">Cargando capa de hidrantes…</p>
+            )}
+            {referencePoint && nearestByDistance && (
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-1">
+                  <p className="flex items-center gap-1.5 font-medium text-foreground">
+                    <span className="size-2.5 shrink-0 rounded-full bg-[#f59e0b]" aria-hidden="true" />
+                    {nearestByDistance.feature.properties.nombre ?? "Hidrante"} — en línea recta
+                  </p>
+                  <p className="text-muted-foreground">
+                    {distanceRoute ? formatDistance(distanceRoute.distanceM) : `${nearestByDistance.distanceKm.toFixed(2)} km`}
+                    {distanceRoute?.followsStreets &&
+                      distanceRoute.durationS > 0 &&
+                      ` · ${formatDuration(distanceRoute.durationS)} en vehículo`}
+                  </p>
+                </div>
+                {sameNearest ? (
+                  <p className="text-muted-foreground">También es el más rápido en vehículo.</p>
+                ) : routeByRouteFeature ? (
+                  <div className="flex flex-col gap-1">
+                    <p className="flex items-center gap-1.5 font-medium text-foreground">
+                      <span className="size-2.5 shrink-0 rounded-full bg-[#16a34a]" aria-hidden="true" />
+                      {routeByRouteFeature.properties.nombre ?? "Hidrante"} — más rápido en coche
+                    </p>
+                    <p className="text-muted-foreground">
+                      {routeRoute ? formatDistance(routeRoute.distanceM) : null}
+                      {routeRoute?.followsStreets &&
+                        routeRoute.durationS > 0 &&
+                        ` · ${formatDuration(routeRoute.durationS)} en vehículo`}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">Calculando la ruta más rápida en coche…</p>
+                )}
+                <p className="text-muted-foreground">
+                  También puedes hacer clic en cualquier hidrante del mapa para ir directamente a él.
+                </p>
+              </div>
+            )}
+          </RailSection>
+        )}
 
         <RailSection title="Leyenda">
           <ul className="flex flex-col gap-1.5">
@@ -359,7 +546,15 @@ export default function HidrantesLiveMap({ className }: { className?: string }) 
             </li>
             <li className="flex items-center gap-2 text-muted-foreground">
               <span className="size-2.5 shrink-0 rounded-full border border-white/60 bg-[#f59e0b]" aria-hidden="true" />
-              Hidrante más cercano
+              Más cercano en línea recta
+            </li>
+            <li className="flex items-center gap-2 text-muted-foreground">
+              <span className="size-2.5 shrink-0 rounded-full border border-white/60 bg-[#16a34a]" aria-hidden="true" />
+              Más rápido en coche
+            </li>
+            <li className="flex items-center gap-2 text-muted-foreground">
+              <span className="size-2.5 shrink-0 rounded-full border border-white/60 bg-[#7c3aed]" aria-hidden="true" />
+              Hidrante elegido manualmente
             </li>
             <li className="flex items-center gap-2 text-muted-foreground">
               <MapPin className="size-3.5 shrink-0 fill-blue-500 text-white" aria-hidden="true" />

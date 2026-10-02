@@ -14,6 +14,8 @@ export interface HidranteProperties {
   estado?: string
   /** `true` on every point in the shipped sample file — absent once real data replaces it. */
   muestra?: boolean
+  /** Injected by the map at render time: this feature's position in the source array, used to request directions to a specific hydrant. */
+  __index?: number
   [key: string]: unknown
 }
 
