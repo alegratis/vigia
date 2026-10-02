@@ -176,7 +176,7 @@ export default function HidrantesLiveMap({ className }: { className?: string }) 
 
   const { data: route } = useSWR(
     routeKey,
-    async (_key: string, lon1: number, lat1: number, lon2: number, lat2: number) => {
+    async ([, lon1, lat1, lon2, lat2]: NonNullable<typeof routeKey>) => {
       try {
         return await fetchOsrmRoute(lon1, lat1, lon2, lat2)
       } catch {
