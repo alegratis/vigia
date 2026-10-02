@@ -1,14 +1,14 @@
 /**
- * Merges manually-provided, authoritative polygon data for educational and
- * health institutions into sitios-sensibles.geojson, replacing the
- * OSM-derived "educacion" and "salud" features (sourced from Overpass via
- * fetch-sensitive-sites.mjs, which is often incomplete or outdated for these
- * categories). "gobierno" features are left untouched since they still come
- * from OSM.
+ * Merges manually-provided, authoritative polygon data for educational,
+ * health, and government institutions into sitios-sensibles.geojson,
+ * replacing the OSM-derived "educacion", "salud", and "gobierno" features
+ * (sourced from Overpass via fetch-sensitive-sites.mjs, which is often
+ * incomplete or outdated for these categories).
  *
  * Source files (provided by the user, real building footprints — not OSM):
  *   public/data/hidrantes/instituciones_educativas.geojson
  *   public/data/hidrantes/instituciones_de_salud.geojson
+ *   public/data/hidrantes/instituciones_públicas.geojson
  *
  * Re-run this script whenever those source files are updated:
  *
@@ -69,15 +69,15 @@ function toSitioSensible(feature, category) {
 }
 
 async function main() {
-  const [educacionRaw, saludRaw, existing] = await Promise.all([
+  const [educacionRaw, saludRaw, gobiernoRaw] = await Promise.all([
     readJson("instituciones_educativas.geojson"),
     readJson("instituciones_de_salud.geojson"),
-    readJson("sitios-sensibles.geojson"),
+    readJson("instituciones_públicas.geojson"),
   ])
 
   const educacion = dedupeByName(educacionRaw.features).map((f) => toSitioSensible(f, "educacion"))
   const salud = dedupeByName(saludRaw.features).map((f) => toSitioSensible(f, "salud"))
-  const gobierno = existing.features.filter((f) => f.properties.category === "gobierno")
+  const gobierno = dedupeByName(gobiernoRaw.features).map((f) => toSitioSensible(f, "gobierno"))
 
   const features = [...educacion, ...salud, ...gobierno]
   const geojson = { type: "FeatureCollection", features }
