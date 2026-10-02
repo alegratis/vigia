@@ -14,16 +14,33 @@ import { writeFile, mkdir } from "node:fs/promises"
 import path from "node:path"
 import booleanPointInPolygon from "@turf/boolean-point-in-polygon"
 import distance from "@turf/distance"
-import buffer from "@turf/buffer"
 import { point } from "@turf/helpers"
 
 // OSM doesn't always carry a building footprint for a given institution (the
 // query only returns a POI node). The app never wants to render these as
-// points — they'd be indistinguishable from hydrant markers — so we
-// approximate the footprint with a small polygon around the point instead.
+// points — they'd be indistinguishable from hydrant markers — nor as circles
+// — they'd be indistinguishable from the hydrant coverage layer — so we
+// approximate the footprint with a small square around the point instead.
 // This is not the real building/manzana outline, just enough to read as "a
-// place on the map" rather than "a dot like a hydrant".
-const APPROXIMATE_FOOTPRINT_RADIUS_M = 35
+// building on the map" rather than a dot or a circle.
+const APPROXIMATE_FOOTPRINT_HALF_SIDE_M = 30
+
+// Builds an axis-aligned square polygon of `halfSideMeters` half-width
+// centered on [lon, lat]. Deliberately a square, not a turf `buffer` circle,
+// so it reads as a building footprint and is never confused with the round
+// coverage-radius layer.
+function squareFootprint([lon, lat], halfSideMeters) {
+  const dLat = halfSideMeters / 111_320
+  const dLon = halfSideMeters / (111_320 * Math.cos((lat * Math.PI) / 180))
+  const coords = [
+    [lon - dLon, lat - dLat],
+    [lon + dLon, lat - dLat],
+    [lon + dLon, lat + dLat],
+    [lon - dLon, lat + dLat],
+    [lon - dLon, lat - dLat],
+  ]
+  return { type: "Polygon", coordinates: [coords] }
+}
 
 // Sevilla casco urbano bounds (lib/demografia/geo-detect.ts's
 // SEVILLA_CASCO_URBANO_BOUNDS) padded by ~3km so institutions just outside
@@ -197,16 +214,14 @@ async function main() {
   // The app never wants bare points for buildings (they'd be
   // indistinguishable from hydrant markers), so any site OSM only gave us as
   // a node — no building footprint, no bounds fallback — gets an
-  // approximate footprint polygon instead.
+  // approximate square footprint instead.
   const features = dedupedFeatures.map((f) => {
     if (f.geometry.type !== "Point") return f
-    const footprint = buffer(point(f.geometry.coordinates), APPROXIMATE_FOOTPRINT_RADIUS_M, {
-      units: "meters",
-      steps: 16,
-    })
-    if (!footprint) return f
-    footprint.properties = f.properties
-    return footprint
+    return {
+      type: "Feature",
+      properties: f.properties,
+      geometry: squareFootprint(f.geometry.coordinates, APPROXIMATE_FOOTPRINT_HALF_SIDE_M),
+    }
   })
 
   const geojson = { type: "FeatureCollection", features }
