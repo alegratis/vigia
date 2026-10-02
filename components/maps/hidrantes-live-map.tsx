@@ -280,7 +280,7 @@ export default function HidrantesLiveMap({ className }: { className?: string }) 
   }, [hidrantes, selectedIndex, nearestByDistance, nearestByRouteIndex])
 
 /** Hose reach used for each coverage circle — two circles overlap once their hydrants are closer than twice this. */
- const COVERAGE_RADIUS_M = 120
+ const COVERAGE_RADIUS_M = 150
 
 /**
  * Maps __overlapCount (how many neighboring hydrants' circles intersect this
@@ -617,10 +617,10 @@ const COVERAGE_DENSITY_COLOR_EXPRESSION = [
           </RailSection>
         )}
 
-        <RailSection title="Cobertura">
+        <RailSection title="Área de Cobertura">
           <div className="flex flex-col gap-2">
             <label className="flex cursor-pointer items-center justify-between gap-2">
-              <span className="text-foreground">Radio de manguera (120 m)</span>
+              <span className="text-foreground">Radio de manguera (150 m)</span>
               <button
                 type="button"
                 role="switch"
@@ -638,7 +638,7 @@ const COVERAGE_DENSITY_COLOR_EXPRESSION = [
               </button>
             </label>
             <p className="text-muted-foreground">
-                        Muestra el área que cubre cada hidrante con una manguera de 120 m, útil para detectar puntos ciegos.
+                        Muestra el área que cubre cada hidrante con una manguera de 150 m, útil para detectar puntos ciegos.
             </p>
           </div>
         </RailSection>
@@ -648,7 +648,7 @@ const COVERAGE_DENSITY_COLOR_EXPRESSION = [
             {showCoverage && (
               <li className="flex items-center gap-2 text-muted-foreground">
                 <span className="size-2.5 shrink-0 rounded-full border border-[#dc2626]/60 bg-[#dc2626]/20" aria-hidden="true" />
-                  Cobertura (120 m)
+                  Área de Cobertura (150 m)
               </li>
             )}
             <li className="flex items-center gap-2 text-muted-foreground">
