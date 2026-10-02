@@ -12,6 +12,9 @@
 
 import { writeFile, mkdir } from "node:fs/promises"
 import path from "node:path"
+import booleanPointInPolygon from "@turf/boolean-point-in-polygon"
+import distance from "@turf/distance"
+import { point } from "@turf/helpers"
 
 // Sevilla casco urbano bounds (lib/demografia/geo-detect.ts's
 // SEVILLA_CASCO_URBANO_BOUNDS) padded by ~3km so institutions just outside
@@ -149,7 +152,7 @@ async function main() {
   }
   if (!json) throw lastError ?? new Error("No se pudo consultar ningún mirror de Overpass")
 
-  const features = []
+  const rawFeatures = []
   const seen = new Set()
   for (const el of json.elements) {
     const feature = elementToFeature(el)
@@ -157,8 +160,30 @@ async function main() {
     const key = `${el.type}/${el.id}`
     if (seen.has(key)) continue
     seen.add(key)
-    features.push(feature)
+    rawFeatures.push(feature)
   }
+
+  // OSM frequently tags the same institution twice: a POI node (often the
+  // entrance or a label point) plus a separate building way/relation for its
+  // footprint. Both match our query and would otherwise render as a
+  // duplicate dot sitting right on top of (or next to) the polygon. Drop any
+  // Point feature that falls inside, or within DUPLICATE_RADIUS_M of, a
+  // Polygon/MultiPolygon feature so each institution renders once — as its
+  // building footprint when we have one, falling back to a dot only when we
+  // don't.
+  const DUPLICATE_RADIUS_M = 40
+  const polygons = rawFeatures.filter(
+    (f) => f.geometry.type === "Polygon" || f.geometry.type === "MultiPolygon",
+  )
+  const features = rawFeatures.filter((f) => {
+    if (f.geometry.type !== "Point") return true
+    const pt = point(f.geometry.coordinates)
+    return !polygons.some((poly) => {
+      if (booleanPointInPolygon(pt, poly.geometry)) return true
+      const [lon, lat] = poly.geometry.type === "Polygon" ? poly.geometry.coordinates[0][0] : poly.geometry.coordinates[0][0][0]
+      return distance(pt, point([lon, lat]), { units: "meters" }) < DUPLICATE_RADIUS_M
+    })
+  })
 
   const geojson = { type: "FeatureCollection", features }
 
