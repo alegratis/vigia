@@ -21,6 +21,8 @@ if (typeof window !== "undefined") {
 import useSWR from "swr"
 import distance from "@turf/distance"
 import buffer from "@turf/buffer"
+import centroid from "@turf/centroid"
+import booleanPointInPolygon from "@turf/boolean-point-in-polygon"
 import { point } from "@turf/helpers"
 import { LocateFixed, MapPin, Siren, TriangleAlert } from "lucide-react"
 import { MapControlRail, RailSection } from "@/components/maps/map-control-rail"
@@ -29,9 +31,22 @@ import { MapBasemapControl } from "@/components/maps/map-basemap-control"
 import { maplibreMapStyle } from "@/lib/maps/maplibre-basemap-style"
 import { useThemeSyncedBasemap } from "@/lib/maps/use-theme-synced-basemap"
 import { SEVILLA_CASCO_URBANO_BOUNDS } from "@/lib/demografia/geo-detect"
+import {
+  SENSITIVE_SITE_STYLES,
+  SENSITIVE_PROXIMITY_M,
+  getSensitiveSiteStyle,
+  type SensitiveSiteFeature,
+} from "@/lib/osm/sensitive-sites"
 import type { HidranteFeature, HidrantesGeoJson, HidranteRoute, ReferencePoint } from "@/lib/hidrantes/api-types"
 
 const HIDRANTES_URL = "/data/hidrantes/hidrantes-sevilla.geojson"
+const SITIOS_SENSIBLES_URL = "/data/hidrantes/sitios-sensibles.geojson"
+
+const sitiosSensiblesFetcher = async (url: string): Promise<GeoJSON.FeatureCollection> => {
+  const res = await fetch(url)
+  if (!res.ok) throw new Error("No se pudo cargar la capa de sitios sensibles")
+  return res.json()
+}
 
 const [[SEVILLA_WEST, SEVILLA_SOUTH], [SEVILLA_EAST, SEVILLA_NORTH]] = SEVILLA_CASCO_URBANO_BOUNDS
 const SEVILLA_CENTER: [number, number] = [(SEVILLA_WEST + SEVILLA_EAST) / 2, (SEVILLA_SOUTH + SEVILLA_NORTH) / 2]
@@ -117,6 +132,9 @@ export default function HidrantesLiveMap({ className }: { className?: string }) 
   const { data: hidrantes, error: hidrantesError } = useSWR(HIDRANTES_URL, hidrantesFetcher, {
     revalidateOnFocus: false,
   })
+  const { data: sitiosSensibles } = useSWR(SITIOS_SENSIBLES_URL, sitiosSensiblesFetcher, {
+    revalidateOnFocus: false,
+  })
 
   const [geoStatus, setGeoStatus] = useState<"idle" | "loading" | "granted" | "denied" | "unsupported" | "fuera">(
     "idle",
@@ -124,6 +142,8 @@ export default function HidrantesLiveMap({ className }: { className?: string }) 
   const [userPosition, setUserPosition] = useState<{ lat: number; lon: number; accuracy: number } | null>(null)
   const [clickedPoint, setClickedPoint] = useState<{ lat: number; lon: number } | null>(null)
   const [popupHidrante, setPopupHidrante] = useState<HidranteFeature | null>(null)
+  const [popupSite, setPopupSite] = useState<SensitiveSiteFeature | null>(null)
+
   /** Explicit "ir a este hidrante" pick from a popup — overrides both automatic highlights below. */
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
   const [cursor, setCursor] = useState("")
@@ -247,12 +267,25 @@ export default function HidrantesLiveMap({ className }: { className?: string }) 
         [e.point.x - tolerance, e.point.y - tolerance],
         [e.point.x + tolerance, e.point.y + tolerance],
       ]
-      const hit = map && map.getLayer("hidrantes-points") ? map.queryRenderedFeatures(bbox, { layers: ["hidrantes-points"] })[0] : undefined
-      if (hit) {
-        setPopupHidrante(hit as unknown as HidranteFeature)
+  const sensitiveLayers = ["sensitive-sites-fill"].filter((id) => map?.getLayer(id))
+      const hidranteHit =
+        map && map.getLayer("hidrantes-points")
+          ? map.queryRenderedFeatures(bbox, { layers: ["hidrantes-points"] })[0]
+          : undefined
+      if (hidranteHit) {
+        setPopupSite(null)
+        setPopupHidrante(hidranteHit as unknown as HidranteFeature)
+        return
+      }
+      const siteHit =
+        map && sensitiveLayers.length > 0 ? map.queryRenderedFeatures(bbox, { layers: sensitiveLayers })[0] : undefined
+      if (siteHit) {
+        setPopupHidrante(null)
+        setPopupSite(siteHit as unknown as SensitiveSiteFeature)
         return
       }
       setPopupHidrante(null)
+      setPopupSite(null)
       setClickedPoint({ lat: e.lngLat.lat, lon: e.lngLat.lng })
     },
     [],
@@ -279,8 +312,16 @@ export default function HidrantesLiveMap({ className }: { className?: string }) 
     }
   }, [hidrantes, selectedIndex, nearestByDistance, nearestByRouteIndex])
 
-/** Hose reach used for each coverage circle — two circles overlap once their hydrants are closer than twice this. */
- const COVERAGE_RADIUS_M = 120
+/** Default hose reach used for each coverage circle. */
+ const COVERAGE_RADIUS_DEFAULT_M = 150
+/**
+ * Tighter coverage requirement for hydrants near a "sitio sensible" —
+ * school/university, hospital, or government/public building — within
+ * SENSITIVE_PROXIMITY_M. These locations need closer hydrant coverage than
+ * the rest of the casco urbano, so their circle reads as covering less
+ * ground for the same hose length.
+ */
+const COVERAGE_RADIUS_TIGHT_M = 100
 
 /**
  * Maps __overlapCount (how many neighboring hydrants' circles intersect this
@@ -307,9 +348,42 @@ const COVERAGE_DENSITY_COLOR_EXPRESSION = [
 ] as unknown as string
 
   /**
-   * 120 m coverage circles around every hydrant — the typical reach of a fire
+   * Each sensitive-site feature paired with a cheap proximity test: polygon
+   * features (building footprints) test containment directly, falling back
+   * to centroid distance for anything far enough that containment alone
+   * would miss a hydrant just outside the footprint.
+   */
+  const sensitiveSiteTests = useMemo(() => {
+    if (!sitiosSensibles) return []
+    return sitiosSensibles.features.map((f) => ({
+      feature: f,
+      center: f.geometry.type === "Point" ? f : centroid(f as GeoJSON.Feature<GeoJSON.Polygon>),
+    }))
+  }, [sitiosSensibles])
+
+  const isNearSensitiveSite = useCallback(
+    (lon: number, lat: number) => {
+      const hydrant = point([lon, lat])
+      return sensitiveSiteTests.some(({ feature, center }) => {
+        if (
+          (feature.geometry.type === "Polygon" || feature.geometry.type === "MultiPolygon") &&
+          booleanPointInPolygon(hydrant, feature.geometry as GeoJSON.Polygon | GeoJSON.MultiPolygon)
+        ) {
+          return true
+        }
+        return distance(hydrant, center as GeoJSON.Feature<GeoJSON.Point>, { units: "meters" }) < SENSITIVE_PROXIMITY_M
+      })
+    },
+    [sensitiveSiteTests],
+  )
+
+  /**
+   * Coverage circles around every hydrant — the typical reach of a fire
    * hose — so gaps in coverage become visually obvious. Off by default and
-   * toggled via the rail control below; only computed once the layer is shown.
+   * toggled via the rail control below; only computed once the layer is
+   * shown. Hydrants near a sitio sensible (school, hospital, government
+   * building) use the tighter COVERAGE_RADIUS_TIGHT_M instead of the
+   * default, since those locations need closer coverage.
    *
    * Each circle is tagged with __overlapCount — how many other hydrants sit
    * close enough for their coverage circles to intersect this one — so the
@@ -319,11 +393,15 @@ const COVERAGE_DENSITY_COLOR_EXPRESSION = [
   const coverageGeoJson = useMemo<GeoJSON.FeatureCollection | null>(() => {
     if (!showCoverage || !hidrantes || hidrantes.features.length === 0) return null
     const points = hidrantes.features.map((f) => point(f.geometry.coordinates))
-    const overlapThresholdKm = (COVERAGE_RADIUS_M * 2) / 1000
+    const radii = hidrantes.features.map((f) => {
+      const [lon, lat] = f.geometry.coordinates
+      return isNearSensitiveSite(lon, lat) ? COVERAGE_RADIUS_TIGHT_M : COVERAGE_RADIUS_DEFAULT_M
+    })
     const overlapCounts = points.map((p, i) => {
       let count = 0
       for (let j = 0; j < points.length; j++) {
         if (i === j) continue
+        const overlapThresholdKm = (radii[i] + radii[j]) / 1000
         if (distance(p, points[j], { units: "kilometers" }) < overlapThresholdKm) count++
       }
       return count
@@ -332,14 +410,29 @@ const COVERAGE_DENSITY_COLOR_EXPRESSION = [
       type: "FeatureCollection",
       features: hidrantes.features
         .map((f, i) => {
-          const circle = buffer(points[i], COVERAGE_RADIUS_M, { units: "meters", steps: 32 })
+          const circle = buffer(points[i], radii[i], { units: "meters", steps: 32 })
           if (!circle) return null
-          circle.properties = { ...circle.properties, __overlapCount: overlapCounts[i] }
+          circle.properties = { ...circle.properties, __overlapCount: overlapCounts[i], __radius: radii[i] }
           return circle
         })
         .filter((f): f is NonNullable<typeof f> => f != null) as GeoJSON.Feature[],
     }
-  }, [showCoverage, hidrantes])
+  }, [showCoverage, hidrantes, isNearSensitiveSite])
+
+  /**
+   * Sensitive-site polygons (building footprints, or an approximate
+   * footprint for sites OSM only mapped as a point — see
+   * fetch-sensitive-sites.mjs) rendered as a fill + outline, colored by
+   * category. Always on: these institutions always need the tighter
+   * coverage requirement, so the layer isn't something to toggle off.
+   */
+  const sensitiveSitePolygons = useMemo<GeoJSON.FeatureCollection | null>(() => {
+    if (!sitiosSensibles) return null
+    const features = sitiosSensibles.features.filter(
+      (f) => f.geometry.type === "Polygon" || f.geometry.type === "MultiPolygon",
+    )
+    return { type: "FeatureCollection", features }
+  }, [sitiosSensibles])
 
   const toRouteGeoJson = (route: HidranteRoute | undefined | null): GeoJSON.Feature | null =>
     route ? { type: "Feature", properties: {}, geometry: route.geometry } : null
@@ -366,7 +459,7 @@ const COVERAGE_DENSITY_COLOR_EXPRESSION = [
         mapStyle={mapStyle}
         attributionControl={false}
         cursor={cursor}
-        interactiveLayerIds={["hidrantes-points"]}
+        interactiveLayerIds={["hidrantes-points", "sensitive-sites-fill"]}
         onMouseEnter={() => setCursor("pointer")}
         onMouseLeave={() => setCursor("")}
         onClick={handleMapClick}
@@ -433,6 +526,47 @@ const COVERAGE_DENSITY_COLOR_EXPRESSION = [
               id="hidrantes-coverage-outline"
               type="line"
               paint={{ "line-color": COVERAGE_DENSITY_COLOR_EXPRESSION, "line-width": 1, "line-opacity": 0.6 }}
+            />
+          </Source>
+        )}
+
+        {sensitiveSitePolygons && sensitiveSitePolygons.features.length > 0 && (
+          <Source id="sensitive-sites-polygons-source" type="geojson" data={sensitiveSitePolygons}>
+            <Layer
+              id="sensitive-sites-fill"
+              type="fill"
+              paint={{
+                "fill-color": [
+                  "match",
+                  ["get", "category"],
+                  "educacion",
+                  SENSITIVE_SITE_STYLES[0].color,
+                  "salud",
+                  SENSITIVE_SITE_STYLES[1].color,
+                  "gobierno",
+                  SENSITIVE_SITE_STYLES[2].color,
+                  SENSITIVE_SITE_STYLES[0].color,
+                ],
+                "fill-opacity": 0.35,
+              }}
+            />
+            <Layer
+              id="sensitive-sites-outline"
+              type="line"
+              paint={{
+                "line-color": [
+                  "match",
+                  ["get", "category"],
+                  "educacion",
+                  SENSITIVE_SITE_STYLES[0].color,
+                  "salud",
+                  SENSITIVE_SITE_STYLES[1].color,
+                  "gobierno",
+                  SENSITIVE_SITE_STYLES[2].color,
+                  SENSITIVE_SITE_STYLES[0].color,
+                ],
+                "line-width": 2,
+              }}
             />
           </Source>
         )}
@@ -516,6 +650,32 @@ const COVERAGE_DENSITY_COLOR_EXPRESSION = [
             </div>
           </Popup>
         )}
+
+        {popupSite &&
+          (() => {
+            const coords =
+              popupSite.geometry.type === "Point"
+                ? popupSite.geometry.coordinates
+                : centroid(popupSite as GeoJSON.Feature<GeoJSON.Polygon>).geometry.coordinates
+            const style = getSensitiveSiteStyle(popupSite.properties.category)
+            return (
+              <Popup
+                longitude={coords[0]}
+                latitude={coords[1]}
+                onClose={() => setPopupSite(null)}
+                closeButton
+                closeOnClick={false}
+              >
+                <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 4 }}>
+                  <strong>{popupSite.properties.name ?? style.label}</strong>
+                  <span style={{ color: style.color }}>{style.label}</span>
+                  <span style={{ color: "#6b7280" }}>
+                    Los hidrantes cercanos usan un radio de cobertura de {COVERAGE_RADIUS_TIGHT_M} m.
+                  </span>
+                </div>
+              </Popup>
+            )
+          })()}
       </Map>
 
       <MapControlRail>
@@ -617,10 +777,10 @@ const COVERAGE_DENSITY_COLOR_EXPRESSION = [
           </RailSection>
         )}
 
-        <RailSection title="Cobertura">
+        <RailSection title="Área de Cobertura">
           <div className="flex flex-col gap-2">
             <label className="flex cursor-pointer items-center justify-between gap-2">
-              <span className="text-foreground">Radio de manguera (120 m)</span>
+              <span className="text-foreground">Área de cobertura (150 m)</span>
               <button
                 type="button"
                 role="switch"
@@ -638,7 +798,8 @@ const COVERAGE_DENSITY_COLOR_EXPRESSION = [
               </button>
             </label>
             <p className="text-muted-foreground">
-                        Muestra el área que cubre cada hidrante con una manguera de 120 m, útil para detectar puntos ciegos.
+              Muestra el área que cubre cada hidrante (150 m), útil para detectar puntos ciegos. Cerca de colegios,
+              hospitales y sedes de gobierno el radio se reduce a {COVERAGE_RADIUS_TIGHT_M} m.
             </p>
           </div>
         </RailSection>
@@ -648,9 +809,21 @@ const COVERAGE_DENSITY_COLOR_EXPRESSION = [
             {showCoverage && (
               <li className="flex items-center gap-2 text-muted-foreground">
                 <span className="size-2.5 shrink-0 rounded-full border border-[#dc2626]/60 bg-[#dc2626]/20" aria-hidden="true" />
-                  Cobertura (120 m)
+                  Área de Cobertura (150 m / {COVERAGE_RADIUS_TIGHT_M} m cerca de sitios sensibles)
               </li>
             )}
+            {sensitiveSitePolygons &&
+              sensitiveSitePolygons.features.length > 0 &&
+              SENSITIVE_SITE_STYLES.map((style) => (
+                <li key={style.key} className="flex items-center gap-2 text-muted-foreground">
+                  <span
+                    className="size-2.5 shrink-0 rounded-sm border border-white/60"
+                    style={{ backgroundColor: style.color }}
+                    aria-hidden="true"
+                  />
+                  {style.label}
+                </li>
+              ))}
             <li className="flex items-center gap-2 text-muted-foreground">
               <span className="size-2.5 shrink-0 rounded-full border border-white/60 bg-[#dc2626]" aria-hidden="true" />
               Hidrantes
