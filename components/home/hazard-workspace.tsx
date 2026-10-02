@@ -23,6 +23,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { CategoryPanel } from "@/components/home/category-panel"
 import { CategoryRail } from "@/components/home/category-rail"
 import { MobileHeader } from "@/components/home/mobile-header"
+import { MobileScrollTopButton } from "@/components/home/mobile-scroll-top-button"
 import { DeslizamientosPanelContent } from "@/components/home/deslizamientos-panel-content"
 import { InundacionesPanelContent } from "@/components/home/inundaciones-panel-content"
 import { IncendiosPanelContent } from "@/components/home/incendios-panel-content"
@@ -150,6 +151,8 @@ export function HazardWorkspace({
         activeSlug={activeSlug}
         onActivate={activate}
       />
+
+      <MobileScrollTopButton />
 
       <div
         className={cn(

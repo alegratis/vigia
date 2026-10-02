@@ -74,13 +74,20 @@ export function CategoryPanel({ model, icon: Icon, isActive, onActivate, childre
         // grow into. On mobile that clamp doesn't exist, so this panel is sized off its own content
         // instead — basis-auto (the default) plus the active map's explicit h-[70vh] achieves the same
         // "map fills the first fold" result without a flex-grow chain that has nothing to grow against.
-        "relative flex flex-col overflow-hidden transition-[flex-grow,flex-basis] duration-500 ease-in-out lg:min-h-0",
+        //
+        // overflow-hidden is lg-only too: it's what clips the panel during the desktop slide-open
+        // flex-grow/basis transition above. Applied unconditionally it still "works" on mobile (nothing
+        // visibly clips, since the box's height just matches its content there), but overflow other than
+        // `visible` makes an element a scroll container for position:sticky purposes even with nothing to
+        // scroll — so the sticky category marker bar inside it would stick relative to this always-static
+        // container instead of the window, never actually pinning to the viewport while the page scrolls.
+        "relative flex flex-col transition-[flex-grow,flex-basis] duration-500 ease-in-out lg:min-h-0 lg:overflow-hidden",
         isActive ? "shrink basis-auto lg:flex-1 lg:basis-0" : "hidden",
       )}
     >
       {isActive ? (
         <div className="flex flex-col animate-in fade-in slide-in-from-left-2 duration-300 lg:min-h-0 lg:flex-1">
-          <div className="relative flex h-10 shrink-0 items-center gap-2 overflow-hidden border-b border-border px-3 sm:px-4">
+          <div className="sticky top-14 z-20 flex h-10 shrink-0 items-center gap-2 overflow-hidden border-b border-border px-3 sm:px-4 lg:static lg:top-auto lg:z-auto">
             <Image
               src={model.image || "/placeholder.svg"}
               alt=""
@@ -104,7 +111,7 @@ export function CategoryPanel({ model, icon: Icon, isActive, onActivate, childre
             {mapReady ? (
               children
             ) : (
-              <div className="flex h-[calc(100dvh-3.5rem)] min-h-[420px] shrink-0 flex-col items-center justify-center gap-2 bg-muted/40 lg:h-full">
+              <div className="flex h-[calc(100dvh-6rem)] min-h-[420px] shrink-0 flex-col items-center justify-center gap-2 bg-muted/40 lg:h-full">
                 <Loader2 className="size-5 animate-spin text-muted-foreground" aria-hidden="true" />
                 <span className="text-sm text-muted-foreground">Cargando mapa…</span>
               </div>
