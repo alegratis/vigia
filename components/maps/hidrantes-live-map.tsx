@@ -20,6 +20,7 @@ if (typeof window !== "undefined") {
 }
 import useSWR from "swr"
 import distance from "@turf/distance"
+import buffer from "@turf/buffer"
 import { point } from "@turf/helpers"
 import { LocateFixed, MapPin, Siren, TriangleAlert } from "lucide-react"
 import { MapControlRail, RailSection } from "@/components/maps/map-control-rail"
@@ -126,6 +127,7 @@ export default function HidrantesLiveMap({ className }: { className?: string }) 
   /** Explicit "ir a este hidrante" pick from a popup — overrides both automatic highlights below. */
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
   const [cursor, setCursor] = useState("")
+  const [showCoverage, setShowCoverage] = useState(false)
   const hasFlownToUser = useRef(false)
 
   const requestLocation = useCallback(() => {
@@ -277,6 +279,68 @@ export default function HidrantesLiveMap({ className }: { className?: string }) 
     }
   }, [hidrantes, selectedIndex, nearestByDistance, nearestByRouteIndex])
 
+/** Hose reach used for each coverage circle — two circles overlap once their hydrants are closer than twice this. */
+const COVERAGE_RADIUS_M = 150
+
+/**
+ * Maps __overlapCount (how many neighboring hydrants' circles intersect this
+ * one) to a green → yellow → red ramp: isolated hydrants with no overlap —
+ * the actual blind spots this layer exists to reveal — read as green/safe,
+ * while heavily overlapping clusters read as red/dense. This intentionally
+ * inverts the usual "red = danger" convention, since here red just means
+ * "well covered", not "hazardous".
+ */
+const COVERAGE_DENSITY_COLOR_EXPRESSION = [
+  "interpolate",
+  ["linear"],
+  ["get", "__overlapCount"],
+  0,
+  "#dc2626",
+  1,
+  "#f97316",
+  2,
+  "#eab308",
+  3,
+  "#84cc16",
+  5,
+  "#16a34a",
+] as unknown as string
+
+  /**
+   * 150 m coverage circles around every hydrant — the typical reach of a fire
+   * hose — so gaps in coverage become visually obvious. Off by default and
+   * toggled via the rail control below; only computed once the layer is shown.
+   *
+   * Each circle is tagged with __overlapCount — how many other hydrants sit
+   * close enough for their coverage circles to intersect this one — so the
+   * fill can be colored by density (green = isolated/blind spot, red = many
+   * overlapping hydrants) instead of a flat, alarm-like red.
+   */
+  const coverageGeoJson = useMemo<GeoJSON.FeatureCollection | null>(() => {
+    if (!showCoverage || !hidrantes || hidrantes.features.length === 0) return null
+    const points = hidrantes.features.map((f) => point(f.geometry.coordinates))
+    const overlapThresholdKm = (COVERAGE_RADIUS_M * 2) / 1000
+    const overlapCounts = points.map((p, i) => {
+      let count = 0
+      for (let j = 0; j < points.length; j++) {
+        if (i === j) continue
+        if (distance(p, points[j], { units: "kilometers" }) < overlapThresholdKm) count++
+      }
+      return count
+    })
+    return {
+      type: "FeatureCollection",
+      features: hidrantes.features
+        .map((f, i) => {
+          const circle = buffer(points[i], COVERAGE_RADIUS_M, { units: "meters", steps: 32 })
+          if (!circle) return null
+          circle.properties = { ...circle.properties, __overlapCount: overlapCounts[i] }
+          return circle
+        })
+        .filter((f): f is NonNullable<typeof f> => f != null) as GeoJSON.Feature[],
+    }
+  }, [showCoverage, hidrantes])
+
   const toRouteGeoJson = (route: HidranteRoute | undefined | null): GeoJSON.Feature | null =>
     route ? { type: "Feature", properties: {}, geometry: route.geometry } : null
 
@@ -354,6 +418,21 @@ export default function HidrantesLiveMap({ className }: { className?: string }) 
                 "line-opacity": 0.85,
                 "line-dasharray": selectedRoute && !selectedRoute.followsStreets ? [1, 1.5] : [1, 0],
               }}
+            />
+          </Source>
+        )}
+
+        {coverageGeoJson && (
+          <Source id="hidrantes-coverage-source" type="geojson" data={coverageGeoJson}>
+            <Layer
+              id="hidrantes-coverage-fill"
+              type="fill"
+              paint={{ "fill-color": COVERAGE_DENSITY_COLOR_EXPRESSION, "fill-opacity": 0.22 }}
+            />
+            <Layer
+              id="hidrantes-coverage-outline"
+              type="line"
+              paint={{ "line-color": COVERAGE_DENSITY_COLOR_EXPRESSION, "line-width": 1, "line-opacity": 0.6 }}
             />
           </Source>
         )}
@@ -538,8 +617,40 @@ export default function HidrantesLiveMap({ className }: { className?: string }) 
           </RailSection>
         )}
 
+        <RailSection title="Cobertura">
+          <div className="flex flex-col gap-2">
+            <label className="flex cursor-pointer items-center justify-between gap-2">
+              <span className="text-foreground">Radio de manguera (150 m)</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={showCoverage}
+                onClick={() => setShowCoverage((v) => !v)}
+                className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-colors ${
+                  showCoverage ? "border-primary bg-primary" : "border-border bg-muted"
+                }`}
+              >
+                <span
+                  className={`inline-block size-3.5 transform rounded-full bg-background shadow transition-transform ${
+                    showCoverage ? "translate-x-[18px]" : "translate-x-1"
+                  }`}
+                />
+              </button>
+            </label>
+            <p className="text-muted-foreground">
+              Muestra el área que cubre cada hidrante con una manguera de 150 m, útil para detectar puntos ciegos.
+            </p>
+          </div>
+        </RailSection>
+
         <RailSection title="Leyenda">
           <ul className="flex flex-col gap-1.5">
+            {showCoverage && (
+              <li className="flex items-center gap-2 text-muted-foreground">
+                <span className="size-2.5 shrink-0 rounded-full border border-[#dc2626]/60 bg-[#dc2626]/20" aria-hidden="true" />
+                Cobertura (150 m)
+              </li>
+            )}
             <li className="flex items-center gap-2 text-muted-foreground">
               <span className="size-2.5 shrink-0 rounded-full border border-white/60 bg-[#dc2626]" aria-hidden="true" />
               Hidrantes
