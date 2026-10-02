@@ -104,7 +104,7 @@ export function CategoryPanel({ model, icon: Icon, isActive, onActivate, childre
             {mapReady ? (
               children
             ) : (
-              <div className="flex h-[calc(100dvh-3.5rem)] min-h-[420px] shrink-0 flex-col items-center justify-center gap-2 bg-muted/40 lg:h-full">
+              <div className="flex h-[calc(100dvh-6rem)] min-h-[420px] shrink-0 flex-col items-center justify-center gap-2 bg-muted/40 lg:h-full">
                 <Loader2 className="size-5 animate-spin text-muted-foreground" aria-hidden="true" />
                 <span className="text-sm text-muted-foreground">Cargando mapa…</span>
               </div>
