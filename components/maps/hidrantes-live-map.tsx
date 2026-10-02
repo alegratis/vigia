@@ -191,6 +191,15 @@ export default function HidrantesLiveMap({ className }: { className?: string }) 
         [e.point.x - tolerance, e.point.y - tolerance],
         [e.point.x + tolerance, e.point.y + tolerance],
       ]
+      const clusterHit = map && map.getLayer("hidrantes-clusters") ? map.queryRenderedFeatures(bbox, { layers: ["hidrantes-clusters"] })[0] : undefined
+      if (clusterHit) {
+        const clusterId = clusterHit.properties?.cluster_id
+        const source = map!.getSource("hidrantes-source") as import("maplibre-gl").GeoJSONSource
+        source.getClusterExpansionZoom(clusterId).then((zoom) => {
+          map!.easeTo({ center: (clusterHit.geometry as GeoJSON.Point).coordinates as [number, number], zoom, duration: 500 })
+        })
+        return
+      }
       const hit = map && map.getLayer("hidrantes-points") ? map.queryRenderedFeatures(bbox, { layers: ["hidrantes-points"] })[0] : undefined
       if (hit) {
         setPopupHidrante(hit as unknown as HidranteFeature)
@@ -256,10 +265,40 @@ export default function HidrantesLiveMap({ className }: { className?: string }) 
           </Source>
         )}
 
-        <Source id="hidrantes-source" type="geojson" data={hidrantesGeoJson}>
+        <Source
+          id="hidrantes-source"
+          type="geojson"
+          data={hidrantesGeoJson}
+          cluster={true}
+          clusterMaxZoom={16}
+          clusterRadius={50}
+        >
+          <Layer
+            id="hidrantes-clusters"
+            type="circle"
+            filter={["has", "point_count"]}
+            paint={{
+              "circle-radius": ["step", ["get", "point_count"], 16, 10, 20, 50, 26],
+              "circle-color": ["step", ["get", "point_count"], "#f97316", 10, "#ea580c", 50, "#c2410c"],
+              "circle-stroke-color": "#ffffff",
+              "circle-stroke-width": 2,
+            }}
+          />
+          <Layer
+            id="hidrantes-cluster-count"
+            type="symbol"
+            filter={["has", "point_count"]}
+            layout={{
+              "text-field": ["get", "point_count_abbreviated"],
+              "text-size": 12,
+              "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
+            }}
+            paint={{ "text-color": "#ffffff" }}
+          />
           <Layer
             id="hidrantes-points"
             type="circle"
+            filter={["!", ["has", "point_count"]]}
             paint={{
               "circle-radius": ["case", ["get", "__nearest"], 9, 6],
               "circle-color": ["case", ["get", "__nearest"], "#f59e0b", "#dc2626"],
