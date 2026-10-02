@@ -279,18 +279,65 @@ export default function HidrantesLiveMap({ className }: { className?: string }) 
     }
   }, [hidrantes, selectedIndex, nearestByDistance, nearestByRouteIndex])
 
+/** Hose reach used for each coverage circle — two circles overlap once their hydrants are closer than twice this. */
+const COVERAGE_RADIUS_M = 150
+
+/**
+ * Maps __overlapCount (how many neighboring hydrants' circles intersect this
+ * one) to a green → yellow → red ramp: isolated hydrants with no overlap —
+ * the actual blind spots this layer exists to reveal — read as green/safe,
+ * while heavily overlapping clusters read as red/dense. This intentionally
+ * inverts the usual "red = danger" convention, since here red just means
+ * "well covered", not "hazardous".
+ */
+const COVERAGE_DENSITY_COLOR_EXPRESSION = [
+  "interpolate",
+  ["linear"],
+  ["get", "__overlapCount"],
+  0,
+  "#16a34a",
+  1,
+  "#84cc16",
+  2,
+  "#eab308",
+  3,
+  "#f97316",
+  5,
+  "#dc2626",
+] as unknown as string
+
   /**
    * 150 m coverage circles around every hydrant — the typical reach of a fire
    * hose — so gaps in coverage become visually obvious. Off by default and
    * toggled via the rail control below; only computed once the layer is shown.
+   *
+   * Each circle is tagged with __overlapCount — how many other hydrants sit
+   * close enough for their coverage circles to intersect this one — so the
+   * fill can be colored by density (green = isolated/blind spot, red = many
+   * overlapping hydrants) instead of a flat, alarm-like red.
    */
   const coverageGeoJson = useMemo<GeoJSON.FeatureCollection | null>(() => {
     if (!showCoverage || !hidrantes || hidrantes.features.length === 0) return null
+    const points = hidrantes.features.map((f) => point(f.geometry.coordinates))
+    const overlapThresholdKm = (COVERAGE_RADIUS_M * 2) / 1000
+    const overlapCounts = points.map((p, i) => {
+      let count = 0
+      for (let j = 0; j < points.length; j++) {
+        if (i === j) continue
+        if (distance(p, points[j], { units: "kilometers" }) < overlapThresholdKm) count++
+      }
+      return count
+    })
     return {
       type: "FeatureCollection",
-      features: hidrantes.features.map((f) =>
-        buffer(point(f.geometry.coordinates), 150, { units: "meters", steps: 32 }),
-      ) as GeoJSON.Feature[],
+      features: hidrantes.features
+        .map((f, i) => {
+          const circle = buffer(points[i], COVERAGE_RADIUS_M, { units: "meters", steps: 32 })
+          if (!circle) return null
+          circle.properties = { ...circle.properties, __overlapCount: overlapCounts[i] }
+          return circle
+        })
+        .filter((f): f is NonNullable<typeof f> => f != null) as GeoJSON.Feature[],
     }
   }, [showCoverage, hidrantes])
 
@@ -380,12 +427,12 @@ export default function HidrantesLiveMap({ className }: { className?: string }) 
             <Layer
               id="hidrantes-coverage-fill"
               type="fill"
-              paint={{ "fill-color": "#dc2626", "fill-opacity": 0.12 }}
+              paint={{ "fill-color": COVERAGE_DENSITY_COLOR_EXPRESSION, "fill-opacity": 0.22 }}
             />
             <Layer
               id="hidrantes-coverage-outline"
               type="line"
-              paint={{ "line-color": "#dc2626", "line-width": 1, "line-opacity": 0.5 }}
+              paint={{ "line-color": COVERAGE_DENSITY_COLOR_EXPRESSION, "line-width": 1, "line-opacity": 0.6 }}
             />
           </Source>
         )}
