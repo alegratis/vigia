@@ -143,7 +143,7 @@ export default function HidrantesLiveMap({ className }: { className?: string }) 
   const [clickedPoint, setClickedPoint] = useState<{ lat: number; lon: number } | null>(null)
   const [popupHidrante, setPopupHidrante] = useState<HidranteFeature | null>(null)
   const [popupSite, setPopupSite] = useState<SensitiveSiteFeature | null>(null)
-  const [showSensitiveSites, setShowSensitiveSites] = useState(true)
+
   /** Explicit "ir a este hidrante" pick from a popup — overrides both automatic highlights below. */
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
   const [cursor, setCursor] = useState("")
@@ -267,9 +267,7 @@ export default function HidrantesLiveMap({ className }: { className?: string }) 
         [e.point.x - tolerance, e.point.y - tolerance],
         [e.point.x + tolerance, e.point.y + tolerance],
       ]
-      const sensitiveLayers = ["sensitive-sites-fill", "sensitive-sites-points"].filter((id) =>
-        map?.getLayer(id),
-      )
+  const sensitiveLayers = ["sensitive-sites-fill"].filter((id) => map?.getLayer(id))
       const hidranteHit =
         map && map.getLayer("hidrantes-points")
           ? map.queryRenderedFeatures(bbox, { layers: ["hidrantes-points"] })[0]
@@ -421,21 +419,20 @@ const COVERAGE_DENSITY_COLOR_EXPRESSION = [
     }
   }, [showCoverage, hidrantes, isNearSensitiveSite])
 
-  /** Sensitive-site polygons (building footprints) rendered as a fill + outline, colored by category. */
+  /**
+   * Sensitive-site polygons (building footprints, or an approximate
+   * footprint for sites OSM only mapped as a point — see
+   * fetch-sensitive-sites.mjs) rendered as a fill + outline, colored by
+   * category. Always on: these institutions always need the tighter
+   * coverage requirement, so the layer isn't something to toggle off.
+   */
   const sensitiveSitePolygons = useMemo<GeoJSON.FeatureCollection | null>(() => {
-    if (!showSensitiveSites || !sitiosSensibles) return null
+    if (!sitiosSensibles) return null
     const features = sitiosSensibles.features.filter(
       (f) => f.geometry.type === "Polygon" || f.geometry.type === "MultiPolygon",
     )
     return { type: "FeatureCollection", features }
-  }, [showSensitiveSites, sitiosSensibles])
-
-  /** Sensitive sites mapped only as a point (no building footprint in OSM), rendered as colored dots. */
-  const sensitiveSitePoints = useMemo<GeoJSON.FeatureCollection | null>(() => {
-    if (!showSensitiveSites || !sitiosSensibles) return null
-    const features = sitiosSensibles.features.filter((f) => f.geometry.type === "Point")
-    return { type: "FeatureCollection", features }
-  }, [showSensitiveSites, sitiosSensibles])
+  }, [sitiosSensibles])
 
   const toRouteGeoJson = (route: HidranteRoute | undefined | null): GeoJSON.Feature | null =>
     route ? { type: "Feature", properties: {}, geometry: route.geometry } : null
@@ -462,7 +459,7 @@ const COVERAGE_DENSITY_COLOR_EXPRESSION = [
         mapStyle={mapStyle}
         attributionControl={false}
         cursor={cursor}
-        interactiveLayerIds={["hidrantes-points", "sensitive-sites-fill", "sensitive-sites-points"]}
+        interactiveLayerIds={["hidrantes-points", "sensitive-sites-fill"]}
         onMouseEnter={() => setCursor("pointer")}
         onMouseLeave={() => setCursor("")}
         onClick={handleMapClick}
@@ -569,31 +566,6 @@ const COVERAGE_DENSITY_COLOR_EXPRESSION = [
                   SENSITIVE_SITE_STYLES[0].color,
                 ],
                 "line-width": 2,
-              }}
-            />
-          </Source>
-        )}
-
-        {sensitiveSitePoints && sensitiveSitePoints.features.length > 0 && (
-          <Source id="sensitive-sites-points-source" type="geojson" data={sensitiveSitePoints}>
-            <Layer
-              id="sensitive-sites-points"
-              type="circle"
-              paint={{
-                "circle-radius": 7,
-                "circle-color": [
-                  "match",
-                  ["get", "category"],
-                  "educacion",
-                  SENSITIVE_SITE_STYLES[0].color,
-                  "salud",
-                  SENSITIVE_SITE_STYLES[1].color,
-                  "gobierno",
-                  SENSITIVE_SITE_STYLES[2].color,
-                  SENSITIVE_SITE_STYLES[0].color,
-                ],
-                "circle-stroke-color": "#ffffff",
-                "circle-stroke-width": 1.5,
               }}
             />
           </Source>
@@ -808,7 +780,7 @@ const COVERAGE_DENSITY_COLOR_EXPRESSION = [
         <RailSection title="Área de Cobertura">
           <div className="flex flex-col gap-2">
             <label className="flex cursor-pointer items-center justify-between gap-2">
-              <span className="text-foreground">Radio de manguera (150 m)</span>
+              <span className="text-foreground">Área de cobertura (150 m)</span>
               <button
                 type="button"
                 role="switch"
@@ -826,35 +798,8 @@ const COVERAGE_DENSITY_COLOR_EXPRESSION = [
               </button>
             </label>
             <p className="text-muted-foreground">
-              Muestra el área que cubre cada hidrante con una manguera de 150 m, útil para detectar puntos ciegos. Cerca de
-              colegios, hospitales y sedes de gobierno el radio se reduce a {COVERAGE_RADIUS_TIGHT_M} m.
-            </p>
-          </div>
-        </RailSection>
-
-        <RailSection title="Sitios sensibles">
-          <div className="flex flex-col gap-2">
-            <label className="flex cursor-pointer items-center justify-between gap-2">
-              <span className="text-foreground">Colegios, hospitales y gobierno</span>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={showSensitiveSites}
-                onClick={() => setShowSensitiveSites((v) => !v)}
-                className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-colors ${
-                  showSensitiveSites ? "border-primary bg-primary" : "border-border bg-muted"
-                }`}
-              >
-                <span
-                  className={`inline-block size-3.5 transform rounded-full bg-background shadow transition-transform ${
-                    showSensitiveSites ? "translate-x-[18px]" : "translate-x-1"
-                  }`}
-                />
-              </button>
-            </label>
-            <p className="text-muted-foreground">
-              Resalta instituciones educativas, hospitales y sedes de gobierno/públicas, que exigen una cobertura de
-              hidrantes más estricta.
+              Muestra el área que cubre cada hidrante (150 m), útil para detectar puntos ciegos. Cerca de colegios,
+              hospitales y sedes de gobierno el radio se reduce a {COVERAGE_RADIUS_TIGHT_M} m.
             </p>
           </div>
         </RailSection>
@@ -867,7 +812,8 @@ const COVERAGE_DENSITY_COLOR_EXPRESSION = [
                   Área de Cobertura (150 m / {COVERAGE_RADIUS_TIGHT_M} m cerca de sitios sensibles)
               </li>
             )}
-            {showSensitiveSites &&
+            {sensitiveSitePolygons &&
+              sensitiveSitePolygons.features.length > 0 &&
               SENSITIVE_SITE_STYLES.map((style) => (
                 <li key={style.key} className="flex items-center gap-2 text-muted-foreground">
                   <span

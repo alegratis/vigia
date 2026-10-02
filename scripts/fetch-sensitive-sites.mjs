@@ -14,7 +14,16 @@ import { writeFile, mkdir } from "node:fs/promises"
 import path from "node:path"
 import booleanPointInPolygon from "@turf/boolean-point-in-polygon"
 import distance from "@turf/distance"
+import buffer from "@turf/buffer"
 import { point } from "@turf/helpers"
+
+// OSM doesn't always carry a building footprint for a given institution (the
+// query only returns a POI node). The app never wants to render these as
+// points — they'd be indistinguishable from hydrant markers — so we
+// approximate the footprint with a small polygon around the point instead.
+// This is not the real building/manzana outline, just enough to read as "a
+// place on the map" rather than "a dot like a hydrant".
+const APPROXIMATE_FOOTPRINT_RADIUS_M = 35
 
 // Sevilla casco urbano bounds (lib/demografia/geo-detect.ts's
 // SEVILLA_CASCO_URBANO_BOUNDS) padded by ~3km so institutions just outside
@@ -175,7 +184,7 @@ async function main() {
   const polygons = rawFeatures.filter(
     (f) => f.geometry.type === "Polygon" || f.geometry.type === "MultiPolygon",
   )
-  const features = rawFeatures.filter((f) => {
+  const dedupedFeatures = rawFeatures.filter((f) => {
     if (f.geometry.type !== "Point") return true
     const pt = point(f.geometry.coordinates)
     return !polygons.some((poly) => {
@@ -183,6 +192,21 @@ async function main() {
       const [lon, lat] = poly.geometry.type === "Polygon" ? poly.geometry.coordinates[0][0] : poly.geometry.coordinates[0][0][0]
       return distance(pt, point([lon, lat]), { units: "meters" }) < DUPLICATE_RADIUS_M
     })
+  })
+
+  // The app never wants bare points for buildings (they'd be
+  // indistinguishable from hydrant markers), so any site OSM only gave us as
+  // a node — no building footprint, no bounds fallback — gets an
+  // approximate footprint polygon instead.
+  const features = dedupedFeatures.map((f) => {
+    if (f.geometry.type !== "Point") return f
+    const footprint = buffer(point(f.geometry.coordinates), APPROXIMATE_FOOTPRINT_RADIUS_M, {
+      units: "meters",
+      steps: 16,
+    })
+    if (!footprint) return f
+    footprint.properties = f.properties
+    return footprint
   })
 
   const geojson = { type: "FeatureCollection", features }
