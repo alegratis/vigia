@@ -780,7 +780,7 @@ const COVERAGE_DENSITY_COLOR_EXPRESSION = [
         <RailSection title="Área de Cobertura">
           <div className="flex flex-col gap-2">
             <label className="flex cursor-pointer items-center justify-between gap-2">
-              <span className="text-foreground">Área de cobertura (150 m)</span>
+              <span className="text-foreground">Mostrar en el mapa</span>
               <button
                 type="button"
                 role="switch"
