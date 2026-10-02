@@ -295,15 +295,15 @@ const COVERAGE_DENSITY_COLOR_EXPRESSION = [
   ["linear"],
   ["get", "__overlapCount"],
   0,
-  "#16a34a",
+  "#dc2626",
   1,
-  "#84cc16",
+  "#f97316",
   2,
   "#eab308",
   3,
-  "#f97316",
+  "#84cc16",
   5,
-  "#dc2626",
+  "#16a34a",
 ] as unknown as string
 
   /**
