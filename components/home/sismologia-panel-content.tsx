@@ -38,7 +38,7 @@ export function SismologiaPanelContent({
         ref={mapRef}
         role="region"
         aria-label="Mapa de actividad sísmica"
-          className="relative h-[calc(100dvh-6rem)] min-h-[420px] shrink-0 lg:h-full"
+        className="relative h-[calc(100dvh-3.5rem)] min-h-[420px] shrink-0 lg:h-full"
       >
         <p className="sr-only">
           Mapa interactivo de actividad sísmica, con epicentros en vivo de la Red Sismológica
