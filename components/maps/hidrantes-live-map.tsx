@@ -151,8 +151,10 @@ export default function HidrantesLiveMap({ className }: { className?: string }) 
   const nearest = useMemo(() => {
     if (!referencePoint || !hidrantes || hidrantes.features.length === 0) return null
     let best: HidranteFeature | null = null
+    let bestIndex = -1
     let bestKm = Infinity
-    for (const feature of hidrantes.features) {
+    for (let index = 0; index < hidrantes.features.length; index++) {
+      const feature = hidrantes.features[index]
       const [lon, lat] = feature.geometry.coordinates
       const km = distance(point([referencePoint.lon, referencePoint.lat]), point([lon, lat]), {
         units: "kilometers",
@@ -160,9 +162,10 @@ export default function HidrantesLiveMap({ className }: { className?: string }) 
       if (km < bestKm) {
         bestKm = km
         best = feature
+        bestIndex = index
       }
     }
-    return best ? { feature: best, distanceKm: bestKm } : null
+    return best ? { feature: best, index: bestIndex, distanceKm: bestKm } : null
   }, [referencePoint, hidrantes])
 
   const routeKey = useMemo(() => {
@@ -213,12 +216,12 @@ export default function HidrantesLiveMap({ className }: { className?: string }) 
 
   const hidrantesGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
     if (!hidrantes) return { type: "FeatureCollection", features: [] }
-    const nearestId = nearest?.feature.properties.id
+    const nearestIndex = nearest?.index ?? -1
     return {
       type: "FeatureCollection",
-      features: hidrantes.features.map((f) => ({
+      features: hidrantes.features.map((f, index) => ({
         type: "Feature",
-        properties: { ...f.properties, __nearest: f.properties.id === nearestId },
+        properties: { ...f.properties, __nearest: index === nearestIndex },
         geometry: f.geometry,
       })),
     }
