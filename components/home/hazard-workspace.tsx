@@ -12,6 +12,7 @@ import {
   Flame,
   Mountain,
   ShieldAlert,
+  Siren,
   Users,
   PanelLeftClose,
   PanelLeftOpen,
@@ -22,6 +23,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { CategoryPanel } from "@/components/home/category-panel"
 import { CategoryRail } from "@/components/home/category-rail"
 import { MobileHeader } from "@/components/home/mobile-header"
+import { MobileScrollTopButton } from "@/components/home/mobile-scroll-top-button"
 import { DeslizamientosPanelContent } from "@/components/home/deslizamientos-panel-content"
 import { InundacionesPanelContent } from "@/components/home/inundaciones-panel-content"
 import { IncendiosPanelContent } from "@/components/home/incendios-panel-content"
@@ -30,6 +32,7 @@ import { ClimaPanelContent } from "@/components/home/clima-panel-content"
 import { SismologiaPanelContent } from "@/components/home/sismologia-panel-content"
 import { RiesgoCompuestoPanelContent } from "@/components/home/riesgo-compuesto-panel-content"
 import { DemografiaPanelContent } from "@/components/home/demografia-panel-content"
+import { HidrantesPanelContent } from "@/components/home/hidrantes-panel-content"
 import { LiveAreaPopulation } from "@/components/maps/live-area-population"
 import { LiveInfrastructureCategories } from "@/components/maps/live-infrastructure-categories"
 import { LiveInfrastructureBuildings } from "@/components/maps/live-infrastructure-buildings"
@@ -50,6 +53,7 @@ const hazardIcons: Record<string, LucideIcon> = {
   sismologia: Activity,
   "riesgo-compuesto": ShieldAlert,
   demografia: Users,
+  hidrantes: Siren,
   }
 
 /** Which DANE population category the shared sidebar card preselects for each hazard. */
@@ -62,6 +66,7 @@ const CATEGORY_BASIS: Record<string, { basis: "urbano" | "rural"; basisLabel: st
   sismologia: { basis: "rural", basisLabel: "Población rural" },
   "riesgo-compuesto": { basis: "rural", basisLabel: "Población rural" },
   demografia: { basis: "urbano", basisLabel: "Población urbana" },
+  hidrantes: { basis: "urbano", basisLabel: "Población urbana" },
   }
 
 /**
@@ -146,6 +151,8 @@ export function HazardWorkspace({
         activeSlug={activeSlug}
         onActivate={activate}
       />
+
+      <MobileScrollTopButton />
 
       <div
         className={cn(
@@ -512,6 +519,7 @@ export function HazardWorkspace({
                 {model.slug === "demografia" && (
             <DemografiaPanelContent onBoundsChange={setBounds} detectedMunicipio={detectedMunicipio} />
           )}
+                {model.slug === "hidrantes" && <HidrantesPanelContent />}
               </CategoryPanel>
             )
         })}

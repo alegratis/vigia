@@ -59,8 +59,9 @@ import { summarizeByMunicipio } from "@/lib/veredas/municipio-summary"
 import { boundsForActiveMunicipios } from "@/lib/veredas/municipio-bounds"
 import { maplibreMapStyle, type BasemapType } from "@/lib/maps/maplibre-basemap-style"
 import { useThemeSyncedBasemap } from "@/lib/maps/use-theme-synced-basemap"
-import { wmsRasterSource } from "@/lib/maps/wms-raster-source"
-import { WmsLegendChip } from "@/components/maps/wms-legend-chip"
+ import { wmsRasterSource } from "@/lib/maps/wms-raster-source"
+ import { collapseAttributionControl } from "@/lib/maps/collapse-attribution"
+ import { WmsLegendChip } from "@/components/maps/wms-legend-chip"
 import { GWIS_WMS_URL } from "@/lib/incendios/gwis"
 import {
   GWIS_SETTLEMENT_LAYER,
@@ -605,8 +606,11 @@ function GeoglowsLiveMapImpl({
         attributionControl={false}
         cursor={cursor}
         interactiveLayerIds={interactiveLayerIds}
-        onLoad={syncBounds}
-        onMoveEnd={syncBounds}
+          onLoad={(e) => {
+            syncBounds()
+            collapseAttributionControl(e)
+          }}
+          onMoveEnd={syncBounds}
         onZoomEnd={syncBounds}
         onMouseEnter={() => setCursor("pointer")}
         onMouseLeave={() => setCursor("")}

@@ -112,7 +112,7 @@ export function DemografiaPanelContent({ onBoundsChange, detectedMunicipio }: De
         ref={mapRef}
         role="region"
         aria-label="Mapa 3D de indicadores demográficos"
-        className="relative h-[70vh] min-h-[420px] shrink-0 lg:h-full"
+        className="relative h-[calc(100dvh-6rem)] min-h-[420px] shrink-0 lg:h-full"
       >
         <p className="sr-only">
           Mapa interactivo en 3D con indicadores propios y del geoportal de DANE: el Índice de

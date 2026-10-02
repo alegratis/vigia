@@ -37,7 +37,7 @@ import { useMunicipioToggles, isMunicipioActive } from "@/lib/veredas/municipio-
 import { boundsForActiveMunicipios } from "@/lib/veredas/municipio-bounds"
 import { maplibreMapStyle, type BasemapType } from "@/lib/maps/maplibre-basemap-style"
 import { useThemeSyncedBasemap } from "@/lib/maps/use-theme-synced-basemap"
-import { wmsRasterSource } from "@/lib/maps/wms-raster-source"
+ import { wmsRasterSource } from "@/lib/maps/wms-raster-source"
 import { WmsLegendChip } from "@/components/maps/wms-legend-chip"
 import { GWIS_WMS_URL } from "@/lib/incendios/gwis"
 import {
