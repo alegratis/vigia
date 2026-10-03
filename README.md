@@ -8,7 +8,7 @@ Cruza fenómenos naturales de deslizamiento, inundación e incendio forestal con
 
 ## Amenazas y capas
 
-La plataforma organiza la información en ocho mapas interactivos, seleccionables mediante el parámetro `?categoria=<slug>` sobre la página principal:
+La plataforma organiza la información en nueve mapas interactivos, seleccionables mediante el parámetro `?categoria=<slug>` sobre la página principal:
 
 | Mapa | Slug | Qué muestra | Fuentes principales |
 | --- | --- | --- | --- |
@@ -19,13 +19,10 @@ La plataforma organiza la información en ocho mapas interactivos, seleccionable
 | **Clima** | `clima` | Reporte meteorológico convencional: temperatura, sensación térmica, estado del cielo, pronóstico a 7 días y perspectiva de racha seca. No es una capa de amenaza y no entra en el riesgo compuesto. | Open-Meteo |
 | **Sismología** | `sismologia` | Epicentros en vivo del USGS combinados con el catálogo histórico del Servicio Geológico Colombiano, para estimar la exposición sísmica de cada vereda por distancia a los eventos registrados. | USGS, Servicio Geológico Colombiano |
 | **Demografía** | `demografia` | Indicadores del geoportal de DANE extruidos en 3D —pobreza multidimensional por municipio y viviendas/hogares/personas por manzana censal— además del Índice de Vulnerabilidad Social (IVS), propio de esta app, que cruza esas condiciones sociales con el riesgo físico de las demás capas. | DANE (geoportal), modelo propio RED LabOT |
+| **Hidrantes** | `hidrantes` | Herramienta operativa para el casco urbano de Sevilla: geolocaliza al usuario (o un punto elegido en el mapa), resalta el hidrante más cercano y traza una ruta aproximada por calles, con las instituciones educativas, de salud y de gobierno cercanas señaladas como polígonos. | OpenStreetMap, levantamiento propio de instituciones |
 | **Riesgo compuesto** | `riesgo-compuesto` | No es una amenaza más, sino la conclusión de las demás: cruza deslizamientos, inundaciones, incendios, precipitación y sismología en una sola evaluación por vereda (gobierna el nivel más alto), con reporte narrativo y exposición demográfica. | Modelos internos |
 
 Todas las capas de amenaza cubren Sevilla y Caicedonia con el mayor detalle; Precipitación es la única capa de amenaza con esa misma cobertura en Zarzal y Roldanillo, y Clima ofrece su reporte meteorológico en los cuatro municipios por igual.
-
-## Conoce tu nivel de exposición
-
-Además de los ocho mapas, la página principal incluye un selector de municipio → vereda (o "Casco Urbano") que centra el mapa en la zona elegida y superpone las amenazas y pronósticos disponibles como capas independientes. Desde ahí se puede exportar el mapa capturado junto con un resumen de las amenazas activas a PDF.
 
 ## Documentación
 
@@ -40,7 +37,7 @@ Además de los ocho mapas, la página principal incluye un selector de municipio
 - **Mapas:** MapLibre GL (vía react-map-gl), importado dinámicamente con `next/dynamic({ ssr: false })`. Cada amenaza combina fuentes GeoJSON, capas de símbolos/círculos, teselas vectoriales y overlays raster o WMS según la forma de su fuente, todo compuesto en un único WebGL canvas. El basemap usa teselas de CARTO.
 - **Estilos:** Tailwind CSS v4 con tokens de diseño semánticos en `app/globals.css` (escalas de color en oklch por amenaza/categoría), componentes de shadcn/ui sobre primitivas de Base UI, y next-themes para el tema claro/oscuro/sistema.
 - **Gráficas:** Recharts mediante los componentes de gráfico de shadcn/ui.
-- **Exportación a PDF:** el selector de exposición usa html2canvas-pro (compatible con los colores lab()/oklch() de Tailwind v4) para capturar el mapa como imagen y jsPDF para componer el documento final.
+- **Exportación a PDF:** los reportes de Riesgo compuesto y Demografía usan html2canvas-pro (compatible con los colores lab()/oklch() de Tailwind v4) para capturar el panel como imagen y jsPDF para componer el documento final.
 - **Despliegue:** Vercel. Vercel Analytics solo se activa en producción.
 
 ### Estructura del proyecto
@@ -49,7 +46,6 @@ Además de los ocho mapas, la página principal incluye un selector de municipio
 app/            Rutas, páginas y endpoints de API (App Router)
   api/          Un endpoint por fuente/dominio (app/api/<amenaza>/route.ts)
   <amenaza>/    Rutas dedicadas cuando el modelo tiene su propia página (ej. app/inundaciones/[slug])
-  exposicion/   Selector de exposición por vereda, abierto como ventana emergente
   documentacion/  Página independiente de documentación
   maps/[slug]/  Vista de detalle de cada modelo del catálogo (lib/maps.ts)
 components/     Mapas (components/maps), paneles del espacio de trabajo (components/home) y componentes por amenaza (components/<amenaza>)
@@ -57,7 +53,7 @@ lib/            Clientes de datos y lógica por dominio (lib/<amenaza>)
 public/         Imágenes de las teselas y recursos estáticos
 ```
 
-Cada amenaza sigue el mismo patrón: un cliente de datos y un ensamblador por servidor en `lib/<amenaza>/`, un endpoint en `app/api/<amenaza>/`, un mapa en `components/maps/` y un panel en `components/home/`. Los componentes específicos de cada amenaza (tarjetas de datos en vivo, paneles de modelo, gráficas) viven en una única carpeta por categoría, `components/<amenaza>/`, usando siempre el slug en español (`clima`, `demografia`, `deslizamientos`, `incendios`, `inundaciones`, `precipitacion`, `riesgo-compuesto`, `sismologia`) — no debe crearse una segunda carpeta en inglés para la misma categoría. El listado central de modelos vive en `lib/maps.ts`; añadir una entrada allí registra automáticamente el slug en la página principal.
+Cada amenaza sigue el mismo patrón: un cliente de datos y un ensamblador por servidor en `lib/<amenaza>/`, un endpoint en `app/api/<amenaza>/`, un mapa en `components/maps/` y un panel en `components/home/`. Los componentes específicos de cada amenaza (tarjetas de datos en vivo, paneles de modelo, gráficas) viven en una única carpeta por categoría, `components/<amenaza>/`, usando siempre el slug en español (`clima`, `demografia`, `deslizamientos`, `hidrantes`, `incendios`, `inundaciones`, `precipitacion`, `riesgo-compuesto`, `sismologia`) — no debe crearse una segunda carpeta en inglés para la misma categoría. El listado central de modelos vive en `lib/maps.ts`; añadir una entrada allí registra automáticamente el slug en la página principal.
 
 ## Primeros pasos
 

@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
 import {
-  ArrowRight,
   Activity,
   CloudRain,
   CloudSun,
@@ -41,7 +40,6 @@ import type { OsmCategoryKey } from "@/lib/osm/categories"
 import { mapModels, type MapModel } from "@/lib/maps"
 import type { MapBounds } from "@/lib/map-bounds"
 import type { VeredaFeature } from "@/lib/veredas/api-types"
-import { openInfoPopup } from "@/lib/open-info-popup"
 import { AlejandroPinoLogo } from "@/components/brand/alejandro-pino-logo"
 
 const hazardIcons: Record<string, LucideIcon> = {
@@ -307,15 +305,6 @@ export function HazardWorkspace({
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => openInfoPopup("/exposicion/popup", "vigia-exposicion", { width: 1180, height: 980 })}
-              className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-md bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            >
-              Conoce tu nivel de exposición
-              <ArrowRight className="size-4" aria-hidden="true" />
-            </button>
-
             <div aria-live="polite" className="shrink-0">
               <LiveAreaPopulation
                 bounds={bounds}
@@ -398,15 +387,6 @@ export function HazardWorkspace({
                     Observación satelital e inteligencia geoespacial para anticipar amenazas y fortalecer
                     la respuesta ante emergencias en Sevilla, Caicedonia, Zarzal y Roldanillo.
                   </p>
-
-                  <button
-                    type="button"
-                    onClick={() => openInfoPopup("/exposicion/popup", "vigia-exposicion", { width: 1180, height: 980 })}
-                    className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-md bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                  >
-                    Conoce tu nivel de exposición
-                    <ArrowRight className="size-4" aria-hidden="true" />
-                  </button>
 
                   <div className="flex flex-col items-center gap-1.5">
                     <span className="text-xs font-medium text-muted-foreground">En colaboración con</span>

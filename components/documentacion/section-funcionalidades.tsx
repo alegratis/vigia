@@ -60,12 +60,12 @@ const FEATURES = [
     ],
   },
   {
-    title: "Conoce tu nivel de exposición",
-    tags: ["Por vereda", "Casco Urbano"],
+    title: "Hidrantes",
+    tags: ["Casco urbano de Sevilla"],
     items: [
-      "Selector de municipio → vereda (o \"Casco Urbano\", el núcleo urbano de la cabecera municipal).",
-      "Mapa enfocado en la zona elegida con las cuatro amenazas y sus pronósticos disponibles como capas independientes.",
-      "Exportación a PDF del mapa capturado junto con un resumen de las amenazas activas.",
+      "Geolocaliza al usuario (o un punto elegido manualmente en el mapa) y resalta el hidrante más cercano, con la distancia en línea recta y la ruta más corta por calles trazada con OSRM.",
+      "Instituciones educativas, de salud y de gobierno cercanas, señaladas como polígonos con su huella real (no puntos ni círculos), para diferenciarlas visualmente de los hidrantes.",
+      "Capa permanente, sin necesidad de activarla por separado.",
     ],
   },
   {
