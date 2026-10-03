@@ -76,7 +76,7 @@ const hidrantesFetcher = async (url: string): Promise<HidrantesGeoJson> => {
  * turn-by-turn steps or driving time are requested or shown.
  */
 async function fetchOsrmRoute(lon1: number, lat1: number, lon2: number, lat2: number): Promise<HidranteRoute> {
-  const url = `https://router.project-osrm.org/route/v1/foot/${lon1},${lat1};${lon2},${lat2}?overview=full&geometries=geojson`
+    const url = `https://router.project-osrm.org/route/v1/driving/${lon1},${lat1};${lon2},${lat2}?overview=full&geometries=geojson`
   const res = await fetch(url)
   if (!res.ok) throw new Error("OSRM no disponible")
   const json = await res.json()
@@ -747,17 +747,17 @@ const COVERAGE_DENSITY_COLOR_EXPRESSION = [
                   </p>
                 </div>
                 {sameNearest ? (
-                  <p className="text-muted-foreground">También es el de ruta más corta a pie.</p>
+                  <p className="text-muted-foreground">También es el de ruta más corta.</p>
                 ) : routeByRouteFeature ? (
                   <div className="flex flex-col gap-1">
                     <p className="flex items-center gap-1.5 font-medium text-foreground">
                       <span className="size-2.5 shrink-0 rounded-full bg-[#16a34a]" aria-hidden="true" />
-                      {routeByRouteFeature.properties.nombre ?? "Hidrante"} — ruta más corta a pie
+                      {routeByRouteFeature.properties.nombre ?? "Hidrante"} — ruta más corta
                     </p>
                     <p className="text-muted-foreground">{routeRoute ? formatDistance(routeRoute.distanceM) : null}</p>
                   </div>
                 ) : (
-                  <p className="text-muted-foreground">Calculando la ruta más corta a pie…</p>
+                  <p className="text-muted-foreground">Calculando la ruta más corta…</p>
                 )}
                 <p className="text-muted-foreground">
                   También puedes hacer clic en cualquier hidrante del mapa para ir directamente a él.
@@ -824,7 +824,7 @@ const COVERAGE_DENSITY_COLOR_EXPRESSION = [
             </li>
             <li className="flex items-center gap-2 text-muted-foreground">
               <span className="size-2.5 shrink-0 rounded-full border border-white/60 bg-[#16a34a]" aria-hidden="true" />
-              Ruta más corta a pie
+              Ruta más corta
             </li>
             <li className="flex items-center gap-2 text-muted-foreground">
               <span className="size-2.5 shrink-0 rounded-full border border-white/60 bg-[#7c3aed]" aria-hidden="true" />
