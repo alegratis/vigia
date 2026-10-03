@@ -69,13 +69,14 @@ const hidrantesFetcher = async (url: string): Promise<HidrantesGeoJson> => {
 }
 
 /**
- * Routes through OSRM's free public demo instance (car profile only — the
- * only one that server actually hosts), used here purely to draw a
- * street-following line and give a rough distance/time; no turn-by-turn
- * steps are requested or shown.
+ * Routes through OSRM's free public demo instance using the foot profile —
+ * firefighters can walk any street regardless of traffic direction, so a
+ * walking route (not driving) reflects how they'd actually reach a hydrant.
+ * Used purely to draw a street-following line and give a rough distance; no
+ * turn-by-turn steps or driving time are requested or shown.
  */
 async function fetchOsrmRoute(lon1: number, lat1: number, lon2: number, lat2: number): Promise<HidranteRoute> {
-  const url = `https://router.project-osrm.org/route/v1/driving/${lon1},${lat1};${lon2},${lat2}?overview=full&geometries=geojson`
+    const url = `https://router.project-osrm.org/route/v1/driving/${lon1},${lat1};${lon2},${lat2}?overview=full&geometries=geojson`
   const res = await fetch(url)
   if (!res.ok) throw new Error("OSRM no disponible")
   const json = await res.json()
@@ -717,9 +718,6 @@ const COVERAGE_DENSITY_COLOR_EXPRESSION = [
               <p className="font-medium text-foreground">{selectedFeature.properties.nombre ?? "Hidrante"}</p>
               <p className="text-muted-foreground">
                 {selectedRoute ? formatDistance(selectedRoute.distanceM) : "Calculando ruta…"}
-                {selectedRoute?.followsStreets &&
-                  selectedRoute.durationS > 0 &&
-                  ` · ${formatDuration(selectedRoute.durationS)} en vehículo`}
                 {selectedRoute && !selectedRoute.followsStreets && " · línea recta (ruta por calles no disponible)"}
               </p>
               <button
@@ -746,28 +744,20 @@ const COVERAGE_DENSITY_COLOR_EXPRESSION = [
                   </p>
                   <p className="text-muted-foreground">
                     {distanceRoute ? formatDistance(distanceRoute.distanceM) : `${nearestByDistance.distanceKm.toFixed(2)} km`}
-                    {distanceRoute?.followsStreets &&
-                      distanceRoute.durationS > 0 &&
-                      ` · ${formatDuration(distanceRoute.durationS)} en vehículo`}
                   </p>
                 </div>
                 {sameNearest ? (
-                  <p className="text-muted-foreground">También es el más rápido en vehículo.</p>
+                  <p className="text-muted-foreground">También es el de ruta más corta.</p>
                 ) : routeByRouteFeature ? (
                   <div className="flex flex-col gap-1">
                     <p className="flex items-center gap-1.5 font-medium text-foreground">
                       <span className="size-2.5 shrink-0 rounded-full bg-[#16a34a]" aria-hidden="true" />
-                      {routeByRouteFeature.properties.nombre ?? "Hidrante"} — más rápido en coche
+                      {routeByRouteFeature.properties.nombre ?? "Hidrante"} — ruta más corta
                     </p>
-                    <p className="text-muted-foreground">
-                      {routeRoute ? formatDistance(routeRoute.distanceM) : null}
-                      {routeRoute?.followsStreets &&
-                        routeRoute.durationS > 0 &&
-                        ` · ${formatDuration(routeRoute.durationS)} en vehículo`}
-                    </p>
+                    <p className="text-muted-foreground">{routeRoute ? formatDistance(routeRoute.distanceM) : null}</p>
                   </div>
                 ) : (
-                  <p className="text-muted-foreground">Calculando la ruta más rápida en coche…</p>
+                  <p className="text-muted-foreground">Calculando la ruta más corta…</p>
                 )}
                 <p className="text-muted-foreground">
                   También puedes hacer clic en cualquier hidrante del mapa para ir directamente a él.
@@ -834,7 +824,7 @@ const COVERAGE_DENSITY_COLOR_EXPRESSION = [
             </li>
             <li className="flex items-center gap-2 text-muted-foreground">
               <span className="size-2.5 shrink-0 rounded-full border border-white/60 bg-[#16a34a]" aria-hidden="true" />
-              Más rápido en coche
+              Ruta más corta
             </li>
             <li className="flex items-center gap-2 text-muted-foreground">
               <span className="size-2.5 shrink-0 rounded-full border border-white/60 bg-[#7c3aed]" aria-hidden="true" />
