@@ -46,14 +46,14 @@ const STEPS: GuideStep[] = [
   },
   {
     number: 3,
-    title: "Revisa tu propio nivel de riesgo",
+    title: "Encuentra el hidrante más cercano",
     simple:
-      "El botón celeste \"Conoce tu nivel de exposición\", en la esquina superior izquierda del panel principal, es la forma más rápida de saber qué tan expuesto estás tú. Elige primero tu municipio y después tu vereda (o \"Casco Urbano\" si vives en el pueblo). El mapa se acerca a tu zona y muestra las cuatro amenazas juntas, ya activadas.",
+      "En la franja de la derecha toca \"Hidrantes\". Usa tu ubicación actual o toca cualquier punto del mapa en el casco urbano de Sevilla y la app resalta el hidrante más cercano, con la distancia y la ruta más corta por calles para llegar a él. Las instituciones educativas, de salud y de gobierno cercanas aparecen marcadas como polígonos con la forma real de cada edificio.",
     technical:
-      "Cada casilla de la leyenda (Deslizamientos, Inundaciones, Incendios, Precipitación) se puede apagar por separado para comparar una amenaza a la vez sobre la misma zona. El botón \"Exportar como PDF\", visible en la esquina superior derecha de esta ventana, captura el mapa exactamente como lo estás viendo y genera un PDF descargable para guardar o imprimir.",
+      "La capa de instituciones es permanente, no se activa ni desactiva, y se dibuja siempre como polígono (nunca como punto ni círculo) para no confundirla visualmente con los hidrantes ni con el radio de cobertura de 100/150 m. La ruta al hidrante más cercano se calcula con OSRM sobre la red vial real.",
     image: {
-      src: "/images/docs/exposicion.png",
-      alt: "Ventana de exposición con Sevilla y Casco Urbano seleccionados, el mapa de las cuatro amenazas y el botón Exportar como PDF",
+      src: "/images/docs/hidrantes.png",
+      alt: "Panel de hidrantes mostrando el hidrante más cercano, la ruta por calles y los polígonos de instituciones educativas, de salud y de gobierno cercanas",
       width: 1180,
       height: 980,
     },

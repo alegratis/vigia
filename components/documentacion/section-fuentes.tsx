@@ -16,7 +16,7 @@ const GROUPS: SourceGroup[] = [
         nombre: "Índice de susceptibilidad a deslizamientos",
         publicador: "RED LabOT",
         descripcion:
-          "~11.721 puntos con nivel de susceptibilidad, puntaje y conteos de población y de infraestructura crítica (escuelas, hospitales, farmacias) por punto. Ya no colorea el mapa de deslizamientos (ver el modelo propio, abajo); sigue siendo la fuente de los conteos de población e infraestructura del panel de exposición por nivel de amenaza. Cubre Sevilla y Caicedonia; Zarzal y Roldanillo no tienen registros por estar en el valle plano.",
+          "~11.721 puntos con nivel de susceptibilidad, puntaje y conteos de población y de infraestructura crítica (escuelas, hospitales, farmacias) por punto. Ya no colorea el mapa de deslizamientos (ver el modelo propio, abajo); sigue siendo la fuente de los conteos de población e infraestructura expuestos por nivel de amenaza en cada panel. Cubre Sevilla y Caicedonia; Zarzal y Roldanillo no tienen registros por estar en el valle plano.",
         url: "https://services8.arcgis.com/UYEK9SUzH1am9mbk/arcgis/rest/services/VIGIA_Amenaza_IS_Puntos/FeatureServer",
         acceso: "ArcGIS FeatureServer",
         licencia: "Datos abiertos, sin autenticación",
@@ -60,7 +60,7 @@ const GROUPS: SourceGroup[] = [
         nombre: "Amenaza por incendios forestales (zonificación oficial)",
         publicador: "RED LabOT",
         descripcion:
-          "Polígonos de amenaza por incendio forestal, por vereda rural: digitalización estática del plan de uso del suelo (PBOT) 2014 de cada municipio, sin un modelo computacional detrás. Ya no se muestra en el mapa de incendios (ver el modelo propio, abajo, que la reemplaza como única fuente del color); sigue disponible como capa de referencia en el mapa de exposición.",
+          "Polígonos de amenaza por incendio forestal, por vereda rural: digitalización estática del plan de uso del suelo (PBOT) 2014 de cada municipio, sin un modelo computacional detrás. Ya no se muestra en el mapa de incendios (ver el modelo propio, abajo, que la reemplaza como única fuente del color).",
         url: "https://services8.arcgis.com/UYEK9SUzH1am9mbk/arcgis/rest/services/AmenazaIncendios/FeatureServer",
         acceso: "ArcGIS FeatureServer",
         licencia: "Datos abiertos, sin autenticación",
@@ -266,7 +266,7 @@ const GROUPS: SourceGroup[] = [
         nombre: "Zona urbana (cabeceras municipales)",
         publicador: "DANE, Marco Geoestadístico Nacional",
         descripcion:
-          "Límites de la cabecera municipal de cada municipio, usados para el pseudo-vereda \"Casco Urbano\" del selector de exposición.",
+          "Límites de la cabecera municipal de cada municipio, usados para el pseudo-vereda \"Casco Urbano\" en los paneles de demografía y riesgo compuesto.",
         url: "https://portalgis.dane.gov.co/mparcgis/rest/services/Hosted/Serv_ZonaUrbana_MGN_2025/FeatureServer",
         acceso: "ArcGIS FeatureServer",
         licencia: "Datos abiertos del Estado colombiano",

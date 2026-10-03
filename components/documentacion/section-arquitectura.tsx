@@ -25,11 +25,11 @@ const LAYERS = [
   },
   {
     title: "Ventanas emergentes sin barra de navegador",
-    body: "lib/open-info-popup.ts abre vistas de referencia auxiliares (por ahora, \"Conoce tu nivel de exposición\") en una ventana emergente sin menú, barra de herramientas ni barra de direcciones, para no interrumpir el mapa en vivo que el usuario tenía abierto. Demografía dejó de ser una ventana aparte: ahora vive como una pestaña más del panel de inicio, con su mapa y su información debajo en el mismo scroll. La documentación, por su parte, abre en una pestaña normal del navegador porque es contenido extenso pensado para desplazarse, imprimirse o guardarse como marcador.",
+    body: "lib/open-info-popup.ts abre vistas de referencia auxiliares en una ventana emergente sin menú, barra de herramientas ni barra de direcciones, para no interrumpir el mapa en vivo que el usuario tenía abierto. Demografía dejó de ser una ventana aparte: ahora vive como una pestaña más del panel de inicio, con su mapa y su información debajo en el mismo scroll. La documentación, por su parte, abre en una pestaña normal del navegador porque es contenido extenso pensado para desplazarse, imprimirse o guardarse como marcador.",
   },
   {
     title: "Exportación a PDF",
-    body: "El botón \"Exportar como PDF\" del selector de exposición usa html2canvas-pro para capturar el mapa como imagen (se eligió sobre el html2canvas original, sin mantenimiento, porque este último no soporta las funciones de color CSS modernas lab()/oklch(), que usan los tokens de Tailwind v4) y jsPDF para componer el documento final.",
+    body: "Los botones \"Exportar como PDF\" de los reportes de Riesgo compuesto y Demografía usan html2canvas-pro para capturar el panel como imagen (se eligió sobre el html2canvas original, sin mantenimiento, porque este último no soporta las funciones de color CSS modernas lab()/oklch(), que usan los tokens de Tailwind v4) y jsPDF para componer el documento final.",
   },
   {
     title: "Despliegue",
