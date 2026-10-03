@@ -76,7 +76,7 @@ const hidrantesFetcher = async (url: string): Promise<HidrantesGeoJson> => {
  * turn-by-turn steps or driving time are requested or shown.
  */
 async function fetchOsrmRoute(lon1: number, lat1: number, lon2: number, lat2: number): Promise<HidranteRoute> {
-    const url = `https://router.project-osrm.org/route/v1/driving/${lon1},${lat1};${lon2},${lat2}?overview=full&geometries=geojson`
+    const url = `https://router.project-osrm.org/route/v1/foot/${lon1},${lat1};${lon2},${lat2}?overview=full&geometries=geojson`
   const res = await fetch(url)
   if (!res.ok) throw new Error("OSRM no disponible")
   const json = await res.json()
@@ -379,7 +379,7 @@ const COVERAGE_DENSITY_COLOR_EXPRESSION = [
   )
 
   /**
-   * Coverage circles around every hydrant — the typical reach of a fire
+   * Coverage circles around every hydrant �� the typical reach of a fire
    * hose — so gaps in coverage become visually obvious. Off by default and
    * toggled via the rail control below; only computed once the layer is
    * shown. Hydrants near a sitio sensible (school, hospital, government
