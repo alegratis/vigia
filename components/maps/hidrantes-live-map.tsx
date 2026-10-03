@@ -69,14 +69,17 @@ const hidrantesFetcher = async (url: string): Promise<HidrantesGeoJson> => {
 }
 
 /**
- * Routes through OSRM's free public demo instance using the foot profile —
- * firefighters can walk any street regardless of traffic direction, so a
- * walking route (not driving) reflects how they'd actually reach a hydrant.
+ * Routes using FOSSGIS's public foot-routing OSRM instance — firefighters can
+ * walk/push through any street regardless of traffic direction, so a foot
+ * route (not driving) reflects how they'd actually reach a hydrant.
+ * NOTE: router.project-osrm.org's demo server ignores the profile in the URL
+ * and always returns car routing data, so it can't be used here — this
+ * routing.openstreetmap.de instance hosts a real separate foot dataset.
  * Used purely to draw a street-following line and give a rough distance; no
  * turn-by-turn steps or driving time are requested or shown.
  */
 async function fetchOsrmRoute(lon1: number, lat1: number, lon2: number, lat2: number): Promise<HidranteRoute> {
-    const url = `https://router.project-osrm.org/route/v1/foot/${lon1},${lat1};${lon2},${lat2}?overview=full&geometries=geojson`
+    const url = `https://routing.openstreetmap.de/routed-foot/route/v1/foot/${lon1},${lat1};${lon2},${lat2}?overview=full&geometries=geojson`
   const res = await fetch(url)
   if (!res.ok) throw new Error("OSRM no disponible")
   const json = await res.json()
@@ -379,7 +382,7 @@ const COVERAGE_DENSITY_COLOR_EXPRESSION = [
   )
 
   /**
-   * Coverage circles around every hydrant �� the typical reach of a fire
+   * Coverage circles around every hydrant ��� the typical reach of a fire
    * hose — so gaps in coverage become visually obvious. Off by default and
    * toggled via the rail control below; only computed once the layer is
    * shown. Hydrants near a sitio sensible (school, hospital, government
