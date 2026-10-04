@@ -210,7 +210,7 @@ function IncendiosLiveMapImpl({
 
   const [resolvedColors, setResolvedColors] = useState<Record<string, string> | null>(null)
   const [noDataColor, setNoDataColor] = useState<string | null>(null)
-  const [showForecast, setShowForecast] = useState(true)
+  const [showForecast, setShowForecast] = useState(false)
   const dayOptions = useMemo(() => forecastDayOptions(), [])
   const [selectedDay, setSelectedDay] = useState(dayOptions[0].value)
   const [showModis, setShowModis] = useState(true)
