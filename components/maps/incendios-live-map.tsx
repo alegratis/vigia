@@ -44,6 +44,7 @@ import { CONFIDENCE_STYLES, formatDateTime, formatDistance, formatFrp } from "@/
 import { getOsmCategory } from "@/lib/osm/categories"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
 import { OsmLegend } from "@/components/maps/osm-legend"
+import { VeredaPopupContent } from "@/components/maps/vereda-popup-content"
 import { MunicipioTogglePanelContent, type MunicipioRiskSummary } from "@/components/maps/municipio-toggle-panel"
 import { useMunicipioToggles, isMunicipioActive } from "@/lib/veredas/municipio-toggles"
 import { useVeredas } from "@/lib/veredas/use-veredas"
@@ -370,8 +371,13 @@ function IncendiosLiveMapImpl({
       const veredaFeature = e.features?.find((f) => f.layer.id === "veredas-fill")
       if (veredaFeature) {
         const props = veredaFeature.properties as unknown as VeredaProperties
-        onVeredaSelect?.({ properties: props } as VeredaFeature)
-        setPopupInfo(null)
+        const feature = { properties: props } as VeredaFeature
+        setPopupInfo({
+          longitude: lng,
+          latitude: lat,
+          content: <VeredaPopupContent feature={feature} hazardKind="incendios" colored />,
+        })
+        onVeredaSelect?.(feature)
         return
       }
       setPopupInfo(null)
