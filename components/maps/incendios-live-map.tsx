@@ -450,15 +450,7 @@ function IncendiosLiveMapImpl({
 
         {showForecast && (
           <Source id="forecast-source" type="raster" tiles={forecastSource.tiles} tileSize={forecastSource.tileSize}>
-            {/*
-              GWIS's `ecmwf.fwi` WMS layer only exposes a single "default"
-              style — a green-to-red ramp that's visually indistinguishable
-              from the Deslizamientos susceptibility ramp. Since the server
-              doesn't offer an alternate style, we shift the rendered tile
-              hues client-side so Incendios' forecast reads as a distinct
-              blue-to-violet/pink ramp instead of overlapping green/red.
-            */}
-            <Layer id="forecast" type="raster" paint={{ "raster-opacity": 0.55, "raster-hue-rotate": 200 }} />
+            <Layer id="forecast" type="raster" paint={{ "raster-opacity": 0.55 }} />
           </Source>
         )}
         {showLandCover && (
