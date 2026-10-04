@@ -190,7 +190,7 @@
   --deslizamientos-muy-alto: oklch(0.55 0.19 25);
 
   /* Incendios forest-fire threat ramp: pale yellow (muy bajo) to ember red (alto). */
-  --incendios-muy-bajo: oklch(0.75 0.16 142);
+  --incendios-muy-bajo: #8bb92d;
   --incendios-bajo: oklch(0.8 0.18 100);
   --incendios-medio: oklch(0.72 0.19 55);
   --incendios-alto: oklch(0.56 0.22 25);
@@ -475,7 +475,7 @@
   --deslizamientos-muy-alto: oklch(0.6 0.2 25);
 
   /* Incendios forest-fire threat ramp: kept vivid and legible on dark surfaces. */
-  --incendios-muy-bajo: oklch(0.7 0.17 142);
+  --incendios-muy-bajo: #8bb92d;
   --incendios-bajo: oklch(0.75 0.18 100);
   --incendios-medio: oklch(0.7 0.2 55);
   --incendios-alto: oklch(0.6 0.22 25);
