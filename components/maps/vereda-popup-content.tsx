@@ -115,7 +115,8 @@ export function VeredaPopupContent({ feature, hazardKind = "deslizamientos", col
             }}
           />
           Amenaza de incendio (modelo propio): {props.fireLevel}
-          {props.fireScoreAvg != null && ` (${props.fireScoreAvg.toFixed(2)})`}
+          {props.fireScoreAvg != null &&
+            ` (${props.fireScoreAvg.toFixed(2)} · ${Math.round(props.fireScoreAvg * 100)}%)`}
         </span>
       )}
       {colored && hazardKind === "incendios" && !props.fireLevel && (

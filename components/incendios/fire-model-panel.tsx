@@ -43,6 +43,11 @@ function formatFactor(value: number | null, unit: string, digits = 1): string {
   return value != null ? `${value.toFixed(digits)}${unit}` : "—"
 }
 
+/** Renders a 0–1 composite score as a rounded percentage, framed as an orientative probability for prevention. */
+function formatPercent(value: number | null): string {
+  return value != null ? `${Math.round(value * 100)}%` : "—"
+}
+
 /** Small colored-dot + count row for a fire hazard level, dimmed to 0 when a municipio has no veredas at that level. */
 function LevelCountRow({ level, count }: { level: FireThreatLevel; count: number }) {
   const style = FIRE_THREAT_LEVEL_STYLES[level]
@@ -88,7 +93,9 @@ export function FireModelPanel({ className, selectedVereda, onClearSelection }: 
         <p className="text-xs leading-relaxed text-muted-foreground">
           El color de cada vereda en la capa &quot;Modelo propio de incendios forestales&quot; lo calcula esta
           misma app, combinando los tres factores de abajo, para cubrir los cuatro municipios, incluidos
-          Zarzal y Roldanillo.{" "}
+          Zarzal y Roldanillo. El puntaje (0 a 1) se muestra también como un porcentaje orientativo de
+          probabilidad, pensado como herramienta preventiva, no como una predicción exacta de que ocurrirá un
+          incendio.{" "}
           <a href="/documentacion#metodologia" className="text-primary underline-offset-2 hover:underline">
             Ver metodología completa
           </a>
@@ -125,6 +132,12 @@ export function FireModelPanel({ className, selectedVereda, onClearSelection }: 
                   <dt className="text-muted-foreground">Puntaje</dt>
                   <dd className="font-medium tabular-nums text-foreground">
                     {formatFactor(selectedProps.fireScoreAvg, "", 2)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">Probabilidad estimada</dt>
+                  <dd className="font-medium tabular-nums text-foreground">
+                    {formatPercent(selectedProps.fireScoreAvg)}
                   </dd>
                 </div>
                 <div>
@@ -177,7 +190,8 @@ export function FireModelPanel({ className, selectedVereda, onClearSelection }: 
               <div className="flex items-baseline justify-between text-xs text-muted-foreground">
                 <span>Puntaje promedio (modelo propio)</span>
                 <span className="font-medium tabular-nums text-foreground">
-                  {formatFactor(summary.fireScoreAvg, "", 2)}
+                  {formatFactor(summary.fireScoreAvg, "", 2)}{" "}
+                  <span className="text-muted-foreground">({formatPercent(summary.fireScoreAvg)})</span>
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
