@@ -197,6 +197,15 @@ export function LabMap({
 
   const mapStyle = useMemo(() => maplibreMapStyle(basemap, is3D), [basemap, is3D])
 
+  // `wmsRasterSource`/the IMERG tile URL build a fresh `tiles` array on every call. MapLibre raster
+  // sources can't have their `tiles` swapped after creation, so if these specs aren't referentially
+  // stable across re-renders (e.g. a cursor-state update from map hover), react-map-gl's `Source`
+  // tries to "update" the existing source with what looks like a changed spec and MapLibre's internal
+  // assert trips. Memoizing keeps the same object/array identity for the lifetime of each sub-layer.
+  const ghslSourceSpec = useMemo(() => wmsRasterSource(GWIS_WMS_URL, GWIS_SETTLEMENT_LAYER), [])
+  const wdpaSourceSpec = useMemo(() => wmsRasterSource(GWIS_WMS_URL, GWIS_PROTECTED_AREAS_LAYER), [])
+  const imergTiles = useMemo(() => [IMERG_TILE_URL], [])
+
   const flyToPoint = useCallback((point: LabPointFeature) => {
     const map = mapRef.current?.getMap()
     if (map) {
@@ -358,19 +367,19 @@ export function LabMap({
         <MapBasemapControl basemap={basemap} onChange={setBasemap} />
 
         {activeSubLayerIds.has("ghsl") && (
-          <Source key="lab-sub-ghsl" {...wmsRasterSource(GWIS_WMS_URL, GWIS_SETTLEMENT_LAYER)}>
+          <Source id="lab-sub-ghsl-source" {...ghslSourceSpec}>
             <Layer id="lab-sub-ghsl-raster" type="raster" paint={{ "raster-opacity": 0.55 }} />
           </Source>
         )}
 
         {activeSubLayerIds.has("wdpa") && (
-          <Source key="lab-sub-wdpa" {...wmsRasterSource(GWIS_WMS_URL, GWIS_PROTECTED_AREAS_LAYER)}>
+          <Source id="lab-sub-wdpa-source" {...wdpaSourceSpec}>
             <Layer id="lab-sub-wdpa-raster" type="raster" paint={{ "raster-opacity": 0.55 }} />
           </Source>
         )}
 
         {activeSubLayerIds.has("imerg") && (
-          <Source key="lab-sub-imerg" id="lab-sub-imerg-source" type="raster" tiles={[IMERG_TILE_URL]} tileSize={256}>
+          <Source id="lab-sub-imerg-source" type="raster" tiles={imergTiles} tileSize={256}>
             <Layer id="lab-sub-imerg-raster" type="raster" paint={{ "raster-opacity": 0.6 }} />
           </Source>
         )}
