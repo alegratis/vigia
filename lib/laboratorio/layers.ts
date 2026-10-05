@@ -18,10 +18,31 @@ import {
   type FloodSusceptibilityLevel,
 } from "@/lib/inundaciones/levels"
 import { FIRE_THREAT_LEVELS, FIRE_THREAT_LEVEL_STYLES, type FireThreatLevel } from "@/lib/incendios/levels"
-import type { VeredaProperties } from "@/lib/veredas/api-types"
+import { COMPOUND_LEVELS, COMPOUND_LEVEL_STYLES, type CompoundLevel } from "@/lib/riesgo-compuesto/levels"
+import type { VeredaFeature, VeredaProperties, VeredasFeatureCollection } from "@/lib/veredas/api-types"
 
-export const LAYER_KEYS = ["deslizamientos", "inundaciones", "incendios"] as const
+export const LAYER_KEYS = ["deslizamientos", "inundaciones", "incendios", "riesgo-compuesto"] as const
 export type LayerKey = (typeof LAYER_KEYS)[number]
+
+/**
+ * `VeredaProperties` plus the compound-risk fields, merged in client-side
+ * (by `codigoVereda`) from the separate `/api/riesgo-compuesto/veredas`
+ * response before reaching any laboratorio component — see
+ * `lab-workspace.tsx`'s `mergeCompoundIntoVeredas`. Keeping this as a
+ * laboratorio-only extension (rather than adding these fields to the real
+ * `VeredaProperties` in `lib/veredas/api-types.ts`) avoids touching the
+ * production API type for a prototype-only field.
+ */
+export interface LabVereda extends VeredaProperties {
+  compoundLevel?: CompoundLevel | null
+  compoundScore?: number | null
+}
+export interface LabVeredaFeature extends Omit<VeredaFeature, "properties"> {
+  properties: LabVereda
+}
+export interface LabVeredasFeatureCollection extends Omit<VeredasFeatureCollection, "features"> {
+  features: LabVeredaFeature[]
+}
 
 /** Every layer resolves to the same `{ level, score }` shape per vereda, whatever its source property names. */
 interface LayerLevelStyle {
@@ -36,10 +57,10 @@ export interface LayerDefinition {
   shortLabel: string
   image: string
   imageAlt: string
-  /** The VeredaProperties field holding this layer's level for a vereda. */
-  levelProperty: keyof VeredaProperties
-  /** The VeredaProperties field holding this layer's 0-1 composite score, for the compound summary. */
-  scoreProperty: keyof VeredaProperties
+  /** The LabVereda field holding this layer's level for a vereda. */
+  levelProperty: keyof LabVereda
+  /** The LabVereda field holding this layer's 0-1 composite score, for the compound summary. */
+  scoreProperty: keyof LabVereda
   levels: readonly string[]
   levelStyles: Record<string, LayerLevelStyle>
 }
@@ -78,9 +99,20 @@ export const LAYER_DEFINITIONS: Record<LayerKey, LayerDefinition> = {
     levels: FIRE_THREAT_LEVELS,
     levelStyles: FIRE_THREAT_LEVEL_STYLES,
   },
+  "riesgo-compuesto": {
+    key: "riesgo-compuesto",
+    label: "Riesgo compuesto",
+    shortLabel: "Riesgo compuesto",
+    image: "/images/riesgo-compuesto-map.png",
+    imageAlt: "Mapa de riesgo compuesto multiamenaza",
+    levelProperty: "compoundLevel",
+    scoreProperty: "compoundScore",
+    levels: COMPOUND_LEVELS,
+    levelStyles: COMPOUND_LEVEL_STYLES,
+  },
 }
 
-export const LAYER_ORDER: LayerKey[] = ["deslizamientos", "inundaciones", "incendios"]
+export const LAYER_ORDER: LayerKey[] = ["deslizamientos", "inundaciones", "incendios", "riesgo-compuesto"]
 
 /** Maximum simultaneously active layers. Currently equals the total layer count, written generically so a future 4th layer makes this limit meaningful without touching the check itself. */
 export const MAX_ACTIVE_LAYERS = 3
@@ -117,6 +149,37 @@ export function findConflicts(active: LayerKey[]): Array<{ a: LayerKey; b: Layer
 
 export function isLayerKey(value: string): value is LayerKey {
   return (LAYER_KEYS as readonly string[]).includes(value)
+}
+
+/**
+ * Merges `compoundLevel`/`compoundScore` from `/api/riesgo-compuesto/veredas`
+ * (by `codigoVereda`) onto the shared `/api/veredas` collection, so the
+ * "riesgo-compuesto" layer can reuse the exact same generic fill/legend/chart
+ * code path as the other three layers instead of a special-cased data
+ * source. Returns `veredas` unchanged (not merged) while the compound fetch
+ * is still loading or disabled — the layer then simply has no data yet.
+ */
+export function mergeCompoundIntoVeredas(
+  veredas: VeredasFeatureCollection | null,
+  compound: { properties: { codigoVereda: string; compoundLevel: CompoundLevel | null; compoundScore: number | null } }[] | null,
+): LabVeredasFeatureCollection | null {
+  if (!veredas) return null
+  if (!compound) return veredas as LabVeredasFeatureCollection
+  const byCodigo = new Map(compound.map((f) => [f.properties.codigoVereda, f.properties]))
+  return {
+    ...veredas,
+    features: veredas.features.map((feature) => {
+      const match = byCodigo.get(feature.properties.codigoVereda)
+      return {
+        ...feature,
+        properties: {
+          ...feature.properties,
+          compoundLevel: match?.compoundLevel ?? null,
+          compoundScore: match?.compoundScore ?? null,
+        },
+      }
+    }),
+  }
 }
 
 // ---------------------------------------------------------------------------

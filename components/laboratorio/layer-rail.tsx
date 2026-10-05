@@ -1,6 +1,6 @@
 "use client"
 
-import { Mountain, Droplets, Flame, type LucideIcon } from "lucide-react"
+import { Mountain, Droplets, Flame, ShieldAlert, type LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { LAYER_DEFINITIONS, LAYER_ORDER, type LayerKey } from "@/lib/laboratorio/layers"
 
@@ -8,6 +8,7 @@ const LAYER_ICONS: Record<LayerKey, LucideIcon> = {
   deslizamientos: Mountain,
   inundaciones: Droplets,
   incendios: Flame,
+  "riesgo-compuesto": ShieldAlert,
 }
 
 interface LayerRailProps {
@@ -26,7 +27,7 @@ export function LayerRail({ activeLayers, onToggle, onHoverLayer }: LayerRailPro
   return (
     <div
       aria-label="Capas del laboratorio"
-      className="flex w-16 shrink-0 flex-col gap-1 border-r border-border bg-card/60 py-3"
+      className="absolute left-3 top-1/2 z-10 flex w-16 -translate-y-1/2 flex-col gap-1 rounded-xl border border-border/60 bg-card/80 py-3 shadow-lg backdrop-blur-md"
     >
       {LAYER_ORDER.map((layer) => {
         const def = LAYER_DEFINITIONS[layer]

@@ -5,6 +5,7 @@ import Image from "next/image"
 import { Link2 } from "lucide-react"
 import { toast } from "sonner"
 import { useVeredas } from "@/lib/veredas/use-veredas"
+import { useCompoundVeredas } from "@/lib/riesgo-compuesto/use-compound-veredas"
 import { MUNICIPIOS } from "@/lib/veredas/municipio-toggles"
 import { AlejandroPinoLogo } from "@/components/brand/alejandro-pino-logo"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -12,6 +13,7 @@ import {
   DEFAULT_LAB_STATE,
   MAX_ACTIVE_LAYERS,
   findConflicts,
+  mergeCompoundIntoVeredas,
   parseLabState,
   readLabStateFromStorage,
   serializeLabState,
@@ -41,6 +43,14 @@ export function LabWorkspace() {
   const { veredas } = useVeredas(true)
 
   const [state, setState] = useState<LabState>(DEFAULT_LAB_STATE)
+  // Only fetched once "riesgo-compuesto" is actually turned on (or previewed), since it's a
+  // separate, heavier endpoint that recomputes all five hazards server-side.
+  const needsCompound = state.layers.includes("riesgo-compuesto") || false
+  const { veredas: compound } = useCompoundVeredas(needsCompound)
+  const labVeredas = useMemo(
+    () => mergeCompoundIntoVeredas(veredas, compound?.features ?? null),
+    [veredas, compound],
+  )
   const [hydrated, setHydrated] = useState(false)
   const [previewLayer, setPreviewLayer] = useState<LayerKey | null>(null)
   const [lastActivatedLayer, setLastActivatedLayer] = useState<LayerKey | null>(null)
@@ -50,6 +60,7 @@ export function LabWorkspace() {
     deslizamientos: DEFAULT_LAYER_OPACITY,
     inundaciones: DEFAULT_LAYER_OPACITY,
     incendios: DEFAULT_LAYER_OPACITY,
+    "riesgo-compuesto": DEFAULT_LAYER_OPACITY,
   })
   const [selectedVereda, setSelectedVereda] = useState<VeredaFeature | null>(null)
 
@@ -220,41 +231,40 @@ export function LabWorkspace() {
         </div>
       </header>
 
-      <div className="relative flex min-h-0 flex-1">
+      {/* Single relative canvas: the map fills it completely, every control floats on top as its
+          own translucent, blurred card instead of a bordered side column — so the map stays the
+          one continuous surface and nothing permanently eats into its width. */}
+      <div className="relative min-h-0 flex-1">
+        <LabMap
+          veredas={labVeredas}
+          activeLayers={state.layers}
+          previewLayer={previewLayer}
+          layerOpacity={layerOpacity}
+          municipio={state.municipio}
+          is3D={state.is3D}
+          onToggle3D={handleToggle3D}
+          onVeredaSelect={setSelectedVereda}
+        />
+
         <LayerRail activeLayers={state.layers} onToggle={handleToggleLayer} onHoverLayer={setPreviewLayer} />
 
-        <div className="relative min-w-0 flex-1">
-          <LabMap
-            veredas={veredas}
-            activeLayers={state.layers}
-            previewLayer={previewLayer}
-            layerOpacity={layerOpacity}
-            municipio={state.municipio}
-            is3D={state.is3D}
-            onToggle3D={handleToggle3D}
-            onVeredaSelect={setSelectedVereda}
-          />
+        <ContextPanel
+          veredas={labVeredas}
+          activeLayers={state.layers}
+          lastActivatedLayer={lastActivatedLayer}
+          previewLayer={previewLayer}
+        />
 
-          <LayerConflictPopover
-            conflict={conflict}
-            newLayer={conflict ? lastActivatedLayer : null}
-            opacity={lastActivatedLayer ? layerOpacity[lastActivatedLayer] : DEFAULT_LAYER_OPACITY}
-            onChangeOpacity={(value) => lastActivatedLayer && handleOpacityChange(lastActivatedLayer, value)}
-            onDismiss={() => setConflict(null)}
-          />
-        </div>
+        <LayerConflictPopover
+          conflict={conflict}
+          newLayer={conflict ? lastActivatedLayer : null}
+          opacity={lastActivatedLayer ? layerOpacity[lastActivatedLayer] : DEFAULT_LAYER_OPACITY}
+          onChangeOpacity={(value) => lastActivatedLayer && handleOpacityChange(lastActivatedLayer, value)}
+          onDismiss={() => setConflict(null)}
+        />
 
-        <div className="hidden w-72 shrink-0 overflow-y-auto border-l border-border bg-card/60 sm:block">
-          <ContextPanel
-            veredas={veredas}
-            activeLayers={state.layers}
-            lastActivatedLayer={lastActivatedLayer}
-            previewLayer={previewLayer}
-          />
-        </div>
+        <BottomTabs veredas={labVeredas} activeLayers={state.layers} />
       </div>
-
-      <BottomTabs veredas={veredas} activeLayers={state.layers} />
 
       <LayerLimitDialog
         open={limitDialogOpen}

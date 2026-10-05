@@ -13,7 +13,7 @@ import Map, {
 import { setWorkerUrl } from "maplibre-gl"
 import "maplibre-gl/dist/maplibre-gl.css"
 import { toast } from "sonner"
-import { LAYER_DEFINITIONS, LAYER_ORDER, type LayerKey } from "@/lib/laboratorio/layers"
+import { LAYER_DEFINITIONS, LAYER_ORDER, type LabVeredaFeature, type LabVeredasFeatureCollection, type LayerKey } from "@/lib/laboratorio/layers"
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import { maplibreMapStyle } from "@/lib/maps/maplibre-basemap-style"
 import { useThemeSyncedBasemap } from "@/lib/maps/use-theme-synced-basemap"
@@ -22,7 +22,6 @@ import { MapViewToggleControl } from "@/components/maps/map-view-toggle-control"
 import { VeredaPopupContent } from "@/components/maps/vereda-popup-content"
 import { isMunicipioActive } from "@/lib/veredas/municipio-toggles"
 import { boundsForActiveMunicipios } from "@/lib/veredas/municipio-bounds"
-import type { VeredaFeature, VeredasFeatureCollection } from "@/lib/veredas/api-types"
 
 // Turbopack rewrites maplibre-gl's internal `import.meta.url`-based worker
 // resolution into a blob URL, which breaks the worker's own relative asset
@@ -42,7 +41,7 @@ const AOI_BOUNDS: [[number, number], [number, number]] = [
 const GRAY_FILL = "#9ca3af"
 
 interface LabMapProps {
-  veredas: VeredasFeatureCollection | null
+  veredas: LabVeredasFeatureCollection | null
   activeLayers: LayerKey[]
   /** A disabled layer currently hovered in the rail — rendered dimmed as a preview, doesn't count toward the 3-layer limit. */
   previewLayer: LayerKey | null
@@ -50,7 +49,7 @@ interface LabMapProps {
   municipio: string | null
   is3D: boolean
   onToggle3D: () => void
-  onVeredaSelect: (feature: VeredaFeature | null) => void
+  onVeredaSelect: (feature: LabVeredaFeature | null) => void
 }
 
 /**
@@ -73,13 +72,13 @@ export function LabMap({
 }: LabMapProps) {
   const mapRef = useRef<MapRef>(null)
   const [basemap, setBasemap] = useThemeSyncedBasemap()
-  const [popupInfo, setPopupInfo] = useState<{ feature: VeredaFeature; layer: LayerKey } | null>(null)
+  const [popupInfo, setPopupInfo] = useState<{ feature: LabVeredaFeature; layer: LayerKey } | null>(null)
   const [transitioning, setTransitioning] = useState(false)
 
   const mapStyle = useMemo(() => maplibreMapStyle(basemap, is3D), [basemap, is3D])
 
   const geojsonForLayer = useCallback(
-    (layer: LayerKey): VeredasFeatureCollection | null => {
+    (layer: LayerKey): LabVeredasFeatureCollection | null => {
       if (!veredas) return null
       const def = LAYER_DEFINITIONS[layer]
       return {
@@ -271,7 +270,7 @@ function MunicipioFlyToEffect({ municipio, onFly }: { municipio: string | null; 
   return null
 }
 
-function centroidOf(feature: VeredaFeature): [number, number] {
+function centroidOf(feature: LabVeredaFeature): [number, number] {
   let sumLon = 0
   let sumLat = 0
   let count = 0

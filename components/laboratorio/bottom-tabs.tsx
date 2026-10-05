@@ -4,26 +4,27 @@ import { useState } from "react"
 import { ChevronDown, ChevronUp } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
-import { LAYER_DEFINITIONS, type LayerKey } from "@/lib/laboratorio/layers"
-import type { VeredasFeatureCollection } from "@/lib/veredas/api-types"
+import { LAYER_DEFINITIONS, type LabVeredasFeatureCollection, type LayerKey } from "@/lib/laboratorio/layers"
 
 interface BottomTabsProps {
-  veredas: VeredasFeatureCollection | null
+  veredas: LabVeredasFeatureCollection | null
   activeLayers: LayerKey[]
 }
 
 /**
- * Fixed, collapsible bottom panel with Gráficos / Métricas / Metodología
- * tabs. When several layers are active, each tab renders one section per
- * active layer side by side rather than picking a single "focus" layer —
- * unlike the context panel, there's enough horizontal room here to compare.
+ * Floating, collapsible bottom card with Gráficos / Métricas / Metodología
+ * tabs, docked above the map's bottom edge instead of occupying a fixed
+ * strip of page height. When several layers are active, each tab renders
+ * one section per active layer side by side rather than picking a single
+ * "focus" layer — unlike the context panel, there's enough horizontal room
+ * here to compare.
  */
 export function BottomTabs({ veredas, activeLayers }: BottomTabsProps) {
   const [collapsed, setCollapsed] = useState(false)
 
   return (
     <div
-      className={`shrink-0 border-t border-border bg-card/60 transition-[height] ${collapsed ? "h-10" : "h-[30%]"}`}
+      className={`absolute inset-x-3 bottom-3 z-10 overflow-hidden rounded-xl border border-border/60 bg-card/80 shadow-lg backdrop-blur-md transition-[height] ${collapsed ? "h-10" : "h-[30%]"}`}
     >
       <div className="flex items-center justify-between border-b border-border/70 px-4 py-1.5">
         <p className="text-xs font-medium text-muted-foreground">Panel de análisis</p>
@@ -83,7 +84,7 @@ export function BottomTabs({ veredas, activeLayers }: BottomTabsProps) {
   )
 }
 
-function LevelBarChart({ veredas, layer }: { veredas: VeredasFeatureCollection | null; layer: LayerKey }) {
+function LevelBarChart({ veredas, layer }: { veredas: LabVeredasFeatureCollection | null; layer: LayerKey }) {
   const def = LAYER_DEFINITIONS[layer]
   const counts = def.levels.map((level) => ({
     level,
@@ -113,7 +114,7 @@ function LevelBarChart({ veredas, layer }: { veredas: VeredasFeatureCollection |
   )
 }
 
-function LayerMetrics({ veredas, layer }: { veredas: VeredasFeatureCollection | null; layer: LayerKey }) {
+function LayerMetrics({ veredas, layer }: { veredas: LabVeredasFeatureCollection | null; layer: LayerKey }) {
   const def = LAYER_DEFINITIONS[layer]
   const scores = (veredas?.features ?? [])
     .map((f) => f.properties[def.scoreProperty] as number | null)
@@ -142,6 +143,8 @@ const METHODOLOGY_NOTES: Record<LayerKey, string> = {
     "Combina la zonificación oficial + proximidad a cuerpos de agua + planitud del terreno. Ver lib/inundaciones/hazard-model.ts — sin cambios en este prototipo.",
   incendios:
     "Pendiente y proximidad a vías (reutilizados del modelo de deslizamientos) + recurrencia histórica de focos NASA FIRMS + Índice de Peligro de Incendio (FWI) del día. Ver lib/incendios/hazard-model.ts — sin cambios en este prototipo.",
+  "riesgo-compuesto":
+    "Combina el nivel más severo entre deslizamientos, inundaciones e incendios por vereda (\"el peor gana\"). Ver lib/riesgo-compuesto — sin cambios en este prototipo.",
 }
 
 function LayerMethodology({ layer }: { layer: LayerKey }) {

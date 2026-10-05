@@ -1,12 +1,11 @@
 "use client"
 
 import Image from "next/image"
-import { LAYER_DEFINITIONS, levelSeverity, type LayerKey } from "@/lib/laboratorio/layers"
-import type { VeredasFeatureCollection } from "@/lib/veredas/api-types"
+import { LAYER_DEFINITIONS, levelSeverity, type LabVeredasFeatureCollection, type LayerKey } from "@/lib/laboratorio/layers"
 import { Badge } from "@/components/ui/badge"
 
 interface ContextPanelProps {
-  veredas: VeredasFeatureCollection | null
+  veredas: LabVeredasFeatureCollection | null
   activeLayers: LayerKey[]
   /** Last layer turned on — drives which legend/metrics show when several are active. */
   lastActivatedLayer: LayerKey | null
@@ -14,27 +13,33 @@ interface ContextPanelProps {
 }
 
 /**
- * Right-docked contextual panel: shows a compound "most severe hazard
+ * Floating right-side contextual card: shows a compound "most severe hazard
  * wins" summary when no layer is active, the hovered-but-off layer's
  * thumbnail + affected-vereda count during a rail hover preview, or the
  * most-recently-activated active layer's legend + per-level vereda counts
  * otherwise.
  */
 export function ContextPanel({ veredas, activeLayers, lastActivatedLayer, previewLayer }: ContextPanelProps) {
-  if (previewLayer) {
-    return <PreviewSummary veredas={veredas} layer={previewLayer} />
-  }
+  const content = previewLayer ? (
+    <PreviewSummary veredas={veredas} layer={previewLayer} />
+  ) : activeLayers.length === 0 ? (
+    <CompoundSummary veredas={veredas} />
+  ) : (
+    <LayerLegend
+      veredas={veredas}
+      layer={lastActivatedLayer && activeLayers.includes(lastActivatedLayer) ? lastActivatedLayer : activeLayers[activeLayers.length - 1]}
+      activeLayers={activeLayers}
+    />
+  )
 
-  if (activeLayers.length === 0) {
-    return <CompoundSummary veredas={veredas} />
-  }
-
-  const focusLayer = lastActivatedLayer && activeLayers.includes(lastActivatedLayer) ? lastActivatedLayer : activeLayers[activeLayers.length - 1]
-
-  return <LayerLegend veredas={veredas} layer={focusLayer} activeLayers={activeLayers} />
+  return (
+    <div className="absolute right-3 top-3 bottom-3 z-10 hidden w-72 overflow-y-auto rounded-xl border border-border/60 bg-card/80 shadow-lg backdrop-blur-md sm:block">
+      {content}
+    </div>
+  )
 }
 
-function PreviewSummary({ veredas, layer }: { veredas: VeredasFeatureCollection | null; layer: LayerKey }) {
+function PreviewSummary({ veredas, layer }: { veredas: LabVeredasFeatureCollection | null; layer: LayerKey }) {
   const def = LAYER_DEFINITIONS[layer]
   const count = veredas?.features.filter((f) => f.properties[def.levelProperty]).length ?? 0
 
@@ -52,7 +57,7 @@ function PreviewSummary({ veredas, layer }: { veredas: VeredasFeatureCollection 
   )
 }
 
-function CompoundSummary({ veredas }: { veredas: VeredasFeatureCollection | null }) {
+function CompoundSummary({ veredas }: { veredas: LabVeredasFeatureCollection | null }) {
   if (!veredas) {
     return <p className="p-4 text-sm text-muted-foreground">Cargando datos de veredas…</p>
   }
@@ -106,7 +111,7 @@ function LayerLegend({
   layer,
   activeLayers,
 }: {
-  veredas: VeredasFeatureCollection | null
+  veredas: LabVeredasFeatureCollection | null
   layer: LayerKey
   activeLayers: LayerKey[]
 }) {
