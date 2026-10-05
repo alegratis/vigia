@@ -15,7 +15,7 @@ import Map, {
 import { setWorkerUrl } from "maplibre-gl"
 import "maplibre-gl/dist/maplibre-gl.css"
 import { toast } from "sonner"
-import { List } from "lucide-react"
+import { List, MapPin } from "lucide-react"
 import {
   LAYER_DEFINITIONS,
   LAYER_ORDER,
@@ -25,19 +25,23 @@ import {
   type LayerKey,
 } from "@/lib/laboratorio/layers"
 import { useLabPoints, MAX_VISIBLE_POINTS, type LabPointFeature } from "@/lib/laboratorio/use-lab-points"
+import { COVERAGE_DENSITY_COLOR_EXPRESSION, type HidrantesExperience } from "@/lib/laboratorio/use-hidrantes-experience"
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import { maplibreMapStyle } from "@/lib/maps/maplibre-basemap-style"
 import { useThemeSyncedBasemap } from "@/lib/maps/use-theme-synced-basemap"
 import { wmsRasterSource } from "@/lib/maps/wms-raster-source"
 import { GWIS_WMS_URL } from "@/lib/incendios/gwis"
 import { GWIS_SETTLEMENT_LAYER, GWIS_PROTECTED_AREAS_LAYER } from "@/lib/demografia/gwis-context-layers"
+import { SEVILLA_CASCO_URBANO_BOUNDS } from "@/lib/demografia/geo-detect"
 import { IMERG_TILE_URL } from "@/lib/precipitacion/imerg"
 import { useOsmInfrastructure } from "@/lib/osm/use-infrastructure"
 import { getOsmCategory } from "@/lib/osm/categories"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
+import { SENSITIVE_SITE_STYLES, type SensitiveSiteFeature } from "@/lib/osm/sensitive-sites"
 import { identifyReach, returnPeriodColor, returnPeriodLabel, type ReachInfo } from "@/lib/geoglows/live-map"
 import { formatFlow } from "@/lib/flood-ui"
 import type { InundacionesQuebradasResponse } from "@/lib/inundaciones/api-types"
+import type { HidranteFeature } from "@/lib/hidrantes/api-types"
 import { MapBasemapControl } from "@/components/maps/map-basemap-control"
 import { MapViewToggleControl } from "@/components/maps/map-view-toggle-control"
 import { VeredaPopupContent, type VeredaPopupHazardKind } from "@/components/maps/vereda-popup-content"
@@ -89,6 +93,8 @@ interface LabMapProps {
   focusLayer: LayerKey | null
   /** Per-sub-layer on/off overrides, keyed by the sub-layer's bare `id` (see `resolveSubLayerOn`). */
   subLayerToggles: Record<string, boolean>
+  /** Geolocation/routing/coverage state for the hidrantes layer, lifted to the workspace so the context panel's rail controls and this map's rendering share one source of truth. */
+  hidrantesExperience: HidrantesExperience
 }
 
 const quebradasFetcher = async (url: string): Promise<InundacionesQuebradasResponse> => {
@@ -116,6 +122,7 @@ export function LabMap({
   onVeredaSelect,
   focusLayer,
   subLayerToggles,
+  hidrantesExperience,
 }: LabMapProps) {
   const mapRef = useRef<MapRef>(null)
   const [basemap, setBasemap] = useThemeSyncedBasemap()
@@ -151,16 +158,18 @@ export function LabMap({
   const { points: osmInfraPoints } = useOsmInfrastructure()
   const osmColors = useOsmCategoryColors()
 
+  // "hidrantes" is deliberately excluded here: it gets its own dedicated circle-layer rendering,
+  // popups, and casco-urbano fitBounds below (see the `focusLayer === "hidrantes"` block and the
+  // `flownCascoUrbanoLayers` effect) instead of the generic Marker-per-point treatment sismología
+  // uses, since it needs highlight colors driven by distance/route ranking rather than a flat dot.
   const activePointsLayers = useMemo(
-    () => activeLayers.filter((layer) => POINTS_LAYERS.includes(layer)),
+    () => activeLayers.filter((layer) => POINTS_LAYERS.includes(layer) && layer !== "hidrantes"),
     [activeLayers],
   )
   const sismologiaPoints = useLabPoints(
     activeLayers.includes("sismologia") || previewLayer === "sismologia" ? "sismologia" : null,
   )
-  const hidrantesPoints = useLabPoints(
-    activeLayers.includes("hidrantes") || previewLayer === "hidrantes" ? "hidrantes" : null,
-  )
+  const hidrantesPoints = useLabPoints(previewLayer === "hidrantes" ? "hidrantes" : null)
   const pointsForLayer = useCallback(
     (layer: LayerKey) => (layer === "sismologia" ? sismologiaPoints : layer === "hidrantes" ? hidrantesPoints : null),
     [sismologiaPoints, hidrantesPoints],
@@ -194,6 +203,54 @@ export function LabMap({
       if (!activePointsLayers.includes(layer)) flownPointsLayers.current.delete(layer)
     }
   }, [activePointsLayers, pointsForLayer])
+
+  // Demografía and hidrantes both only have meaningful data over Sevilla's casco urbano (hidrantes'
+  // data literally doesn't exist elsewhere; demografía's per-vereda view is most legible zoomed into
+  // the dense urban core). Focusing either one transitions straight into the 3D topographic view and
+  // flies to that extent, instead of leaving the user to find it manually — same "fly once per
+  // activation" bookkeeping as `flownPointsLayers` below, keyed by layer so re-focusing re-triggers it.
+  const flownCascoUrbanoLayers = useRef<Set<LayerKey>>(new Set())
+  useEffect(() => {
+    const cascoUrbanoLayers: LayerKey[] = ["demografia", "hidrantes"]
+    if (!focusLayer || !cascoUrbanoLayers.includes(focusLayer)) {
+      for (const layer of cascoUrbanoLayers) flownCascoUrbanoLayers.current.delete(layer)
+      return
+    }
+    if (flownCascoUrbanoLayers.current.has(focusLayer)) return
+    flownCascoUrbanoLayers.current.add(focusLayer)
+
+    const map = mapRef.current?.getMap()
+    if (!map) return
+    if (!is3D) {
+      setTransitioning(true)
+      map.once("moveend", () => {
+        setTransitioning(false)
+        onToggle3D()
+      })
+      map.easeTo({ pitch: 60, bearing: 30, duration: 2000 })
+    }
+    const [[west, south], [east, north]] = SEVILLA_CASCO_URBANO_BOUNDS
+    map.fitBounds(
+      [
+        [west, south],
+        [east, north],
+      ],
+      { padding: 60, duration: 2000 },
+    )
+  }, [focusLayer, is3D, onToggle3D])
+
+  // Recenter on the reference point (geolocation fix or map click) once the casco-urbano fly-in above
+  // has settled — skipped while that one's still in flight so the two don't fight over the camera.
+  const flownReferencePoint = useRef<{ lat: number; lon: number } | null>(null)
+  useEffect(() => {
+    const ref = hidrantesExperience.referencePoint
+    if (focusLayer !== "hidrantes" || !ref || flownCascoUrbanoLayers.current.size === 0) return
+    if (flownReferencePoint.current?.lat === ref.lat && flownReferencePoint.current?.lon === ref.lon) return
+    flownReferencePoint.current = { lat: ref.lat, lon: ref.lon }
+    const map = mapRef.current?.getMap()
+    if (!map) return
+    map.easeTo({ center: [ref.lon, ref.lat], zoom: Math.max(map.getZoom(), 15), duration: 1200 })
+  }, [hidrantesExperience.referencePoint, focusLayer])
 
   const mapStyle = useMemo(() => maplibreMapStyle(basemap, is3D), [basemap, is3D])
 
@@ -294,8 +351,9 @@ export function LabMap({
   const interactiveLayerIds = useMemo(() => {
     const ids = [...fillLayers].reverse().map((layer) => `lab-${layer}-fill`)
     if (activeSubLayerIds.has("quebradas")) ids.push("lab-sub-quebradas-hit")
+    if (focusLayer === "hidrantes") ids.push("lab-hidrantes-points", "lab-sensitive-sites-fill")
     return ids
-  }, [fillLayers, activeSubLayerIds])
+  }, [fillLayers, activeSubLayerIds, focusLayer])
 
   const handleMapClick = useCallback(
     (e: MapLayerMouseEvent) => {
@@ -307,10 +365,29 @@ export function LabMap({
         return
       }
 
+      if (feature?.layer?.id === "lab-hidrantes-points") {
+        hidrantesExperience.setPopupSite(null)
+        hidrantesExperience.setPopupHidrante(feature as unknown as HidranteFeature)
+        return
+      }
+
+      if (feature?.layer?.id === "lab-sensitive-sites-fill") {
+        hidrantesExperience.setPopupHidrante(null)
+        hidrantesExperience.setPopupSite(feature as unknown as SensitiveSiteFeature)
+        return
+      }
+
       if (!feature || !feature.properties) {
         setPopupInfo(null)
         onVeredaSelect(null)
         setQuebradaPopup(null)
+
+        if (focusLayer === "hidrantes") {
+          hidrantesExperience.setPopupHidrante(null)
+          hidrantesExperience.setPopupSite(null)
+          hidrantesExperience.setClickedPoint({ lat: e.lngLat.lat, lon: e.lngLat.lng })
+          return
+        }
 
         if (activeSubLayerIds.has("geoglows-click")) {
           const map = mapRef.current?.getMap()
@@ -416,6 +493,239 @@ export function LabMap({
               paint={{ "line-color": "#0ea5e9", "line-width": 14, "line-opacity": 0 }}
             />
           </Source>
+        )}
+
+        {focusLayer === "hidrantes" && (
+          <>
+            {hidrantesExperience.distanceRouteGeoJson && (
+              <Source id="lab-hidrantes-route-distance-source" type="geojson" data={hidrantesExperience.distanceRouteGeoJson}>
+                <Layer
+                  id="lab-hidrantes-route-distance-line"
+                  type="line"
+                  paint={{
+                    "line-color": "#f59e0b",
+                    "line-width": 4,
+                    "line-opacity": 0.85,
+                    "line-dasharray":
+                      hidrantesExperience.distanceRoute && !hidrantesExperience.distanceRoute.followsStreets
+                        ? [1, 1.5]
+                        : [1, 0],
+                  }}
+                />
+              </Source>
+            )}
+
+            {hidrantesExperience.routeRouteGeoJson && (
+              <Source id="lab-hidrantes-route-fastest-source" type="geojson" data={hidrantesExperience.routeRouteGeoJson}>
+                <Layer
+                  id="lab-hidrantes-route-fastest-line"
+                  type="line"
+                  paint={{
+                    "line-color": "#16a34a",
+                    "line-width": 4,
+                    "line-opacity": 0.85,
+                    "line-dasharray":
+                      hidrantesExperience.routeRoute && !hidrantesExperience.routeRoute.followsStreets ? [1, 1.5] : [1, 0],
+                  }}
+                />
+              </Source>
+            )}
+
+            {hidrantesExperience.selectedRouteGeoJson && (
+              <Source id="lab-hidrantes-route-selected-source" type="geojson" data={hidrantesExperience.selectedRouteGeoJson}>
+                <Layer
+                  id="lab-hidrantes-route-selected-line"
+                  type="line"
+                  paint={{
+                    "line-color": "#7c3aed",
+                    "line-width": 4,
+                    "line-opacity": 0.85,
+                    "line-dasharray":
+                      hidrantesExperience.selectedRoute && !hidrantesExperience.selectedRoute.followsStreets
+                        ? [1, 1.5]
+                        : [1, 0],
+                  }}
+                />
+              </Source>
+            )}
+
+            {hidrantesExperience.coverageGeoJson && (
+              <Source id="lab-hidrantes-coverage-source" type="geojson" data={hidrantesExperience.coverageGeoJson}>
+                <Layer
+                  id="lab-hidrantes-coverage-fill"
+                  type="fill"
+                  paint={{ "fill-color": COVERAGE_DENSITY_COLOR_EXPRESSION, "fill-opacity": 0.22 }}
+                />
+                <Layer
+                  id="lab-hidrantes-coverage-outline"
+                  type="line"
+                  paint={{ "line-color": COVERAGE_DENSITY_COLOR_EXPRESSION, "line-width": 1, "line-opacity": 0.6 }}
+                />
+              </Source>
+            )}
+
+            {hidrantesExperience.sensitiveSitePolygons && hidrantesExperience.sensitiveSitePolygons.features.length > 0 && (
+              <Source id="lab-sensitive-sites-polygons-source" type="geojson" data={hidrantesExperience.sensitiveSitePolygons}>
+                <Layer
+                  id="lab-sensitive-sites-fill"
+                  type="fill"
+                  paint={{
+                    "fill-color": [
+                      "match",
+                      ["get", "category"],
+                      "educacion",
+                      SENSITIVE_SITE_STYLES[0].color,
+                      "salud",
+                      SENSITIVE_SITE_STYLES[1].color,
+                      "gobierno",
+                      SENSITIVE_SITE_STYLES[2].color,
+                      SENSITIVE_SITE_STYLES[0].color,
+                    ],
+                    "fill-opacity": 0.35,
+                  }}
+                />
+                <Layer
+                  id="lab-sensitive-sites-outline"
+                  type="line"
+                  paint={{
+                    "line-color": [
+                      "match",
+                      ["get", "category"],
+                      "educacion",
+                      SENSITIVE_SITE_STYLES[0].color,
+                      "salud",
+                      SENSITIVE_SITE_STYLES[1].color,
+                      "gobierno",
+                      SENSITIVE_SITE_STYLES[2].color,
+                      SENSITIVE_SITE_STYLES[0].color,
+                    ],
+                    "line-width": 2,
+                  }}
+                />
+              </Source>
+            )}
+
+            <Source id="lab-hidrantes-source" type="geojson" data={hidrantesExperience.hidrantesGeoJson}>
+              <Layer
+                id="lab-hidrantes-points"
+                type="circle"
+                paint={{
+                  "circle-radius": ["match", ["get", "__highlight"], "selected", 11, "none", 6, 9],
+                  "circle-color": [
+                    "match",
+                    ["get", "__highlight"],
+                    "selected",
+                    "#7c3aed",
+                    "both",
+                    "#f59e0b",
+                    "distance",
+                    "#f59e0b",
+                    "route",
+                    "#16a34a",
+                    "#dc2626",
+                  ],
+                  "circle-stroke-color": "#ffffff",
+                  "circle-stroke-width": ["match", ["get", "__highlight"], "none", 1.5, 3],
+                }}
+              />
+            </Source>
+
+            {hidrantesExperience.referencePoint && (
+              <Marker
+                longitude={hidrantesExperience.referencePoint.lon}
+                latitude={hidrantesExperience.referencePoint.lat}
+                anchor="bottom"
+              >
+                <div className="flex flex-col items-center">
+                  <MapPin className="size-7 fill-blue-500 text-white drop-shadow" aria-hidden="true" />
+                  <span className="sr-only">
+                    {hidrantesExperience.referencePoint.fromGeolocation ? "Tu ubicación" : "Punto seleccionado"}
+                  </span>
+                </div>
+              </Marker>
+            )}
+
+            {hidrantesExperience.popupHidrante && (
+              <Popup
+                longitude={hidrantesExperience.popupHidrante.geometry.coordinates[0]}
+                latitude={hidrantesExperience.popupHidrante.geometry.coordinates[1]}
+                onClose={() => hidrantesExperience.setPopupHidrante(null)}
+                closeButton
+                closeOnClick={false}
+              >
+                <div className="flex flex-col gap-1 text-sm">
+                  <strong className="text-foreground">
+                    {hidrantesExperience.popupHidrante.properties.nombre ?? "Hidrante"}
+                  </strong>
+                  {hidrantesExperience.popupHidrante.properties.direccion && (
+                    <span className="text-muted-foreground">{hidrantesExperience.popupHidrante.properties.direccion}</span>
+                  )}
+                  {hidrantesExperience.popupHidrante.properties.tipo && (
+                    <span className="text-muted-foreground">{hidrantesExperience.popupHidrante.properties.tipo}</span>
+                  )}
+                  {hidrantesExperience.popupHidrante.properties.muestra && (
+                    <span className="text-amber-600 dark:text-amber-500">
+                      Dato de muestra — no corresponde a un hidrante real
+                    </span>
+                  )}
+                  {hidrantesExperience.referencePoint &&
+                    typeof hidrantesExperience.popupHidrante.properties.__index === "number" && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="mt-1 w-fit"
+                        onClick={() => {
+                          hidrantesExperience.setSelectedIndex(hidrantesExperience.popupHidrante!.properties.__index as number)
+                          hidrantesExperience.setPopupHidrante(null)
+                        }}
+                      >
+                        Dirígeme a este hidrante
+                      </Button>
+                    )}
+                </div>
+              </Popup>
+            )}
+
+            {hidrantesExperience.popupSite &&
+              (() => {
+                const site = hidrantesExperience.popupSite
+                const coords =
+                  site.geometry.type === "Point"
+                    ? (site.geometry.coordinates as [number, number])
+                    : (() => {
+                        let sumLon = 0
+                        let sumLat = 0
+                        let count = 0
+                        const geom = site.geometry as GeoJSON.Polygon
+                        for (const ring of geom.coordinates) {
+                          for (const [lon, lat] of ring) {
+                            sumLon += lon
+                            sumLat += lat
+                            count++
+                          }
+                        }
+                        return count > 0 ? ([sumLon / count, sumLat / count] as [number, number]) : [-75.93, 4.27]
+                      })()
+                const style = SENSITIVE_SITE_STYLES.find((s) => s.key === site.properties.category) ?? SENSITIVE_SITE_STYLES[0]
+                return (
+                  <Popup
+                    longitude={coords[0]}
+                    latitude={coords[1]}
+                    onClose={() => hidrantesExperience.setPopupSite(null)}
+                    closeButton
+                    closeOnClick={false}
+                  >
+                    <div className="flex flex-col gap-1 text-sm">
+                      <strong className="text-foreground">{site.properties.name ?? style.label}</strong>
+                      <span style={{ color: style.color }}>{style.label}</span>
+                      <span className="text-xs text-muted-foreground">
+                        Los hidrantes cercanos usan un radio de cobertura reducido.
+                      </span>
+                    </div>
+                  </Popup>
+                )
+              })()}
+          </>
         )}
 
         {(() => {

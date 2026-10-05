@@ -7,6 +7,7 @@ import { toast } from "sonner"
 import useSWR from "swr"
 import { useVeredas } from "@/lib/veredas/use-veredas"
 import { useCompoundVeredas } from "@/lib/riesgo-compuesto/use-compound-veredas"
+import { useHidrantesExperience } from "@/lib/laboratorio/use-hidrantes-experience"
 import { MUNICIPIOS } from "@/lib/veredas/municipio-toggles"
 import { AlejandroPinoLogo } from "@/components/brand/alejandro-pino-logo"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -121,6 +122,8 @@ export function LabWorkspace() {
         : state.layers[state.layers.length - 1]) ?? null,
     [lastActivatedLayer, state.layers],
   )
+
+  const hidrantesExperience = useHidrantesExperience(focusLayer === "hidrantes")
 
   const handleToggleSubLayer = useCallback(
     (id: string) => {
@@ -333,6 +336,7 @@ export function LabWorkspace() {
           onVeredaSelect={setSelectedVereda}
           focusLayer={focusLayer}
           subLayerToggles={subLayerToggles}
+          hidrantesExperience={hidrantesExperience}
         />
 
         <LayerRail activeLayers={state.layers} onToggle={handleToggleLayer} onHoverLayer={setPreviewLayer} />
@@ -345,6 +349,7 @@ export function LabWorkspace() {
           subLayerToggles={subLayerToggles}
           onToggleSubLayer={handleToggleSubLayer}
           bottomPanelCollapsed={bottomPanelCollapsed}
+          hidrantesExperience={hidrantesExperience}
         />
 
         <LayerConflictPopover

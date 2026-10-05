@@ -1,7 +1,7 @@
 "use client"
 
 import Image from "next/image"
-import { Layers } from "lucide-react"
+import { Layers, LocateFixed, Navigation, Route, TriangleAlert, X } from "lucide-react"
 import {
   LAYER_DEFINITIONS,
   levelSeverity,
@@ -9,7 +9,13 @@ import {
   type LabVeredasFeatureCollection,
   type LayerKey,
 } from "@/lib/laboratorio/layers"
+import {
+  formatHidranteDistance,
+  type HidrantesExperience,
+} from "@/lib/laboratorio/use-hidrantes-experience"
+import { SENSITIVE_SITE_STYLES } from "@/lib/osm/sensitive-sites"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 
@@ -24,6 +30,8 @@ interface ContextPanelProps {
   onToggleSubLayer: (id: string) => void
   /** Whether the bottom analysis panel is collapsed — this panel shrinks to match so the two never overlap. */
   bottomPanelCollapsed: boolean
+  /** Geolocation/routing/coverage state for the hidrantes layer — see `lab-map.tsx` for the matching rendering. */
+  hidrantesExperience: HidrantesExperience
 }
 
 /**
@@ -43,6 +51,7 @@ export function ContextPanel({
   subLayerToggles,
   onToggleSubLayer,
   bottomPanelCollapsed,
+  hidrantesExperience,
 }: ContextPanelProps) {
   const focusLayer =
     lastActivatedLayer && activeLayers.includes(lastActivatedLayer)
@@ -53,6 +62,8 @@ export function ContextPanel({
     <PreviewSummary veredas={veredas} layer={previewLayer} />
   ) : activeLayers.length === 0 ? (
     <CompoundSummary veredas={veredas} />
+  ) : focusLayer === "hidrantes" ? (
+    <HidrantesPanel experience={hidrantesExperience} />
   ) : (
     <LayerLegend veredas={veredas} layer={focusLayer!} activeLayers={activeLayers} />
   )
@@ -161,6 +172,121 @@ function CompoundSummary({ veredas }: { veredas: LabVeredasFeatureCollection | n
           </li>
         ))}
       </ul>
+    </div>
+  )
+}
+
+function HidrantesPanel({ experience }: { experience: HidrantesExperience }) {
+  const {
+    geoStatus,
+    requestLocation,
+    referencePoint,
+    nearestByDistance,
+    nearestByRouteIndex,
+    sameNearest,
+    distanceRoute,
+    routeRoute,
+    selectedFeature,
+    selectedRoute,
+    setSelectedIndex,
+    showCoverage,
+    setShowCoverage,
+    hidrantesError,
+  } = experience
+
+  const statusLabel: Record<typeof geoStatus, string> = {
+    idle: "",
+    loading: "Buscando tu ubicación…",
+    granted: "Ubicación activa",
+    denied: "Ubicación denegada — toca el mapa para elegir un punto",
+    unsupported: "Tu navegador no soporta geolocalización — toca el mapa para elegir un punto",
+    fuera: "Estás fuera de Sevilla — toca el mapa para elegir un punto dentro del casco urbano",
+  }
+
+  return (
+    <div className="flex flex-col gap-3 p-4">
+      <div>
+        <p className="font-medium text-foreground">Hidrantes — Sevilla</p>
+        <p className="text-xs text-muted-foreground">{statusLabel[geoStatus]}</p>
+      </div>
+
+      {hidrantesError && (
+        <p className="flex items-center gap-1.5 text-xs text-destructive">
+          <TriangleAlert className="size-3.5 shrink-0" aria-hidden="true" />
+          No se pudo cargar la capa de hidrantes.
+        </p>
+      )}
+
+      <Button
+        type="button"
+        size="sm"
+        variant="secondary"
+        onClick={requestLocation}
+        disabled={geoStatus === "loading"}
+        className="w-fit"
+      >
+        <LocateFixed className="size-3.5" aria-hidden="true" />
+        {geoStatus === "granted" ? "Actualizar mi ubicación" : "Usar mi ubicación"}
+      </Button>
+
+      {referencePoint && selectedFeature && selectedRoute ? (
+        <div className="flex flex-col gap-1.5 rounded-md border border-border/70 bg-muted/40 p-2.5 text-sm">
+          <div className="flex items-center justify-between gap-2">
+            <p className="font-medium text-foreground">Hidrante seleccionado</p>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="size-5"
+              onClick={() => setSelectedIndex(null)}
+              aria-label="Quitar selección"
+            >
+              <X className="size-3.5" />
+            </Button>
+          </div>
+          <p className="flex items-center gap-1.5 text-muted-foreground">
+            <Route className="size-3.5 shrink-0 text-violet-600 dark:text-violet-400" aria-hidden="true" />
+            {formatHidranteDistance(selectedRoute.distanceM)}
+            {!selectedRoute.followsStreets && " (línea recta)"}
+          </p>
+        </div>
+      ) : referencePoint && nearestByDistance ? (
+        <div className="flex flex-col gap-1.5 rounded-md border border-border/70 bg-muted/40 p-2.5 text-sm">
+          <p className="flex items-center gap-1.5 text-foreground">
+            <Navigation className="size-3.5 shrink-0 text-amber-600 dark:text-amber-500" aria-hidden="true" />
+            Más cercano:{" "}
+            {distanceRoute
+              ? formatHidranteDistance(distanceRoute.distanceM)
+              : `${formatHidranteDistance(nearestByDistance.distanceKm * 1000)} (línea recta)`}
+          </p>
+          {!sameNearest && nearestByRouteIndex != null && routeRoute && (
+            <p className="flex items-center gap-1.5 text-muted-foreground">
+              <Route className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-500" aria-hidden="true" />
+              Más rápido a pie: {formatHidranteDistance(routeRoute.distanceM)}
+            </p>
+          )}
+          <p className="text-xs text-muted-foreground">Toca un hidrante en el mapa para trazar su ruta.</p>
+        </div>
+      ) : null}
+
+      <div className="flex items-start gap-2">
+        <Checkbox id="hidrantes-coverage" checked={showCoverage} onCheckedChange={(v) => setShowCoverage(v === true)} />
+        <Label htmlFor="hidrantes-coverage" className="text-xs font-normal leading-snug text-foreground">
+          Mostrar cobertura y zonas desatendidas
+        </Label>
+      </div>
+
+      <div>
+        <p className="mb-1.5 text-xs font-medium text-muted-foreground">Sitios sensibles cercanos</p>
+        <ul className="flex flex-col gap-1">
+          {SENSITIVE_SITE_STYLES.map((s) => (
+            <li key={s.key} className="flex items-center gap-2 text-xs">
+              <span className="size-2.5 shrink-0 rounded-sm" style={{ backgroundColor: s.color }} aria-hidden="true" />
+              <span className="text-foreground">{s.label}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   )
 }
