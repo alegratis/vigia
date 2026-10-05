@@ -26,6 +26,12 @@ import {
 } from "@/lib/laboratorio/layers"
 import { useLabPoints, MAX_VISIBLE_POINTS, type LabPointFeature } from "@/lib/laboratorio/use-lab-points"
 import { COVERAGE_DENSITY_COLOR_EXPRESSION, type HidrantesExperience } from "@/lib/laboratorio/use-hidrantes-experience"
+import {
+  DEMOGRAFIA_SOURCE_ID,
+  DEMOGRAFIA_LAYER_ID,
+  MANZANA_FIELD_LABEL,
+  type DemografiaExperience,
+} from "@/lib/laboratorio/use-demografia-experience"
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import { maplibreMapStyle } from "@/lib/maps/maplibre-basemap-style"
 import { useThemeSyncedBasemap } from "@/lib/maps/use-theme-synced-basemap"
@@ -45,6 +51,7 @@ import type { HidranteFeature } from "@/lib/hidrantes/api-types"
 import { MapBasemapControl } from "@/components/maps/map-basemap-control"
 import { MapViewToggleControl } from "@/components/maps/map-view-toggle-control"
 import { VeredaPopupContent, type VeredaPopupHazardKind } from "@/components/maps/vereda-popup-content"
+import { DemografiaPopupContent } from "@/components/maps/demografia-popup-content"
 import { PointsListDialog } from "@/components/laboratorio/points-list-dialog"
 import { Button } from "@/components/ui/button"
 import { isMunicipioActive } from "@/lib/veredas/municipio-toggles"
@@ -95,6 +102,8 @@ interface LabMapProps {
   subLayerToggles: Record<string, boolean>
   /** Geolocation/routing/coverage state for the hidrantes layer, lifted to the workspace so the context panel's rail controls and this map's rendering share one source of truth. */
   hidrantesExperience: HidrantesExperience
+  /** Indicator-switching state (vulnerabilidad/pobreza/manzanas) for the demografía layer, lifted to the workspace for the same reason as `hidrantesExperience`. */
+  demografiaExperience: DemografiaExperience
 }
 
 const quebradasFetcher = async (url: string): Promise<InundacionesQuebradasResponse> => {
@@ -123,6 +132,7 @@ export function LabMap({
   focusLayer,
   subLayerToggles,
   hidrantesExperience,
+  demografiaExperience,
 }: LabMapProps) {
   const mapRef = useRef<MapRef>(null)
   const [basemap, setBasemap] = useThemeSyncedBasemap()
@@ -132,6 +142,11 @@ export function LabMap({
   const [transitioning, setTransitioning] = useState(false)
   const [cursor, setCursor] = useState("")
   const [quebradaPopup, setQuebradaPopup] = useState<{ lon: number; lat: number; nombre: string } | null>(null)
+  const [demografiaPopup, setDemografiaPopup] = useState<{
+    lon: number
+    lat: number
+    properties: Record<string, unknown>
+  } | null>(null)
   const [reachPopup, setReachPopup] = useState<{ lon: number; lat: number; info: ReachInfo | null } | null>(null)
 
   // Only the focused layer's own sub-layers can be active — switching away from it (or turning off
@@ -217,10 +232,16 @@ export function LabMap({
       return
     }
     if (flownCascoUrbanoLayers.current.has(focusLayer)) return
-    flownCascoUrbanoLayers.current.add(focusLayer)
 
+    // The map/style can still be initializing on a fresh load that starts with this layer already
+    // active (e.g. a shared view URL). If we marked `focusLayer` as flown before confirming the map
+    // exists, a null map here would skip the fly-in forever, since nothing else in this effect's
+    // dependency array changes once the map finishes loading. Retry every render until it's ready,
+    // and only mark it flown once the fly-in has actually been issued.
     const map = mapRef.current?.getMap()
     if (!map) return
+    flownCascoUrbanoLayers.current.add(focusLayer)
+
     if (!is3D) {
       setTransitioning(true)
       map.once("moveend", () => {
@@ -346,14 +367,21 @@ export function LabMap({
   // Sismología and hidrantes render as raw point markers (see `activePointsLayers`
   // below) — they have no `levelProperty`/`levelStyles` to paint a choropleth fill
   // with, so they're excluded from the per-layer `Source`/`Layer` loop entirely.
-  const fillLayers = useMemo(() => activeLayers.filter((layer) => !POINTS_LAYERS.includes(layer)), [activeLayers])
+  // "demografia" is also excluded: it gets its own dedicated fill-extrusion columns
+  // driven by `demografiaExperience`'s indicator switch (pobreza/manzanas/vulnerabilidad)
+  // instead of the flat population choropleth the generic loop would otherwise paint.
+  const fillLayers = useMemo(
+    () => activeLayers.filter((layer) => !POINTS_LAYERS.includes(layer) && layer !== "demografia"),
+    [activeLayers],
+  )
 
   const interactiveLayerIds = useMemo(() => {
     const ids = [...fillLayers].reverse().map((layer) => `lab-${layer}-fill`)
     if (activeSubLayerIds.has("quebradas")) ids.push("lab-sub-quebradas-hit")
     if (focusLayer === "hidrantes") ids.push("lab-hidrantes-points", "lab-sensitive-sites-fill")
+    if (activeLayers.includes("demografia")) ids.push(DEMOGRAFIA_LAYER_ID)
     return ids
-  }, [fillLayers, activeSubLayerIds, focusLayer])
+  }, [fillLayers, activeSubLayerIds, focusLayer, activeLayers])
 
   const handleMapClick = useCallback(
     (e: MapLayerMouseEvent) => {
@@ -377,10 +405,16 @@ export function LabMap({
         return
       }
 
+      if (feature?.layer?.id === DEMOGRAFIA_LAYER_ID) {
+        setDemografiaPopup({ lon: e.lngLat.lng, lat: e.lngLat.lat, properties: feature.properties ?? {} })
+        return
+      }
+
       if (!feature || !feature.properties) {
         setPopupInfo(null)
         onVeredaSelect(null)
         setQuebradaPopup(null)
+        setDemografiaPopup(null)
 
         if (focusLayer === "hidrantes") {
           hidrantesExperience.setPopupHidrante(null)
@@ -493,6 +527,39 @@ export function LabMap({
               paint={{ "line-color": "#0ea5e9", "line-width": 14, "line-opacity": 0 }}
             />
           </Source>
+        )}
+
+        {activeLayers.includes("demografia") && (
+          <>
+            {/* Always mounted (not conditioned on data having arrived yet) with a stable
+                source/layer id pair — see `DEMOGRAFIA_SOURCE_ID`/`DEMOGRAFIA_LAYER_ID`'s doc
+                comment for why the id must never change across indicator switches. */}
+            <Source id={DEMOGRAFIA_SOURCE_ID} type="geojson" data={demografiaExperience.activeGeoJson}>
+              <Layer
+                id={DEMOGRAFIA_LAYER_ID}
+                type="fill-extrusion"
+                paint={{
+                  "fill-extrusion-height": ["coalesce", ["get", "__height"], 0],
+                  "fill-extrusion-base": 0,
+                  "fill-extrusion-color": ["coalesce", ["get", "__color"], GRAY_FILL],
+                  "fill-extrusion-opacity": layerOpacity.demografia ?? 0.85,
+                }}
+              />
+            </Source>
+
+            {demografiaPopup && (
+              <Popup
+                longitude={demografiaPopup.lon}
+                latitude={demografiaPopup.lat}
+                onClose={() => setDemografiaPopup(null)}
+                closeButton
+                closeOnClick={false}
+                maxWidth="240px"
+              >
+                <DemografiaPopupContent indicator={demografiaExperience.indicator} properties={demografiaPopup.properties} />
+              </Popup>
+            )}
+          </>
         )}
 
         {focusLayer === "hidrantes" && (

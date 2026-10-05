@@ -13,11 +13,20 @@ import {
   formatHidranteDistance,
   type HidrantesExperience,
 } from "@/lib/laboratorio/use-hidrantes-experience"
+import {
+  MANZANA_FIELD_LABEL,
+  type DemografiaExperience,
+  type DemografiaIndicator,
+  type ManzanaField,
+} from "@/lib/laboratorio/use-demografia-experience"
+import { INDICATOR_LEVELS } from "@/lib/demografia/indicator-levels"
+import { VULNERABILITY_LEVELS, VULNERABILITY_LEVEL_STYLES } from "@/lib/vulnerabilidad/levels"
 import { SENSITIVE_SITE_STYLES } from "@/lib/osm/sensitive-sites"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
+import { cn } from "@/lib/utils"
 
 interface ContextPanelProps {
   veredas: LabVeredasFeatureCollection | null
@@ -32,6 +41,8 @@ interface ContextPanelProps {
   bottomPanelCollapsed: boolean
   /** Geolocation/routing/coverage state for the hidrantes layer — see `lab-map.tsx` for the matching rendering. */
   hidrantesExperience: HidrantesExperience
+  /** Indicator-switching state for the demografía layer — see `lab-map.tsx` for the matching rendering. */
+  demografiaExperience: DemografiaExperience
 }
 
 /**
@@ -52,6 +63,7 @@ export function ContextPanel({
   onToggleSubLayer,
   bottomPanelCollapsed,
   hidrantesExperience,
+  demografiaExperience,
 }: ContextPanelProps) {
   const focusLayer =
     lastActivatedLayer && activeLayers.includes(lastActivatedLayer)
@@ -64,6 +76,8 @@ export function ContextPanel({
     <CompoundSummary veredas={veredas} />
   ) : focusLayer === "hidrantes" ? (
     <HidrantesPanel experience={hidrantesExperience} />
+  ) : focusLayer === "demografia" ? (
+    <DemografiaPanel experience={demografiaExperience} />
   ) : (
     <LayerLegend veredas={veredas} layer={focusLayer!} activeLayers={activeLayers} />
   )
@@ -289,6 +303,99 @@ function HidrantesPanel({ experience }: { experience: HidrantesExperience }) {
       </div>
     </div>
   )
+}
+
+const INDICATOR_OPTIONS: { value: DemografiaIndicator; label: string }[] = [
+  { value: "vulnerabilidad", label: "Vulnerabilidad compuesta" },
+  { value: "pobreza", label: "Pobreza multidimensional" },
+  { value: "manzanas", label: "Manzanas" },
+]
+
+function DemografiaPanel({ experience }: { experience: DemografiaExperience }) {
+  const { indicator, setIndicator, manzanaField, setManzanaField, isLoading, error } = experience
+
+  return (
+    <div className="flex flex-col gap-3 p-4">
+      <div>
+        <p className="font-medium text-foreground">Demografía — Sevilla</p>
+        <p className="text-xs text-muted-foreground">Columnas 3D por manzana/vereda, según el indicador elegido.</p>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        {INDICATOR_OPTIONS.map((opt) => (
+          <Button
+            key={opt.value}
+            type="button"
+            size="sm"
+            variant={indicator === opt.value ? "default" : "secondary"}
+            className="justify-start"
+            onClick={() => setIndicator(opt.value)}
+          >
+            {opt.label}
+          </Button>
+        ))}
+      </div>
+
+      {indicator === "manzanas" && (
+        <div className="flex gap-1.5">
+          {(Object.keys(MANZANA_FIELD_LABEL) as ManzanaField[]).map((field) => (
+            <Button
+              key={field}
+              type="button"
+              size="sm"
+              variant={manzanaField === field ? "default" : "outline"}
+              className="flex-1"
+              onClick={() => setManzanaField(field)}
+            >
+              {MANZANA_FIELD_LABEL[field]}
+            </Button>
+          ))}
+        </div>
+      )}
+
+      {isLoading && <p className="text-xs text-muted-foreground">Cargando datos del geoportal…</p>}
+      {error && (
+        <p className="flex items-center gap-1.5 text-xs text-destructive">
+          <TriangleAlert className="size-3.5 shrink-0" aria-hidden="true" />
+          No se pudo cargar este indicador.
+        </p>
+      )}
+
+      <div>
+        <p className="mb-1.5 text-xs font-medium text-muted-foreground">Leyenda</p>
+        <ul className="flex flex-col gap-1.5">
+          {indicator === "vulnerabilidad"
+            ? VULNERABILITY_LEVELS.map((level) => (
+                <li key={level} className="flex items-center gap-2 text-sm">
+                  <span
+                    className={cn("size-2.5 shrink-0 rounded-sm", VULNERABILITY_LEVEL_STYLES[level].swatchClass)}
+                    aria-hidden="true"
+                  />
+                  <span className="text-foreground">{level}</span>
+                </li>
+              ))
+            : INDICATOR_LEVELS.map((level) => (
+                <li key={level} className="flex items-center gap-2 text-sm">
+                  <span
+                    className="size-2.5 shrink-0 rounded-sm"
+                    style={{ backgroundColor: `var(--demografia-indicador-${slugifyLevel(level)})` }}
+                    aria-hidden="true"
+                  />
+                  <span className="text-foreground">{level}</span>
+                </li>
+              ))}
+        </ul>
+      </div>
+    </div>
+  )
+}
+
+function slugifyLevel(level: string): string {
+  return level
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, "-")
 }
 
 function LayerLegend({
