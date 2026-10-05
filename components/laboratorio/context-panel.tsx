@@ -1,8 +1,17 @@
 "use client"
 
 import Image from "next/image"
-import { LAYER_DEFINITIONS, levelSeverity, type LabVeredasFeatureCollection, type LayerKey } from "@/lib/laboratorio/layers"
+import { Layers } from "lucide-react"
+import {
+  LAYER_DEFINITIONS,
+  levelSeverity,
+  resolveSubLayerOn,
+  type LabVeredasFeatureCollection,
+  type LayerKey,
+} from "@/lib/laboratorio/layers"
 import { Badge } from "@/components/ui/badge"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
 
 interface ContextPanelProps {
   veredas: LabVeredasFeatureCollection | null
@@ -10,6 +19,11 @@ interface ContextPanelProps {
   /** Last layer turned on — drives which legend/metrics show when several are active. */
   lastActivatedLayer: LayerKey | null
   previewLayer: LayerKey | null
+  /** Per-sub-layer on/off overrides for whichever layer is currently focused — see `resolveSubLayerOn`. */
+  subLayerToggles: Record<string, boolean>
+  onToggleSubLayer: (id: string) => void
+  /** Whether the bottom analysis panel is collapsed — this panel shrinks to match so the two never overlap. */
+  bottomPanelCollapsed: boolean
 }
 
 /**
@@ -17,24 +31,67 @@ interface ContextPanelProps {
  * wins" summary when no layer is active, the hovered-but-off layer's
  * thumbnail + affected-vereda count during a rail hover preview, or the
  * most-recently-activated active layer's legend + per-level vereda counts
- * otherwise.
+ * (plus its "Capas" context-overlay checklist) otherwise. Its height tracks
+ * `bottomPanelCollapsed` so it never overlaps the floating bottom panel in
+ * the bottom-right corner.
  */
-export function ContextPanel({ veredas, activeLayers, lastActivatedLayer, previewLayer }: ContextPanelProps) {
+export function ContextPanel({
+  veredas,
+  activeLayers,
+  lastActivatedLayer,
+  previewLayer,
+  subLayerToggles,
+  onToggleSubLayer,
+  bottomPanelCollapsed,
+}: ContextPanelProps) {
+  const focusLayer =
+    lastActivatedLayer && activeLayers.includes(lastActivatedLayer)
+      ? lastActivatedLayer
+      : activeLayers[activeLayers.length - 1] ?? null
+
   const content = previewLayer ? (
     <PreviewSummary veredas={veredas} layer={previewLayer} />
   ) : activeLayers.length === 0 ? (
     <CompoundSummary veredas={veredas} />
   ) : (
-    <LayerLegend
-      veredas={veredas}
-      layer={lastActivatedLayer && activeLayers.includes(lastActivatedLayer) ? lastActivatedLayer : activeLayers[activeLayers.length - 1]}
-      activeLayers={activeLayers}
-    />
+    <LayerLegend veredas={veredas} layer={focusLayer!} activeLayers={activeLayers} />
   )
 
+  const subLayers = !previewLayer && focusLayer ? LAYER_DEFINITIONS[focusLayer].subLayers : undefined
+
   return (
-    <div className="absolute right-3 top-3 bottom-3 z-10 hidden w-72 overflow-y-auto rounded-xl border border-border/60 bg-card/80 shadow-lg backdrop-blur-md sm:block">
-      {content}
+    <div
+      className={`absolute right-3 top-3 z-10 hidden w-72 flex-col overflow-hidden rounded-xl border border-border/60 bg-card/80 shadow-lg backdrop-blur-md transition-[bottom] sm:flex ${
+        bottomPanelCollapsed ? "bottom-[4.25rem]" : "bottom-3 sm:bottom-[calc(42%+1.5rem)]"
+      }`}
+    >
+      <div className="min-h-0 flex-1 overflow-y-auto">{content}</div>
+      {subLayers && subLayers.length > 0 && (
+        <div className="shrink-0 border-t border-border/70 p-3">
+          <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            <Layers className="size-3.5" aria-hidden="true" />
+            Capas
+          </p>
+          <ul className="flex flex-col gap-2">
+            {subLayers.map((sub) => {
+              const checked = resolveSubLayerOn(focusLayer!, sub.id, subLayerToggles)
+              return (
+                <li key={sub.id} className="flex items-start gap-2">
+                  <Checkbox
+                    id={`sublayer-${sub.id}`}
+                    checked={checked}
+                    onCheckedChange={() => onToggleSubLayer(sub.id)}
+                    className="mt-0.5"
+                  />
+                  <Label htmlFor={`sublayer-${sub.id}`} className="text-xs font-normal leading-snug text-foreground">
+                    {sub.label}
+                  </Label>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      )}
     </div>
   )
 }

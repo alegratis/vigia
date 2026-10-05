@@ -23,16 +23,19 @@ interface LayerRailProps {
 }
 
 /**
- * Narrow left-docked rail of per-layer on/off switches — the only way to
- * activate a hazard layer on the shared canvas. Hovering a layer that's
- * currently off fires `onHoverLayer` so the workspace can show a dimmed
- * preview + thumbnail without actually toggling it on.
+ * Row of per-layer on/off switches — the only way to activate a hazard
+ * layer on the shared canvas. Docked top-center on desktop (out of the way
+ * of both the map's own top-left nav controls and the right-side context
+ * panel), and collapsed to a narrow left-docked vertical rail on mobile
+ * where horizontal space is too tight for 9 side-by-side buttons. Hovering
+ * a layer that's currently off fires `onHoverLayer` so the workspace can
+ * show a dimmed preview + thumbnail without actually toggling it on.
  */
 export function LayerRail({ activeLayers, onToggle, onHoverLayer }: LayerRailProps) {
   return (
     <div
       aria-label="Capas del laboratorio"
-      className="absolute left-3 top-1/2 z-10 flex w-16 -translate-y-1/2 flex-col gap-1 rounded-xl border border-border/60 bg-card/80 py-3 shadow-lg backdrop-blur-md"
+      className="absolute left-3 top-16 z-10 flex w-14 flex-col gap-1 rounded-xl border border-border/60 bg-card/80 py-2 shadow-lg backdrop-blur-md sm:left-1/2 sm:top-3 sm:w-auto sm:max-w-[min(92vw,44rem)] sm:-translate-x-1/2 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-0.5 sm:px-2"
     >
       {LAYER_ORDER.map((layer) => {
         const def = LAYER_DEFINITIONS[layer]
@@ -54,7 +57,7 @@ export function LayerRail({ activeLayers, onToggle, onHoverLayer }: LayerRailPro
             onMouseEnter={() => !isActive && onHoverLayer(layer)}
             onMouseLeave={() => onHoverLayer(null)}
             className={cn(
-              "mx-2 flex flex-col items-center gap-1 rounded-md px-1 py-2.5 text-center transition-colors",
+              "mx-1 flex flex-col items-center gap-1 rounded-md px-1 py-2 text-center transition-colors sm:mx-0 sm:px-2 sm:py-1.5",
               isActive
                 ? "bg-primary text-primary-foreground shadow-sm"
                 : willReplace

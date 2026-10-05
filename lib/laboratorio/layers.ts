@@ -82,6 +82,30 @@ interface LayerLevelStyle {
   colorToken: string
 }
 
+/**
+ * A toggleable context layer *within* an active hazard layer — the same
+ * secondary overlays (GHSL settlements, WDPA protected areas, OSM
+ * infrastructure, IMERG rainfall, hydrography) each production live-map
+ * (`components/maps/<hazard>-live-map.tsx`) already renders in its own
+ * rail, ported here as the laboratorio's "Capas" checklist for whichever
+ * layer is focused. `kind` is a shared rendering recipe in `LabMap` rather
+ * than bespoke code per layer, since several hazards reuse the exact same
+ * WMS/OSM source.
+ */
+export interface SubLayerDefinition {
+  id: string
+  label: string
+  kind: "ghsl" | "wdpa" | "osm-infra" | "imerg" | "quebradas" | "geoglows-click" | "veredas-outline"
+  defaultOn?: boolean
+}
+
+/** Shared GHSL + WDPA + OSM infrastructure trio — identical source across every hazard that offers it in production. */
+const CONTEXT_SUB_LAYERS: SubLayerDefinition[] = [
+  { id: "osm-infra", label: "Infraestructura (OSM)", kind: "osm-infra" },
+  { id: "ghsl", label: "Asentamientos humanos (GHSL)", kind: "ghsl" },
+  { id: "wdpa", label: "Áreas protegidas (WDPA)", kind: "wdpa" },
+]
+
 export interface LayerDefinition {
   key: LayerKey
   label: string
@@ -114,6 +138,8 @@ export interface LayerDefinition {
    * through the "ver todas" modal instead of being silently dropped.
    */
   maxVisiblePoints?: number
+  /** Secondary context overlays shown as a "Capas" checklist in the right panel while this layer is focused. */
+  subLayers?: SubLayerDefinition[]
 }
 
 export const LAYER_DEFINITIONS: Record<LayerKey, LayerDefinition> = {
@@ -128,6 +154,7 @@ export const LAYER_DEFINITIONS: Record<LayerKey, LayerDefinition> = {
     scoreProperty: "isScoreAvg",
     levels: SUSCEPTIBILITY_LEVELS,
     levelStyles: SUSCEPTIBILITY_LEVEL_STYLES,
+    subLayers: CONTEXT_SUB_LAYERS,
   },
   inundaciones: {
     key: "inundaciones",
@@ -140,6 +167,14 @@ export const LAYER_DEFINITIONS: Record<LayerKey, LayerDefinition> = {
     scoreProperty: "floodScoreAvg",
     levels: FLOOD_SUSCEPTIBILITY_LEVELS,
     levelStyles: FLOOD_SUSCEPTIBILITY_LEVEL_STYLES,
+    // Inundaciones is the one production map with its own dedicated hydrography + rainfall
+    // context overlays (components/maps/geoglows-live-map.tsx) beyond the shared GHSL/WDPA/OSM trio.
+    subLayers: [
+      { id: "geoglows-click", label: "Consultar río al hacer clic (GEOGLOWS)", kind: "geoglows-click", defaultOn: true },
+      { id: "imerg", label: "Precipitación (IMERG)", kind: "imerg" },
+      { id: "quebradas", label: "Quebradas y ríos (clic para nombre)", kind: "quebradas" },
+      ...CONTEXT_SUB_LAYERS,
+    ],
   },
   incendios: {
     key: "incendios",
@@ -152,6 +187,7 @@ export const LAYER_DEFINITIONS: Record<LayerKey, LayerDefinition> = {
     scoreProperty: "fireScoreAvg",
     levels: FIRE_THREAT_LEVELS,
     levelStyles: FIRE_THREAT_LEVEL_STYLES,
+    subLayers: CONTEXT_SUB_LAYERS,
   },
   "riesgo-compuesto": {
     key: "riesgo-compuesto",
@@ -164,6 +200,7 @@ export const LAYER_DEFINITIONS: Record<LayerKey, LayerDefinition> = {
     scoreProperty: "compoundScore",
     levels: COMPOUND_LEVELS,
     levelStyles: COMPOUND_LEVEL_STYLES,
+    subLayers: CONTEXT_SUB_LAYERS,
   },
   precipitacion: {
     key: "precipitacion",
@@ -176,6 +213,7 @@ export const LAYER_DEFINITIONS: Record<LayerKey, LayerDefinition> = {
     scoreProperty: "precipitacionScore",
     levels: PRECIPITATION_LEVELS,
     levelStyles: PRECIPITATION_LEVEL_STYLES,
+    subLayers: [{ id: "imerg", label: "Precipitación (IMERG)", kind: "imerg", defaultOn: true }, ...CONTEXT_SUB_LAYERS],
   },
   clima: {
     key: "clima",
@@ -280,6 +318,17 @@ export function isLayerKey(value: string): value is LayerKey {
 
 export function isExclusiveLayer(layer: LayerKey): boolean {
   return Boolean(LAYER_DEFINITIONS[layer].exclusive)
+}
+
+/**
+ * Resolves a sub-layer's on/off state: an explicit entry in `toggles` wins,
+ * otherwise falls back to that sub-layer's own `defaultOn`. Keyed by the
+ * sub-layer's bare `id` (not layer-namespaced) since every id is already
+ * unique across hazards.
+ */
+export function resolveSubLayerOn(layer: LayerKey, id: string, toggles: Record<string, boolean>): boolean {
+  if (id in toggles) return toggles[id]
+  return LAYER_DEFINITIONS[layer].subLayers?.find((s) => s.id === id)?.defaultOn ?? false
 }
 
 /**

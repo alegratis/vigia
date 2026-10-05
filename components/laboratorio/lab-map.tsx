@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import useSWR from "swr"
 import Map, {
   Source,
   Layer,
@@ -18,6 +19,7 @@ import { List } from "lucide-react"
 import {
   LAYER_DEFINITIONS,
   LAYER_ORDER,
+  resolveSubLayerOn,
   type LabVeredaFeature,
   type LabVeredasFeatureCollection,
   type LayerKey,
@@ -26,6 +28,16 @@ import { useLabPoints, MAX_VISIBLE_POINTS, type LabPointFeature } from "@/lib/la
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import { maplibreMapStyle } from "@/lib/maps/maplibre-basemap-style"
 import { useThemeSyncedBasemap } from "@/lib/maps/use-theme-synced-basemap"
+import { wmsRasterSource } from "@/lib/maps/wms-raster-source"
+import { GWIS_WMS_URL } from "@/lib/incendios/gwis"
+import { GWIS_SETTLEMENT_LAYER, GWIS_PROTECTED_AREAS_LAYER } from "@/lib/demografia/gwis-context-layers"
+import { IMERG_TILE_URL } from "@/lib/precipitacion/imerg"
+import { useOsmInfrastructure } from "@/lib/osm/use-infrastructure"
+import { getOsmCategory } from "@/lib/osm/categories"
+import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
+import { identifyReach, returnPeriodColor, returnPeriodLabel, type ReachInfo } from "@/lib/geoglows/live-map"
+import { formatFlow } from "@/lib/flood-ui"
+import type { InundacionesQuebradasResponse } from "@/lib/inundaciones/api-types"
 import { MapBasemapControl } from "@/components/maps/map-basemap-control"
 import { MapViewToggleControl } from "@/components/maps/map-view-toggle-control"
 import { VeredaPopupContent, type VeredaPopupHazardKind } from "@/components/maps/vereda-popup-content"
@@ -73,6 +85,16 @@ interface LabMapProps {
   is3D: boolean
   onToggle3D: () => void
   onVeredaSelect: (feature: LabVeredaFeature | null) => void
+  /** The single exclusive hazard layer currently selected, if any — sub-layers only apply to this layer. */
+  focusLayer: LayerKey | null
+  /** Per-sub-layer on/off overrides, keyed by the sub-layer's bare `id` (see `resolveSubLayerOn`). */
+  subLayerToggles: Record<string, boolean>
+}
+
+const quebradasFetcher = async (url: string): Promise<InundacionesQuebradasResponse> => {
+  const res = await fetch(url)
+  if (!res.ok) throw new Error("No se pudo cargar la capa de quebradas y ríos")
+  return res.json()
 }
 
 /**
@@ -92,6 +114,8 @@ export function LabMap({
   is3D,
   onToggle3D,
   onVeredaSelect,
+  focusLayer,
+  subLayerToggles,
 }: LabMapProps) {
   const mapRef = useRef<MapRef>(null)
   const [basemap, setBasemap] = useThemeSyncedBasemap()
@@ -100,6 +124,32 @@ export function LabMap({
   const [pointsModalLayer, setPointsModalLayer] = useState<LayerKey | null>(null)
   const [transitioning, setTransitioning] = useState(false)
   const [cursor, setCursor] = useState("")
+  const [quebradaPopup, setQuebradaPopup] = useState<{ lon: number; lat: number; nombre: string } | null>(null)
+  const [reachPopup, setReachPopup] = useState<{ lon: number; lat: number; info: ReachInfo | null } | null>(null)
+
+  // Only the focused layer's own sub-layers can be active — switching away from it (or turning off
+  // exclusivity entirely) clears them implicitly since `focusLayer` becomes null/changes.
+  const activeSubLayerIds = useMemo(() => {
+    if (!focusLayer) return new Set<string>()
+    const subLayers = LAYER_DEFINITIONS[focusLayer].subLayers ?? []
+    return new Set(subLayers.filter((s) => resolveSubLayerOn(focusLayer, s.id, subLayerToggles)).map((s) => s.id))
+  }, [focusLayer, subLayerToggles])
+
+  const { data: quebradasData } = useSWR<InundacionesQuebradasResponse>(
+    activeSubLayerIds.has("quebradas") ? "/api/inundaciones/quebradas" : null,
+    quebradasFetcher,
+    { revalidateOnFocus: false },
+  )
+  const quebradasGeoJson = useMemo<GeoJSON.FeatureCollection | null>(() => {
+    if (!quebradasData?.lines) return null
+    return {
+      type: "FeatureCollection",
+      features: quebradasData.lines.features.map((feature, i) => ({ ...feature, id: `quebrada-${i}` })),
+    }
+  }, [quebradasData])
+
+  const { points: osmInfraPoints } = useOsmInfrastructure()
+  const osmColors = useOsmCategoryColors()
 
   const activePointsLayers = useMemo(
     () => activeLayers.filter((layer) => POINTS_LAYERS.includes(layer)),
@@ -232,19 +282,50 @@ export function LabMap({
   // with, so they're excluded from the per-layer `Source`/`Layer` loop entirely.
   const fillLayers = useMemo(() => activeLayers.filter((layer) => !POINTS_LAYERS.includes(layer)), [activeLayers])
 
-  const interactiveLayerIds = useMemo(
-    () => [...fillLayers].reverse().map((layer) => `lab-${layer}-fill`),
-    [fillLayers],
-  )
+  const interactiveLayerIds = useMemo(() => {
+    const ids = [...fillLayers].reverse().map((layer) => `lab-${layer}-fill`)
+    if (activeSubLayerIds.has("quebradas")) ids.push("lab-sub-quebradas-hit")
+    return ids
+  }, [fillLayers, activeSubLayerIds])
 
   const handleMapClick = useCallback(
     (e: MapLayerMouseEvent) => {
       const feature = e.features?.[0]
+
+      if (feature?.layer?.id === "lab-sub-quebradas-hit") {
+        const nombre = (feature.properties?.nombre as string | undefined) ?? "Quebrada / río"
+        setQuebradaPopup({ lon: e.lngLat.lng, lat: e.lngLat.lat, nombre })
+        return
+      }
+
       if (!feature || !feature.properties) {
         setPopupInfo(null)
         onVeredaSelect(null)
+        setQuebradaPopup(null)
+
+        if (activeSubLayerIds.has("geoglows-click")) {
+          const map = mapRef.current?.getMap()
+          if (map) {
+            const bounds = map.getBounds()
+            const container = map.getContainer()
+            const { lng, lat } = e.lngLat
+            identifyReach(
+              lat,
+              lng,
+              { north: bounds.getNorth(), south: bounds.getSouth(), east: bounds.getEast(), west: bounds.getWest() },
+              container.clientWidth,
+              container.clientHeight,
+            )
+              .then((info) => setReachPopup({ lon: lng, lat, info }))
+              .catch(() => setReachPopup({ lon: lng, lat, info: null }))
+          }
+        } else {
+          setReachPopup(null)
+        }
         return
       }
+
+      setReachPopup(null)
       const layerId = feature.layer?.id ?? ""
       const layer = LAYER_ORDER.find((key) => `lab-${key}-fill` === layerId)
       const veredaFeature = veredas?.features.find(
@@ -254,7 +335,7 @@ export function LabMap({
       setPopupInfo({ feature: veredaFeature, layer })
       onVeredaSelect(veredaFeature)
     },
-    [veredas, onVeredaSelect],
+    [veredas, onVeredaSelect, activeSubLayerIds],
   )
 
   return (
@@ -275,6 +356,24 @@ export function LabMap({
         <NavigationControl position="top-left" />
         <MapViewToggleControl is3D={is3D} onToggle={handleToggle3D} />
         <MapBasemapControl basemap={basemap} onChange={setBasemap} />
+
+        {activeSubLayerIds.has("ghsl") && (
+          <Source key="lab-sub-ghsl" {...wmsRasterSource(GWIS_WMS_URL, GWIS_SETTLEMENT_LAYER)}>
+            <Layer id="lab-sub-ghsl-raster" type="raster" paint={{ "raster-opacity": 0.55 }} />
+          </Source>
+        )}
+
+        {activeSubLayerIds.has("wdpa") && (
+          <Source key="lab-sub-wdpa" {...wmsRasterSource(GWIS_WMS_URL, GWIS_PROTECTED_AREAS_LAYER)}>
+            <Layer id="lab-sub-wdpa-raster" type="raster" paint={{ "raster-opacity": 0.55 }} />
+          </Source>
+        )}
+
+        {activeSubLayerIds.has("imerg") && (
+          <Source key="lab-sub-imerg" id="lab-sub-imerg-source" type="raster" tiles={[IMERG_TILE_URL]} tileSize={256}>
+            <Layer id="lab-sub-imerg-raster" type="raster" paint={{ "raster-opacity": 0.6 }} />
+          </Source>
+        )}
 
         {!is3D &&
           fillLayers.map((layer) => {
@@ -298,6 +397,17 @@ export function LabMap({
               </Source>
             )
           })}
+
+        {quebradasGeoJson && (
+          <Source id="lab-sub-quebradas-source" type="geojson" data={quebradasGeoJson}>
+            <Layer id="lab-sub-quebradas-line" type="line" paint={{ "line-color": "#0ea5e9", "line-width": 1.5 }} />
+            <Layer
+              id="lab-sub-quebradas-hit"
+              type="line"
+              paint={{ "line-color": "#0ea5e9", "line-width": 14, "line-opacity": 0 }}
+            />
+          </Source>
+        )}
 
         {(() => {
           const previewData = !is3D && previewLayer && !activeLayers.includes(previewLayer)
@@ -338,6 +448,57 @@ export function LabMap({
               }
               colored={POPUP_HAZARD_KINDS.includes(popupInfo.layer as (typeof POPUP_HAZARD_KINDS)[number])}
             />
+          </Popup>
+        )}
+
+        {activeSubLayerIds.has("osm-infra") &&
+          osmInfraPoints?.map((point, i) => {
+            const category = getOsmCategory(point.category)
+            const color = osmColors?.[point.category] ?? "#9ca3af"
+            return (
+              <Marker key={`osm-${i}`} longitude={point.lon} latitude={point.lat}>
+                <span
+                  className="block size-2.5 rounded-full border border-background shadow-sm"
+                  style={{ backgroundColor: color }}
+                  aria-label={`${category.label}: ${point.name ?? "sin nombre"}`}
+                />
+              </Marker>
+            )
+          })}
+
+        {quebradaPopup && (
+          <Popup
+            longitude={quebradaPopup.lon}
+            latitude={quebradaPopup.lat}
+            onClose={() => setQuebradaPopup(null)}
+            closeOnClick={false}
+            maxWidth="220px"
+          >
+            <p className="text-sm font-semibold text-foreground">{quebradaPopup.nombre}</p>
+          </Popup>
+        )}
+
+        {reachPopup && (
+          <Popup
+            longitude={reachPopup.lon}
+            latitude={reachPopup.lat}
+            onClose={() => setReachPopup(null)}
+            closeOnClick={false}
+            maxWidth="240px"
+          >
+            {reachPopup.info ? (
+              <div className="flex flex-col gap-1 p-1 text-sm">
+                <p className="font-semibold" style={{ color: returnPeriodColor(reachPopup.info.returnPeriod) }}>
+                  {returnPeriodLabel(reachPopup.info.returnPeriod)}
+                </p>
+                {reachPopup.info.meanFlowCms != null && (
+                  <p className="text-muted-foreground">Caudal medio: {formatFlow(reachPopup.info.meanFlowCms)}</p>
+                )}
+                <p className="text-xs text-muted-foreground">Fuente: GEOGLOWS</p>
+              </div>
+            ) : (
+              <p className="p-1 text-xs text-muted-foreground">Sin tramo de río en este punto.</p>
+            )}
           </Popup>
         )}
 

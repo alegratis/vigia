@@ -22,6 +22,7 @@ import {
   mergePrecipitacionIntoVeredas,
   mergeClimaIntoVeredas,
   deriveDemografiaLevels,
+  resolveSubLayerOn,
   parseLabState,
   readLabStateFromStorage,
   serializeLabState,
@@ -106,6 +107,28 @@ export function LabWorkspace() {
   // its own height to match — otherwise an expanded bottom panel and a full-height right panel
   // would overlap in the bottom-right corner.
   const [bottomPanelCollapsed, setBottomPanelCollapsed] = useState(false)
+  // Keyed by bare sub-layer id (see `resolveSubLayerOn`) rather than per-hazard-layer, since ids
+  // are already unique across every hazard that offers one.
+  const [subLayerToggles, setSubLayerToggles] = useState<Record<string, boolean>>({})
+
+  // Same "last activated, else last in the active list" convention the context panel and bottom
+  // panel both already used inline — hoisted here once `LabMap` also needs to know which single
+  // layer's sub-layers are in play.
+  const focusLayer = useMemo(
+    () =>
+      (lastActivatedLayer && state.layers.includes(lastActivatedLayer)
+        ? lastActivatedLayer
+        : state.layers[state.layers.length - 1]) ?? null,
+    [lastActivatedLayer, state.layers],
+  )
+
+  const handleToggleSubLayer = useCallback(
+    (id: string) => {
+      if (!focusLayer) return
+      setSubLayerToggles((prev) => ({ ...prev, [id]: !resolveSubLayerOn(focusLayer, id, prev) }))
+    },
+    [focusLayer],
+  )
 
   // Reads `?layers=...` first, falling back to localStorage, on mount only — the URL is the
   // source of truth for a shared link, localStorage is just a same-device convenience fallback.
@@ -200,9 +223,9 @@ export function LabWorkspace() {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background">
-      <header className="flex shrink-0 items-center justify-between gap-4 border-b border-border px-4 py-2.5">
-        <div className="flex items-center gap-3">
-          <span className="relative flex h-6 items-center justify-center">
+      <header className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-2 sm:gap-4 sm:px-4 sm:py-2.5">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+          <span className="relative hidden h-6 items-center justify-center sm:flex">
             <Image
               src="/images/redlabot-mark-light.png"
               alt="RED LabOT"
@@ -220,8 +243,8 @@ export function LabWorkspace() {
               priority
             />
           </span>
-          <span aria-hidden="true" className="h-6 w-px bg-border" />
-          <span className="relative flex size-7 shrink-0 items-center justify-center">
+          <span aria-hidden="true" className="hidden h-6 w-px bg-border sm:block" />
+          <span className="relative flex size-6 shrink-0 items-center justify-center sm:size-7">
             <Image
               src="/images/vigia-mark-light.png"
               alt="Vigía"
@@ -240,12 +263,12 @@ export function LabWorkspace() {
             />
           </span>
           <div className="min-w-0">
-            <p className="truncate font-medium text-foreground">Laboratorio · mapa único multicapa</p>
-            <p className="truncate text-xs text-muted-foreground">{headerSubtitle}</p>
+            <p className="truncate text-sm font-medium text-foreground sm:text-base">Laboratorio</p>
+            <p className="hidden truncate text-xs text-muted-foreground sm:block">{headerSubtitle}</p>
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-3">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <div className="hidden items-center gap-3 lg:flex">
             <a
               href="https://nasalifelines.org"
@@ -272,7 +295,7 @@ export function LabWorkspace() {
             <span aria-hidden="true" className="h-6 w-px bg-border" />
           </div>
           <Select value={activeMunicipioValue} onValueChange={handleMunicipioChange}>
-            <SelectTrigger className="h-8 w-40 text-xs">
+            <SelectTrigger className="h-8 w-28 text-xs sm:w-40">
               <SelectValue placeholder="Municipio" />
             </SelectTrigger>
             <SelectContent>
@@ -284,9 +307,12 @@ export function LabWorkspace() {
               ))}
             </SelectContent>
           </Select>
-          <Button size="sm" variant="secondary" onClick={handleShare}>
+          <Button size="sm" variant="secondary" onClick={handleShare} className="hidden sm:inline-flex">
             <Link2 className="size-3.5" />
             Compartir vista
+          </Button>
+          <Button size="icon" variant="secondary" onClick={handleShare} className="sm:hidden" aria-label="Compartir vista">
+            <Link2 className="size-3.5" />
           </Button>
           <ThemeToggle />
         </div>
@@ -305,6 +331,8 @@ export function LabWorkspace() {
           is3D={state.is3D}
           onToggle3D={handleToggle3D}
           onVeredaSelect={setSelectedVereda}
+          focusLayer={focusLayer}
+          subLayerToggles={subLayerToggles}
         />
 
         <LayerRail activeLayers={state.layers} onToggle={handleToggleLayer} onHoverLayer={setPreviewLayer} />
@@ -314,6 +342,9 @@ export function LabWorkspace() {
           activeLayers={state.layers}
           lastActivatedLayer={lastActivatedLayer}
           previewLayer={previewLayer}
+          subLayerToggles={subLayerToggles}
+          onToggleSubLayer={handleToggleSubLayer}
+          bottomPanelCollapsed={bottomPanelCollapsed}
         />
 
         <LayerConflictPopover
