@@ -41,7 +41,8 @@ export function ContextPanel({ veredas, activeLayers, lastActivatedLayer, previe
 
 function PreviewSummary({ veredas, layer }: { veredas: LabVeredasFeatureCollection | null; layer: LayerKey }) {
   const def = LAYER_DEFINITIONS[layer]
-  const count = veredas?.features.filter((f) => f.properties[def.levelProperty]).length ?? 0
+  // "points" layers (sismologia, hidrantes) have no levelProperty — their preview has no per-vereda count to show.
+  const count = def.levelProperty ? veredas?.features.filter((f) => f.properties[def.levelProperty!]).length ?? 0 : 0
 
   return (
     <div className="flex flex-col gap-3 p-4">
@@ -69,7 +70,8 @@ function CompoundSummary({ veredas }: { veredas: LabVeredasFeatureCollection | n
       let worstLayer: LayerKey | null = null
       for (const layer of layers) {
         const def = LAYER_DEFINITIONS[layer]
-        const level = feature.properties[def.levelProperty] as string | null
+        // These three layers are always "fill" mode, so levelProperty is always defined.
+        const level = (def.levelProperty ? feature.properties[def.levelProperty] : null) as string | null
         const severity = levelSeverity(layer, level)
         if (severity > worst) {
           worst = severity
@@ -116,10 +118,15 @@ function LayerLegend({
   activeLayers: LayerKey[]
 }) {
   const def = LAYER_DEFINITIONS[layer]
-  const counts = def.levels.map((level) => ({
+  // `LayerLegend` only ever receives "fill" mode layers (see `lastActivatedLayer` usage in the parent),
+  // so `levels`/`levelStyles`/`levelProperty` are always defined here.
+  const levels = def.levels ?? []
+  const levelStyles = def.levelStyles ?? {}
+  const levelProperty = def.levelProperty
+  const counts = levels.map((level) => ({
     level,
-    style: def.levelStyles[level],
-    count: veredas?.features.filter((f) => f.properties[def.levelProperty] === level).length ?? 0,
+    style: levelStyles[level],
+    count: veredas?.features.filter((f) => levelProperty && f.properties[levelProperty] === level).length ?? 0,
   }))
 
   return (

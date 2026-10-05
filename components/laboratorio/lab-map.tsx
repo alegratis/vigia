@@ -4,6 +4,7 @@ import { useCallback, useMemo, useRef, useState } from "react"
 import Map, {
   Source,
   Layer,
+  Marker,
   Popup,
   NavigationControl,
   AttributionControl,
@@ -13,15 +14,37 @@ import Map, {
 import { setWorkerUrl } from "maplibre-gl"
 import "maplibre-gl/dist/maplibre-gl.css"
 import { toast } from "sonner"
-import { LAYER_DEFINITIONS, LAYER_ORDER, type LabVeredaFeature, type LabVeredasFeatureCollection, type LayerKey } from "@/lib/laboratorio/layers"
+import { List } from "lucide-react"
+import {
+  LAYER_DEFINITIONS,
+  LAYER_ORDER,
+  type LabVeredaFeature,
+  type LabVeredasFeatureCollection,
+  type LayerKey,
+} from "@/lib/laboratorio/layers"
+import { useLabPoints, MAX_VISIBLE_POINTS, type LabPointFeature } from "@/lib/laboratorio/use-lab-points"
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import { maplibreMapStyle } from "@/lib/maps/maplibre-basemap-style"
 import { useThemeSyncedBasemap } from "@/lib/maps/use-theme-synced-basemap"
 import { MapBasemapControl } from "@/components/maps/map-basemap-control"
 import { MapViewToggleControl } from "@/components/maps/map-view-toggle-control"
-import { VeredaPopupContent } from "@/components/maps/vereda-popup-content"
+import { VeredaPopupContent, type VeredaPopupHazardKind } from "@/components/maps/vereda-popup-content"
+import { PointsListDialog } from "@/components/laboratorio/points-list-dialog"
+import { Button } from "@/components/ui/button"
 import { isMunicipioActive } from "@/lib/veredas/municipio-toggles"
 import { boundsForActiveMunicipios } from "@/lib/veredas/municipio-bounds"
+
+/** The two layers that render as raw point markers instead of a vereda choropleth fill. */
+const POINTS_LAYERS: LayerKey[] = ["sismologia", "hidrantes"]
+
+/** The only layer keys `VeredaPopupContent` has dedicated per-hazard fields for. */
+const POPUP_HAZARD_KINDS: VeredaPopupHazardKind[] = [
+  "deslizamientos",
+  "inundaciones",
+  "sismologia",
+  "incendios",
+  "riesgo-compuesto",
+]
 
 // Turbopack rewrites maplibre-gl's internal `import.meta.url`-based worker
 // resolution into a blob URL, which breaks the worker's own relative asset
@@ -73,20 +96,49 @@ export function LabMap({
   const mapRef = useRef<MapRef>(null)
   const [basemap, setBasemap] = useThemeSyncedBasemap()
   const [popupInfo, setPopupInfo] = useState<{ feature: LabVeredaFeature; layer: LayerKey } | null>(null)
+  const [pointPopup, setPointPopup] = useState<LabPointFeature | null>(null)
+  const [pointsModalLayer, setPointsModalLayer] = useState<LayerKey | null>(null)
   const [transitioning, setTransitioning] = useState(false)
 
+  const activePointsLayers = useMemo(
+    () => activeLayers.filter((layer) => POINTS_LAYERS.includes(layer)),
+    [activeLayers],
+  )
+  const sismologiaPoints = useLabPoints(
+    activeLayers.includes("sismologia") || previewLayer === "sismologia" ? "sismologia" : null,
+  )
+  const hidrantesPoints = useLabPoints(
+    activeLayers.includes("hidrantes") || previewLayer === "hidrantes" ? "hidrantes" : null,
+  )
+  const pointsForLayer = useCallback(
+    (layer: LayerKey) => (layer === "sismologia" ? sismologiaPoints : layer === "hidrantes" ? hidrantesPoints : null),
+    [sismologiaPoints, hidrantesPoints],
+  )
+
   const mapStyle = useMemo(() => maplibreMapStyle(basemap, is3D), [basemap, is3D])
+
+  const flyToPoint = useCallback((point: LabPointFeature) => {
+    const map = mapRef.current?.getMap()
+    if (map) {
+      map.easeTo({ center: [point.lon, point.lat], zoom: Math.max(map.getZoom(), 13), duration: 1200 })
+    }
+    setPointPopup(point)
+  }, [])
 
   const geojsonForLayer = useCallback(
     (layer: LayerKey): LabVeredasFeatureCollection | null => {
       if (!veredas) return null
       const def = LAYER_DEFINITIONS[layer]
+      // Only called via `fillLayers` (see render below), which excludes "points" mode layers,
+      // so `levelProperty`/`levelStyles` are always defined for any layer reaching this point.
+      const levelProperty = def.levelProperty
+      const levelStyles = def.levelStyles
       return {
         type: "FeatureCollection",
         features: veredas.features.map((feature) => {
           const inMunicipio = !municipio || isMunicipioActive(feature.properties.municipio, [municipio])
-          const level = feature.properties[def.levelProperty] as string | null
-          const style = level ? def.levelStyles[level] : undefined
+          const level = levelProperty ? (feature.properties[levelProperty] as string | null) : null
+          const style = level ? levelStyles?.[level] : undefined
           const color = inMunicipio && style ? resolveCssColor(style.colorToken) : resolveCssColor(GRAY_FILL)
           return {
             ...feature,
@@ -145,9 +197,14 @@ export function LabMap({
     [veredas],
   )
 
+  // Sismología and hidrantes render as raw point markers (see `activePointsLayers`
+  // below) — they have no `levelProperty`/`levelStyles` to paint a choropleth fill
+  // with, so they're excluded from the per-layer `Source`/`Layer` loop entirely.
+  const fillLayers = useMemo(() => activeLayers.filter((layer) => !POINTS_LAYERS.includes(layer)), [activeLayers])
+
   const interactiveLayerIds = useMemo(
-    () => [...activeLayers].reverse().map((layer) => `lab-${layer}-fill`),
-    [activeLayers],
+    () => [...fillLayers].reverse().map((layer) => `lab-${layer}-fill`),
+    [fillLayers],
   )
 
   const handleMapClick = useCallback(
@@ -187,7 +244,7 @@ export function LabMap({
         <MapBasemapControl basemap={basemap} onChange={setBasemap} />
 
         {!is3D &&
-          activeLayers.map((layer) => {
+          fillLayers.map((layer) => {
             const data = geojsonForLayer(layer)
             if (!data) return null
             return (
@@ -237,10 +294,94 @@ export function LabMap({
             closeOnClick={false}
             maxWidth="260px"
           >
-            <VeredaPopupContent feature={popupInfo.feature} hazardKind={popupInfo.layer} colored />
+            <VeredaPopupContent
+              feature={popupInfo.feature}
+              // `VeredaPopupContent` only has dedicated fields for these 4 hazard models — "precipitacion",
+              // "clima", and "demografia" fall back to the shared population/infrastructure summary only.
+              hazardKind={
+                POPUP_HAZARD_KINDS.includes(popupInfo.layer as (typeof POPUP_HAZARD_KINDS)[number])
+                  ? (popupInfo.layer as VeredaPopupHazardKind)
+                  : undefined
+              }
+              colored={POPUP_HAZARD_KINDS.includes(popupInfo.layer as (typeof POPUP_HAZARD_KINDS)[number])}
+            />
+          </Popup>
+        )}
+
+        {activePointsLayers.map((layer) =>
+          (pointsForLayer(layer)?.visible ?? []).map((point) => (
+            <Marker
+              key={point.id}
+              longitude={point.lon}
+              latitude={point.lat}
+              onClick={(e) => {
+                e.originalEvent.stopPropagation()
+                setPointPopup(point)
+              }}
+            >
+              <span
+                className="block size-3 cursor-pointer rounded-full border border-background shadow-sm"
+                style={{ backgroundColor: `var(--${point.colorToken})`, width: point.radius * 2, height: point.radius * 2 }}
+                aria-label={point.label}
+              />
+            </Marker>
+          )),
+        )}
+
+        {pointPopup && (
+          <Popup
+            key={pointPopup.id}
+            longitude={pointPopup.lon}
+            latitude={pointPopup.lat}
+            onClose={() => setPointPopup(null)}
+            closeOnClick={false}
+            maxWidth="240px"
+          >
+            <div className="flex flex-col gap-1 p-1">
+              <p className="text-sm font-semibold text-foreground">{pointPopup.label}</p>
+              <p className="text-xs text-muted-foreground">{pointPopup.sublabel}</p>
+            </div>
           </Popup>
         )}
       </Map>
+
+      {activePointsLayers.length > 0 && (
+        <div className="absolute left-1/2 top-3 z-10 flex -translate-x-1/2 gap-2">
+          {activePointsLayers.map((layer) => {
+            const data = pointsForLayer(layer)
+            if (!data || data.all.length === 0) return null
+            return (
+              <Button
+                key={layer}
+                type="button"
+                size="sm"
+                variant="secondary"
+                className="gap-1.5 shadow-md"
+                onClick={() => setPointsModalLayer(layer)}
+              >
+                <List className="size-3.5" aria-hidden="true" />
+                Ver todas · {LAYER_DEFINITIONS[layer].shortLabel} ({data.all.length})
+              </Button>
+            )
+          })}
+        </div>
+      )}
+
+      {pointsModalLayer &&
+        (() => {
+          const data = pointsForLayer(pointsModalLayer)
+          if (!data) return null
+          return (
+            <PointsListDialog
+              open
+              onOpenChange={(open) => !open && setPointsModalLayer(null)}
+              title={LAYER_DEFINITIONS[pointsModalLayer].label}
+              points={data.all}
+              visibleCount={MAX_VISIBLE_POINTS}
+              onSelect={flyToPoint}
+            />
+          )
+        })()}
 
       {transitioning && (
         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-background/30 backdrop-blur-sm">

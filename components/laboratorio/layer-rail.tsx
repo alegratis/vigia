@@ -1,14 +1,19 @@
 "use client"
 
-import { Mountain, Droplets, Flame, ShieldAlert, type LucideIcon } from "lucide-react"
+import { Mountain, Droplets, Flame, ShieldAlert, CloudRain, Thermometer, Activity, Waves, Users, type LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { LAYER_DEFINITIONS, LAYER_ORDER, type LayerKey } from "@/lib/laboratorio/layers"
+import { LAYER_DEFINITIONS, LAYER_ORDER, isExclusiveLayer, type LayerKey } from "@/lib/laboratorio/layers"
 
 const LAYER_ICONS: Record<LayerKey, LucideIcon> = {
   deslizamientos: Mountain,
   inundaciones: Droplets,
   incendios: Flame,
   "riesgo-compuesto": ShieldAlert,
+  clima: Thermometer,
+  precipitacion: CloudRain,
+  sismologia: Activity,
+  hidrantes: Waves,
+  demografia: Users,
 }
 
 interface LayerRailProps {
@@ -33,13 +38,18 @@ export function LayerRail({ activeLayers, onToggle, onHoverLayer }: LayerRailPro
         const def = LAYER_DEFINITIONS[layer]
         const Icon = LAYER_ICONS[layer]
         const isActive = activeLayers.includes(layer)
+        const activeExclusive = activeLayers.find((l) => isExclusiveLayer(l))
+        // Once an exclusive layer (clima/demografía/hidrantes) is on, every
+        // other switch previews as "will replace it" rather than "will
+        // stack" — toggling still works, it just swaps instead of adding.
+        const willReplace = !isActive && Boolean(activeExclusive) && activeExclusive !== layer
         return (
           <button
             key={layer}
             type="button"
             role="switch"
             aria-checked={isActive}
-            aria-label={def.label}
+            aria-label={willReplace ? `${def.label} (sustituye la capa activa)` : def.label}
             onClick={() => onToggle(layer)}
             onMouseEnter={() => !isActive && onHoverLayer(layer)}
             onMouseLeave={() => onHoverLayer(null)}
@@ -47,7 +57,9 @@ export function LayerRail({ activeLayers, onToggle, onHoverLayer }: LayerRailPro
               "mx-2 flex flex-col items-center gap-1 rounded-md px-1 py-2.5 text-center transition-colors",
               isActive
                 ? "bg-primary text-primary-foreground shadow-sm"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                : willReplace
+                  ? "text-muted-foreground/60 hover:bg-muted hover:text-foreground"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
             )}
           >
             <Icon className="size-4 shrink-0" aria-hidden="true" />

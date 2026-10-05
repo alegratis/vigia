@@ -19,10 +19,36 @@ import {
 } from "@/lib/inundaciones/levels"
 import { FIRE_THREAT_LEVELS, FIRE_THREAT_LEVEL_STYLES, type FireThreatLevel } from "@/lib/incendios/levels"
 import { COMPOUND_LEVELS, COMPOUND_LEVEL_STYLES, type CompoundLevel } from "@/lib/riesgo-compuesto/levels"
+import {
+  PRECIPITATION_LEVELS,
+  PRECIPITATION_LEVEL_STYLES,
+  type PrecipitationLevel,
+} from "@/lib/precipitacion/levels"
+import { TEMP_LEVELS, tempLevelColorToken, type TempLevel } from "@/lib/clima/api-types"
+import {
+  INDICATOR_LEVELS,
+  INDICATOR_LEVEL_TOKENS,
+  normalize,
+  indicatorLevel,
+  type IndicatorLevel,
+} from "@/lib/demografia/indicator-levels"
 import type { VeredaFeature, VeredaProperties, VeredasFeatureCollection } from "@/lib/veredas/api-types"
 
-export const LAYER_KEYS = ["deslizamientos", "inundaciones", "incendios", "riesgo-compuesto"] as const
+export const LAYER_KEYS = [
+  "deslizamientos",
+  "inundaciones",
+  "incendios",
+  "riesgo-compuesto",
+  "precipitacion",
+  "clima",
+  "demografia",
+  "sismologia",
+  "hidrantes",
+] as const
 export type LayerKey = (typeof LAYER_KEYS)[number]
+
+/** "fill" layers shade the shared vereda polygons; "points" layers render their own point source instead. */
+export type LayerRenderMode = "fill" | "points"
 
 /**
  * `VeredaProperties` plus the compound-risk fields, merged in client-side
@@ -36,6 +62,12 @@ export type LayerKey = (typeof LAYER_KEYS)[number]
 export interface LabVereda extends VeredaProperties {
   compoundLevel?: CompoundLevel | null
   compoundScore?: number | null
+  precipitacionLevel?: PrecipitationLevel | null
+  precipitacionScore?: number | null
+  climaLevel?: TempLevel | null
+  climaScore?: number | null
+  demografiaLevel?: IndicatorLevel | null
+  demografiaScore?: number | null
 }
 export interface LabVeredaFeature extends Omit<VeredaFeature, "properties"> {
   properties: LabVereda
@@ -57,12 +89,31 @@ export interface LayerDefinition {
   shortLabel: string
   image: string
   imageAlt: string
-  /** The LabVereda field holding this layer's level for a vereda. */
-  levelProperty: keyof LabVereda
-  /** The LabVereda field holding this layer's 0-1 composite score, for the compound summary. */
-  scoreProperty: keyof LabVereda
-  levels: readonly string[]
-  levelStyles: Record<string, LayerLevelStyle>
+  renderMode: LayerRenderMode
+  /** The LabVereda field holding this layer's level for a vereda. "fill" layers only. */
+  levelProperty?: keyof LabVereda
+  /** The LabVereda field holding this layer's 0-1 composite score, for the compound summary. "fill" layers only. */
+  scoreProperty?: keyof LabVereda
+  levels?: readonly string[]
+  levelStyles?: Record<string, LayerLevelStyle>
+  /** Static GeoJSON asset or API route this "points" layer fetches on its own, independent of the shared vereda collection. */
+  pointsUrl?: string
+  /**
+   * Clima, demografía, and hidrantes each read as their own single-purpose
+   * map (a temperature snapshot, a population snapshot, a point inventory)
+   * rather than a hazard fill meant to be read "through" another layer, so
+   * stacking them with anything else just muddies the canvas without adding
+   * insight. An exclusive layer always occupies the canvas alone: turning
+   * one on clears every other active layer, and turning any other layer on
+   * clears whichever exclusive layer was active.
+   */
+  exclusive?: boolean
+  /**
+   * Caps how many points render at once so the layer fits the viewport
+   * without a separate scroll/pan affordance — the rest stay reachable
+   * through the "ver todas" modal instead of being silently dropped.
+   */
+  maxVisiblePoints?: number
 }
 
 export const LAYER_DEFINITIONS: Record<LayerKey, LayerDefinition> = {
@@ -72,6 +123,7 @@ export const LAYER_DEFINITIONS: Record<LayerKey, LayerDefinition> = {
     shortLabel: "Deslizamientos",
     image: "/images/deslizamientos-map.png",
     imageAlt: "Mapa de susceptibilidad a deslizamientos",
+    renderMode: "fill",
     levelProperty: "dominantLevel",
     scoreProperty: "isScoreAvg",
     levels: SUSCEPTIBILITY_LEVELS,
@@ -83,6 +135,7 @@ export const LAYER_DEFINITIONS: Record<LayerKey, LayerDefinition> = {
     shortLabel: "Inundaciones",
     image: "/images/inundaciones-map.png",
     imageAlt: "Mapa de susceptibilidad a inundaciones",
+    renderMode: "fill",
     levelProperty: "floodLevel",
     scoreProperty: "floodScoreAvg",
     levels: FLOOD_SUSCEPTIBILITY_LEVELS,
@@ -94,6 +147,7 @@ export const LAYER_DEFINITIONS: Record<LayerKey, LayerDefinition> = {
     shortLabel: "Incendios",
     image: "/images/incendios-map.png",
     imageAlt: "Mapa de amenaza de incendios forestales",
+    renderMode: "fill",
     levelProperty: "fireLevel",
     scoreProperty: "fireScoreAvg",
     levels: FIRE_THREAT_LEVELS,
@@ -105,16 +159,89 @@ export const LAYER_DEFINITIONS: Record<LayerKey, LayerDefinition> = {
     shortLabel: "Riesgo compuesto",
     image: "/images/riesgo-compuesto-map.png",
     imageAlt: "Mapa de riesgo compuesto multiamenaza",
+    renderMode: "fill",
     levelProperty: "compoundLevel",
     scoreProperty: "compoundScore",
     levels: COMPOUND_LEVELS,
     levelStyles: COMPOUND_LEVEL_STYLES,
   },
+  precipitacion: {
+    key: "precipitacion",
+    label: "Precipitación",
+    shortLabel: "Precipitación",
+    image: "/images/precipitacion-map.png",
+    imageAlt: "Mapa de precipitación acumulada",
+    renderMode: "fill",
+    levelProperty: "precipitacionLevel",
+    scoreProperty: "precipitacionScore",
+    levels: PRECIPITATION_LEVELS,
+    levelStyles: PRECIPITATION_LEVEL_STYLES,
+  },
+  clima: {
+    key: "clima",
+    label: "Clima",
+    shortLabel: "Clima",
+    image: "/images/clima-map.png",
+    imageAlt: "Mapa de temperatura actual",
+    renderMode: "fill",
+    levelProperty: "climaLevel",
+    scoreProperty: "climaScore",
+    levels: TEMP_LEVELS,
+    levelStyles: Object.fromEntries(
+      TEMP_LEVELS.map((level) => [level, { label: level, colorToken: tempLevelColorToken(level) }]),
+    ),
+    exclusive: true,
+  },
+  demografia: {
+    key: "demografia",
+    label: "Demografía",
+    shortLabel: "Demografía",
+    image: "/images/demografia-map.png",
+    imageAlt: "Mapa de indicadores demográficos",
+    renderMode: "fill",
+    levelProperty: "demografiaLevel",
+    scoreProperty: "demografiaScore",
+    levels: INDICATOR_LEVELS,
+    levelStyles: Object.fromEntries(
+      INDICATOR_LEVELS.map((level) => [level, { label: level, colorToken: INDICATOR_LEVEL_TOKENS[level] }]),
+    ),
+    exclusive: true,
+  },
+  sismologia: {
+    key: "sismologia",
+    label: "Sismología",
+    shortLabel: "Sismología",
+    image: "/images/sismologia-map.png",
+    imageAlt: "Mapa de actividad sísmica reciente",
+    renderMode: "points",
+    pointsUrl: "/api/sismologia/eventos",
+  },
+  hidrantes: {
+    key: "hidrantes",
+    label: "Fuentes hídricas",
+    shortLabel: "Hidrantes",
+    image: "/images/hidrantes-map.png",
+    imageAlt: "Mapa de hidrantes",
+    renderMode: "points",
+    pointsUrl: "/data/hidrantes/hidrantes-sevilla.geojson",
+    maxVisiblePoints: 60,
+    exclusive: true,
+  },
 }
 
-export const LAYER_ORDER: LayerKey[] = ["deslizamientos", "inundaciones", "incendios", "riesgo-compuesto"]
+export const LAYER_ORDER: LayerKey[] = [
+  "deslizamientos",
+  "inundaciones",
+  "incendios",
+  "riesgo-compuesto",
+  "precipitacion",
+  "clima",
+  "demografia",
+  "sismologia",
+  "hidrantes",
+]
 
-/** Maximum simultaneously active layers. Currently equals the total layer count, written generically so a future 4th layer makes this limit meaningful without touching the check itself. */
+/** Maximum simultaneously active layers — kept at 3 so the shared canvas stays legible even with 9 layers available in the rail. */
 export const MAX_ACTIVE_LAYERS = 3
 
 /**
@@ -151,6 +278,10 @@ export function isLayerKey(value: string): value is LayerKey {
   return (LAYER_KEYS as readonly string[]).includes(value)
 }
 
+export function isExclusiveLayer(layer: LayerKey): boolean {
+  return Boolean(LAYER_DEFINITIONS[layer].exclusive)
+}
+
 /**
  * Merges `compoundLevel`/`compoundScore` from `/api/riesgo-compuesto/veredas`
  * (by `codigoVereda`) onto the shared `/api/veredas` collection, so the
@@ -177,6 +308,105 @@ export function mergeCompoundIntoVeredas(
           compoundLevel: match?.compoundLevel ?? null,
           compoundScore: match?.compoundScore ?? null,
         },
+      }
+    }),
+  }
+}
+
+/**
+ * Merges `nivel`/`acumuladoMm` from `/api/precipitacion/amenaza` (by
+ * `codigoVereda`) onto the shared vereda collection — same pattern as
+ * `mergeCompoundIntoVeredas`. The 0–1 score feeding the compound summary
+ * is the accumulation scaled against the "Muy alto" base threshold (150mm
+ * over 7 days, see `lib/precipitacion/levels.ts`), clamped to 1, so it's
+ * directly comparable to the other layers' 0–1 scores without inventing a
+ * second rainfall model.
+ */
+export function mergePrecipitacionIntoVeredas(
+  veredas: VeredasFeatureCollection | LabVeredasFeatureCollection | null,
+  precipitacion: { properties: { codigoVereda: string; nivel: string | null; acumuladoMm: number | null } }[] | null,
+): LabVeredasFeatureCollection | null {
+  if (!veredas) return null
+  if (!precipitacion) return veredas as LabVeredasFeatureCollection
+  const byCodigo = new Map(precipitacion.map((f) => [f.properties.codigoVereda, f.properties]))
+  return {
+    ...veredas,
+    features: veredas.features.map((feature) => {
+      const match = byCodigo.get(feature.properties.codigoVereda)
+      const acumuladoMm = match?.acumuladoMm ?? null
+      return {
+        ...feature,
+        properties: {
+          ...feature.properties,
+          precipitacionLevel: (match?.nivel as PrecipitationLevel | null) ?? null,
+          precipitacionScore: acumuladoMm != null ? Math.min(1, acumuladoMm / 150) : null,
+        },
+      }
+    }),
+  }
+}
+
+/**
+ * Merges `nivelTemp`/`tempActual` from `/api/clima/forecast` (by
+ * `codigoVereda`) onto the shared vereda collection — same pattern as
+ * `mergePrecipitacionIntoVeredas`. The 0–1 score normalizes the current
+ * temperature against a fixed 10–32°C range, matching this study area's
+ * observed highland-to-valley spread (see `lib/clima/api-types.ts`'s
+ * `classifyTemp` bands) rather than the per-collection min/max used for
+ * demografía, since temperature has a known, stable physical range.
+ */
+export function mergeClimaIntoVeredas(
+  veredas: VeredasFeatureCollection | LabVeredasFeatureCollection | null,
+  clima: { properties: { codigoVereda: string; nivelTemp: string | null; tempActual: number | null } }[] | null,
+): LabVeredasFeatureCollection | null {
+  if (!veredas) return null
+  if (!clima) return veredas as LabVeredasFeatureCollection
+  const byCodigo = new Map(clima.map((f) => [f.properties.codigoVereda, f.properties]))
+  return {
+    ...veredas,
+    features: veredas.features.map((feature) => {
+      const match = byCodigo.get(feature.properties.codigoVereda)
+      const tempActual = match?.tempActual ?? null
+      return {
+        ...feature,
+        properties: {
+          ...feature.properties,
+          climaLevel: (match?.nivelTemp as TempLevel | null) ?? null,
+          climaScore: tempActual != null ? normalize(tempActual, 10, 32) : null,
+        },
+      }
+    }),
+  }
+}
+
+/**
+ * Derives `demografiaLevel`/`demografiaScore` directly from each vereda's
+ * own `poblacion` field — already present on the shared `/api/veredas`
+ * collection, so unlike the other three "fill" layers this needs no
+ * second fetch or merge-by-key, just a min-max normalization pass (see
+ * `lib/demografia/indicator-levels.ts`) across whichever veredas are
+ * currently loaded.
+ */
+export function deriveDemografiaLevels(
+  veredas: VeredasFeatureCollection | LabVeredasFeatureCollection | null,
+): LabVeredasFeatureCollection | null {
+  if (!veredas) return null
+  const poblaciones = veredas.features
+    .map((feature) => feature.properties.poblacion)
+    .filter((value): value is number => typeof value === "number")
+  const min = poblaciones.length > 0 ? Math.min(...poblaciones) : 0
+  const max = poblaciones.length > 0 ? Math.max(...poblaciones) : 0
+  return {
+    ...veredas,
+    features: veredas.features.map((feature) => {
+      const poblacion = feature.properties.poblacion
+      if (typeof poblacion !== "number") {
+        return { ...feature, properties: { ...feature.properties, demografiaLevel: null, demografiaScore: null } }
+      }
+      const score = normalize(poblacion, min, max)
+      return {
+        ...feature,
+        properties: { ...feature.properties, demografiaLevel: indicatorLevel(score), demografiaScore: score },
       }
     }),
   }
@@ -275,6 +505,7 @@ export function writeLabStateToStorage(state: LabState): void {
 export function levelSeverity(layer: LayerKey, level: string | null): number {
   if (!level) return -1
   const levels = LAYER_DEFINITIONS[layer].levels
+  if (!levels) return -1
   const index = levels.indexOf(level)
   return index === -1 ? -1 : index / (levels.length - 1)
 }

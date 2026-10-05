@@ -4,21 +4,30 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Image from "next/image"
 import { Link2 } from "lucide-react"
 import { toast } from "sonner"
+import useSWR from "swr"
 import { useVeredas } from "@/lib/veredas/use-veredas"
 import { useCompoundVeredas } from "@/lib/riesgo-compuesto/use-compound-veredas"
 import { MUNICIPIOS } from "@/lib/veredas/municipio-toggles"
 import { AlejandroPinoLogo } from "@/components/brand/alejandro-pino-logo"
 import { ThemeToggle } from "@/components/theme-toggle"
+import type { PrecipitacionAmenazaResponse } from "@/lib/precipitacion/api-types"
+import type { ClimaForecastResponse } from "@/lib/clima/api-types"
 import {
   DEFAULT_LAB_STATE,
   MAX_ACTIVE_LAYERS,
+  LAYER_DEFINITIONS,
   findConflicts,
+  isExclusiveLayer,
   mergeCompoundIntoVeredas,
+  mergePrecipitacionIntoVeredas,
+  mergeClimaIntoVeredas,
+  deriveDemografiaLevels,
   parseLabState,
   readLabStateFromStorage,
   serializeLabState,
   writeLabStateToStorage,
   type LabState,
+  type LabVeredasFeatureCollection,
   type LayerKey,
 } from "@/lib/laboratorio/layers"
 import { LabMap } from "@/components/laboratorio/lab-map"
@@ -33,6 +42,12 @@ import type { VeredaFeature } from "@/lib/veredas/api-types"
 
 const DEFAULT_LAYER_OPACITY = 0.55
 
+const jsonFetcher = async (url: string) => {
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`No se pudo cargar ${url}`)
+  return res.json()
+}
+
 /**
  * Central client state for `/laboratorio`: active layers, selected
  * municipio, 2D/3D mode, URL + localStorage sync, the 3-layer limit, and
@@ -43,16 +58,35 @@ export function LabWorkspace() {
   const { veredas } = useVeredas(true)
 
   const [state, setState] = useState<LabState>(DEFAULT_LAB_STATE)
-  // Only fetched once "riesgo-compuesto" is actually turned on (or previewed), since it's a
-  // separate, heavier endpoint that recomputes all five hazards server-side.
-  const needsCompound = state.layers.includes("riesgo-compuesto") || false
-  const { veredas: compound } = useCompoundVeredas(needsCompound)
-  const labVeredas = useMemo(
-    () => mergeCompoundIntoVeredas(veredas, compound?.features ?? null),
-    [veredas, compound],
-  )
-  const [hydrated, setHydrated] = useState(false)
   const [previewLayer, setPreviewLayer] = useState<LayerKey | null>(null)
+
+  // Each of these four "fill" layers beyond the original three fetches (or derives) its own
+  // data lazily — only once it's actually active or rail-previewed — then gets merged onto the
+  // shared vereda collection by the matching lib/laboratorio/layers.ts helper, same pattern as
+  // the original mergeCompoundIntoVeredas.
+  const needsCompound = state.layers.includes("riesgo-compuesto") || previewLayer === "riesgo-compuesto"
+  const needsPrecipitacion = state.layers.includes("precipitacion") || previewLayer === "precipitacion"
+  const needsClima = state.layers.includes("clima") || previewLayer === "clima"
+  const { veredas: compound } = useCompoundVeredas(needsCompound)
+  const { data: precipitacionData } = useSWR<PrecipitacionAmenazaResponse>(
+    needsPrecipitacion ? "/api/precipitacion/amenaza?mode=historico&window=7&fuente=power" : null,
+    jsonFetcher,
+    { revalidateOnFocus: false },
+  )
+  const { data: climaData } = useSWR<ClimaForecastResponse>(
+    needsClima ? "/api/clima/forecast" : null,
+    jsonFetcher,
+    { revalidateOnFocus: false },
+  )
+  const labVeredas = useMemo(() => {
+    let next: LabVeredasFeatureCollection | null = mergeCompoundIntoVeredas(veredas, compound?.features ?? null)
+    next = mergePrecipitacionIntoVeredas(next, precipitacionData?.veredas.features ?? null)
+    next = mergeClimaIntoVeredas(next, climaData?.veredas.features ?? null)
+    next = deriveDemografiaLevels(next)
+    return next
+  }, [veredas, compound, precipitacionData, climaData])
+
+  const [hydrated, setHydrated] = useState(false)
   const [lastActivatedLayer, setLastActivatedLayer] = useState<LayerKey | null>(null)
   const [limitDialogOpen, setLimitDialogOpen] = useState(false)
   const [conflict, setConflict] = useState<{ a: LayerKey; b: LayerKey; severity: "alto" | "medio" } | null>(null)
@@ -61,8 +95,17 @@ export function LabWorkspace() {
     inundaciones: DEFAULT_LAYER_OPACITY,
     incendios: DEFAULT_LAYER_OPACITY,
     "riesgo-compuesto": DEFAULT_LAYER_OPACITY,
+    precipitacion: DEFAULT_LAYER_OPACITY,
+    clima: DEFAULT_LAYER_OPACITY,
+    demografia: DEFAULT_LAYER_OPACITY,
+    sismologia: DEFAULT_LAYER_OPACITY,
+    hidrantes: DEFAULT_LAYER_OPACITY,
   })
   const [selectedVereda, setSelectedVereda] = useState<VeredaFeature | null>(null)
+  // Lifted here (rather than owned inside BottomTabs) so the right-side ContextPanel can shrink
+  // its own height to match — otherwise an expanded bottom panel and a full-height right panel
+  // would overlap in the bottom-right corner.
+  const [bottomPanelCollapsed, setBottomPanelCollapsed] = useState(false)
 
   // Reads `?layers=...` first, falling back to localStorage, on mount only — the URL is the
   // source of truth for a shared link, localStorage is just a same-device convenience fallback.
@@ -96,11 +139,29 @@ export function LabWorkspace() {
         if (isActive) {
           return { ...prev, layers: prev.layers.filter((l) => l !== layer) }
         }
-        if (prev.layers.length >= MAX_ACTIVE_LAYERS) {
+
+        // Clima, demografía, and hidrantes never share the canvas with
+        // another layer — activating one replaces whatever is active,
+        // and activating anything else drops one of these if it's active.
+        if (isExclusiveLayer(layer)) {
+          if (prev.layers.length > 0) {
+            toast(`${LAYER_DEFINITIONS[layer].label} no se combina con otras capas`)
+          }
+          setLastActivatedLayer(layer)
+          setConflict(null)
+          return { ...prev, layers: [layer] }
+        }
+        const previousExclusive = prev.layers.find((l) => isExclusiveLayer(l))
+        const baseLayers = previousExclusive ? prev.layers.filter((l) => l !== previousExclusive) : prev.layers
+        if (previousExclusive) {
+          toast(`${LAYER_DEFINITIONS[previousExclusive].label} no se combina con otras capas`)
+        }
+
+        if (baseLayers.length >= MAX_ACTIVE_LAYERS) {
           setLimitDialogOpen(true)
           return prev
         }
-        const nextLayers = [...prev.layers, layer]
+        const nextLayers = [...baseLayers, layer]
         const conflicts = findConflicts(nextLayers)
         const newConflict = conflicts.find((c) => c.a === layer || c.b === layer)
         if (newConflict) setConflict(newConflict)
@@ -263,7 +324,15 @@ export function LabWorkspace() {
           onDismiss={() => setConflict(null)}
         />
 
-        <BottomTabs veredas={labVeredas} activeLayers={state.layers} />
+        <BottomTabs
+          veredas={labVeredas}
+          activeLayers={state.layers}
+          lastActivatedLayer={lastActivatedLayer}
+          selectedVereda={selectedVereda}
+          onClearSelection={() => setSelectedVereda(null)}
+          collapsed={bottomPanelCollapsed}
+          onCollapsedChange={setBottomPanelCollapsed}
+        />
       </div>
 
       <LayerLimitDialog
