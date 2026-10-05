@@ -1,10 +1,13 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import Image from "next/image"
 import { Link2 } from "lucide-react"
 import { toast } from "sonner"
 import { useVeredas } from "@/lib/veredas/use-veredas"
 import { MUNICIPIOS } from "@/lib/veredas/municipio-toggles"
+import { AlejandroPinoLogo } from "@/components/brand/alejandro-pino-logo"
+import { ThemeToggle } from "@/components/theme-toggle"
 import {
   DEFAULT_LAB_STATE,
   MAX_ACTIVE_LAYERS,
@@ -125,12 +128,77 @@ export function LabWorkspace() {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background">
-      <header className="flex shrink-0 items-center justify-between border-b border-border px-4 py-2.5">
-        <div>
-          <p className="font-medium text-foreground">Laboratorio · mapa único multicapa</p>
-          <p className="text-xs text-muted-foreground">{headerSubtitle}</p>
+      <header className="flex shrink-0 items-center justify-between gap-4 border-b border-border px-4 py-2.5">
+        <div className="flex items-center gap-3">
+          <span className="relative flex h-6 items-center justify-center">
+            <Image
+              src="/images/redlabot-mark-light.png"
+              alt="RED LabOT"
+              width={100}
+              height={45}
+              className="block h-5 w-auto dark:hidden"
+              priority
+            />
+            <Image
+              src="/images/redlabot-mark-dark.png"
+              alt="RED LabOT"
+              width={100}
+              height={45}
+              className="hidden h-5 w-auto dark:block"
+              priority
+            />
+          </span>
+          <span aria-hidden="true" className="h-6 w-px bg-border" />
+          <span className="relative flex size-7 shrink-0 items-center justify-center">
+            <Image
+              src="/images/vigia-mark-light.png"
+              alt="Vigía"
+              width={84}
+              height={65}
+              className="block dark:hidden"
+              priority
+            />
+            <Image
+              src="/images/vigia-mark-dark.png"
+              alt="Vigía"
+              width={84}
+              height={65}
+              className="hidden dark:block"
+              priority
+            />
+          </span>
+          <div className="min-w-0">
+            <p className="truncate font-medium text-foreground">Laboratorio · mapa único multicapa</p>
+            <p className="truncate text-xs text-muted-foreground">{headerSubtitle}</p>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+
+        <div className="flex shrink-0 items-center gap-3">
+          <div className="hidden items-center gap-3 lg:flex">
+            <a
+              href="https://nasalifelines.org"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
+              <Image
+                src="/images/nasa-lifelines-wordmark-darkblue.png"
+                alt="NASA Lifelines"
+                width={5112}
+                height={643}
+                className="block h-5 w-auto dark:hidden"
+              />
+              <Image
+                src="/images/nasa-lifelines-wordmark-white.png"
+                alt="NASA Lifelines"
+                width={5112}
+                height={643}
+                className="hidden h-5 w-auto dark:block"
+              />
+            </a>
+            <AlejandroPinoLogo className="h-6" />
+            <span aria-hidden="true" className="h-6 w-px bg-border" />
+          </div>
           <Select value={activeMunicipioValue} onValueChange={handleMunicipioChange}>
             <SelectTrigger className="h-8 w-40 text-xs">
               <SelectValue placeholder="Municipio" />
@@ -148,6 +216,7 @@ export function LabWorkspace() {
             <Link2 className="size-3.5" />
             Compartir vista
           </Button>
+          <ThemeToggle />
         </div>
       </header>
 
