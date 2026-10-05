@@ -225,12 +225,28 @@ export function LabMap({
   // flies to that extent, instead of leaving the user to find it manually — same "fly once per
   // activation" bookkeeping as `flownPointsLayers` below, keyed by layer so re-focusing re-triggers it.
   const flownCascoUrbanoLayers = useRef<Set<LayerKey>>(new Set())
+  const wasCascoUrbanoFocus = useRef(false)
   useEffect(() => {
     const cascoUrbanoLayers: LayerKey[] = ["demografia", "hidrantes"]
     if (!focusLayer || !cascoUrbanoLayers.includes(focusLayer)) {
       for (const layer of cascoUrbanoLayers) flownCascoUrbanoLayers.current.delete(layer)
+      // Leaving demografía/hidrantes should hand the camera back to the normal 2D view instead of
+      // stranding the user mid-air over an empty 3D scene with no fill layers visible underneath.
+      if (wasCascoUrbanoFocus.current && is3D) {
+        const map = mapRef.current?.getMap()
+        if (map) {
+          setTransitioning(true)
+          map.once("moveend", () => {
+            setTransitioning(false)
+            onToggle3D()
+          })
+          map.easeTo({ pitch: 0, bearing: 0, duration: 1500 })
+        }
+      }
+      wasCascoUrbanoFocus.current = false
       return
     }
+    wasCascoUrbanoFocus.current = true
     if (flownCascoUrbanoLayers.current.has(focusLayer)) return
 
     // The map/style can still be initializing on a fresh load that starts with this layer already
@@ -495,8 +511,7 @@ export function LabMap({
           </Source>
         )}
 
-        {!is3D &&
-          fillLayers.map((layer) => {
+        {fillLayers.map((layer) => {
             const data = geojsonForLayer(layer)
             if (!data) return null
             return (
