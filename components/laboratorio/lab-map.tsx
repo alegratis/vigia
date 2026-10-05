@@ -424,7 +424,11 @@ export function LabMap({
             : null
           if (!previewData || !previewLayer) return null
           return (
-            <Source id={`lab-preview-${previewLayer}-source`} type="geojson" data={previewData}>
+            // `key` forces a fresh `<Source>` instance per layer — without it, react-map-gl reuses the
+            // same instance across renders (matched by JSX position, not by the `id` prop) and tries to
+            // "update" a mounted source with a different `id`, which trips MapLibre's own assertion that
+            // a source's `id`/`type` never change in place.
+            <Source key={previewLayer} id={`lab-preview-${previewLayer}-source`} type="geojson" data={previewData}>
               <Layer
                 id={`lab-preview-${previewLayer}-fill`}
                 type="fill"
