@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Map, {
   Source,
   Layer,
@@ -99,6 +99,7 @@ export function LabMap({
   const [pointPopup, setPointPopup] = useState<LabPointFeature | null>(null)
   const [pointsModalLayer, setPointsModalLayer] = useState<LayerKey | null>(null)
   const [transitioning, setTransitioning] = useState(false)
+  const [cursor, setCursor] = useState("")
 
   const activePointsLayers = useMemo(
     () => activeLayers.filter((layer) => POINTS_LAYERS.includes(layer)),
@@ -114,6 +115,35 @@ export function LabMap({
     (layer: LayerKey) => (layer === "sismologia" ? sismologiaPoints : layer === "hidrantes" ? hidrantesPoints : null),
     [sismologiaPoints, hidrantesPoints],
   )
+
+  // Points layers (sismología, hidrantes) cluster in a small corner of the AOI — hidrantes especially
+  // only covers Sevilla's casco urbano, a tiny fraction of the full municipality bounds the map opens
+  // on. Without flying to the actual data extent, toggling one on looks like a near-empty map. Flies
+  // once per activation (tracked in `flownPointsLayers`), not on every data refresh, and re-arms when
+  // the layer is toggled off so re-enabling it flies again.
+  const flownPointsLayers = useRef<Set<LayerKey>>(new Set())
+  useEffect(() => {
+    const map = mapRef.current?.getMap()
+    if (!map) return
+    for (const layer of activePointsLayers) {
+      if (flownPointsLayers.current.has(layer)) continue
+      const points = pointsForLayer(layer)?.all ?? []
+      if (points.length === 0) continue
+      flownPointsLayers.current.add(layer)
+      const lons = points.map((p) => p.lon)
+      const lats = points.map((p) => p.lat)
+      map.fitBounds(
+        [
+          [Math.min(...lons), Math.min(...lats)],
+          [Math.max(...lons), Math.max(...lats)],
+        ],
+        { padding: 80, duration: 1500, maxZoom: 16 },
+      )
+    }
+    for (const layer of flownPointsLayers.current) {
+      if (!activePointsLayers.includes(layer)) flownPointsLayers.current.delete(layer)
+    }
+  }, [activePointsLayers, pointsForLayer])
 
   const mapStyle = useMemo(() => maplibreMapStyle(basemap, is3D), [basemap, is3D])
 
@@ -235,6 +265,9 @@ export function LabMap({
         initialViewState={{ bounds: AOI_BOUNDS, fitBoundsOptions: { padding: 40 } }}
         interactiveLayerIds={interactiveLayerIds}
         onClick={handleMapClick}
+        cursor={cursor}
+        onMouseEnter={() => setCursor("pointer")}
+        onMouseLeave={() => setCursor("")}
         attributionControl={false}
         style={{ width: "100%", height: "100%" }}
       >
