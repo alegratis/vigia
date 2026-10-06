@@ -543,7 +543,7 @@ export function LabMap({
                 <Layer
                   id={`lab-${layer}-line`}
                   type="line"
-                  paint={{ "line-color": "rgba(0,0,0,0.25)", "line-width": 0.5 }}
+                  paint={{ "line-color": "rgba(0,0,0,0.55)", "line-width": 1 }}
                 />
               </Source>
             )
@@ -841,6 +841,11 @@ export function LabMap({
                 id={`lab-preview-${previewLayer}-fill`}
                 type="fill"
                 paint={{ "fill-color": ["get", "__fillColor"], "fill-opacity": 0.35 }}
+              />
+              <Layer
+                id={`lab-preview-${previewLayer}-line`}
+                type="line"
+                paint={{ "line-color": "rgba(0,0,0,0.55)", "line-width": 1 }}
               />
             </Source>
           )
