@@ -221,32 +221,17 @@ export function LabMap({
 
   // Demografía and hidrantes both only have meaningful data over Sevilla's casco urbano (hidrantes'
   // data literally doesn't exist elsewhere; demografía's per-vereda view is most legible zoomed into
-  // the dense urban core). Focusing either one transitions straight into the 3D topographic view and
-  // flies to that extent, instead of leaving the user to find it manually — same "fly once per
-  // activation" bookkeeping as `flownPointsLayers` below, keyed by layer so re-focusing re-triggers it.
+  // the dense urban core). Focusing either one flies to that extent instead of leaving the user to
+  // find it manually — same "fly once per activation" bookkeeping as `flownPointsLayers` below, keyed
+  // by layer so re-focusing re-triggers it. This is purely a camera-position concern; whether the view
+  // goes 3D is handled separately below, since only demografía defaults to 3D (see `AUTO_3D_LAYERS`).
+  const CASCO_URBANO_BOUNDS_LAYERS: LayerKey[] = ["demografia", "hidrantes"]
   const flownCascoUrbanoLayers = useRef<Set<LayerKey>>(new Set())
-  const wasCascoUrbanoFocus = useRef(false)
   useEffect(() => {
-    const cascoUrbanoLayers: LayerKey[] = ["demografia", "hidrantes"]
-    if (!focusLayer || !cascoUrbanoLayers.includes(focusLayer)) {
-      for (const layer of cascoUrbanoLayers) flownCascoUrbanoLayers.current.delete(layer)
-      // Leaving demografía/hidrantes should hand the camera back to the normal 2D view instead of
-      // stranding the user mid-air over an empty 3D scene with no fill layers visible underneath.
-      if (wasCascoUrbanoFocus.current && is3D) {
-        const map = mapRef.current?.getMap()
-        if (map) {
-          setTransitioning(true)
-          map.once("moveend", () => {
-            setTransitioning(false)
-            onToggle3D()
-          })
-          map.easeTo({ pitch: 0, bearing: 0, duration: 1500 })
-        }
-      }
-      wasCascoUrbanoFocus.current = false
+    if (!focusLayer || !CASCO_URBANO_BOUNDS_LAYERS.includes(focusLayer)) {
+      for (const layer of CASCO_URBANO_BOUNDS_LAYERS) flownCascoUrbanoLayers.current.delete(layer)
       return
     }
-    wasCascoUrbanoFocus.current = true
     if (flownCascoUrbanoLayers.current.has(focusLayer)) return
 
     // The map/style can still be initializing on a fresh load that starts with this layer already
@@ -258,14 +243,6 @@ export function LabMap({
     if (!map) return
     flownCascoUrbanoLayers.current.add(focusLayer)
 
-    if (!is3D) {
-      setTransitioning(true)
-      map.once("moveend", () => {
-        setTransitioning(false)
-        onToggle3D()
-      })
-      map.easeTo({ pitch: 60, bearing: 30, duration: 2000 })
-    }
     const [[west, south], [east, north]] = SEVILLA_CASCO_URBANO_BOUNDS
     map.fitBounds(
       [
@@ -274,6 +251,45 @@ export function LabMap({
       ],
       { padding: 60, duration: 2000 },
     )
+  }, [focusLayer])
+
+  // Demografía is the only layer that defaults into the 3D topographic view — every other category
+  // (including hidrantes, which still flies to the casco urbano extent above) stays in whatever mode
+  // the user last chose. Leaving demografía always eases the camera back to 2D, even if the user
+  // manually toggled 3D while focused on it, since "the rest" of the app is meant to stay 2D by
+  // default. While focused on demografía, a manual toggle is left alone (`flownAuto3DLayers` guards
+  // against re-forcing 3D on every `is3D` change) so the voluntary override still works mid-session.
+  const AUTO_3D_LAYERS: LayerKey[] = ["demografia"]
+  const flownAuto3DLayers = useRef<Set<LayerKey>>(new Set())
+  const wasAuto3DFocus = useRef(false)
+  useEffect(() => {
+    if (!focusLayer || !AUTO_3D_LAYERS.includes(focusLayer)) {
+      flownAuto3DLayers.current.clear()
+      if (wasAuto3DFocus.current && is3D) {
+        const map = mapRef.current?.getMap()
+        if (map) {
+          setTransitioning(true)
+          map.once("moveend", () => {
+            setTransitioning(false)
+            onToggle3D()
+          })
+          map.easeTo({ pitch: 0, bearing: 0, duration: 1500 })
+        }
+      }
+      wasAuto3DFocus.current = false
+      return
+    }
+    wasAuto3DFocus.current = true
+    if (flownAuto3DLayers.current.has(focusLayer) || is3D) return
+    const map = mapRef.current?.getMap()
+    if (!map) return
+    flownAuto3DLayers.current.add(focusLayer)
+    setTransitioning(true)
+    map.once("moveend", () => {
+      setTransitioning(false)
+      onToggle3D()
+    })
+    map.easeTo({ pitch: 60, bearing: 30, duration: 2000 })
   }, [focusLayer, is3D, onToggle3D])
 
   // Recenter on the reference point (geolocation fix or map click) once the casco-urbano fly-in above
