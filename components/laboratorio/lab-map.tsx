@@ -184,7 +184,9 @@ export function LabMap({
   const sismologiaPoints = useLabPoints(
     activeLayers.includes("sismologia") || previewLayer === "sismologia" ? "sismologia" : null,
   )
-  const hidrantesPoints = useLabPoints(previewLayer === "hidrantes" ? "hidrantes" : null)
+  const hidrantesPoints = useLabPoints(
+    focusLayer === "hidrantes" || previewLayer === "hidrantes" ? "hidrantes" : null,
+  )
   const pointsForLayer = useCallback(
     (layer: LayerKey) => (layer === "sismologia" ? sismologiaPoints : layer === "hidrantes" ? hidrantesPoints : null),
     [sismologiaPoints, hidrantesPoints],
@@ -428,6 +430,9 @@ export function LabMap({
       if (feature?.layer?.id === "lab-hidrantes-points") {
         hidrantesExperience.setPopupSite(null)
         hidrantesExperience.setPopupHidrante(feature as unknown as HidranteFeature)
+        const [lon, lat] = (feature.geometry as GeoJSON.Point).coordinates
+        const map = mapRef.current?.getMap()
+        map?.easeTo({ center: [lon, lat], zoom: Math.max(map.getZoom(), 17), duration: 900 })
         return
       }
 
@@ -965,8 +970,8 @@ export function LabMap({
         )}
       </Map>
 
-      {activePointsLayers.length > 0 && (
-        <div className="absolute left-1/2 top-3 z-10 flex -translate-x-1/2 gap-2">
+      {(activePointsLayers.length > 0 || (focusLayer === "hidrantes" && (hidrantesPoints?.all.length ?? 0) > 0)) && (
+        <div className="absolute left-1/2 top-20 z-10 flex -translate-x-1/2 gap-2">
           {activePointsLayers.map((layer) => {
             const data = pointsForLayer(layer)
             if (!data || data.all.length === 0) return null
@@ -984,6 +989,18 @@ export function LabMap({
               </Button>
             )
           })}
+          {focusLayer === "hidrantes" && hidrantesPoints && hidrantesPoints.all.length > 0 && (
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              className="gap-1.5 shadow-md"
+              onClick={() => setPointsModalLayer("hidrantes")}
+            >
+              <List className="size-3.5" aria-hidden="true" />
+              Ver todas · {LAYER_DEFINITIONS.hidrantes.shortLabel} ({hidrantesPoints.all.length})
+            </Button>
+          )}
         </div>
       )}
 
