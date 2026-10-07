@@ -30,6 +30,7 @@ import {
   SEISMIC_MAGNITUDE_LEVELS,
   SEISMIC_MAGNITUDE_LEVEL_STYLES,
 } from "@/lib/sismologia/levels"
+import { LayerConventions, LayerSummary, LegendRow, LegendSection, LEVEL_HINTS } from "@/components/laboratorio/layer-conventions"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -92,17 +93,21 @@ export function ContextPanel({
     <PreviewSummary veredas={veredas} layer={previewLayer} />
   ) : activeLayers.length === 0 ? (
     <CompoundSummary veredas={veredas} />
-  ) : focusLayer === "hidrantes" ? (
-    <HidrantesPanel experience={hidrantesExperience} />
-  ) : focusLayer === "demografia" ? (
-    <DemografiaPanel experience={demografiaExperience} />
-  ) : focusLayer === "sismologia" ? (
-    <SismologiaLegend subLayerToggles={subLayerToggles} />
   ) : (
     <>
-      <LayerLegend veredas={veredas} layer={focusLayer!} activeLayers={activeLayers} />
-      {focusLayer === "incendios" && <FocosLegend />}
-      {focusLayer === "clima" && <ClimaMarkersLegend />}
+      {focusLayer === "hidrantes" ? (
+        <HidrantesPanel experience={hidrantesExperience} />
+      ) : focusLayer === "demografia" ? (
+        <DemografiaPanel experience={demografiaExperience} />
+      ) : focusLayer === "sismologia" ? (
+        <SismologiaLegend subLayerToggles={subLayerToggles} />
+      ) : (
+        <>
+          <LayerLegend veredas={veredas} layer={focusLayer!} activeLayers={activeLayers} />
+          {focusLayer === "incendios" && <FocosLegend />}
+        </>
+      )}
+      <LayerConventions layer={focusLayer!} subLayerToggles={subLayerToggles} />
     </>
   )
 
@@ -508,8 +513,10 @@ function LayerLegend({
   const levels = def.levels ?? []
   const levelStyles = def.levelStyles ?? {}
   const levelProperty = def.levelProperty
+  const hints = LEVEL_HINTS[layer]
   const counts = levels.map((level) => ({
     level,
+    hint: hints?.[level],
     style: levelStyles[level],
     count: veredas?.features.filter((f) => levelProperty && f.properties[levelProperty] === level).length ?? 0,
   }))
@@ -523,9 +530,12 @@ function LayerLegend({
             {activeLayers.length} capas activas — mostrando la última activada
           </p>
         )}
+        <div className="mt-1">
+          <LayerSummary layer={layer} />
+        </div>
       </div>
       <ul className="flex flex-col gap-1.5">
-        {counts.map(({ level, style, count }) => (
+        {counts.map(({ level, hint, style, count }) => (
           <li key={level} className="flex items-center gap-2 text-sm">
             <span
               className="size-2.5 shrink-0 rounded-sm"
@@ -533,34 +543,12 @@ function LayerLegend({
               aria-hidden="true"
             />
             <span className="flex-1 truncate text-foreground">{level}</span>
-            <span className="text-muted-foreground">{count}</span>
+            {hint && <span className="text-xs text-muted-foreground">{hint}</span>}
+            <span className="w-6 text-right text-muted-foreground" title="Veredas">{count}</span>
           </li>
         ))}
       </ul>
     </div>
-  )
-}
-
-function LegendSection({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="border-t border-border/70 px-4 py-3">
-      <p className="mb-1.5 text-xs font-medium text-muted-foreground">{title}</p>
-      <ul className="flex flex-col gap-1.5">{children}</ul>
-    </div>
-  )
-}
-
-function LegendRow({ color, label, hint, round }: { color: string; label: string; hint?: string; round?: boolean }) {
-  return (
-    <li className="flex items-center gap-2 text-xs">
-      <span
-        className={cn("size-2.5 shrink-0", round ? "rounded-full" : "rounded-sm")}
-        style={{ backgroundColor: color }}
-        aria-hidden="true"
-      />
-      <span className="flex-1 truncate text-foreground">{label}</span>
-      {hint && <span className="text-muted-foreground">{hint}</span>}
-    </li>
   )
 }
 
@@ -609,16 +597,6 @@ function FocosLegend() {
       {(["high", "nominal", "low", "unknown"] as const).map((key) => (
         <LegendRow key={key} round color={CONFIDENCE_STYLES[key].color} label={CONFIDENCE_STYLES[key].label} />
       ))}
-    </LegendSection>
-  )
-}
-
-function ClimaMarkersLegend() {
-  return (
-    <LegendSection title="Marcadores">
-      <li className="text-xs leading-snug text-muted-foreground">
-        Icono = condición actual; número = temperatura. Al acercar el zoom aparecen más veredas.
-      </li>
     </LegendSection>
   )
 }
