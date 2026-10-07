@@ -30,9 +30,13 @@ import { COVERAGE_DENSITY_COLOR_EXPRESSION, type HidrantesExperience } from "@/l
 import {
   DEMOGRAFIA_SOURCE_ID,
   DEMOGRAFIA_LAYER_ID,
+  BARRIOS_SOURCE_ID,
+  BARRIOS_FILL_LAYER_ID,
+  BARRIOS_LINE_LAYER_ID,
   MANZANA_FIELD_LABEL,
   type DemografiaExperience,
 } from "@/lib/laboratorio/use-demografia-experience"
+import type { BarrioProperties } from "@/lib/barrios/api-types"
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import { maplibreMapStyle } from "@/lib/maps/maplibre-basemap-style"
 import { useThemeSyncedBasemap } from "@/lib/maps/use-theme-synced-basemap"
@@ -227,6 +231,7 @@ export function LabMap({
     lon: number
     lat: number
     properties: Record<string, unknown>
+    barrio: BarrioProperties | null
   } | null>(null)
   const [reachPopup, setReachPopup] = useState<{ lon: number; lat: number; info: ReachInfo | null } | null>(null)
 
@@ -816,6 +821,57 @@ export function LabMap({
     [activeLayers],
   )
 
+  const barriosVisible = useMemo<GeoJSON.FeatureCollection>(() => {
+    const all = demografiaExperience.barriosGeoJson
+    if (!municipio) return all
+    return {
+      ...all,
+      features: all.features.filter((f) => f.properties?.municipio === municipio),
+    }
+  }, [demografiaExperience.barriosGeoJson, municipio])
+
+  // Demografía data (barrios, manzanas) lives in the urban core, so frame the barrios instead of the
+  // whole municipio — otherwise the columns are a few pixels wide at the municipio-level zoom.
+  const fittedBarriosKey = useRef<string | null>(null)
+  useEffect(() => {
+    if (focusLayer !== "demografia") {
+      fittedBarriosKey.current = null
+      return
+    }
+    const map = mapRef.current?.getMap()
+    if (!map || barriosVisible.features.length === 0) return
+    const key = municipio ?? "all"
+    if (fittedBarriosKey.current === key) return
+    let west = Infinity
+    let south = Infinity
+    let east = -Infinity
+    let north = -Infinity
+    const visit = (coords: unknown): void => {
+      if (!Array.isArray(coords)) return
+      if (typeof coords[0] === "number" && typeof coords[1] === "number") {
+        west = Math.min(west, coords[0])
+        east = Math.max(east, coords[0])
+        south = Math.min(south, coords[1])
+        north = Math.max(north, coords[1])
+        return
+      }
+      coords.forEach(visit)
+    }
+    for (const f of barriosVisible.features) {
+      const geometry = f.geometry as GeoJSON.Geometry | null
+      if (geometry && "coordinates" in geometry) visit(geometry.coordinates)
+    }
+    if (!Number.isFinite(west) || !Number.isFinite(south)) return
+    fittedBarriosKey.current = key
+    map.fitBounds(
+      [
+        [west, south],
+        [east, north],
+      ],
+      { padding: 80, duration: 1500, maxZoom: 16 },
+    )
+  }, [focusLayer, barriosVisible, municipio])
+
   const interactiveLayerIds = useMemo(() => {
     const ids: string[] = []
     if (sismoActive) {
@@ -828,9 +884,22 @@ export function LabMap({
     ids.push(...[...fillLayers].reverse().map((layer) => `lab-${layer}-fill`))
     if (activeSubLayerIds.has("quebradas")) ids.push("lab-sub-quebradas-hit")
     if (focusLayer === "hidrantes") ids.push("lab-hidrantes-points", "lab-sensitive-sites-fill")
-    if (activeLayers.includes("demografia")) ids.push(DEMOGRAFIA_LAYER_ID)
+    if (activeLayers.includes("demografia")) {
+      ids.push(DEMOGRAFIA_LAYER_ID)
+      if (demografiaExperience.showBarrios) ids.push(BARRIOS_FILL_LAYER_ID)
+    }
     return ids
-  }, [fillLayers, activeSubLayerIds, focusLayer, activeLayers, sismoActive, incendiosFocus, showModis, showViirs])
+  }, [
+    fillLayers,
+    activeSubLayerIds,
+    focusLayer,
+    activeLayers,
+    sismoActive,
+    incendiosFocus,
+    showModis,
+    showViirs,
+    demografiaExperience.showBarrios,
+  ])
 
   const handleMapClick = useCallback(
     (e: MapLayerMouseEvent) => {
@@ -913,8 +982,13 @@ export function LabMap({
         return
       }
 
-      if (feature?.layer?.id === DEMOGRAFIA_LAYER_ID) {
-        setDemografiaPopup({ lon: e.lngLat.lng, lat: e.lngLat.lat, properties: feature.properties ?? {} })
+      if (feature?.layer?.id === DEMOGRAFIA_LAYER_ID || feature?.layer?.id === BARRIOS_FILL_LAYER_ID) {
+        setDemografiaPopup({
+          lon: e.lngLat.lng,
+          lat: e.lngLat.lat,
+          properties: feature.properties ?? {},
+          barrio: demografiaExperience.findBarrioAt(e.lngLat.lng, e.lngLat.lat),
+        })
         return
       }
 
@@ -1208,6 +1282,27 @@ export function LabMap({
 
         {activeLayers.includes("demografia") && (
           <>
+            {/* Barrios sit below the 3D columns so a column click wins; gaps between blocks fall through to the barrio. */}
+            {demografiaExperience.showBarrios && barriosVisible.features.length > 0 && (
+              <Source id={BARRIOS_SOURCE_ID} type="geojson" data={barriosVisible}>
+                <Layer
+                  id={BARRIOS_FILL_LAYER_ID}
+                  type="fill"
+                  paint={{ "fill-color": resolveCssColor("var(--foreground)"), "fill-opacity": 0.04 }}
+                />
+                <Layer
+                  id={BARRIOS_LINE_LAYER_ID}
+                  type="line"
+                  paint={{
+                    "line-color": resolveCssColor("var(--foreground)"),
+                    "line-width": 1.25,
+                    "line-opacity": 0.55,
+                    "line-dasharray": [2, 2],
+                  }}
+                />
+              </Source>
+            )}
+
             {/* Always mounted (not conditioned on data having arrived yet) with a stable
                 source/layer id pair — see `DEMOGRAFIA_SOURCE_ID`/`DEMOGRAFIA_LAYER_ID`'s doc
                 comment for why the id must never change across indicator switches. */}
@@ -1231,9 +1326,13 @@ export function LabMap({
                 onClose={() => setDemografiaPopup(null)}
                 closeButton
                 closeOnClick={false}
-                maxWidth="240px"
+                maxWidth="280px"
               >
-                <DemografiaPopupContent indicator={demografiaExperience.indicator} properties={demografiaPopup.properties} />
+                <DemografiaPopupContent
+                  indicator={demografiaExperience.indicator}
+                  properties={demografiaPopup.properties}
+                  barrio={demografiaPopup.barrio}
+                />
               </Popup>
             )}
           </>
