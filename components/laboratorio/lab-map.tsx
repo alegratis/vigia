@@ -76,7 +76,8 @@ import type { SeismicEvent } from "@/lib/sismologia/api-types"
 import type { FireDetection, FiresResponse } from "@/lib/firms/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
 import type { ClimaForecastResponse, ClimaVeredaProperties } from "@/lib/clima/api-types"
-import { WeatherGlyph } from "@/components/clima/weather-report-card"
+import { WeatherGlyph, WeatherPopupContent } from "@/components/clima/weather-report-card"
+import { formatQuakeAge, getLatestSeismicEvents } from "@/lib/sismologia/latest-events"
 
 /** The two layers that render as raw point markers instead of a vereda choropleth fill. */
 const POINTS_LAYERS: LayerKey[] = ["sismologia", "hidrantes"]
@@ -178,6 +179,8 @@ interface LabMapProps {
   demografiaExperience: DemografiaExperience
   /** Current conditions + 7-day forecast per vereda and cabecera, drives the weather markers on the clima layer. */
   climaData: ClimaForecastResponse | null
+  /** Camera request issued from outside the map (e.g. the bottom panel's latest-quakes list); `nonce` re-triggers the same target. */
+  flyTarget: { lon: number; lat: number; zoom: number; nonce: number } | null
 }
 
 const quebradasFetcher = async (url: string): Promise<InundacionesQuebradasResponse> => {
@@ -209,10 +212,12 @@ export function LabMap({
   hidrantesExperience,
   demografiaExperience,
   climaData,
+  flyTarget,
 }: LabMapProps) {
   const mapRef = useRef<MapRef>(null)
   const [basemap, setBasemap] = useThemeSyncedBasemap()
   const [popupInfo, setPopupInfo] = useState<{ feature: LabVeredaFeature; layer: LayerKey } | null>(null)
+  const [climaPopup, setClimaPopup] = useState<{ lon: number; lat: number; props: ClimaVeredaProperties } | null>(null)
   const [pointPopup, setPointPopup] = useState<LabPointFeature | null>(null)
   const [pointsModalLayer, setPointsModalLayer] = useState<LayerKey | null>(null)
   const [transitioning, setTransitioning] = useState(false)
@@ -608,6 +613,36 @@ export function LabMap({
     setPointPopup(point)
   }, [])
 
+  const latestQuakes = useMemo(() => (sismoActive ? getLatestSeismicEvents(sismoData, 3) : []), [sismoActive, sismoData])
+
+  useEffect(() => {
+    if (!flyTarget) return
+    mapRef.current?.getMap().easeTo({
+      center: [flyTarget.lon, flyTarget.lat],
+      zoom: flyTarget.zoom,
+      duration: 1200,
+    })
+  }, [flyTarget])
+
+  const showQuakePopup = useCallback((event: SeismicEvent) => {
+    setFeaturePopup({
+      lon: event.lon,
+      lat: event.lat,
+      content: (
+        <div className="flex flex-col gap-0.5 text-sm">
+          <strong className="text-foreground">M {Number(event.magnitude).toFixed(1)}</strong>
+          <span className="text-muted-foreground">
+            {formatDateTime(event.time)} · {formatQuakeAge(event.time)}
+          </span>
+          {event.place && <span className="text-muted-foreground">{event.place}</span>}
+          {event.depthKm != null && (
+            <span className="text-muted-foreground">Profundidad: {Number(event.depthKm).toFixed(0)} km</span>
+          )}
+        </div>
+      ),
+    })
+  }, [])
+
   // Overlapping layers use hatch/dot patterns (per-feature, in the level's own color) instead of
   // transparency, so every layer's color stays legible where they stack. Images are generated lazily
   // via MapLibre's `styleimagemissing` event, which also survives basemap style swaps.
@@ -803,19 +838,7 @@ export function LabMap({
 
       const layerId0 = feature?.layer?.id
       if (feature && layerId0 === "lab-seismic-events") {
-        const p = feature.properties as unknown as SeismicEvent
-        setFeaturePopup({
-          lon: e.lngLat.lng,
-          lat: e.lngLat.lat,
-          content: (
-            <div className="flex flex-col gap-0.5 text-sm">
-              <strong className="text-foreground">M {Number(p.magnitude).toFixed(1)}</strong>
-              <span className="text-muted-foreground">{formatDateTime(p.time)}</span>
-              {p.place && <span className="text-muted-foreground">{p.place}</span>}
-              {p.depthKm != null && <span className="text-muted-foreground">Profundidad: {Number(p.depthKm).toFixed(0)} km</span>}
-            </div>
-          ),
-        })
+        showQuakePopup(feature.properties as unknown as SeismicEvent)
         return
       }
       if (feature && layerId0 === "lab-faults-hit") {
@@ -897,6 +920,7 @@ export function LabMap({
 
       if (!feature || !feature.properties) {
         setPopupInfo(null)
+        setClimaPopup(null)
         onVeredaSelect(null)
         setQuebradaPopup(null)
         setDemografiaPopup(null)
@@ -938,10 +962,19 @@ export function LabMap({
         (f) => f.properties.codigoVereda === feature.properties?.codigoVereda,
       )
       if (!veredaFeature || !layer) return
-      setPopupInfo({ feature: veredaFeature, layer })
       onVeredaSelect(veredaFeature)
+      if (layer === "clima") {
+        const forecast = climaData?.veredas.features.find(
+          (f) => f.properties.codigoVereda === veredaFeature.properties.codigoVereda,
+        )
+        setPopupInfo(null)
+        setClimaPopup(forecast ? { lon: e.lngLat.lng, lat: e.lngLat.lat, props: forecast.properties } : null)
+        return
+      }
+      setClimaPopup(null)
+      setPopupInfo({ feature: veredaFeature, layer })
     },
-    [veredas, onVeredaSelect, activeSubLayerIds],
+    [veredas, onVeredaSelect, activeSubLayerIds, climaData],
   )
 
   return (
@@ -1096,6 +1129,25 @@ export function LabMap({
             />
           </Source>
         )}
+
+        {latestQuakes.map((quake, i) => (
+          <Marker key={`latest-quake-${quake.id}`} longitude={quake.lon} latitude={quake.lat} anchor="center">
+            <button
+              type="button"
+              onClick={(ev) => {
+                ev.stopPropagation()
+                showQuakePopup(quake)
+              }}
+              aria-label={`Sismo ${i === 0 ? "más reciente" : `reciente ${i + 1}`}: magnitud ${Number(quake.magnitude).toFixed(1)}, ${formatQuakeAge(quake.time)}`}
+              className={`relative flex items-center justify-center rounded-full border-2 border-background bg-destructive text-[11px] font-bold text-destructive-foreground shadow-md ${i === 0 ? "size-8" : "size-6 opacity-85"}`}
+            >
+              {i === 0 && (
+                <span className="absolute inset-0 animate-ping rounded-full bg-destructive/50 motion-reduce:hidden" aria-hidden="true" />
+              )}
+              <span className="relative">{i + 1}</span>
+            </button>
+          </Marker>
+        ))}
 
         {sismoActive && activeSubLayerIds.has("faults") && (
           <Source id="lab-faults-source" type="geojson" data={faultsGeoJson}>
@@ -1468,6 +1520,19 @@ export function LabMap({
               }
               colored={POPUP_HAZARD_KINDS.includes(popupInfo.layer as (typeof POPUP_HAZARD_KINDS)[number])}
             />
+          </Popup>
+        )}
+
+        {climaActive && climaPopup && (
+          <Popup
+            key={climaPopup.props.codigoVereda}
+            longitude={climaPopup.lon}
+            latitude={climaPopup.lat}
+            onClose={() => setClimaPopup(null)}
+            closeOnClick={false}
+            maxWidth="260px"
+          >
+            <WeatherPopupContent vereda={climaPopup.props} />
           </Popup>
         )}
 

@@ -3,7 +3,10 @@
 import { ChevronDown, ChevronUp } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
-import { WeatherReportCard } from "@/components/clima/weather-report-card"
+import { WeatherDetailedForecast, WeatherReportCard } from "@/components/clima/weather-report-card"
+import { useSismologiaEventos } from "@/lib/sismologia/use-sismologia"
+import { formatQuakeAge, getLatestSeismicEvents } from "@/lib/sismologia/latest-events"
+import { formatDateTime } from "@/lib/firms/ui"
 import type { ClimaVeredaProperties } from "@/lib/clima/api-types"
 import { LAYER_DEFINITIONS, type LabVeredasFeatureCollection, type LayerKey } from "@/lib/laboratorio/layers"
 import type { VeredaFeature } from "@/lib/veredas/api-types"
@@ -30,6 +33,7 @@ interface BottomTabsProps {
   /** Weather report for the clicked vereda, or the casco urbano of the selected municipio by default. */
   climaVereda: ClimaVeredaProperties | null
   onClearSelection: () => void
+  onFlyTo: (target: { lon: number; lat: number; zoom: number }) => void
   collapsed: boolean
   onCollapsedChange: (collapsed: boolean) => void
 }
@@ -79,6 +83,7 @@ export function BottomTabs({
   selectedVereda,
   climaVereda,
   onClearSelection,
+  onFlyTo,
   collapsed,
   onCollapsedChange,
 }: BottomTabsProps) {
@@ -125,6 +130,7 @@ export function BottomTabs({
                   selectedVereda={selectedVereda}
                   climaVereda={climaVereda}
                   onClearSelection={onClearSelection}
+                  onFlyTo={onFlyTo}
                 />
               </TabsContent>
 
@@ -150,12 +156,14 @@ function FocusedLayerPanel({
   selectedVereda,
   climaVereda,
   onClearSelection,
+  onFlyTo,
 }: {
   layer: LayerKey
   veredas: LabVeredasFeatureCollection | null
   selectedVereda: VeredaFeature | null
   climaVereda: ClimaVeredaProperties | null
   onClearSelection: () => void
+  onFlyTo: (target: { lon: number; lat: number; zoom: number }) => void
 }) {
   switch (layer) {
     case "deslizamientos":
@@ -197,15 +205,23 @@ function FocusedLayerPanel({
     case "clima": {
       const vereda = toSelectedVereda(selectedVereda)
       return (
-        <div className="grid items-start gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,24rem),1fr))]">
-          <WeatherReportCard vereda={climaVereda} />
-          <ClimaDecadalChart vereda={vereda} />
-          <ClimaQuinquenalChart vereda={vereda} />
+        <div className="flex flex-col gap-4">
+          <WeatherDetailedForecast vereda={climaVereda} />
+          <div className="grid items-start gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,24rem),1fr))]">
+            <WeatherReportCard vereda={climaVereda} />
+            <ClimaDecadalChart vereda={vereda} />
+            <ClimaQuinquenalChart vereda={vereda} />
+          </div>
         </div>
       )
     }
     case "sismologia":
-      return <SismologiaOverview />
+      return (
+        <div className="flex flex-col gap-4">
+          <LatestQuakes onFlyTo={onFlyTo} />
+          <SismologiaOverview />
+        </div>
+      )
     case "hidrantes":
       return (
         <p className="mx-auto max-w-xl text-center text-sm text-muted-foreground">
@@ -225,6 +241,47 @@ function FocusedLayerPanel({
     default:
       return null
   }
+}
+
+function LatestQuakes({ onFlyTo }: { onFlyTo: (target: { lon: number; lat: number; zoom: number }) => void }) {
+  const { data } = useSismologiaEventos()
+  const latest = getLatestSeismicEvents(data, 3)
+
+  return (
+    <section aria-label="Últimos tres sismos" className="rounded-md border border-border p-3">
+      <h3 className="mb-2 text-sm font-medium text-foreground">Últimos tres sismos</h3>
+      {latest.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Cargando eventos recientes…</p>
+      ) : (
+        <ol className="grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(min(100%,16rem),1fr))]">
+          {latest.map((quake, i) => (
+            <li key={quake.id}>
+              <button
+                type="button"
+                onClick={() => onFlyTo({ lon: quake.lon, lat: quake.lat, zoom: 8 })}
+                className="flex w-full items-center gap-3 rounded-md border border-border bg-background/50 p-2 text-left transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+              >
+                <span
+                  className={`flex shrink-0 items-center justify-center rounded-full bg-destructive font-bold text-destructive-foreground ${i === 0 ? "size-9 text-sm" : "size-7 text-xs"}`}
+                  aria-hidden="true"
+                >
+                  {i + 1}
+                </span>
+                <span className="flex min-w-0 flex-col">
+                  <span className="text-sm font-semibold text-foreground">
+                    M {Number(quake.magnitude).toFixed(1)} · {formatQuakeAge(quake.time)}
+                  </span>
+                  <span className="truncate text-xs text-muted-foreground">
+                    {quake.place ?? formatDateTime(quake.time)}
+                  </span>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  )
 }
 
 function DemografiaSummary({ veredas }: { veredas: LabVeredasFeatureCollection | null }) {

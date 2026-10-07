@@ -28,6 +28,8 @@ export interface ClimaDay {
   tempMin: number | null
   /** Max daily precipitation probability (%). */
   probabilidadLluvia: number
+  /** Forecast rainfall for the day (mm). */
+  precipMm: number
   /** True when this day's forecast rainfall is under 1 mm — feeds the dry-spell (racha seca) outlook. */
   seco: boolean
 }

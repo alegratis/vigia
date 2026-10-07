@@ -61,6 +61,7 @@ export async function getClimaForecast(): Promise<{
       tempMax: round1(d.tempMax),
       tempMin: round1(d.tempMin),
       probabilidadLluvia: Math.round(d.probabilidadLluvia),
+      precipMm: Math.round(d.precipMm * 10) / 10,
       seco: d.precipMm < 1,
     }))
     const rachaSeca = countRachaSeca(dias.map((d) => d.seco))

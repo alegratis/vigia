@@ -125,6 +125,10 @@ export function LabWorkspace() {
   // Lifted here (rather than owned inside BottomTabs) so the right-side ContextPanel can shrink
   // its own height to match — otherwise an expanded bottom panel and a full-height right panel
   // would overlap in the bottom-right corner.
+  const [flyTarget, setFlyTarget] = useState<{ lon: number; lat: number; zoom: number; nonce: number } | null>(null)
+  const handleFlyTo = useCallback((target: { lon: number; lat: number; zoom: number }) => {
+    setFlyTarget((prev) => ({ ...target, nonce: (prev?.nonce ?? 0) + 1 }))
+  }, [])
   const [bottomPanelCollapsed, setBottomPanelCollapsed] = useState(true)
   // Right panel: open by default on desktop, collapsed on mobile (resolved after mount so SSR markup stays stable).
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(true)
@@ -371,6 +375,7 @@ export function LabWorkspace() {
           hidrantesExperience={hidrantesExperience}
           demografiaExperience={demografiaExperience}
           climaData={climaData ?? null}
+          flyTarget={flyTarget}
         />
 
         <LayerRail activeLayers={state.layers} onToggle={handleToggleLayer} onHoverLayer={setPreviewLayer} />
@@ -406,6 +411,7 @@ export function LabWorkspace() {
           selectedVereda={selectedVereda}
           climaVereda={climaVereda}
           onClearSelection={() => setSelectedVereda(null)}
+          onFlyTo={handleFlyTo}
           collapsed={bottomPanelCollapsed}
           onCollapsedChange={setBottomPanelCollapsed}
         />
