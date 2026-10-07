@@ -1,10 +1,11 @@
 "use client"
 
 import Image from "next/image"
-import { Layers, LocateFixed, Navigation, Route, TriangleAlert, X } from "lucide-react"
+import { Layers, LocateFixed, Navigation, PanelRightClose, PanelRightOpen, Route, TriangleAlert, X } from "lucide-react"
 import {
   LAYER_DEFINITIONS,
   levelSeverity,
+  resolveOption,
   resolveSubLayerOn,
   type LabVeredasFeatureCollection,
   type LayerKey,
@@ -21,11 +22,19 @@ import {
 } from "@/lib/laboratorio/use-demografia-experience"
 import { INDICATOR_LEVELS } from "@/lib/demografia/indicator-levels"
 import { VULNERABILITY_LEVELS, VULNERABILITY_LEVEL_STYLES } from "@/lib/vulnerabilidad/levels"
+import { CONFIDENCE_STYLES } from "@/lib/firms/ui"
 import { SENSITIVE_SITE_STYLES } from "@/lib/osm/sensitive-sites"
+import {
+  SEISMIC_EXPOSURE_LEVELS,
+  SEISMIC_EXPOSURE_LEVEL_TOKENS,
+  SEISMIC_MAGNITUDE_LEVELS,
+  SEISMIC_MAGNITUDE_LEVEL_STYLES,
+} from "@/lib/sismologia/levels"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 
 interface ContextPanelProps {
@@ -39,6 +48,11 @@ interface ContextPanelProps {
   onToggleSubLayer: (id: string) => void
   /** Whether the bottom analysis panel is collapsed — this panel shrinks to match so the two never overlap. */
   bottomPanelCollapsed: boolean
+  collapsed: boolean
+  onCollapsedChange: (collapsed: boolean) => void
+  /** Selected value per `LayerOption` id — see `resolveOption`. */
+  optionValues: Record<string, string>
+  onOptionChange: (id: string, value: string) => void
   /** Geolocation/routing/coverage state for the hidrantes layer — see `lab-map.tsx` for the matching rendering. */
   hidrantesExperience: HidrantesExperience
   /** Indicator-switching state for the demografía layer — see `lab-map.tsx` for the matching rendering. */
@@ -62,8 +76,12 @@ export function ContextPanel({
   subLayerToggles,
   onToggleSubLayer,
   bottomPanelCollapsed,
+  collapsed,
+  onCollapsedChange,
   hidrantesExperience,
   demografiaExperience,
+  optionValues,
+  onOptionChange,
 }: ContextPanelProps) {
   const focusLayer =
     lastActivatedLayer && activeLayers.includes(lastActivatedLayer)
@@ -78,21 +96,56 @@ export function ContextPanel({
     <HidrantesPanel experience={hidrantesExperience} />
   ) : focusLayer === "demografia" ? (
     <DemografiaPanel experience={demografiaExperience} />
+  ) : focusLayer === "sismologia" ? (
+    <SismologiaLegend subLayerToggles={subLayerToggles} />
   ) : (
-    <LayerLegend veredas={veredas} layer={focusLayer!} activeLayers={activeLayers} />
+    <>
+      <LayerLegend veredas={veredas} layer={focusLayer!} activeLayers={activeLayers} />
+      {focusLayer === "incendios" && <FocosLegend />}
+      {focusLayer === "clima" && <ClimaMarkersLegend />}
+    </>
   )
 
   const subLayers = !previewLayer && focusLayer ? LAYER_DEFINITIONS[focusLayer].subLayers : undefined
 
+  if (collapsed) {
+    return (
+      <Button
+        type="button"
+        size="icon"
+        variant="secondary"
+        onClick={() => onCollapsedChange(false)}
+        aria-label="Mostrar panel de información"
+        aria-expanded={false}
+        className="absolute right-3 top-3 z-10 size-9 border border-border/60 bg-card/80 shadow-lg backdrop-blur-md"
+      >
+        <PanelRightOpen className="size-4" aria-hidden="true" />
+      </Button>
+    )
+  }
+
   return (
     <div
-      className={`absolute right-3 top-3 z-10 hidden w-72 flex-col overflow-hidden rounded-xl border border-border/60 bg-card/80 shadow-lg backdrop-blur-md transition-[bottom] sm:flex ${
-        bottomPanelCollapsed ? "bottom-[4.25rem]" : "bottom-3 sm:bottom-[calc(42%+1.5rem)]"
+      className={`absolute right-3 top-3 z-10 flex w-[min(18rem,calc(100vw-5.5rem))] flex-col overflow-hidden rounded-xl border border-border/60 bg-card/80 shadow-lg backdrop-blur-md transition-[bottom] ${
+        bottomPanelCollapsed ? "bottom-[4.25rem]" : "bottom-[calc(42%+1.5rem)]"
       }`}
     >
+      <div className="flex shrink-0 items-center justify-end border-b border-border/70 px-2 py-1">
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          className="size-7"
+          onClick={() => onCollapsedChange(true)}
+          aria-label="Ocultar panel de información"
+          aria-expanded
+        >
+          <PanelRightClose className="size-4" aria-hidden="true" />
+        </Button>
+      </div>
       <div className="min-h-0 flex-1 overflow-y-auto">{content}</div>
       {subLayers && subLayers.length > 0 && (
-        <div className="shrink-0 border-t border-border/70 p-3">
+        <div className="max-h-[45%] shrink-0 overflow-y-auto border-t border-border/70 p-3">
           <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
             <Layers className="size-3.5" aria-hidden="true" />
             Capas
@@ -100,17 +153,44 @@ export function ContextPanel({
           <ul className="flex flex-col gap-2">
             {subLayers.map((sub) => {
               const checked = resolveSubLayerOn(focusLayer!, sub.id, subLayerToggles)
+              const option = sub.optionId
+                ? LAYER_DEFINITIONS[focusLayer!].options?.find((o) => o.id === sub.optionId)
+                : undefined
               return (
-                <li key={sub.id} className="flex items-start gap-2">
-                  <Checkbox
-                    id={`sublayer-${sub.id}`}
-                    checked={checked}
-                    onCheckedChange={() => onToggleSubLayer(sub.id)}
-                    className="mt-0.5"
-                  />
-                  <Label htmlFor={`sublayer-${sub.id}`} className="text-xs font-normal leading-snug text-foreground">
-                    {sub.label}
-                  </Label>
+                <li key={sub.id} className="flex flex-col gap-1.5">
+                  <div className="flex items-start gap-2">
+                    <Checkbox
+                      id={`sublayer-${sub.id}`}
+                      checked={checked}
+                      onCheckedChange={() => onToggleSubLayer(sub.id)}
+                      className="mt-0.5"
+                    />
+                    <Label htmlFor={`sublayer-${sub.id}`} className="text-xs font-normal leading-snug text-foreground">
+                      {sub.label}
+                    </Label>
+                  </div>
+                  {checked && option && (
+                    <div className="ml-6 flex flex-col gap-1">
+                      <span className="text-[11px] text-muted-foreground">{option.label}</span>
+                      <Select
+                        value={resolveOption(focusLayer!, option.id, optionValues)}
+                        onValueChange={(value) => value && onOptionChange(option.id, value)}
+                      >
+                        <SelectTrigger className="h-7 text-xs" aria-label={option.label}>
+                          <SelectValue>
+                            {(value: string | null) => option.choices.find((c) => c.value === value)?.label ?? value}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {option.choices.map((c) => (
+                            <SelectItem key={c.value} value={c.value}>
+                              {c.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </li>
               )
             })}
@@ -443,5 +523,87 @@ function LayerLegend({
         ))}
       </ul>
     </div>
+  )
+}
+
+function LegendSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="border-t border-border/70 px-4 py-3">
+      <p className="mb-1.5 text-xs font-medium text-muted-foreground">{title}</p>
+      <ul className="flex flex-col gap-1.5">{children}</ul>
+    </div>
+  )
+}
+
+function LegendRow({ color, label, hint, round }: { color: string; label: string; hint?: string; round?: boolean }) {
+  return (
+    <li className="flex items-center gap-2 text-xs">
+      <span
+        className={cn("size-2.5 shrink-0", round ? "rounded-full" : "rounded-sm")}
+        style={{ backgroundColor: color }}
+        aria-hidden="true"
+      />
+      <span className="flex-1 truncate text-foreground">{label}</span>
+      {hint && <span className="text-muted-foreground">{hint}</span>}
+    </li>
+  )
+}
+
+function SismologiaLegend({ subLayerToggles }: { subLayerToggles: Record<string, boolean> }) {
+  const showFaults = resolveSubLayerOn("sismologia", "faults", subLayerToggles)
+  const showExposure = resolveSubLayerOn("sismologia", "sismo-veredas", subLayerToggles)
+  return (
+    <div className="flex flex-col">
+      <div className="p-4 pb-3">
+        <p className="font-medium text-foreground">Sismología</p>
+        <p className="text-xs text-muted-foreground">El tamaño del círculo crece con la magnitud.</p>
+      </div>
+      <LegendSection title="Magnitud del sismo">
+        {SEISMIC_MAGNITUDE_LEVELS.map((level) => (
+          <LegendRow
+            key={level}
+            round
+            color={SEISMIC_MAGNITUDE_LEVEL_STYLES[level].colorToken}
+            label={level}
+            hint={SEISMIC_MAGNITUDE_LEVEL_STYLES[level].range}
+          />
+        ))}
+      </LegendSection>
+      {showExposure && (
+        <LegendSection title="Exposición sísmica por vereda">
+          {SEISMIC_EXPOSURE_LEVELS.map((level) => (
+            <LegendRow key={level} color={SEISMIC_EXPOSURE_LEVEL_TOKENS[level]} label={level} />
+          ))}
+        </LegendSection>
+      )}
+      {showFaults && (
+        <LegendSection title="Fallas geológicas">
+          <li className="flex items-center gap-2 text-xs">
+            <span className="h-0 w-5 shrink-0 border-t-2 border-dashed border-foreground" aria-hidden="true" />
+            <span className="text-foreground">Traza de falla (clic para nombre)</span>
+          </li>
+        </LegendSection>
+      )}
+    </div>
+  )
+}
+
+function FocosLegend() {
+  return (
+    <LegendSection title="Focos activos (confianza)">
+      {(["high", "nominal", "low", "unknown"] as const).map((key) => (
+        <LegendRow key={key} round color={CONFIDENCE_STYLES[key].color} label={CONFIDENCE_STYLES[key].label} />
+      ))}
+    </LegendSection>
+  )
+}
+
+function ClimaMarkersLegend() {
+  return (
+    <LegendSection title="Marcadores">
+      <li className="text-xs leading-snug text-muted-foreground">
+        Icono = condición actual; número = temperatura. Al acercar el zoom aparecen más veredas.
+      </li>
+    </LegendSection>
   )
 }

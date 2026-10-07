@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Image from "next/image"
+import Link from "next/link"
 import { Link2 } from "lucide-react"
 import { toast } from "sonner"
 import useSWR from "swr"
@@ -105,10 +106,35 @@ export function LabWorkspace() {
     hidrantes: DEFAULT_LAYER_OPACITY,
   })
   const [selectedVereda, setSelectedVereda] = useState<VeredaFeature | null>(null)
+
+  // Weather report shown in the bottom panel: the clicked vereda when there is one, otherwise the casco
+  // urbano of the selected municipio (Sevilla by default) so the card is never empty.
+  const climaVereda = useMemo(() => {
+    const features = climaData?.veredas.features ?? []
+    if (selectedVereda) {
+      const match = features.find((f) => f.properties.codigoVereda === selectedVereda.properties.codigoVereda)
+      if (match) return match.properties
+    }
+    const target = state.municipio ?? "Sevilla"
+    return (
+      features.find((f) => f.properties.esCascoUrbano && f.properties.municipio === target)?.properties ??
+      features.find((f) => f.properties.esCascoUrbano)?.properties ??
+      null
+    )
+  }, [climaData, selectedVereda, state.municipio])
   // Lifted here (rather than owned inside BottomTabs) so the right-side ContextPanel can shrink
   // its own height to match — otherwise an expanded bottom panel and a full-height right panel
   // would overlap in the bottom-right corner.
-  const [bottomPanelCollapsed, setBottomPanelCollapsed] = useState(false)
+  const [flyTarget, setFlyTarget] = useState<{ lon: number; lat: number; zoom: number; nonce: number } | null>(null)
+  const handleFlyTo = useCallback((target: { lon: number; lat: number; zoom: number }) => {
+    setFlyTarget((prev) => ({ ...target, nonce: (prev?.nonce ?? 0) + 1 }))
+  }, [])
+  const [bottomPanelCollapsed, setBottomPanelCollapsed] = useState(true)
+  // Right panel: open by default on desktop, collapsed on mobile (resolved after mount so SSR markup stays stable).
+  const [rightPanelCollapsed, setRightPanelCollapsed] = useState(true)
+  useEffect(() => {
+    setRightPanelCollapsed(!window.matchMedia("(min-width: 640px)").matches)
+  }, [])
   // Keyed by bare sub-layer id (see `resolveSubLayerOn`) rather than per-hazard-layer, since ids
   // are already unique across every hazard that offers one.
   const [subLayerToggles, setSubLayerToggles] = useState<Record<string, boolean>>({})
@@ -126,6 +152,11 @@ export function LabWorkspace() {
 
   const hidrantesExperience = useHidrantesExperience(focusLayer === "hidrantes")
   const demografiaExperience = useDemografiaExperience(focusLayer === "demografia")
+
+  const [optionValues, setOptionValues] = useState<Record<string, string>>({})
+  const handleOptionChange = useCallback((id: string, value: string) => {
+    setOptionValues((prev) => ({ ...prev, [id]: value }))
+  }, [])
 
   const handleToggleSubLayer = useCallback(
     (id: string) => {
@@ -230,7 +261,7 @@ export function LabWorkspace() {
     <div className="flex h-screen flex-col overflow-hidden bg-background">
       <header className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-2 sm:gap-4 sm:px-4 sm:py-2.5">
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-          <span className="relative hidden h-6 items-center justify-center sm:flex">
+          <Link href="/" aria-label="RED LabOT — volver al inicio" className="relative hidden h-6 items-center justify-center sm:flex">
             <Image
               src="/images/redlabot-mark-light.png"
               alt="RED LabOT"
@@ -247,9 +278,9 @@ export function LabWorkspace() {
               className="hidden h-5 w-auto dark:block"
               priority
             />
-          </span>
+          </Link>
           <span aria-hidden="true" className="hidden h-6 w-px bg-border sm:block" />
-          <span className="relative flex size-6 shrink-0 items-center justify-center sm:size-7">
+          <Link href="/" aria-label="Vigía — volver al inicio" className="relative flex size-6 shrink-0 items-center justify-center sm:size-7">
             <Image
               src="/images/vigia-mark-light.png"
               alt="Vigía"
@@ -266,7 +297,7 @@ export function LabWorkspace() {
               className="hidden dark:block"
               priority
             />
-          </span>
+          </Link>
           <div className="min-w-0">
             <p className="truncate text-sm font-medium text-foreground sm:text-base">Laboratorio</p>
             <p className="hidden truncate text-xs text-muted-foreground sm:block">{headerSubtitle}</p>
@@ -301,7 +332,9 @@ export function LabWorkspace() {
           </div>
           <Select value={activeMunicipioValue} onValueChange={handleMunicipioChange}>
             <SelectTrigger className="h-8 w-28 text-xs sm:w-40">
-              <SelectValue placeholder="Municipio" />
+              <SelectValue placeholder="Municipio">
+                {(value: string | null) => (!value || value === "__all__" ? "Todos los municipios" : value)}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="__all__">Todos los municipios</SelectItem>
@@ -338,8 +371,11 @@ export function LabWorkspace() {
           onVeredaSelect={setSelectedVereda}
           focusLayer={focusLayer}
           subLayerToggles={subLayerToggles}
+          optionValues={optionValues}
           hidrantesExperience={hidrantesExperience}
           demografiaExperience={demografiaExperience}
+          climaData={climaData ?? null}
+          flyTarget={flyTarget}
         />
 
         <LayerRail activeLayers={state.layers} onToggle={handleToggleLayer} onHoverLayer={setPreviewLayer} />
@@ -352,8 +388,12 @@ export function LabWorkspace() {
           subLayerToggles={subLayerToggles}
           onToggleSubLayer={handleToggleSubLayer}
           bottomPanelCollapsed={bottomPanelCollapsed}
+          collapsed={rightPanelCollapsed}
+          onCollapsedChange={setRightPanelCollapsed}
           hidrantesExperience={hidrantesExperience}
           demografiaExperience={demografiaExperience}
+          optionValues={optionValues}
+          onOptionChange={handleOptionChange}
         />
 
         <LayerConflictPopover
@@ -369,7 +409,9 @@ export function LabWorkspace() {
           activeLayers={state.layers}
           lastActivatedLayer={lastActivatedLayer}
           selectedVereda={selectedVereda}
+          climaVereda={climaVereda}
           onClearSelection={() => setSelectedVereda(null)}
+          onFlyTo={handleFlyTo}
           collapsed={bottomPanelCollapsed}
           onCollapsedChange={setBottomPanelCollapsed}
         />

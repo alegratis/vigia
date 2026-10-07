@@ -1,10 +1,14 @@
 "use client"
 
-import { ChevronDown, ChevronUp, List } from "lucide-react"
+import { ChevronDown, ChevronUp } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
+import { WeatherDetailedForecast, WeatherReportCard } from "@/components/clima/weather-report-card"
+import { useSismologiaEventos } from "@/lib/sismologia/use-sismologia"
+import { formatQuakeAge, getLatestSeismicEvents } from "@/lib/sismologia/latest-events"
+import { formatDateTime } from "@/lib/firms/ui"
+import type { ClimaVeredaProperties } from "@/lib/clima/api-types"
 import { LAYER_DEFINITIONS, type LabVeredasFeatureCollection, type LayerKey } from "@/lib/laboratorio/layers"
-import { useLabPoints } from "@/lib/laboratorio/use-lab-points"
 import type { VeredaFeature } from "@/lib/veredas/api-types"
 import { LiveThreatPopulation } from "@/components/deslizamientos/live-threat-population"
 import { HazardModelPanel } from "@/components/deslizamientos/hazard-model-panel"
@@ -26,7 +30,10 @@ interface BottomTabsProps {
   /** Last layer turned on — the "panel de análisis" always focuses on this one, same as the context panel's legend. */
   lastActivatedLayer: LayerKey | null
   selectedVereda: VeredaFeature | null
+  /** Weather report for the clicked vereda, or the casco urbano of the selected municipio by default. */
+  climaVereda: ClimaVeredaProperties | null
   onClearSelection: () => void
+  onFlyTo: (target: { lon: number; lat: number; zoom: number }) => void
   collapsed: boolean
   onCollapsedChange: (collapsed: boolean) => void
 }
@@ -74,7 +81,9 @@ export function BottomTabs({
   activeLayers,
   lastActivatedLayer,
   selectedVereda,
+  climaVereda,
   onClearSelection,
+  onFlyTo,
   collapsed,
   onCollapsedChange,
 }: BottomTabsProps) {
@@ -108,7 +117,7 @@ export function BottomTabs({
               Activa una capa en el riel izquierdo para ver sus gráficos, métricas y metodología.
             </p>
           ) : (
-            <Tabs defaultValue="panel" key={focusLayer}>
+            <Tabs defaultValue="panel" key={focusLayer} className="mx-auto w-full max-w-[110rem] @container">
               <TabsList>
                 <TabsTrigger value="panel">Panel</TabsTrigger>
                 <TabsTrigger value="metodologia">Metodología</TabsTrigger>
@@ -119,12 +128,14 @@ export function BottomTabs({
                   layer={focusLayer}
                   veredas={veredas}
                   selectedVereda={selectedVereda}
+                  climaVereda={climaVereda}
                   onClearSelection={onClearSelection}
+                  onFlyTo={onFlyTo}
                 />
               </TabsContent>
 
               <TabsContent value="metodologia" className="pt-3">
-                <div className="max-w-2xl rounded-md border border-border p-3 text-sm">
+                <div className="max-w-3xl rounded-md border border-border p-3 text-sm">
                   <p className="font-medium text-foreground">{LAYER_DEFINITIONS[focusLayer].label}</p>
                   <p className="text-muted-foreground">
                     {METHODOLOGY_NOTES[focusLayer] ?? "Sin nota de metodología para esta capa."}
@@ -143,17 +154,21 @@ function FocusedLayerPanel({
   layer,
   veredas,
   selectedVereda,
+  climaVereda,
   onClearSelection,
+  onFlyTo,
 }: {
   layer: LayerKey
   veredas: LabVeredasFeatureCollection | null
   selectedVereda: VeredaFeature | null
+  climaVereda: ClimaVeredaProperties | null
   onClearSelection: () => void
+  onFlyTo: (target: { lon: number; lat: number; zoom: number }) => void
 }) {
   switch (layer) {
     case "deslizamientos":
       return (
-        <div className="flex flex-wrap gap-4">
+        <div className="grid items-start gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,24rem),1fr))]">
           <LiveThreatPopulation />
           <HazardModelPanel selectedVereda={selectedVereda} onClearSelection={onClearSelection} />
         </div>
@@ -162,7 +177,7 @@ function FocusedLayerPanel({
       return (
         <div className="flex flex-col gap-4">
           <MunicipioFloodSummary />
-          <div className="flex flex-wrap gap-4">
+          <div className="grid items-start gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,24rem),1fr))]">
             <FloodOverview />
             <FloodModelPanel selectedVereda={selectedVereda} onClearSelection={onClearSelection} />
           </div>
@@ -170,7 +185,7 @@ function FocusedLayerPanel({
       )
     case "incendios":
       return (
-        <div className="flex flex-wrap gap-4">
+        <div className="grid items-start gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,24rem),1fr))]">
           <FireOverview />
           <FireModelPanel selectedVereda={selectedVereda} onClearSelection={onClearSelection} />
         </div>
@@ -180,7 +195,7 @@ function FocusedLayerPanel({
       return (
         <div className="flex flex-col gap-4">
           <PrecipitationOverview />
-          <div className="flex flex-wrap gap-4">
+          <div className="grid items-start gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,24rem),1fr))]">
             <PrecipDecadalChart vereda={vereda} />
             <PrecipQuinquenalChart vereda={vereda} />
           </div>
@@ -190,19 +205,33 @@ function FocusedLayerPanel({
     case "clima": {
       const vereda = toSelectedVereda(selectedVereda)
       return (
-        <div className="flex flex-wrap gap-4">
-          <ClimaDecadalChart vereda={vereda} />
-          <ClimaQuinquenalChart vereda={vereda} />
+        <div className="flex flex-col gap-4">
+          <WeatherDetailedForecast vereda={climaVereda} />
+          <div className="grid items-start gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,24rem),1fr))]">
+            <WeatherReportCard vereda={climaVereda} />
+            <ClimaDecadalChart vereda={vereda} />
+            <ClimaQuinquenalChart vereda={vereda} />
+          </div>
         </div>
       )
     }
     case "sismologia":
-      return <SismologiaOverview />
+      return (
+        <div className="flex flex-col gap-4">
+          <LatestQuakes onFlyTo={onFlyTo} />
+          <SismologiaOverview />
+        </div>
+      )
     case "hidrantes":
-      return <HidrantesTable />
+      return (
+        <p className="mx-auto max-w-xl text-center text-sm text-muted-foreground">
+          Los hidrantes no tienen identificación individual en campo, por lo que no se listan aquí. Usa el mapa o el
+          botón "Ver todas" para ubicar el más cercano.
+        </p>
+      )
     case "riesgo-compuesto":
       return (
-        <p className="max-w-md text-sm text-muted-foreground">
+        <p className="mx-auto max-w-md text-center text-sm text-muted-foreground">
           El resumen de riesgo compuesto vive en el panel derecho (veredas ordenadas por su amenaza más
           severa) — no tiene un panel propio independiente en producción más allá de ese.
         </p>
@@ -214,21 +243,44 @@ function FocusedLayerPanel({
   }
 }
 
-function HidrantesTable() {
-  const points = useLabPoints("hidrantes")
-  if (points.isLoading) return <p className="text-sm text-muted-foreground">Cargando fuentes hídricas…</p>
+function LatestQuakes({ onFlyTo }: { onFlyTo: (target: { lon: number; lat: number; zoom: number }) => void }) {
+  const { data } = useSismologiaEventos()
+  const latest = getLatestSeismicEvents(data, 3)
+
   return (
-    <div className="flex max-w-md flex-col gap-2">
-      <p className="text-sm text-muted-foreground">{points.all.length} fuentes hídricas registradas.</p>
-      <ul className="flex max-h-48 flex-col gap-1 overflow-y-auto text-sm">
-        {points.all.map((point) => (
-          <li key={point.id} className="flex items-center justify-between gap-2 border-b border-border/50 py-1">
-            <span className="truncate text-foreground">{point.label}</span>
-            <span className="shrink-0 text-xs text-muted-foreground">{point.sublabel}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <section aria-label="Últimos tres sismos" className="rounded-md border border-border p-3">
+      <h3 className="mb-2 text-sm font-medium text-foreground">Últimos tres sismos</h3>
+      {latest.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Cargando eventos recientes…</p>
+      ) : (
+        <ol className="grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(min(100%,16rem),1fr))]">
+          {latest.map((quake, i) => (
+            <li key={quake.id}>
+              <button
+                type="button"
+                onClick={() => onFlyTo({ lon: quake.lon, lat: quake.lat, zoom: 8 })}
+                className="flex w-full items-center gap-3 rounded-md border border-border bg-background/50 p-2 text-left transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+              >
+                <span
+                  className={`flex shrink-0 items-center justify-center rounded-full bg-destructive font-bold text-destructive-foreground ${i === 0 ? "size-9 text-sm" : "size-7 text-xs"}`}
+                  aria-hidden="true"
+                >
+                  {i + 1}
+                </span>
+                <span className="flex min-w-0 flex-col">
+                  <span className="text-sm font-semibold text-foreground">
+                    M {Number(quake.magnitude).toFixed(1)} · {formatQuakeAge(quake.time)}
+                  </span>
+                  <span className="truncate text-xs text-muted-foreground">
+                    {quake.place ?? formatDateTime(quake.time)}
+                  </span>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
   )
 }
 
@@ -243,7 +295,7 @@ function DemografiaSummary({ veredas }: { veredas: LabVeredasFeatureCollection |
   const max = Math.max(1, ...counts.map((c) => c.count))
 
   return (
-    <div className="flex w-56 flex-col gap-2 rounded-md border border-border p-3">
+    <div className="flex w-full max-w-md flex-col gap-2 rounded-md border border-border p-3 mx-auto">
       <p className="text-sm font-medium text-foreground">Población por vereda (5 niveles)</p>
       <div className="flex h-24 items-end gap-1.5">
         {counts.map(({ level, style, count }) => (

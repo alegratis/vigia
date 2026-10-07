@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import useSWR from "swr"
 import Map, {
   Source,
@@ -19,6 +19,7 @@ import { List, MapPin } from "lucide-react"
 import {
   LAYER_DEFINITIONS,
   LAYER_ORDER,
+  resolveOption,
   resolveSubLayerOn,
   type LabVeredaFeature,
   type LabVeredasFeatureCollection,
@@ -56,6 +57,27 @@ import { PointsListDialog } from "@/components/laboratorio/points-list-dialog"
 import { Button } from "@/components/ui/button"
 import { isMunicipioActive } from "@/lib/veredas/municipio-toggles"
 import { boundsForActiveMunicipios } from "@/lib/veredas/municipio-bounds"
+import { useFaults } from "@/lib/deslizamientos/use-faults"
+import { useSismologiaDanos, useSismologiaEventos } from "@/lib/sismologia/use-sismologia"
+import {
+  SEISMIC_MAGNITUDE_LEVELS,
+  SEISMIC_MAGNITUDE_LEVEL_STYLES,
+  SEISMIC_EXPOSURE_LEVEL_TOKENS,
+  magnitudeLevel,
+  magnitudeRadius,
+  seismicExposureLevel,
+} from "@/lib/sismologia/levels"
+import { DAMAGE_LEVEL_ORDER, DAMAGE_LEVEL_LABEL, DAMAGE_LEVEL_COLOR_TOKEN, type DamageLevel } from "@/lib/sismologia/damage-levels"
+import { GWIS_FWI_LAYER, GWIS_S3_HOTSPOT_LAYER } from "@/lib/incendios/gwis"
+import { GWIS_LANDCOVER_LAYER } from "@/lib/land-cover/gwis-landcover"
+import { CONFIDENCE_STYLES, formatDateTime, formatDistance, formatFrp } from "@/lib/firms/ui"
+import { FIRE_THREAT_LEVELS } from "@/lib/incendios/levels"
+import type { SeismicEvent } from "@/lib/sismologia/api-types"
+import type { FireDetection, FiresResponse } from "@/lib/firms/api-types"
+import type { MapBounds } from "@/lib/map-bounds"
+import type { ClimaForecastResponse, ClimaVeredaProperties } from "@/lib/clima/api-types"
+import { WeatherGlyph, WeatherPopupContent } from "@/components/clima/weather-report-card"
+import { formatQuakeAge, getLatestSeismicEvents } from "@/lib/sismologia/latest-events"
 
 /** The two layers that render as raw point markers instead of a vereda choropleth fill. */
 const POINTS_LAYERS: LayerKey[] = ["sismologia", "hidrantes"]
@@ -80,9 +102,58 @@ if (typeof window !== "undefined") {
 // Same AOI framing as every other MapLibre hazard map in the app (see
 // deslizamientos-live-map.tsx) — `[[west, south], [east, north]]`.
 const AOI_BOUNDS: [[number, number], [number, number]] = [
-  [-76.06, 3.88],
+  [-76.2, 3.88],
   [-75.72, 4.44],
 ]
+
+/** Layers whose data spans all four municipios — focusing one refits the camera to the selected territory. */
+const TERRITORY_FIT_LAYERS: LayerKey[] = ["clima", "precipitacion"]
+
+/** Minimum zoom at which any per-vereda weather marker appears, and how many are allowed in view at each zoom tier. */
+function climaMarkerBudget(zoom: number): number {
+  if (zoom < 10.5) return 0
+  if (zoom < 11.5) return 6
+  if (zoom < 12.5) return 14
+  if (zoom < 13.5) return 30
+  if (zoom < 14.5) return 60
+  return 120
+}
+
+interface ClimaMarker {
+  props: ClimaVeredaProperties
+  lon: number
+  lat: number
+  /** Bounding-box area in square degrees — a cheap stand-in for how "prominent" a vereda is at a glance. */
+  area: number
+}
+
+function climaMarkerFromFeature(feature: ClimaForecastResponse["veredas"]["features"][number]): ClimaMarker | null {
+  const polygons: number[][][][] =
+    feature.geometry.type === "Polygon"
+      ? [feature.geometry.coordinates as number[][][]]
+      : feature.geometry.type === "MultiPolygon"
+        ? (feature.geometry.coordinates as number[][][][])
+        : []
+  let minLon = Infinity
+  let maxLon = -Infinity
+  let minLat = Infinity
+  let maxLat = -Infinity
+  for (const polygon of polygons) {
+    for (const [lon, lat] of polygon[0] ?? []) {
+      if (lon < minLon) minLon = lon
+      if (lon > maxLon) maxLon = lon
+      if (lat < minLat) minLat = lat
+      if (lat > maxLat) maxLat = lat
+    }
+  }
+  if (!Number.isFinite(minLon)) return null
+  return {
+    props: feature.properties,
+    lon: (minLon + maxLon) / 2,
+    lat: (minLat + maxLat) / 2,
+    area: (maxLon - minLon) * (maxLat - minLat),
+  }
+}
 
 const GRAY_FILL = "#9ca3af"
 
@@ -100,10 +171,16 @@ interface LabMapProps {
   focusLayer: LayerKey | null
   /** Per-sub-layer on/off overrides, keyed by the sub-layer's bare `id` (see `resolveSubLayerOn`). */
   subLayerToggles: Record<string, boolean>
+  /** Single-choice select values (time window, forecast day...), keyed by `LayerOption.id`. */
+  optionValues: Record<string, string>
   /** Geolocation/routing/coverage state for the hidrantes layer, lifted to the workspace so the context panel's rail controls and this map's rendering share one source of truth. */
   hidrantesExperience: HidrantesExperience
   /** Indicator-switching state (vulnerabilidad/pobreza/manzanas) for the demografía layer, lifted to the workspace for the same reason as `hidrantesExperience`. */
   demografiaExperience: DemografiaExperience
+  /** Current conditions + 7-day forecast per vereda and cabecera, drives the weather markers on the clima layer. */
+  climaData: ClimaForecastResponse | null
+  /** Camera request issued from outside the map (e.g. the bottom panel's latest-quakes list); `nonce` re-triggers the same target. */
+  flyTarget: { lon: number; lat: number; zoom: number; nonce: number } | null
 }
 
 const quebradasFetcher = async (url: string): Promise<InundacionesQuebradasResponse> => {
@@ -131,12 +208,16 @@ export function LabMap({
   onVeredaSelect,
   focusLayer,
   subLayerToggles,
+  optionValues,
   hidrantesExperience,
   demografiaExperience,
+  climaData,
+  flyTarget,
 }: LabMapProps) {
   const mapRef = useRef<MapRef>(null)
   const [basemap, setBasemap] = useThemeSyncedBasemap()
   const [popupInfo, setPopupInfo] = useState<{ feature: LabVeredaFeature; layer: LayerKey } | null>(null)
+  const [climaPopup, setClimaPopup] = useState<{ lon: number; lat: number; props: ClimaVeredaProperties } | null>(null)
   const [pointPopup, setPointPopup] = useState<LabPointFeature | null>(null)
   const [pointsModalLayer, setPointsModalLayer] = useState<LayerKey | null>(null)
   const [transitioning, setTransitioning] = useState(false)
@@ -172,6 +253,212 @@ export function LabMap({
 
   const { points: osmInfraPoints } = useOsmInfrastructure()
   const osmColors = useOsmCategoryColors()
+
+  // On mobile the layer rail/navigation covers the left edge, so the map controls move to the right.
+  const [isMobile, setIsMobile] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639px)")
+    const update = () => setIsMobile(mq.matches)
+    update()
+    mq.addEventListener("change", update)
+    return () => mq.removeEventListener("change", update)
+  }, [])
+  const controlsPosition = isMobile ? "top-right" : "top-left"
+
+  const [viewportBounds, setViewportBounds] = useState<MapBounds | null>(null)
+  const [zoom, setZoom] = useState(9)
+  const [damageClustered, setDamageClustered] = useState(true)
+  const [featurePopup, setFeaturePopup] = useState<{ lon: number; lat: number; content: ReactNode } | null>(null)
+  const [resolved, setResolved] = useState<{
+    magnitude: Record<string, string>
+    exposure: Record<string, string>
+    damage: Record<DamageLevel, string>
+    fire: Record<FireDetection["confidence"], string>
+    fault: string
+  } | null>(null)
+  useEffect(() => {
+    setResolved({
+      magnitude: Object.fromEntries(
+        SEISMIC_MAGNITUDE_LEVELS.map((l) => [l, resolveCssColor(SEISMIC_MAGNITUDE_LEVEL_STYLES[l].colorToken)]),
+      ),
+      exposure: Object.fromEntries(
+        Object.entries(SEISMIC_EXPOSURE_LEVEL_TOKENS).map(([l, token]) => [l, resolveCssColor(token)]),
+      ),
+      damage: Object.fromEntries(
+        DAMAGE_LEVEL_ORDER.map((l) => [l, resolveCssColor(DAMAGE_LEVEL_COLOR_TOKEN[l])]),
+      ) as Record<DamageLevel, string>,
+      fire: Object.fromEntries(
+        (Object.keys(CONFIDENCE_STYLES) as FireDetection["confidence"][]).map((k) => [
+          k,
+          resolveCssColor(CONFIDENCE_STYLES[k].color),
+        ]),
+      ) as Record<FireDetection["confidence"], string>,
+      fault: resolveCssColor("var(--foreground)"),
+    })
+  }, [])
+
+  // --- Sismología: epicenters by source, veredas by seismic exposure, geological faults, damage columns.
+  const sismoActive = activeLayers.includes("sismologia")
+  const sismoWindow = resolveOption("sismologia", "sismo-window", optionValues)
+  const { data: sismoData } = useSismologiaEventos()
+  const { data: damageData } = useSismologiaDanos(sismoActive && activeSubLayerIds.has("damage"))
+  const { traces: faultTraces } = useFaults(sismoActive && activeSubLayerIds.has("faults"), viewportBounds)
+
+  const sismoEventsGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
+    if (!sismoActive || !sismoData || !resolved) return { type: "FeatureCollection", features: [] }
+    const list: SeismicEvent[] = []
+    if (activeSubLayerIds.has("sismo-sgc")) list.push(...sismoData.sgc.events)
+    if (activeSubLayerIds.has("sismo-usgs")) list.push(...sismoData.usgs.events)
+    if (activeSubLayerIds.has("sismo-sgc-live")) list.push(...sismoData.sgcLive.events)
+    const cutoff = sismoWindow === "all" ? 0 : Date.now() - Number(sismoWindow) * 86_400_000
+    return {
+      type: "FeatureCollection",
+      features: list
+        .filter((event) => cutoff === 0 || event.source !== "sgc" || new Date(event.time).getTime() >= cutoff)
+        .map((event) => {
+          const color = resolved.magnitude[magnitudeLevel(event.magnitude)]
+          const paint =
+            event.source === "sgc-live"
+              ? { strokeColor: "#ffffff", strokeWidth: 1, fillColor: color, fillOpacity: 0.85 }
+              : event.source === "usgs"
+                ? { strokeColor: color, strokeWidth: 2, fillColor: color, fillOpacity: 0.35 }
+                : { strokeColor: color, strokeWidth: 2, fillColor: color, fillOpacity: 0.15 }
+          return {
+            type: "Feature" as const,
+            id: event.id,
+            properties: { ...event, __radius: magnitudeRadius(event.magnitude), ...paint },
+            geometry: { type: "Point" as const, coordinates: [event.lon, event.lat] },
+          }
+        }),
+    }
+  }, [sismoActive, sismoData, resolved, activeSubLayerIds, sismoWindow])
+
+  const faultsGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
+    if (!faultTraces) return { type: "FeatureCollection", features: [] }
+    return {
+      type: "FeatureCollection",
+      features: faultTraces.flatMap((trace) =>
+        trace.paths.map((path, i) => ({
+          type: "Feature" as const,
+          id: `${trace.id}-${i}`,
+          properties: { nombre: trace.nombre, tipo: trace.tipo },
+          geometry: { type: "LineString" as const, coordinates: path },
+        })),
+      ),
+    }
+  }, [faultTraces])
+
+  const damageColumnsGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
+    if (!damageData || !resolved) return { type: "FeatureCollection", features: [] }
+    const metersPerDegLat = 111_320
+    const square = (lon: number, lat: number, half: number): number[][] => {
+      const dLat = half / metersPerDegLat
+      const dLon = half / (metersPerDegLat * Math.cos((lat * Math.PI) / 180))
+      return [
+        [lon - dLon, lat - dLat],
+        [lon + dLon, lat - dLat],
+        [lon + dLon, lat + dLat],
+        [lon - dLon, lat + dLat],
+        [lon - dLon, lat - dLat],
+      ]
+    }
+    const row = (
+      id: string,
+      label: string,
+      lat: number,
+      lon: number,
+      porNivel: Record<DamageLevel, number>,
+      maxCount: number,
+      o: { max: number; min: number; half: number; spacing: number },
+    ): GeoJSON.Feature[] => {
+      const levels = DAMAGE_LEVEL_ORDER.filter((l) => porNivel[l] > 0)
+      const metersPerDegLon = metersPerDegLat * Math.cos((lat * Math.PI) / 180)
+      const offset = ((levels.length - 1) * o.spacing) / 2
+      return levels.map((level, i) => ({
+        type: "Feature",
+        id: `${id}-${level}`,
+        properties: {
+          barrio: label,
+          nivelLabel: DAMAGE_LEVEL_LABEL[level],
+          count: porNivel[level],
+          __height: o.min + (porNivel[level] / maxCount) * (o.max - o.min),
+          __color: resolved.damage[level],
+        },
+        geometry: { type: "Polygon", coordinates: [square(lon + (i * o.spacing - offset) / metersPerDegLon, lat, o.half)] },
+      }))
+    }
+    if (damageClustered) {
+      const total: Record<DamageLevel, number> = { destruida: 0, danada: 0, posible: 0 }
+      let wLat = 0
+      let wLon = 0
+      for (const b of damageData.barrios) {
+        for (const l of DAMAGE_LEVEL_ORDER) total[l] += b.porNivel[l]
+        wLat += b.lat * b.totalReportes
+        wLon += b.lon * b.totalReportes
+      }
+      if (damageData.totalReportes > 0) {
+        wLat /= damageData.totalReportes
+        wLon /= damageData.totalReportes
+      }
+      const maxCount = Math.max(1, ...DAMAGE_LEVEL_ORDER.map((l) => total[l]))
+      return {
+        type: "FeatureCollection",
+        features: row("sevilla-total", "Sevilla (todos los barrios)", wLat, wLon, total, maxCount, {
+          max: 900,
+          min: 60,
+          half: 55,
+          spacing: 160,
+        }),
+      }
+    }
+    const maxCount = Math.max(1, ...damageData.barrios.flatMap((b) => DAMAGE_LEVEL_ORDER.map((l) => b.porNivel[l])))
+    return {
+      type: "FeatureCollection",
+      features: damageData.barrios.flatMap((b) =>
+        row(b.barrio, b.barrio, b.lat, b.lon, b.porNivel, maxCount, { max: 420, min: 24, half: 14, spacing: 42 }),
+      ),
+    }
+  }, [damageData, resolved, damageClustered])
+
+  // --- Incendios: NASA FIRMS active fires (MODIS/VIIRS) and GWIS raster overlays.
+  const incendiosFocus = focusLayer === "incendios" && activeLayers.includes("incendios")
+  const fireDays = resolveOption("incendios", "fire-days", optionValues)
+  const fwiDay = resolveOption("incendios", "fwi-day", optionValues)
+  const showModis = incendiosFocus && activeSubLayerIds.has("fires-modis")
+  const showViirs = incendiosFocus && activeSubLayerIds.has("fires-viirs")
+  const { data: firesData } = useSWR<FiresResponse>(
+    showModis || showViirs ? `/api/incendios?days=${fireDays}` : null,
+    async (url: string) => {
+      const res = await fetch(url)
+      if (!res.ok) throw new Error("No se pudo cargar los focos activos de NASA FIRMS")
+      return res.json()
+    },
+    { revalidateOnFocus: false },
+  )
+  const firesGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
+    if (!firesData || !resolved) return { type: "FeatureCollection", features: [] }
+    return {
+      type: "FeatureCollection",
+      features: firesData.detections
+        .filter((d) => (d.sensor === "modis" ? showModis : showViirs))
+        .map((d) => ({
+          type: "Feature" as const,
+          id: d.id,
+          properties: {
+            ...d,
+            __color: resolved.fire[d.confidence],
+            __radius: Math.min(11, Math.max(4, 4 + Math.sqrt(d.frp) / 2)),
+          },
+          geometry: { type: "Point" as const, coordinates: [d.lon, d.lat] },
+        })),
+    }
+  }, [firesData, resolved, showModis, showViirs])
+  const fwiSourceSpec = useMemo(
+    () => wmsRasterSource(GWIS_WMS_URL, GWIS_FWI_LAYER, fwiDay ? { TIME: fwiDay } : {}),
+    [fwiDay],
+  )
+  const sentinel3SourceSpec = useMemo(() => wmsRasterSource(GWIS_WMS_URL, GWIS_S3_HOTSPOT_LAYER), [])
+  const landCoverSourceSpec = useMemo(() => wmsRasterSource(GWIS_WMS_URL, GWIS_LANDCOVER_LAYER), [])
 
   // "hidrantes" is deliberately excluded here: it gets its own dedicated circle-layer rendering,
   // popups, and casco-urbano fitBounds below (see the `focusLayer === "hidrantes"` block and the
@@ -326,8 +613,98 @@ export function LabMap({
     setPointPopup(point)
   }, [])
 
+  const latestQuakes = useMemo(() => (sismoActive ? getLatestSeismicEvents(sismoData, 3) : []), [sismoActive, sismoData])
+
+  useEffect(() => {
+    if (!flyTarget) return
+    mapRef.current?.getMap().easeTo({
+      center: [flyTarget.lon, flyTarget.lat],
+      zoom: flyTarget.zoom,
+      duration: 1200,
+    })
+  }, [flyTarget])
+
+  const showQuakePopup = useCallback((event: SeismicEvent) => {
+    setFeaturePopup({
+      lon: event.lon,
+      lat: event.lat,
+      content: (
+        <div className="flex flex-col gap-0.5 text-sm">
+          <strong className="text-foreground">M {Number(event.magnitude).toFixed(1)}</strong>
+          <span className="text-muted-foreground">
+            {formatDateTime(event.time)} · {formatQuakeAge(event.time)}
+          </span>
+          {event.place && <span className="text-muted-foreground">{event.place}</span>}
+          {event.depthKm != null && (
+            <span className="text-muted-foreground">Profundidad: {Number(event.depthKm).toFixed(0)} km</span>
+          )}
+        </div>
+      ),
+    })
+  }, [])
+
+  // Overlapping layers use hatch/dot patterns (per-feature, in the level's own color) instead of
+  // transparency, so every layer's color stays legible where they stack. Images are generated lazily
+  // via MapLibre's `styleimagemissing` event, which also survives basemap style swaps.
+  const patternRegistry = useRef<globalThis.Map<string, { kind: OverlayPattern; color: string }>>(new globalThis.Map())
+  const handleMapLoad = useCallback(() => {
+    const map = mapRef.current?.getMap()
+    if (!map) return
+    map.on("styleimagemissing", (e: { id: string }) => {
+      const spec = patternRegistry.current.get(e.id)
+      if (!spec || map.hasImage(e.id)) return
+      const image = drawPattern(spec.kind, spec.color)
+      if (image) map.addImage(e.id, image, { pixelRatio: 2 })
+    })
+  }, [])
+
+  // Clima markers: cabeceras (casco urbano) are always shown; veredas appear progressively — the larger
+  // ones first, with the per-zoom budget growing as the user zooms in, always limited to the viewport.
+  const climaActive = focusLayer === "clima" && activeLayers.includes("clima")
+  const climaMarkers = useMemo(
+    () =>
+      (climaData?.veredas.features ?? [])
+        .map(climaMarkerFromFeature)
+        .filter((m): m is ClimaMarker => m !== null && !m.props.esCascoUrbano),
+    [climaData],
+  )
+  const visibleClimaMarkers = useMemo(() => {
+    if (!climaActive) return []
+    const budget = climaMarkerBudget(zoom)
+    if (budget === 0) return []
+    return climaMarkers
+      .filter((m) => {
+        if (municipio && !isMunicipioActive(m.props.municipio, [municipio])) return false
+        if (!viewportBounds) return true
+        return (
+          m.lon >= viewportBounds.west &&
+          m.lon <= viewportBounds.east &&
+          m.lat >= viewportBounds.south &&
+          m.lat <= viewportBounds.north
+        )
+      })
+      .sort((a, b) => b.area - a.area)
+      .slice(0, budget)
+  }, [climaActive, climaMarkers, zoom, municipio, viewportBounds])
+
+  const sismoVeredasGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
+    if (!veredas || !resolved || !sismoActive || !activeSubLayerIds.has("sismo-veredas")) {
+      return { type: "FeatureCollection", features: [] }
+    }
+    const noData = resolveCssColor(GRAY_FILL)
+    return {
+      type: "FeatureCollection",
+      features: veredas.features.map((feature) => {
+        const inMunicipio = !municipio || isMunicipioActive(feature.properties.municipio, [municipio])
+        const score = (feature.properties as { seismicScoreAvg?: number | null }).seismicScoreAvg
+        const color = inMunicipio && score != null ? resolved.exposure[seismicExposureLevel(score)] : noData
+        return { ...feature, properties: { ...feature.properties, __fillColor: color } }
+      }),
+    }
+  }, [veredas, resolved, sismoActive, activeSubLayerIds, municipio])
+
   const geojsonForLayer = useCallback(
-    (layer: LayerKey): LabVeredasFeatureCollection | null => {
+    (layer: LayerKey, pattern: OverlayPattern | null = null): LabVeredasFeatureCollection | null => {
       if (!veredas) return null
       const def = LAYER_DEFINITIONS[layer]
       // Only called via `fillLayers` (see render below), which excludes "points" mode layers,
@@ -341,11 +718,17 @@ export function LabMap({
           const level = levelProperty ? (feature.properties[levelProperty] as string | null) : null
           const style = level ? levelStyles?.[level] : undefined
           const color = inMunicipio && style ? resolveCssColor(style.colorToken) : resolveCssColor(GRAY_FILL)
+          let patternId: string | undefined
+          if (pattern) {
+            patternId = `lab-pat-${pattern}-${color.replace(/[^a-z0-9]/gi, "_")}`
+            patternRegistry.current.set(patternId, { kind: pattern, color })
+          }
           return {
             ...feature,
             properties: {
               ...feature.properties,
               __fillColor: color,
+              __pattern: patternId,
               __inMunicipio: inMunicipio,
               __hasData: Boolean(style),
             },
@@ -355,6 +738,16 @@ export function LabMap({
     },
     [veredas, municipio],
   )
+
+  // Faults are fetched for the visible envelope; damage columns collapse into one aggregate bar zoomed out.
+  const syncViewport = useCallback(() => {
+    const map = mapRef.current?.getMap()
+    if (!map) return
+    const b = map.getBounds()
+    setViewportBounds({ north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() })
+    setDamageClustered(map.getZoom() < 12.5)
+    setZoom(map.getZoom())
+  }, [])
 
   const handleToggle3D = useCallback(() => {
     const map = mapRef.current?.getMap()
@@ -398,6 +791,20 @@ export function LabMap({
     [veredas],
   )
 
+  // Refit the camera to the selected territory when a four-municipio layer takes focus, so the map
+  // adapts to Sevilla / a chosen municipio / the whole study area instead of keeping a stale view.
+  const fittedTerritoryLayer = useRef<LayerKey | null>(null)
+  useEffect(() => {
+    if (!focusLayer || !TERRITORY_FIT_LAYERS.includes(focusLayer)) {
+      fittedTerritoryLayer.current = null
+      return
+    }
+    if (fittedTerritoryLayer.current === focusLayer || !veredas) return
+    if (!mapRef.current?.getMap()) return
+    fittedTerritoryLayer.current = focusLayer
+    flyToMunicipio(municipio)
+  }, [focusLayer, veredas, municipio, flyToMunicipio])
+
   // Sismología and hidrantes render as raw point markers (see `activePointsLayers`
   // below) — they have no `levelProperty`/`levelStyles` to paint a choropleth fill
   // with, so they're excluded from the per-layer `Source`/`Layer` loop entirely.
@@ -410,16 +817,80 @@ export function LabMap({
   )
 
   const interactiveLayerIds = useMemo(() => {
-    const ids = [...fillLayers].reverse().map((layer) => `lab-${layer}-fill`)
+    const ids: string[] = []
+    if (sismoActive) {
+      ids.push("lab-seismic-events")
+      if (activeSubLayerIds.has("faults")) ids.push("lab-faults-hit")
+      if (activeSubLayerIds.has("damage")) ids.push("lab-damage-columns")
+      if (activeSubLayerIds.has("sismo-veredas")) ids.push("lab-sismologia-fill")
+    }
+    if (incendiosFocus && (showModis || showViirs)) ids.push("lab-fires-points")
+    ids.push(...[...fillLayers].reverse().map((layer) => `lab-${layer}-fill`))
     if (activeSubLayerIds.has("quebradas")) ids.push("lab-sub-quebradas-hit")
     if (focusLayer === "hidrantes") ids.push("lab-hidrantes-points", "lab-sensitive-sites-fill")
     if (activeLayers.includes("demografia")) ids.push(DEMOGRAFIA_LAYER_ID)
     return ids
-  }, [fillLayers, activeSubLayerIds, focusLayer, activeLayers])
+  }, [fillLayers, activeSubLayerIds, focusLayer, activeLayers, sismoActive, incendiosFocus, showModis, showViirs])
 
   const handleMapClick = useCallback(
     (e: MapLayerMouseEvent) => {
       const feature = e.features?.[0]
+
+      const layerId0 = feature?.layer?.id
+      if (feature && layerId0 === "lab-seismic-events") {
+        showQuakePopup(feature.properties as unknown as SeismicEvent)
+        return
+      }
+      if (feature && layerId0 === "lab-faults-hit") {
+        setFeaturePopup({
+          lon: e.lngLat.lng,
+          lat: e.lngLat.lat,
+          content: (
+            <div className="flex flex-col gap-0.5 text-sm">
+              <strong className="text-foreground">{String(feature.properties?.nombre ?? "Falla geológica")}</strong>
+              {feature.properties?.tipo && <span className="text-muted-foreground">{String(feature.properties.tipo)}</span>}
+            </div>
+          ),
+        })
+        return
+      }
+      if (feature && layerId0 === "lab-damage-columns") {
+        setFeaturePopup({
+          lon: e.lngLat.lng,
+          lat: e.lngLat.lat,
+          content: (
+            <div className="flex flex-col gap-0.5 text-sm">
+              <strong className="text-foreground">{String(feature.properties?.barrio)}</strong>
+              <span className="text-muted-foreground">
+                {String(feature.properties?.nivelLabel)}: {String(feature.properties?.count)} reportes
+              </span>
+            </div>
+          ),
+        })
+        return
+      }
+      if (feature && layerId0 === "lab-fires-points") {
+        const p = feature.properties as unknown as FireDetection & { nearest?: string | { name: string; distanceKm: number } }
+        const nearest = typeof p.nearest === "string" ? JSON.parse(p.nearest) : p.nearest
+        setFeaturePopup({
+          lon: e.lngLat.lng,
+          lat: e.lngLat.lat,
+          content: (
+            <div className="flex flex-col gap-0.5 text-sm">
+              <strong className="text-foreground">{formatDateTime(p.acquiredAt)}</strong>
+              {nearest && typeof nearest === "object" && (
+                <span className="text-muted-foreground">
+                  Cerca de {nearest.name} · {formatDistance(nearest.distanceKm)}
+                </span>
+              )}
+              <span className="text-muted-foreground">Confianza: {CONFIDENCE_STYLES[p.confidence].label}</span>
+              <span className="text-muted-foreground">FRP: {formatFrp(Number(p.frp))}</span>
+              <span className="text-muted-foreground">Satélite: {p.satellite}</span>
+            </div>
+          ),
+        })
+        return
+      }
 
       if (feature?.layer?.id === "lab-sub-quebradas-hit") {
         const nombre = (feature.properties?.nombre as string | undefined) ?? "Quebrada / río"
@@ -449,9 +920,11 @@ export function LabMap({
 
       if (!feature || !feature.properties) {
         setPopupInfo(null)
+        setClimaPopup(null)
         onVeredaSelect(null)
         setQuebradaPopup(null)
         setDemografiaPopup(null)
+        setFeaturePopup(null)
 
         if (focusLayer === "hidrantes") {
           hidrantesExperience.setPopupHidrante(null)
@@ -489,10 +962,19 @@ export function LabMap({
         (f) => f.properties.codigoVereda === feature.properties?.codigoVereda,
       )
       if (!veredaFeature || !layer) return
-      setPopupInfo({ feature: veredaFeature, layer })
       onVeredaSelect(veredaFeature)
+      if (layer === "clima") {
+        const forecast = climaData?.veredas.features.find(
+          (f) => f.properties.codigoVereda === veredaFeature.properties.codigoVereda,
+        )
+        setPopupInfo(null)
+        setClimaPopup(forecast ? { lon: e.lngLat.lng, lat: e.lngLat.lat, props: forecast.properties } : null)
+        return
+      }
+      setClimaPopup(null)
+      setPopupInfo({ feature: veredaFeature, layer })
     },
-    [veredas, onVeredaSelect, activeSubLayerIds],
+    [veredas, onVeredaSelect, activeSubLayerIds, climaData],
   )
 
   return (
@@ -503,6 +985,11 @@ export function LabMap({
         initialViewState={{ bounds: AOI_BOUNDS, fitBoundsOptions: { padding: 40 } }}
         interactiveLayerIds={interactiveLayerIds}
         onClick={handleMapClick}
+        onLoad={() => {
+          handleMapLoad()
+          syncViewport()
+        }}
+        onMoveEnd={syncViewport}
         cursor={cursor}
         onMouseEnter={() => setCursor("pointer")}
         onMouseLeave={() => setCursor("")}
@@ -510,9 +997,25 @@ export function LabMap({
         style={{ width: "100%", height: "100%" }}
       >
         <AttributionControl position="bottom-right" compact />
-        <NavigationControl position="top-left" />
-        <MapViewToggleControl is3D={is3D} onToggle={handleToggle3D} />
-        <MapBasemapControl basemap={basemap} onChange={setBasemap} />
+        <NavigationControl position={controlsPosition} />
+        <MapViewToggleControl is3D={is3D} onToggle={handleToggle3D} position={controlsPosition} />
+        <MapBasemapControl basemap={basemap} onChange={setBasemap} position={controlsPosition} />
+
+        {activeSubLayerIds.has("fires-fwi") && incendiosFocus && (
+          <Source key={`fwi-${fwiDay}`} id="lab-sub-fwi-source" {...fwiSourceSpec}>
+            <Layer id="lab-sub-fwi-raster" type="raster" paint={{ "raster-opacity": 0.65 }} />
+          </Source>
+        )}
+        {activeSubLayerIds.has("fires-sentinel3") && incendiosFocus && (
+          <Source id="lab-sub-s3-source" {...sentinel3SourceSpec}>
+            <Layer id="lab-sub-s3-raster" type="raster" paint={{ "raster-opacity": 0.8 }} />
+          </Source>
+        )}
+        {activeSubLayerIds.has("fires-landcover") && incendiosFocus && (
+          <Source id="lab-sub-landcover-source" {...landCoverSourceSpec}>
+            <Layer id="lab-sub-landcover-raster" type="raster" paint={{ "raster-opacity": 0.55 }} />
+          </Source>
+        )}
 
         {activeSubLayerIds.has("ghsl") && (
           <Source id="lab-sub-ghsl-source" {...ghslSourceSpec}>
@@ -532,18 +1035,23 @@ export function LabMap({
           </Source>
         )}
 
-        {fillLayers.map((layer) => {
-            const data = geojsonForLayer(layer)
+        {fillLayers.map((layer, index) => {
+            // The bottom layer stays a solid fill; each layer stacked above it switches to a hatch or dot
+            // pattern in its own level colors, so overlaps read as texture rather than blended transparency.
+            const pattern = index > 0 ? OVERLAY_PATTERNS[(index - 1) % OVERLAY_PATTERNS.length] : null
+            const data = geojsonForLayer(layer, pattern)
             if (!data) return null
             return (
               <Source key={layer} id={`lab-${layer}-source`} type="geojson" data={data}>
                 <Layer
+                  key={pattern ?? "solid"}
                   id={`lab-${layer}-fill`}
                   type="fill"
-                  paint={{
-                    "fill-color": ["get", "__fillColor"],
-                    "fill-opacity": layerOpacity[layer] ?? 0.55,
-                  }}
+                  paint={
+                    pattern
+                      ? { "fill-pattern": ["get", "__pattern"], "fill-opacity": 0.95 }
+                      : { "fill-color": ["get", "__fillColor"], "fill-opacity": fillLayers.length > 1 ? 0.9 : (layerOpacity[layer] ?? 0.55) }
+                  }
                 />
                 <Layer
                   id={`lab-${layer}-line`}
@@ -553,6 +1061,139 @@ export function LabMap({
               </Source>
             )
           })}
+
+        {climaActive &&
+          visibleClimaMarkers.map((m) => (
+            <Marker
+              key={`clima-${m.props.codigoVereda}`}
+              longitude={m.lon}
+              latitude={m.lat}
+              anchor="center"
+              style={{ pointerEvents: "none" }}
+            >
+              <div className="flex items-center gap-1 rounded-full border border-border bg-card/90 px-1.5 py-0.5 text-foreground shadow-sm backdrop-blur-sm">
+                {m.props.grupoActual && (
+                  <WeatherGlyph group={m.props.grupoActual} esDia={m.props.esDia} className="size-3.5 shrink-0" />
+                )}
+                <span className="text-[11px] font-semibold tabular-nums">
+                  {m.props.tempActual != null ? `${Math.round(m.props.tempActual)}°` : "—"}
+                </span>
+                {zoom >= 13 && <span className="max-w-24 truncate text-[10px] text-muted-foreground">{m.props.nombre}</span>}
+              </div>
+            </Marker>
+          ))}
+
+        {climaActive &&
+          climaData?.municipios.map((m) => (
+            <Marker key={`cabecera-${m.municipio}`} longitude={m.lon} latitude={m.lat} anchor="center" style={{ pointerEvents: "none" }}>
+              <div className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-2 py-1 text-foreground shadow-md">
+                {m.grupoActual && <WeatherGlyph group={m.grupoActual} esDia={m.esDia} className="size-5 shrink-0" />}
+                <div className="flex flex-col leading-tight">
+                  <span className="text-sm font-bold tabular-nums">
+                    {m.tempActual != null ? `${Math.round(m.tempActual)}°` : "—"}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">{m.municipio}</span>
+                  {m.tempMax != null && m.tempMin != null && (
+                    <span className="text-[10px] tabular-nums text-muted-foreground">
+                      {Math.round(m.tempMax)}° / {Math.round(m.tempMin)}°
+                    </span>
+                  )}
+                </div>
+              </div>
+            </Marker>
+          ))}
+
+        {sismoActive && activeSubLayerIds.has("sismo-veredas") && (
+          <Source id="lab-sismologia-source" type="geojson" data={sismoVeredasGeoJson}>
+            <Layer
+              id="lab-sismologia-fill"
+              type="fill"
+              paint={{ "fill-color": ["get", "__fillColor"], "fill-opacity": layerOpacity.sismologia ?? 0.6 }}
+            />
+            <Layer id="lab-sismologia-line" type="line" paint={{ "line-color": "rgba(0,0,0,0.55)", "line-width": 1 }} />
+          </Source>
+        )}
+
+        {sismoActive && (
+          <Source id="lab-seismic-events-source" type="geojson" data={sismoEventsGeoJson}>
+            <Layer
+              id="lab-seismic-events"
+              type="circle"
+              paint={{
+                "circle-radius": ["get", "__radius"],
+                "circle-color": ["get", "fillColor"],
+                "circle-opacity": ["get", "fillOpacity"],
+                "circle-stroke-color": ["get", "strokeColor"],
+                "circle-stroke-width": ["get", "strokeWidth"],
+              }}
+            />
+          </Source>
+        )}
+
+        {latestQuakes.map((quake, i) => (
+          <Marker key={`latest-quake-${quake.id}`} longitude={quake.lon} latitude={quake.lat} anchor="center">
+            <button
+              type="button"
+              onClick={(ev) => {
+                ev.stopPropagation()
+                showQuakePopup(quake)
+              }}
+              aria-label={`Sismo ${i === 0 ? "más reciente" : `reciente ${i + 1}`}: magnitud ${Number(quake.magnitude).toFixed(1)}, ${formatQuakeAge(quake.time)}`}
+              className={`relative flex items-center justify-center rounded-full border-2 border-background bg-destructive text-[11px] font-bold text-destructive-foreground shadow-md ${i === 0 ? "size-8" : "size-6 opacity-85"}`}
+            >
+              {i === 0 && (
+                <span className="absolute inset-0 animate-ping rounded-full bg-destructive/50 motion-reduce:hidden" aria-hidden="true" />
+              )}
+              <span className="relative">{i + 1}</span>
+            </button>
+          </Marker>
+        ))}
+
+        {sismoActive && activeSubLayerIds.has("faults") && (
+          <Source id="lab-faults-source" type="geojson" data={faultsGeoJson}>
+            <Layer
+              id="lab-faults-line"
+              type="line"
+              paint={{ "line-color": resolved?.fault ?? "#888", "line-width": 2, "line-dasharray": [6, 4] }}
+            />
+            <Layer
+              id="lab-faults-hit"
+              type="line"
+              paint={{ "line-color": resolved?.fault ?? "#888", "line-width": 18, "line-opacity": 0 }}
+            />
+          </Source>
+        )}
+
+        {sismoActive && activeSubLayerIds.has("damage") && (
+          <Source id="lab-damage-source" type="geojson" data={damageColumnsGeoJson}>
+            <Layer
+              id="lab-damage-columns"
+              type="fill-extrusion"
+              paint={{
+                "fill-extrusion-height": ["get", "__height"],
+                "fill-extrusion-base": 0,
+                "fill-extrusion-color": ["get", "__color"],
+                "fill-extrusion-opacity": 0.88,
+              }}
+            />
+          </Source>
+        )}
+
+        {incendiosFocus && (showModis || showViirs) && (
+          <Source id="lab-fires-source" type="geojson" data={firesGeoJson}>
+            <Layer
+              id="lab-fires-points"
+              type="circle"
+              paint={{
+                "circle-radius": ["get", "__radius"],
+                "circle-color": ["get", "__color"],
+                "circle-opacity": 0.85,
+                "circle-stroke-color": "#ffffff",
+                "circle-stroke-width": 1,
+              }}
+            />
+          </Source>
+        )}
 
         {quebradasGeoJson && (
           <Source id="lab-sub-quebradas-source" type="geojson" data={quebradasGeoJson}>
@@ -882,6 +1523,19 @@ export function LabMap({
           </Popup>
         )}
 
+        {climaActive && climaPopup && (
+          <Popup
+            key={climaPopup.props.codigoVereda}
+            longitude={climaPopup.lon}
+            latitude={climaPopup.lat}
+            onClose={() => setClimaPopup(null)}
+            closeOnClick={false}
+            maxWidth="260px"
+          >
+            <WeatherPopupContent vereda={climaPopup.props} />
+          </Popup>
+        )}
+
         {activeSubLayerIds.has("osm-infra") &&
           osmInfraPoints?.map((point, i) => {
             const category = getOsmCategory(point.category)
@@ -933,24 +1587,16 @@ export function LabMap({
           </Popup>
         )}
 
-        {activePointsLayers.map((layer) =>
-          (pointsForLayer(layer)?.visible ?? []).map((point) => (
-            <Marker
-              key={point.id}
-              longitude={point.lon}
-              latitude={point.lat}
-              onClick={(e) => {
-                e.originalEvent.stopPropagation()
-                setPointPopup(point)
-              }}
-            >
-              <span
-                className="block size-3 cursor-pointer rounded-full border border-background shadow-sm"
-                style={{ backgroundColor: `var(--${point.colorToken})`, width: point.radius * 2, height: point.radius * 2 }}
-                aria-label={point.label}
-              />
-            </Marker>
-          )),
+        {featurePopup && (
+          <Popup
+            longitude={featurePopup.lon}
+            latitude={featurePopup.lat}
+            onClose={() => setFeaturePopup(null)}
+            closeOnClick={false}
+            maxWidth="260px"
+          >
+            {featurePopup.content}
+          </Popup>
         )}
 
         {pointPopup && (
@@ -1046,6 +1692,39 @@ function MunicipioFlyToEffect({ municipio, onFly }: { municipio: string | null; 
     queueMicrotask(() => onFly(municipio))
   }
   return null
+}
+
+type OverlayPattern = "stripes" | "dots"
+const OVERLAY_PATTERNS: OverlayPattern[] = ["stripes", "dots"]
+
+function drawPattern(kind: OverlayPattern, color: string): ImageData | null {
+  const size = 16
+  const canvas = document.createElement("canvas")
+  canvas.width = size
+  canvas.height = size
+  const ctx = canvas.getContext("2d")
+  if (!ctx) return null
+  ctx.fillStyle = color
+  ctx.strokeStyle = color
+  if (kind === "stripes") {
+    ctx.lineWidth = 3
+    for (const offset of [-size, 0, size]) {
+      ctx.beginPath()
+      ctx.moveTo(offset, size)
+      ctx.lineTo(offset + size, 0)
+      ctx.stroke()
+    }
+  } else {
+    for (const [x, y] of [
+      [4, 4],
+      [12, 12],
+    ]) {
+      ctx.beginPath()
+      ctx.arc(x, y, 2.4, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  }
+  return ctx.getImageData(0, 0, size, size)
 }
 
 function centroidOf(feature: LabVeredaFeature): [number, number] {
