@@ -103,6 +103,7 @@ export async function getClimaForecast(): Promise<{
       lat: c.lat,
       lon: c.lon,
       tempActual: round1(w?.currentTemp),
+      sensacionTermica: round1(w?.currentApparent),
       grupoActual: w?.currentCode != null ? weatherGroupFromCode(w.currentCode) : null,
       esDia: w?.esDia ?? true,
       tempMax: round1(w?.dias?.[0]?.tempMax),
