@@ -1,11 +1,14 @@
 "use client"
 
-import { Fragment } from "react"
-import { Mountain, Droplets, Flame, ShieldAlert, CloudRain, Thermometer, Activity, Waves, Users, type LucideIcon } from "lucide-react"
+import { Fragment, type ComponentType } from "react"
+import { Mountain, Droplets, Flame, ShieldAlert, CloudRain, Thermometer, Activity, Users } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { LAYER_DEFINITIONS, LAYER_GROUPS, isExclusiveLayer, type LayerKey } from "@/lib/laboratorio/layers"
+import { HydrantIcon } from "@/components/laboratorio/hydrant-icon"
 
-const LAYER_ICONS: Record<LayerKey, LucideIcon> = {
+type RailIcon = ComponentType<{ className?: string; "aria-hidden"?: boolean | "true" | "false" }>
+
+const LAYER_ICONS: Record<LayerKey, RailIcon> = {
   deslizamientos: Mountain,
   inundaciones: Droplets,
   incendios: Flame,
@@ -13,7 +16,7 @@ const LAYER_ICONS: Record<LayerKey, LucideIcon> = {
   clima: Thermometer,
   precipitacion: CloudRain,
   sismologia: Activity,
-  hidrantes: Waves,
+  hidrantes: HydrantIcon,
   demografia: Users,
 }
 
