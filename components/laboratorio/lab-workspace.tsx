@@ -70,7 +70,8 @@ export function LabWorkspace() {
   // the original mergeCompoundIntoVeredas.
   const needsCompound = state.layers.includes("riesgo-compuesto") || previewLayer === "riesgo-compuesto"
   const needsPrecipitacion = state.layers.includes("precipitacion") || previewLayer === "precipitacion"
-  const needsClima = state.layers.includes("clima") || previewLayer === "clima"
+  // The precipitación tooltip also shows current conditions and the 7-day outlook, which come from the clima feed.
+  const needsClima = state.layers.includes("clima") || previewLayer === "clima" || needsPrecipitacion
   const { veredas: compound } = useCompoundVeredas(needsCompound)
   const { data: precipitacionData } = useSWR<PrecipitacionAmenazaResponse>(
     needsPrecipitacion ? "/api/precipitacion/amenaza?mode=historico&window=7&fuente=power" : null,
@@ -375,6 +376,7 @@ export function LabWorkspace() {
           hidrantesExperience={hidrantesExperience}
           demografiaExperience={demografiaExperience}
           climaData={climaData ?? null}
+            precipitacionData={precipitacionData ?? null}
           flyTarget={flyTarget}
         />
 
