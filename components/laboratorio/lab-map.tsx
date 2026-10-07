@@ -81,6 +81,8 @@ import type { FireDetection, FiresResponse } from "@/lib/firms/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
 import type { ClimaForecastResponse, ClimaVeredaProperties } from "@/lib/clima/api-types"
 import { WeatherGlyph, WeatherPopupContent } from "@/components/clima/weather-report-card"
+import { PrecipitationPopupContent } from "@/components/precipitacion/precipitation-popup-content"
+import type { PrecipitacionAmenazaResponse, PrecipitacionFeatureProperties } from "@/lib/precipitacion/api-types"
 import { formatQuakeAge, getLatestSeismicEvents } from "@/lib/sismologia/latest-events"
 
 /** The two layers that render as raw point markers instead of a vereda choropleth fill. */
@@ -183,6 +185,8 @@ interface LabMapProps {
   demografiaExperience: DemografiaExperience
   /** Current conditions + 7-day forecast per vereda and cabecera, drives the weather markers on the clima layer. */
   climaData: ClimaForecastResponse | null
+  /** 7-day accumulation and level per vereda, feeds the precipitación tooltip alongside `climaData`. */
+  precipitacionData: PrecipitacionAmenazaResponse | null
   /** Camera request issued from outside the map (e.g. the bottom panel's latest-quakes list); `nonce` re-triggers the same target. */
   flyTarget: { lon: number; lat: number; zoom: number; nonce: number } | null
 }
@@ -216,12 +220,20 @@ export function LabMap({
   hidrantesExperience,
   demografiaExperience,
   climaData,
+  precipitacionData,
   flyTarget,
 }: LabMapProps) {
   const mapRef = useRef<MapRef>(null)
   const [basemap, setBasemap] = useThemeSyncedBasemap()
   const [popupInfo, setPopupInfo] = useState<{ feature: LabVeredaFeature; layer: LayerKey } | null>(null)
   const [climaPopup, setClimaPopup] = useState<{ lon: number; lat: number; props: ClimaVeredaProperties } | null>(null)
+  const [precipitacionPopup, setPrecipitacionPopup] = useState<{
+    lon: number
+    lat: number
+    codigoVereda: string
+    nombre: string
+    municipio: string
+  } | null>(null)
   const [pointPopup, setPointPopup] = useState<LabPointFeature | null>(null)
   const [pointsModalLayer, setPointsModalLayer] = useState<LayerKey | null>(null)
   const [transitioning, setTransitioning] = useState(false)
@@ -995,6 +1007,7 @@ export function LabMap({
       if (!feature || !feature.properties) {
         setPopupInfo(null)
         setClimaPopup(null)
+        setPrecipitacionPopup(null)
         onVeredaSelect(null)
         setQuebradaPopup(null)
         setDemografiaPopup(null)
@@ -1042,10 +1055,23 @@ export function LabMap({
           (f) => f.properties.codigoVereda === veredaFeature.properties.codigoVereda,
         )
         setPopupInfo(null)
+        setPrecipitacionPopup(null)
         setClimaPopup(forecast ? { lon: e.lngLat.lng, lat: e.lngLat.lat, props: forecast.properties } : null)
         return
       }
       setClimaPopup(null)
+      if (layer === "precipitacion") {
+        setPopupInfo(null)
+        setPrecipitacionPopup({
+          lon: e.lngLat.lng,
+          lat: e.lngLat.lat,
+          codigoVereda: veredaFeature.properties.codigoVereda,
+          nombre: veredaFeature.properties.nombre,
+          municipio: veredaFeature.properties.municipio,
+        })
+        return
+      }
+      setPrecipitacionPopup(null)
       setPopupInfo({ feature: veredaFeature, layer })
     },
     [veredas, onVeredaSelect, activeSubLayerIds, climaData],
@@ -1632,6 +1658,31 @@ export function LabMap({
                   : undefined
               }
               colored={POPUP_HAZARD_KINDS.includes(popupInfo.layer as (typeof POPUP_HAZARD_KINDS)[number])}
+            />
+          </Popup>
+        )}
+
+        {precipitacionPopup && (
+          <Popup
+            key={precipitacionPopup.codigoVereda}
+            longitude={precipitacionPopup.lon}
+            latitude={precipitacionPopup.lat}
+            onClose={() => setPrecipitacionPopup(null)}
+            closeOnClick={false}
+            maxWidth="320px"
+          >
+            <PrecipitationPopupContent
+              nombre={precipitacionPopup.nombre}
+              municipio={precipitacionPopup.municipio}
+              precipitacion={
+                precipitacionData?.veredas.features.find(
+                  (f) => f.properties.codigoVereda === precipitacionPopup.codigoVereda,
+                )?.properties ?? null
+              }
+              clima={
+                climaData?.veredas.features.find((f) => f.properties.codigoVereda === precipitacionPopup.codigoVereda)
+                  ?.properties ?? null
+              }
             />
           </Popup>
         )}
