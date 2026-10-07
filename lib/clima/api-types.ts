@@ -105,6 +105,8 @@ export interface ClimaMunicipioResumen {
   lat: number
   lon: number
   tempActual: number | null
+  /** Apparent ("feels-like") temperature (°C) at the cabecera, or null. */
+  sensacionTermica: number | null
   grupoActual: WeatherGroup | null
   esDia: boolean
   tempMax: number | null

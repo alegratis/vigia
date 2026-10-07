@@ -1152,6 +1152,15 @@ export function LabMap({
                 <span className="text-[11px] font-semibold tabular-nums">
                   {m.props.tempActual != null ? `${Math.round(m.props.tempActual)}°` : "—"}
                 </span>
+                {m.props.sensacionTermica != null && (
+                  <span
+                    className="text-[10px] tabular-nums text-muted-foreground"
+                    title="Sensación térmica"
+                    aria-label={`Sensación térmica ${Math.round(m.props.sensacionTermica)} grados`}
+                  >
+                    ST {Math.round(m.props.sensacionTermica)}°
+                  </span>
+                )}
                 {zoom >= 13 && <span className="max-w-24 truncate text-[10px] text-muted-foreground">{m.props.nombre}</span>}
               </div>
             </Marker>
@@ -1166,6 +1175,11 @@ export function LabMap({
                   <span className="text-sm font-bold tabular-nums">
                     {m.tempActual != null ? `${Math.round(m.tempActual)}°` : "—"}
                   </span>
+                  {m.sensacionTermica != null && (
+                    <span className="text-[10px] tabular-nums text-muted-foreground">
+                      Sensación {Math.round(m.sensacionTermica)}°
+                    </span>
+                  )}
                   <span className="text-[10px] text-muted-foreground">{m.municipio}</span>
                   {m.tempMax != null && m.tempMin != null && (
                     <span className="text-[10px] tabular-nums text-muted-foreground">
