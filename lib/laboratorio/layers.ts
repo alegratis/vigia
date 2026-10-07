@@ -18,6 +18,7 @@ import {
   type FloodSusceptibilityLevel,
 } from "@/lib/inundaciones/levels"
 import { FIRE_THREAT_LEVELS, FIRE_THREAT_LEVEL_STYLES, type FireThreatLevel } from "@/lib/incendios/levels"
+import { forecastDayOptions } from "@/lib/incendios/gwis"
 import { COMPOUND_LEVELS, COMPOUND_LEVEL_STYLES, type CompoundLevel } from "@/lib/riesgo-compuesto/levels"
 import {
   PRECIPITATION_LEVELS,
@@ -95,8 +96,60 @@ interface LayerLevelStyle {
 export interface SubLayerDefinition {
   id: string
   label: string
-  kind: "ghsl" | "wdpa" | "osm-infra" | "imerg" | "quebradas" | "geoglows-click" | "veredas-outline"
+  kind:
+    | "ghsl"
+    | "wdpa"
+    | "osm-infra"
+    | "imerg"
+    | "quebradas"
+    | "geoglows-click"
+    | "veredas-outline"
+    | "sismo-sgc-live"
+    | "sismo-usgs"
+    | "sismo-sgc"
+    | "sismo-veredas"
+    | "faults"
+    | "damage"
+    | "fires-modis"
+    | "fires-viirs"
+    | "fires-sentinel3"
+    | "fires-fwi"
+    | "fires-landcover"
   defaultOn?: boolean
+  /** Id of a `LayerOption` that only shows (and only applies) while this sub-layer is checked. */
+  optionId?: string
+}
+
+/** A single-choice select (time window, forecast day, ...) rendered in the "Capas" card of whichever layer owns it. */
+export interface LayerOption {
+  id: string
+  label: string
+  choices: { value: string; label: string }[]
+  defaultValue: string
+}
+
+export const SISMO_TIME_WINDOW_OPTION: LayerOption = {
+  id: "sismo-window",
+  label: "Ventana temporal (solo visual)",
+  choices: [
+    { value: "7", label: "Últimos 7 días" },
+    { value: "14", label: "Últimos 14 días" },
+    { value: "all", label: "Todo el histórico" },
+  ],
+  defaultValue: "all",
+}
+
+export const FIRE_DAYS_OPTION: LayerOption = {
+  id: "fire-days",
+  label: "Periodo de focos",
+  choices: [1, 2, 3, 5].map((d) => ({ value: String(d), label: `${d} ${d === 1 ? "día" : "días"}` })),
+  defaultValue: "2",
+}
+
+export function resolveOption(layer: LayerKey, id: string, options: Record<string, string>): string {
+  if (id in options) return options[id]
+  const found = LAYER_DEFINITIONS[layer].options?.find((o) => o.id === id)
+  return found?.defaultValue ?? ""
 }
 
 /** Shared GHSL + WDPA + OSM infrastructure trio — identical source across every hazard that offers it in production. */
@@ -140,6 +193,8 @@ export interface LayerDefinition {
   maxVisiblePoints?: number
   /** Secondary context overlays shown as a "Capas" checklist in the right panel while this layer is focused. */
   subLayers?: SubLayerDefinition[]
+  /** Single-choice selects owned by this layer's sub-layers — see `LayerOption`. */
+  options?: LayerOption[]
 }
 
 export const LAYER_DEFINITIONS: Record<LayerKey, LayerDefinition> = {
@@ -187,7 +242,25 @@ export const LAYER_DEFINITIONS: Record<LayerKey, LayerDefinition> = {
     scoreProperty: "fireScoreAvg",
     levels: FIRE_THREAT_LEVELS,
     levelStyles: FIRE_THREAT_LEVEL_STYLES,
-    subLayers: CONTEXT_SUB_LAYERS,
+    // Same "Pronóstico y focos activos" + "Cobertura y contexto" sections as the production
+    // incendios map rail (components/maps/incendios-live-map.tsx).
+    subLayers: [
+      { id: "fires-modis", label: "Focos activos MODIS (NASA FIRMS)", kind: "fires-modis", defaultOn: true, optionId: "fire-days" },
+      { id: "fires-viirs", label: "Focos activos VIIRS (NASA FIRMS)", kind: "fires-viirs", defaultOn: true },
+      { id: "fires-sentinel3", label: "Puntos calientes Sentinel-3", kind: "fires-sentinel3", defaultOn: true },
+      { id: "fires-fwi", label: "Pronóstico FWI (ECMWF / GWIS)", kind: "fires-fwi", optionId: "fwi-day" },
+      { id: "fires-landcover", label: "Cobertura del suelo (MODIS)", kind: "fires-landcover" },
+      ...CONTEXT_SUB_LAYERS,
+    ],
+    options: [
+      FIRE_DAYS_OPTION,
+      {
+        id: "fwi-day",
+        label: "Día del pronóstico FWI",
+        choices: forecastDayOptions().map((d) => ({ value: d.value, label: d.label })),
+        defaultValue: forecastDayOptions()[0].value,
+      },
+    ],
   },
   "riesgo-compuesto": {
     key: "riesgo-compuesto",
@@ -201,6 +274,7 @@ export const LAYER_DEFINITIONS: Record<LayerKey, LayerDefinition> = {
     levels: COMPOUND_LEVELS,
     levelStyles: COMPOUND_LEVEL_STYLES,
     subLayers: CONTEXT_SUB_LAYERS,
+    exclusive: true,
   },
   precipitacion: {
     key: "precipitacion",
@@ -214,6 +288,7 @@ export const LAYER_DEFINITIONS: Record<LayerKey, LayerDefinition> = {
     levels: PRECIPITATION_LEVELS,
     levelStyles: PRECIPITATION_LEVEL_STYLES,
     subLayers: [{ id: "imerg", label: "Precipitación (IMERG)", kind: "imerg", defaultOn: true }, ...CONTEXT_SUB_LAYERS],
+    exclusive: true,
   },
   clima: {
     key: "clima",
@@ -253,6 +328,18 @@ export const LAYER_DEFINITIONS: Record<LayerKey, LayerDefinition> = {
     imageAlt: "Mapa de actividad sísmica reciente",
     renderMode: "points",
     pointsUrl: "/api/sismologia/eventos",
+    // Same controls as the production sismologia map rail (components/maps/sismologia-live-map.tsx).
+    subLayers: [
+      { id: "sismo-sgc-live", label: "SGC en vivo (5 días)", kind: "sismo-sgc-live", defaultOn: true },
+      { id: "sismo-usgs", label: "USGS en vivo (90 días)", kind: "sismo-usgs", defaultOn: true },
+      { id: "sismo-sgc", label: "SGC histórico", kind: "sismo-sgc", defaultOn: true, optionId: "sismo-window" },
+      { id: "sismo-veredas", label: "Exposición sísmica por vereda", kind: "sismo-veredas", defaultOn: true },
+      { id: "faults", label: "Fallas geológicas (SGC)", kind: "faults" },
+      { id: "damage", label: "Reportes de daños en Sevilla (3D)", kind: "damage" },
+      ...CONTEXT_SUB_LAYERS.filter((s) => s.kind === "osm-infra"),
+    ],
+    options: [SISMO_TIME_WINDOW_OPTION],
+    exclusive: true,
   },
   hidrantes: {
     key: "hidrantes",
@@ -267,17 +354,14 @@ export const LAYER_DEFINITIONS: Record<LayerKey, LayerDefinition> = {
   },
 }
 
-export const LAYER_ORDER: LayerKey[] = [
-  "deslizamientos",
-  "inundaciones",
-  "incendios",
-  "riesgo-compuesto",
-  "precipitacion",
-  "clima",
-  "demografia",
-  "sismologia",
-  "hidrantes",
+/** Rail groups, rendered in order with a separator between each. */
+export const LAYER_GROUPS: LayerKey[][] = [
+  ["deslizamientos", "inundaciones", "incendios", "precipitacion", "sismologia"],
+  ["clima", "demografia", "riesgo-compuesto"],
+  ["hidrantes"],
 ]
+
+export const LAYER_ORDER: LayerKey[] = LAYER_GROUPS.flat()
 
 /** Maximum simultaneously active layers — kept at 3 so the shared canvas stays legible even with 9 layers available in the rail. */
 export const MAX_ACTIVE_LAYERS = 3
@@ -475,13 +559,16 @@ export interface LabState {
 
 export const DEFAULT_LAB_STATE: LabState = {
   layers: [],
-  municipio: null,
+  municipio: "Sevilla",
   is3D: false,
   zoom: null,
   center: null,
 }
 
 export const LAB_STORAGE_KEY = "laboratorio:state"
+
+/** URL/storage token for "no municipio filter" — an absent `municipio` param now means the Sevilla default instead. */
+export const ALL_MUNICIPIOS_PARAM = "todos"
 
 /** Parses `?mode=analitico&layers=a,b&zoom=12&center=lon,lat&municipio=x` — invalid/missing values fall back to defaults field-by-field. */
 export function parseLabState(params: URLSearchParams): LabState {
@@ -504,7 +591,7 @@ export function parseLabState(params: URLSearchParams): LabState {
 
   return {
     layers,
-    municipio: municipio && municipio.length > 0 ? municipio : null,
+    municipio: municipio === ALL_MUNICIPIOS_PARAM ? null : municipio && municipio.length > 0 ? municipio : "Sevilla",
     is3D: params.get("is3D") === "1",
     zoom,
     center,
@@ -516,7 +603,7 @@ export function serializeLabState(state: LabState): URLSearchParams {
   const params = new URLSearchParams()
   params.set("mode", "analitico")
   if (state.layers.length > 0) params.set("layers", state.layers.join(","))
-  if (state.municipio) params.set("municipio", state.municipio)
+  params.set("municipio", state.municipio ?? ALL_MUNICIPIOS_PARAM)
   if (state.is3D) params.set("is3D", "1")
   if (state.zoom != null) params.set("zoom", state.zoom.toFixed(2))
   if (state.center) params.set("center", `${state.center[0].toFixed(5)},${state.center[1].toFixed(5)}`)
@@ -531,7 +618,8 @@ export function readLabStateFromStorage(): LabState | null {
     const parsed = JSON.parse(raw) as Partial<LabState>
     return {
       layers: Array.isArray(parsed.layers) ? (parsed.layers.filter(isLayerKey) as LayerKey[]) : [],
-      municipio: typeof parsed.municipio === "string" ? parsed.municipio : null,
+      municipio:
+        parsed.municipio === ALL_MUNICIPIOS_PARAM ? null : typeof parsed.municipio === "string" ? parsed.municipio : "Sevilla",
       is3D: Boolean(parsed.is3D),
       zoom: typeof parsed.zoom === "number" ? parsed.zoom : null,
       center: Array.isArray(parsed.center) && parsed.center.length === 2 ? (parsed.center as [number, number]) : null,
@@ -544,7 +632,10 @@ export function readLabStateFromStorage(): LabState | null {
 export function writeLabStateToStorage(state: LabState): void {
   if (typeof window === "undefined") return
   try {
-    window.localStorage.setItem(LAB_STORAGE_KEY, JSON.stringify(state))
+    window.localStorage.setItem(
+      LAB_STORAGE_KEY,
+      JSON.stringify({ ...state, municipio: state.municipio ?? ALL_MUNICIPIOS_PARAM }),
+    )
   } catch {
     // Storage can fail (quota, private browsing) — losing persistence silently is fine here.
   }

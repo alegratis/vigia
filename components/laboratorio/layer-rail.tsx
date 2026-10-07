@@ -1,8 +1,9 @@
 "use client"
 
+import { Fragment } from "react"
 import { Mountain, Droplets, Flame, ShieldAlert, CloudRain, Thermometer, Activity, Waves, Users, type LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { LAYER_DEFINITIONS, LAYER_ORDER, isExclusiveLayer, type LayerKey } from "@/lib/laboratorio/layers"
+import { LAYER_DEFINITIONS, LAYER_GROUPS, isExclusiveLayer, type LayerKey } from "@/lib/laboratorio/layers"
 
 const LAYER_ICONS: Record<LayerKey, LucideIcon> = {
   deslizamientos: Mountain,
@@ -35,41 +36,56 @@ export function LayerRail({ activeLayers, onToggle, onHoverLayer }: LayerRailPro
   return (
     <div
       aria-label="Capas del laboratorio"
-      className="absolute left-3 top-16 z-10 flex w-14 flex-col gap-1 rounded-xl border border-border/60 bg-card/80 py-2 shadow-lg backdrop-blur-md sm:left-1/2 sm:top-3 sm:w-auto sm:max-w-[min(92vw,44rem)] sm:-translate-x-1/2 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-0.5 sm:px-2"
+      className="absolute left-3 top-16 z-10 flex w-[4.5rem] flex-col gap-1 rounded-xl border border-border/60 bg-card/80 py-2 shadow-lg backdrop-blur-md sm:left-1/2 sm:top-3 sm:w-auto sm:max-w-[min(92vw,44rem)] sm:-translate-x-1/2 sm:flex-row sm:flex-wrap sm:items-stretch sm:justify-center sm:gap-0.5 sm:px-2"
     >
-      {LAYER_ORDER.map((layer) => {
-        const def = LAYER_DEFINITIONS[layer]
-        const Icon = LAYER_ICONS[layer]
-        const isActive = activeLayers.includes(layer)
-        const activeExclusive = activeLayers.find((l) => isExclusiveLayer(l))
-        // Once an exclusive layer (clima/demografía/hidrantes) is on, every
-        // other switch previews as "will replace it" rather than "will
-        // stack" — toggling still works, it just swaps instead of adding.
-        const willReplace = !isActive && Boolean(activeExclusive) && activeExclusive !== layer
-        return (
-          <button
-            key={layer}
-            type="button"
-            role="switch"
-            aria-checked={isActive}
-            aria-label={willReplace ? `${def.label} (sustituye la capa activa)` : def.label}
-            onClick={() => onToggle(layer)}
-            onMouseEnter={() => !isActive && onHoverLayer(layer)}
-            onMouseLeave={() => onHoverLayer(null)}
-            className={cn(
-              "mx-1 flex flex-col items-center gap-1 rounded-md px-1 py-2 text-center transition-colors sm:mx-0 sm:px-2 sm:py-1.5",
-              isActive
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : willReplace
-                  ? "text-muted-foreground/60 hover:bg-muted hover:text-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
-            )}
-          >
-            <Icon className="size-4 shrink-0" aria-hidden="true" />
-            <span className="text-balance text-[10px] font-medium leading-tight">{def.shortLabel}</span>
-          </button>
-        )
-      })}
+      {LAYER_GROUPS.map((group, groupIndex) => (
+        <Fragment key={group[0]}>
+          {groupIndex > 0 && (
+            <span
+              role="separator"
+              aria-orientation="vertical"
+              className="mx-2 my-0.5 h-px shrink-0 bg-border sm:mx-1 sm:my-1 sm:h-auto sm:w-px"
+            />
+          )}
+          {group.map((layer) => {
+            const def = LAYER_DEFINITIONS[layer]
+            const Icon = LAYER_ICONS[layer]
+            const isActive = activeLayers.includes(layer)
+            const activeExclusive = activeLayers.find((l) => isExclusiveLayer(l))
+            // Only deslizamientos/inundaciones/incendios stack. Once any other layer is on (or when
+            // turning one on while something is active) the swap replaces the canvas instead of adding.
+            const willReplace =
+              !isActive &&
+              ((Boolean(activeExclusive) && activeExclusive !== layer) ||
+                (isExclusiveLayer(layer) && activeLayers.length > 0))
+            return (
+              <button
+                key={layer}
+                type="button"
+                role="switch"
+                aria-checked={isActive}
+                aria-label={willReplace ? `${def.label} (sustituye la capa activa)` : def.label}
+                onClick={() => onToggle(layer)}
+                onMouseEnter={() => !isActive && onHoverLayer(layer)}
+                onMouseLeave={() => onHoverLayer(null)}
+                className={cn(
+                  "mx-0.5 flex flex-col items-center gap-1 rounded-md px-0.5 py-2 text-center transition-colors sm:mx-0 sm:px-2 sm:py-1.5",
+                  isActive
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : willReplace
+                      ? "text-muted-foreground/60 hover:bg-muted hover:text-foreground"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                )}
+              >
+                <Icon className="size-4 shrink-0" aria-hidden="true" />
+                <span className="max-w-full text-balance break-words text-[9px] font-medium leading-tight sm:text-[10px]">
+                  {def.shortLabel}
+                </span>
+              </button>
+            )
+          })}
+        </Fragment>
+      ))}
     </div>
   )
 }
