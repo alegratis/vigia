@@ -22,7 +22,14 @@ import {
 } from "@/lib/laboratorio/use-demografia-experience"
 import { INDICATOR_LEVELS } from "@/lib/demografia/indicator-levels"
 import { VULNERABILITY_LEVELS, VULNERABILITY_LEVEL_STYLES } from "@/lib/vulnerabilidad/levels"
+import { CONFIDENCE_STYLES } from "@/lib/firms/ui"
 import { SENSITIVE_SITE_STYLES } from "@/lib/osm/sensitive-sites"
+import {
+  SEISMIC_EXPOSURE_LEVELS,
+  SEISMIC_EXPOSURE_LEVEL_TOKENS,
+  SEISMIC_MAGNITUDE_LEVELS,
+  SEISMIC_MAGNITUDE_LEVEL_STYLES,
+} from "@/lib/sismologia/levels"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -89,8 +96,14 @@ export function ContextPanel({
     <HidrantesPanel experience={hidrantesExperience} />
   ) : focusLayer === "demografia" ? (
     <DemografiaPanel experience={demografiaExperience} />
+  ) : focusLayer === "sismologia" ? (
+    <SismologiaLegend subLayerToggles={subLayerToggles} />
   ) : (
-    <LayerLegend veredas={veredas} layer={focusLayer!} activeLayers={activeLayers} />
+    <>
+      <LayerLegend veredas={veredas} layer={focusLayer!} activeLayers={activeLayers} />
+      {focusLayer === "incendios" && <FocosLegend />}
+      {focusLayer === "clima" && <ClimaMarkersLegend />}
+    </>
   )
 
   const subLayers = !previewLayer && focusLayer ? LAYER_DEFINITIONS[focusLayer].subLayers : undefined
@@ -510,5 +523,87 @@ function LayerLegend({
         ))}
       </ul>
     </div>
+  )
+}
+
+function LegendSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="border-t border-border/70 px-4 py-3">
+      <p className="mb-1.5 text-xs font-medium text-muted-foreground">{title}</p>
+      <ul className="flex flex-col gap-1.5">{children}</ul>
+    </div>
+  )
+}
+
+function LegendRow({ color, label, hint, round }: { color: string; label: string; hint?: string; round?: boolean }) {
+  return (
+    <li className="flex items-center gap-2 text-xs">
+      <span
+        className={cn("size-2.5 shrink-0", round ? "rounded-full" : "rounded-sm")}
+        style={{ backgroundColor: color }}
+        aria-hidden="true"
+      />
+      <span className="flex-1 truncate text-foreground">{label}</span>
+      {hint && <span className="text-muted-foreground">{hint}</span>}
+    </li>
+  )
+}
+
+function SismologiaLegend({ subLayerToggles }: { subLayerToggles: Record<string, boolean> }) {
+  const showFaults = resolveSubLayerOn("sismologia", "faults", subLayerToggles)
+  const showExposure = resolveSubLayerOn("sismologia", "sismo-veredas", subLayerToggles)
+  return (
+    <div className="flex flex-col">
+      <div className="p-4 pb-3">
+        <p className="font-medium text-foreground">Sismología</p>
+        <p className="text-xs text-muted-foreground">El tamaño del círculo crece con la magnitud.</p>
+      </div>
+      <LegendSection title="Magnitud del sismo">
+        {SEISMIC_MAGNITUDE_LEVELS.map((level) => (
+          <LegendRow
+            key={level}
+            round
+            color={SEISMIC_MAGNITUDE_LEVEL_STYLES[level].colorToken}
+            label={level}
+            hint={SEISMIC_MAGNITUDE_LEVEL_STYLES[level].range}
+          />
+        ))}
+      </LegendSection>
+      {showExposure && (
+        <LegendSection title="Exposición sísmica por vereda">
+          {SEISMIC_EXPOSURE_LEVELS.map((level) => (
+            <LegendRow key={level} color={SEISMIC_EXPOSURE_LEVEL_TOKENS[level]} label={level} />
+          ))}
+        </LegendSection>
+      )}
+      {showFaults && (
+        <LegendSection title="Fallas geológicas">
+          <li className="flex items-center gap-2 text-xs">
+            <span className="h-0 w-5 shrink-0 border-t-2 border-dashed border-foreground" aria-hidden="true" />
+            <span className="text-foreground">Traza de falla (clic para nombre)</span>
+          </li>
+        </LegendSection>
+      )}
+    </div>
+  )
+}
+
+function FocosLegend() {
+  return (
+    <LegendSection title="Focos activos (confianza)">
+      {(["high", "nominal", "low", "unknown"] as const).map((key) => (
+        <LegendRow key={key} round color={CONFIDENCE_STYLES[key].color} label={CONFIDENCE_STYLES[key].label} />
+      ))}
+    </LegendSection>
+  )
+}
+
+function ClimaMarkersLegend() {
+  return (
+    <LegendSection title="Marcadores">
+      <li className="text-xs leading-snug text-muted-foreground">
+        Icono = condición actual; número = temperatura. Al acercar el zoom aparecen más veredas.
+      </li>
+    </LegendSection>
   )
 }

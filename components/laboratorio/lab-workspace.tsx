@@ -106,6 +106,22 @@ export function LabWorkspace() {
     hidrantes: DEFAULT_LAYER_OPACITY,
   })
   const [selectedVereda, setSelectedVereda] = useState<VeredaFeature | null>(null)
+
+  // Weather report shown in the bottom panel: the clicked vereda when there is one, otherwise the casco
+  // urbano of the selected municipio (Sevilla by default) so the card is never empty.
+  const climaVereda = useMemo(() => {
+    const features = climaData?.veredas.features ?? []
+    if (selectedVereda) {
+      const match = features.find((f) => f.properties.codigoVereda === selectedVereda.properties.codigoVereda)
+      if (match) return match.properties
+    }
+    const target = state.municipio ?? "Sevilla"
+    return (
+      features.find((f) => f.properties.esCascoUrbano && f.properties.municipio === target)?.properties ??
+      features.find((f) => f.properties.esCascoUrbano)?.properties ??
+      null
+    )
+  }, [climaData, selectedVereda, state.municipio])
   // Lifted here (rather than owned inside BottomTabs) so the right-side ContextPanel can shrink
   // its own height to match — otherwise an expanded bottom panel and a full-height right panel
   // would overlap in the bottom-right corner.
@@ -354,6 +370,7 @@ export function LabWorkspace() {
           optionValues={optionValues}
           hidrantesExperience={hidrantesExperience}
           demografiaExperience={demografiaExperience}
+          climaData={climaData ?? null}
         />
 
         <LayerRail activeLayers={state.layers} onToggle={handleToggleLayer} onHoverLayer={setPreviewLayer} />
@@ -387,6 +404,7 @@ export function LabWorkspace() {
           activeLayers={state.layers}
           lastActivatedLayer={lastActivatedLayer}
           selectedVereda={selectedVereda}
+          climaVereda={climaVereda}
           onClearSelection={() => setSelectedVereda(null)}
           collapsed={bottomPanelCollapsed}
           onCollapsedChange={setBottomPanelCollapsed}

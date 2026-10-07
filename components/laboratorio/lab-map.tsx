@@ -75,6 +75,8 @@ import { FIRE_THREAT_LEVELS } from "@/lib/incendios/levels"
 import type { SeismicEvent } from "@/lib/sismologia/api-types"
 import type { FireDetection, FiresResponse } from "@/lib/firms/api-types"
 import type { MapBounds } from "@/lib/map-bounds"
+import type { ClimaForecastResponse, ClimaVeredaProperties } from "@/lib/clima/api-types"
+import { WeatherGlyph } from "@/components/clima/weather-report-card"
 
 /** The two layers that render as raw point markers instead of a vereda choropleth fill. */
 const POINTS_LAYERS: LayerKey[] = ["sismologia", "hidrantes"]
@@ -99,9 +101,58 @@ if (typeof window !== "undefined") {
 // Same AOI framing as every other MapLibre hazard map in the app (see
 // deslizamientos-live-map.tsx) — `[[west, south], [east, north]]`.
 const AOI_BOUNDS: [[number, number], [number, number]] = [
-  [-76.06, 3.88],
+  [-76.2, 3.88],
   [-75.72, 4.44],
 ]
+
+/** Layers whose data spans all four municipios — focusing one refits the camera to the selected territory. */
+const TERRITORY_FIT_LAYERS: LayerKey[] = ["clima", "precipitacion"]
+
+/** Minimum zoom at which any per-vereda weather marker appears, and how many are allowed in view at each zoom tier. */
+function climaMarkerBudget(zoom: number): number {
+  if (zoom < 10.5) return 0
+  if (zoom < 11.5) return 6
+  if (zoom < 12.5) return 14
+  if (zoom < 13.5) return 30
+  if (zoom < 14.5) return 60
+  return 120
+}
+
+interface ClimaMarker {
+  props: ClimaVeredaProperties
+  lon: number
+  lat: number
+  /** Bounding-box area in square degrees — a cheap stand-in for how "prominent" a vereda is at a glance. */
+  area: number
+}
+
+function climaMarkerFromFeature(feature: ClimaForecastResponse["veredas"]["features"][number]): ClimaMarker | null {
+  const polygons: number[][][][] =
+    feature.geometry.type === "Polygon"
+      ? [feature.geometry.coordinates as number[][][]]
+      : feature.geometry.type === "MultiPolygon"
+        ? (feature.geometry.coordinates as number[][][][])
+        : []
+  let minLon = Infinity
+  let maxLon = -Infinity
+  let minLat = Infinity
+  let maxLat = -Infinity
+  for (const polygon of polygons) {
+    for (const [lon, lat] of polygon[0] ?? []) {
+      if (lon < minLon) minLon = lon
+      if (lon > maxLon) maxLon = lon
+      if (lat < minLat) minLat = lat
+      if (lat > maxLat) maxLat = lat
+    }
+  }
+  if (!Number.isFinite(minLon)) return null
+  return {
+    props: feature.properties,
+    lon: (minLon + maxLon) / 2,
+    lat: (minLat + maxLat) / 2,
+    area: (maxLon - minLon) * (maxLat - minLat),
+  }
+}
 
 const GRAY_FILL = "#9ca3af"
 
@@ -125,6 +176,8 @@ interface LabMapProps {
   hidrantesExperience: HidrantesExperience
   /** Indicator-switching state (vulnerabilidad/pobreza/manzanas) for the demografía layer, lifted to the workspace for the same reason as `hidrantesExperience`. */
   demografiaExperience: DemografiaExperience
+  /** Current conditions + 7-day forecast per vereda and cabecera, drives the weather markers on the clima layer. */
+  climaData: ClimaForecastResponse | null
 }
 
 const quebradasFetcher = async (url: string): Promise<InundacionesQuebradasResponse> => {
@@ -155,6 +208,7 @@ export function LabMap({
   optionValues,
   hidrantesExperience,
   demografiaExperience,
+  climaData,
 }: LabMapProps) {
   const mapRef = useRef<MapRef>(null)
   const [basemap, setBasemap] = useThemeSyncedBasemap()
@@ -207,6 +261,7 @@ export function LabMap({
   const controlsPosition = isMobile ? "top-right" : "top-left"
 
   const [viewportBounds, setViewportBounds] = useState<MapBounds | null>(null)
+  const [zoom, setZoom] = useState(9)
   const [damageClustered, setDamageClustered] = useState(true)
   const [featurePopup, setFeaturePopup] = useState<{ lon: number; lat: number; content: ReactNode } | null>(null)
   const [resolved, setResolved] = useState<{
@@ -568,6 +623,35 @@ export function LabMap({
     })
   }, [])
 
+  // Clima markers: cabeceras (casco urbano) are always shown; veredas appear progressively — the larger
+  // ones first, with the per-zoom budget growing as the user zooms in, always limited to the viewport.
+  const climaActive = focusLayer === "clima" && activeLayers.includes("clima")
+  const climaMarkers = useMemo(
+    () =>
+      (climaData?.veredas.features ?? [])
+        .map(climaMarkerFromFeature)
+        .filter((m): m is ClimaMarker => m !== null && !m.props.esCascoUrbano),
+    [climaData],
+  )
+  const visibleClimaMarkers = useMemo(() => {
+    if (!climaActive) return []
+    const budget = climaMarkerBudget(zoom)
+    if (budget === 0) return []
+    return climaMarkers
+      .filter((m) => {
+        if (municipio && !isMunicipioActive(m.props.municipio, [municipio])) return false
+        if (!viewportBounds) return true
+        return (
+          m.lon >= viewportBounds.west &&
+          m.lon <= viewportBounds.east &&
+          m.lat >= viewportBounds.south &&
+          m.lat <= viewportBounds.north
+        )
+      })
+      .sort((a, b) => b.area - a.area)
+      .slice(0, budget)
+  }, [climaActive, climaMarkers, zoom, municipio, viewportBounds])
+
   const sismoVeredasGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
     if (!veredas || !resolved || !sismoActive || !activeSubLayerIds.has("sismo-veredas")) {
       return { type: "FeatureCollection", features: [] }
@@ -627,6 +711,7 @@ export function LabMap({
     const b = map.getBounds()
     setViewportBounds({ north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() })
     setDamageClustered(map.getZoom() < 12.5)
+    setZoom(map.getZoom())
   }, [])
 
   const handleToggle3D = useCallback(() => {
@@ -670,6 +755,20 @@ export function LabMap({
     },
     [veredas],
   )
+
+  // Refit the camera to the selected territory when a four-municipio layer takes focus, so the map
+  // adapts to Sevilla / a chosen municipio / the whole study area instead of keeping a stale view.
+  const fittedTerritoryLayer = useRef<LayerKey | null>(null)
+  useEffect(() => {
+    if (!focusLayer || !TERRITORY_FIT_LAYERS.includes(focusLayer)) {
+      fittedTerritoryLayer.current = null
+      return
+    }
+    if (fittedTerritoryLayer.current === focusLayer || !veredas) return
+    if (!mapRef.current?.getMap()) return
+    fittedTerritoryLayer.current = focusLayer
+    flyToMunicipio(municipio)
+  }, [focusLayer, veredas, municipio, flyToMunicipio])
 
   // Sismología and hidrantes render as raw point markers (see `activePointsLayers`
   // below) — they have no `levelProperty`/`levelStyles` to paint a choropleth fill
@@ -929,6 +1028,47 @@ export function LabMap({
               </Source>
             )
           })}
+
+        {climaActive &&
+          visibleClimaMarkers.map((m) => (
+            <Marker
+              key={`clima-${m.props.codigoVereda}`}
+              longitude={m.lon}
+              latitude={m.lat}
+              anchor="center"
+              style={{ pointerEvents: "none" }}
+            >
+              <div className="flex items-center gap-1 rounded-full border border-border bg-card/90 px-1.5 py-0.5 text-foreground shadow-sm backdrop-blur-sm">
+                {m.props.grupoActual && (
+                  <WeatherGlyph group={m.props.grupoActual} esDia={m.props.esDia} className="size-3.5 shrink-0" />
+                )}
+                <span className="text-[11px] font-semibold tabular-nums">
+                  {m.props.tempActual != null ? `${Math.round(m.props.tempActual)}°` : "—"}
+                </span>
+                {zoom >= 13 && <span className="max-w-24 truncate text-[10px] text-muted-foreground">{m.props.nombre}</span>}
+              </div>
+            </Marker>
+          ))}
+
+        {climaActive &&
+          climaData?.municipios.map((m) => (
+            <Marker key={`cabecera-${m.municipio}`} longitude={m.lon} latitude={m.lat} anchor="center" style={{ pointerEvents: "none" }}>
+              <div className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-2 py-1 text-foreground shadow-md">
+                {m.grupoActual && <WeatherGlyph group={m.grupoActual} esDia={m.esDia} className="size-5 shrink-0" />}
+                <div className="flex flex-col leading-tight">
+                  <span className="text-sm font-bold tabular-nums">
+                    {m.tempActual != null ? `${Math.round(m.tempActual)}°` : "—"}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">{m.municipio}</span>
+                  {m.tempMax != null && m.tempMin != null && (
+                    <span className="text-[10px] tabular-nums text-muted-foreground">
+                      {Math.round(m.tempMax)}° / {Math.round(m.tempMin)}°
+                    </span>
+                  )}
+                </div>
+              </div>
+            </Marker>
+          ))}
 
         {sismoActive && activeSubLayerIds.has("sismo-veredas") && (
           <Source id="lab-sismologia-source" type="geojson" data={sismoVeredasGeoJson}>
