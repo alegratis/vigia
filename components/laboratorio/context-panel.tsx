@@ -433,6 +433,21 @@ function DemografiaPanel({ experience }: { experience: DemografiaExperience }) {
         </div>
       )}
 
+      <label className="flex cursor-pointer items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          className="mt-0.5 size-4 shrink-0 accent-primary"
+          checked={experience.showBarrios}
+          onChange={(e) => experience.setShowBarrios(e.target.checked)}
+        />
+        <span>
+          <span className="font-medium text-foreground">Límites de barrios</span>
+          <span className="block text-xs text-muted-foreground">
+            Solo Sevilla. Los popups indican el barrio y su frecuencia de inundación y movimiento en masa.
+          </span>
+        </span>
+      </label>
+
       {isLoading && <p className="text-xs text-muted-foreground">Cargando datos del geoportal…</p>}
       {error && (
         <p className="flex items-center gap-1.5 text-xs text-destructive">

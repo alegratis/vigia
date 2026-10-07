@@ -17,7 +17,10 @@
  * indicator-switch buttons and legend.
  */
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import booleanPointInPolygon from "@turf/boolean-point-in-polygon"
+import { useBarrios } from "@/lib/barrios/use-barrios"
+import type { BarrioFeature, BarrioProperties } from "@/lib/barrios/api-types"
 import { useDemografiaGeoportal } from "@/lib/demografia/use-geoportal"
 import { useVulnerabilidad } from "@/lib/vulnerabilidad/use-vulnerabilidad"
 import { resolveCssColor } from "@/lib/resolve-css-color"
@@ -43,6 +46,10 @@ export const MANZANA_FIELD_LABEL: Record<ManzanaField, string> = {
 export const DEMOGRAFIA_SOURCE_ID = "lab-demografia-source"
 export const DEMOGRAFIA_LAYER_ID = "lab-demografia-columns"
 
+export const BARRIOS_SOURCE_ID = "lab-barrios-source"
+export const BARRIOS_FILL_LAYER_ID = "lab-barrios-fill"
+export const BARRIOS_LINE_LAYER_ID = "lab-barrios-line"
+
 /**
  * @param enabled Only fetches/computes while the demografía layer is
  * actually focused — same lazy-fetch convention as `useHidrantesExperience`.
@@ -54,6 +61,32 @@ export function useDemografiaExperience(enabled: boolean) {
   const { data, error: geoportalError } = useDemografiaGeoportal(enabled && indicator !== "vulnerabilidad")
   const { data: vulnerabilidadData, error: vulnerabilidadError } = useVulnerabilidad(
     enabled && indicator === "vulnerabilidad",
+  )
+
+  // Sevilla's only published barrio layer (SIRD dashboard). Fetched whenever demografía is focused,
+  // even with the outlines hidden, because every popup resolves "which barrio is this?" from it.
+  const [showBarrios, setShowBarrios] = useState(true)
+  const { data: barriosData } = useBarrios(enabled)
+
+  const barriosGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
+    if (!barriosData) return { type: "FeatureCollection", features: [] }
+    return {
+      type: "FeatureCollection",
+      features: barriosData.barrios.features.map((f) => ({
+        type: "Feature",
+        properties: { ...f.properties, __kind: "barrio" },
+        geometry: f.geometry,
+      })),
+    }
+  }, [barriosData])
+
+  const findBarrioAt = useCallback(
+    (lon: number, lat: number): BarrioProperties | null => {
+      if (!barriosData) return null
+      const hit = barriosData.barrios.features.find((f: BarrioFeature) => booleanPointInPolygon([lon, lat], f.geometry))
+      return hit?.properties ?? null
+    },
+    [barriosData],
   )
 
   const [levelColors, setLevelColors] = useState<Record<string, string> | null>(null)
@@ -149,6 +182,10 @@ export function useDemografiaExperience(enabled: boolean) {
     manzanasGeoJson,
     vulnerabilidadManzanasGeoJson,
     activeGeoJson,
+    showBarrios,
+    setShowBarrios,
+    barriosGeoJson,
+    findBarrioAt,
     levelColors,
     vulnColors,
     isLoading,
