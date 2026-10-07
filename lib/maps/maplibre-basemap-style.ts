@@ -149,6 +149,8 @@ export function maplibreMapStyle(basemap: BasemapType, is3D: boolean): StyleSpec
 
   if (!is3D) return { version: 8, sources, layers }
 
+  // MapLibre warns (and renders worse) when the hillshade layer and 3D terrain
+  // share one raster-dem source, so each gets its own source over the same tiles.
   sources["terrain-dem"] = {
     type: "raster-dem",
     tiles: [TERRAIN_DEM_TILE_URL],
@@ -157,10 +159,17 @@ export function maplibreMapStyle(basemap: BasemapType, is3D: boolean): StyleSpec
     maxzoom: 15,
     attribution: TERRAIN_ATTRIBUTION,
   }
+  sources["hillshade-dem"] = {
+    type: "raster-dem",
+    tiles: [TERRAIN_DEM_TILE_URL],
+    tileSize: 256,
+    encoding: "terrarium",
+    maxzoom: 15,
+  }
   layers.push({
     id: "terrain-hillshade",
     type: "hillshade",
-    source: "terrain-dem",
+    source: "hillshade-dem",
     paint: {
       "hillshade-exaggeration": 0.5,
       "hillshade-shadow-color": "#1a1006",

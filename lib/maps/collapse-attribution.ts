@@ -1,4 +1,4 @@
-import type { MapLibreEvent } from "react-map-gl/maplibre"
+import type { MapLibreEvent } from "maplibre-gl"
 
 /**
  * MapLibre's compact AttributionControl renders as a native <details>

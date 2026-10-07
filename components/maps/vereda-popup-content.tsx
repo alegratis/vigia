@@ -3,7 +3,7 @@ import { fireLevelColorToken } from "@/lib/incendios/levels"
 import { seismicExposureColorToken, seismicExposureLevel } from "@/lib/sismologia/levels"
 import type { VeredaFeature } from "@/lib/veredas/api-types"
 
-export type VeredaPopupHazardKind = "deslizamientos" | "inundaciones" | "sismologia" | "incendios"
+export type VeredaPopupHazardKind = "deslizamientos" | "inundaciones" | "sismologia" | "incendios" | "riesgo-compuesto"
 
 interface VeredaPopupContentProps {
   feature: VeredaFeature
