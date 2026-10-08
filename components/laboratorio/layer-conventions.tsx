@@ -182,7 +182,10 @@ function SubLayerConventions({ layer, subLayerToggles }: { layer: LayerKey; subL
 function PrecipitacionConventions() {
   return (
     <LegendSection title="Popup de precipitación">
-      <Note>Condiciones actuales, nivel de acumulado a 7 días y pronóstico diario.</Note>
+      <Note>
+        Condiciones actuales, nivel pronosticado a 7 días (el color del mapa), acumulado de los últimos 7 días y
+        pronóstico diario.
+      </Note>
       <Note>
         <span className="font-medium text-foreground">POP %</span> = probabilidad de precipitación del día; el
         número en mm es la lluvia esperada.
