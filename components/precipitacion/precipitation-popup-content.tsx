@@ -4,7 +4,7 @@ import { WeatherGlyph } from "@/components/clima/weather-report-card"
 import { WEATHER_GROUP_LABELS } from "@/lib/clima/weather-codes"
 import type { ClimaVeredaProperties } from "@/lib/clima/api-types"
 import type { PrecipitacionFeatureProperties } from "@/lib/precipitacion/api-types"
-import { classifyPrecipitation, precipitationLevelColorToken } from "@/lib/precipitacion/levels"
+import { precipitationLevelColorToken } from "@/lib/precipitacion/levels"
 
 const WEEKDAY_FORMAT = new Intl.DateTimeFormat("es-CO", { weekday: "short", timeZone: "America/Bogota" })
 
@@ -31,18 +31,25 @@ function LevelDot({ level }: { level: string }) {
 interface PrecipitationPopupContentProps {
   nombre: string
   municipio: string
-  /** Historical 7-day accumulation and level driving the map fill; null while it loads or when the vereda has no data. */
+  /** 7-day forecast level, total and max POP driving the map fill; null while it loads or when the vereda has no data. */
   precipitacion: PrecipitacionFeatureProperties | null
-  /** Current conditions and 7-day forecast for the same vereda; null while the forecast loads. */
+  /** Rainfall accumulated over the last 7 days (NASA POWER), shown as a secondary figure; null while it loads. */
+  historico: PrecipitacionFeatureProperties | null
+  /** Current conditions and daily outlook for the same vereda; null while the feed loads. */
   clima: ClimaVeredaProperties | null
 }
 
-/** Map-click tooltip for the precipitación layer: current conditions, accumulation level, and the 7-day rain outlook with POP%. */
-export function PrecipitationPopupContent({ nombre, municipio, precipitacion, clima }: PrecipitationPopupContentProps) {
+/** Map-click tooltip for the precipitación layer: current conditions, forecast level (the map color), past-week accumulation, and the daily outlook with POP%. */
+export function PrecipitationPopupContent({
+  nombre,
+  municipio,
+  precipitacion,
+  historico,
+  clima,
+}: PrecipitationPopupContentProps) {
   const dias = clima?.dias ?? []
-  const forecastTotalMm = dias.reduce((sum, d) => sum + d.precipMm, 0)
-  const forecastLevel = dias.length > 0 ? classifyPrecipitation(forecastTotalMm, dias.length) : null
-  const popMax = dias.length > 0 ? Math.max(...dias.map((d) => d.probabilidadLluvia)) : null
+  const popMax =
+    precipitacion?.probabilidadMax ?? (dias.length > 0 ? Math.max(...dias.map((d) => d.probabilidadLluvia)) : null)
   const maxDayMm = Math.max(1, ...dias.map((d) => d.precipMm))
   const condicion = clima?.grupoActual ? WEATHER_GROUP_LABELS[clima.grupoActual] : null
 
@@ -85,18 +92,22 @@ export function PrecipitationPopupContent({ nombre, municipio, precipitacion, cl
             <span className="font-semibold">{precipitacion.nivel}</span>
             {precipitacion.acumuladoMm != null && (
               <span className="text-muted-foreground">
-                · {formatMm(precipitacion.acumuladoMm)} mm en los últimos 7 días
+                · {formatMm(precipitacion.acumuladoMm)} mm previstos en 7 días
+                {precipitacion.diasValidos < 7 && ` (${precipitacion.diasValidos} días con datos)`}
               </span>
             )}
           </p>
         ) : (
-          <p className="text-xs text-muted-foreground">Sin datos de acumulado para esta vereda.</p>
+          <p className="text-xs text-muted-foreground">Sin datos de pronóstico para esta vereda.</p>
         )}
-        {forecastLevel && (
+        {historico?.nivel && historico.acumuladoMm != null && (
           <p className="flex items-center gap-2 text-xs text-foreground">
-            <LevelDot level={forecastLevel} />
-            <span className="font-semibold">{forecastLevel}</span>
-            <span className="text-muted-foreground">· {formatMm(forecastTotalMm)} mm previstos en 7 días</span>
+            <LevelDot level={historico.nivel} />
+            <span className="font-semibold">{historico.nivel}</span>
+            <span className="text-muted-foreground">
+              · {formatMm(historico.acumuladoMm)} mm en los últimos 7 días
+              {historico.diasValidos < 7 && ` (${historico.diasValidos} días con datos)`}
+            </span>
           </p>
         )}
       </section>

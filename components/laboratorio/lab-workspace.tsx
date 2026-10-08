@@ -73,7 +73,13 @@ export function LabWorkspace() {
   // The precipitación tooltip also shows current conditions and the 7-day outlook, which come from the clima feed.
   const needsClima = state.layers.includes("clima") || previewLayer === "clima" || needsPrecipitacion
   const { veredas: compound } = useCompoundVeredas(needsCompound)
+  // Same request the Precipitación map loads by default, so both views paint identical data.
   const { data: precipitacionData } = useSWR<PrecipitacionAmenazaResponse>(
+    needsPrecipitacion ? "/api/precipitacion/amenaza?mode=pronostico&window=7&fuente=power" : null,
+    jsonFetcher,
+    { revalidateOnFocus: false },
+  )
+  const { data: precipitacionHistoricoData } = useSWR<PrecipitacionAmenazaResponse>(
     needsPrecipitacion ? "/api/precipitacion/amenaza?mode=historico&window=7&fuente=power" : null,
     jsonFetcher,
     { revalidateOnFocus: false },
@@ -377,6 +383,7 @@ export function LabWorkspace() {
           demografiaExperience={demografiaExperience}
           climaData={climaData ?? null}
             precipitacionData={precipitacionData ?? null}
+          precipitacionHistoricoData={precipitacionHistoricoData ?? null}
           flyTarget={flyTarget}
         />
 

@@ -186,7 +186,10 @@ interface LabMapProps {
   /** Current conditions + 7-day forecast per vereda and cabecera, drives the weather markers on the clima layer. */
   climaData: ClimaForecastResponse | null
   /** 7-day accumulation and level per vereda, feeds the precipitación tooltip alongside `climaData`. */
+  /** 7-day forecast (Open-Meteo): drives the fill color and the popup's level. */
   precipitacionData: PrecipitacionAmenazaResponse | null
+  /** Last-7-days accumulation (NASA POWER): secondary figure in the popup. */
+  precipitacionHistoricoData: PrecipitacionAmenazaResponse | null
   /** Camera request issued from outside the map (e.g. the bottom panel's latest-quakes list); `nonce` re-triggers the same target. */
   flyTarget: { lon: number; lat: number; zoom: number; nonce: number } | null
 }
@@ -221,6 +224,7 @@ export function LabMap({
   demografiaExperience,
   climaData,
   precipitacionData,
+  precipitacionHistoricoData,
   flyTarget,
 }: LabMapProps) {
   const mapRef = useRef<MapRef>(null)
@@ -1130,7 +1134,7 @@ export function LabMap({
         )}
 
         {activeSubLayerIds.has("imerg") && (
-          <Source id="lab-sub-imerg-source" type="raster" tiles={imergTiles} tileSize={256}>
+          <Source id="lab-sub-imerg-source" type="raster" tiles={imergTiles} tileSize={256} maxzoom={6}>
             <Layer id="lab-sub-imerg-raster" type="raster" paint={{ "raster-opacity": 0.6 }} />
           </Source>
         )}
@@ -1676,6 +1680,11 @@ export function LabMap({
               municipio={precipitacionPopup.municipio}
               precipitacion={
                 precipitacionData?.veredas.features.find(
+                  (f) => f.properties.codigoVereda === precipitacionPopup.codigoVereda,
+                )?.properties ?? null
+              }
+              historico={
+                precipitacionHistoricoData?.veredas.features.find(
                   (f) => f.properties.codigoVereda === precipitacionPopup.codigoVereda,
                 )?.properties ?? null
               }
