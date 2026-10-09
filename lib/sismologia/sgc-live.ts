@@ -25,6 +25,8 @@ import type { Bbox } from "./usgs"
 
 const SGC_LIVE_URL = "https://archive.sgc.gov.co/feed/v1.0.1/summary/five_days_all.json"
 
+const SGC_USER_AGENT = "Mozilla/5.0 (compatible; VIGIA-RiskDashboard/1.0; +https://vigia.vercel.app)"
+
 /** Days of history the feed covers — surfaced in the UI. */
 export const SGC_LIVE_WINDOW_DAYS = 5
 
@@ -67,7 +69,12 @@ function parseUtc(raw: string | null): string | null {
  * bbox filter keeps only events in/around the study region.
  */
 export async function getSgcLiveEvents(bbox: Bbox): Promise<SeismicEvent[]> {
-  const res = await fetch(SGC_LIVE_URL, { next: { revalidate: REVALIDATE_SECONDS } })
+  // The SGC bucket answers 403 AccessDenied to requests without a User-Agent
+  // (Node's fetch sends none), which silently emptied this layer.
+  const res = await fetch(SGC_LIVE_URL, {
+    headers: { "User-Agent": SGC_USER_AGENT, Accept: "application/json" },
+    next: { revalidate: REVALIDATE_SECONDS },
+  })
   if (!res.ok) throw new Error(`SGC live feed failed (${res.status})`)
   const data: SgcLiveResponse = await res.json()
 
