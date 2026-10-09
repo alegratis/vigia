@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { Link2 } from "lucide-react"
+import { ArrowUpRight, Info, Link2 } from "lucide-react"
+import { BetaBadge } from "@/components/beta-badge"
+import { AboutDialog } from "@/components/laboratorio/about-dialog"
 import { toast } from "sonner"
 import useSWR from "swr"
 import { useVeredas } from "@/lib/veredas/use-veredas"
@@ -21,6 +23,7 @@ import {
   LAYER_DEFINITIONS,
   findConflicts,
   isExclusiveLayer,
+  isLayerKey,
   mergeCompoundIntoVeredas,
   mergePrecipitacionIntoVeredas,
   mergeClimaIntoVeredas,
@@ -63,6 +66,7 @@ export function LabWorkspace() {
 
   const [state, setState] = useState<LabState>(DEFAULT_LAB_STATE)
   const [previewLayer, setPreviewLayer] = useState<LayerKey | null>(null)
+  const [aboutOpen, setAboutOpen] = useState(false)
 
   // Each of these four "fill" layers beyond the original three fetches (or derives) its own
   // data lazily — only once it's actually active or rail-previewed — then gets merged onto the
@@ -177,8 +181,13 @@ export function LabWorkspace() {
   // source of truth for a shared link, localStorage is just a same-device convenience fallback.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
+    const legacyLayer = params.get("categoria")
     const fromUrl = params.size > 0 ? parseLabState(params) : null
-    const initial = fromUrl ?? readLabStateFromStorage() ?? DEFAULT_LAB_STATE
+    // `?categoria=<capa>` is the old per-category link format; it maps onto a single active layer.
+    const initial =
+      !params.get("layers") && legacyLayer && isLayerKey(legacyLayer)
+        ? { ...DEFAULT_LAB_STATE, layers: [legacyLayer] }
+        : (fromUrl ?? readLabStateFromStorage() ?? DEFAULT_LAB_STATE)
     setState(initial)
     setHydrated(true)
   }, [])
@@ -260,7 +269,7 @@ export function LabWorkspace() {
   const activeMunicipioValue = state.municipio ?? "__all__"
 
   const headerSubtitle = useMemo(() => {
-    if (state.layers.length === 0) return "Ninguna capa activa · riesgo compuesto"
+    if (state.layers.length === 0) return "Ninguna capa activa"
     return `${state.layers.length} / ${MAX_ACTIVE_LAYERS} capas activas`
   }, [state.layers.length])
 
@@ -268,7 +277,13 @@ export function LabWorkspace() {
     <div className="flex h-screen flex-col overflow-hidden bg-background">
       <header className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-2 sm:gap-4 sm:px-4 sm:py-2.5">
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-          <Link href="/" aria-label="RED LabOT — volver al inicio" className="relative hidden h-6 items-center justify-center sm:flex">
+          <a
+            href="https://www.redlabot.org"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="RED LabOT — ir a redlabot.org"
+            className="relative hidden h-6 items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:flex"
+          >
             <Image
               src="/images/redlabot-mark-light.png"
               alt="RED LabOT"
@@ -285,7 +300,7 @@ export function LabWorkspace() {
               className="hidden h-5 w-auto dark:block"
               priority
             />
-          </Link>
+          </a>
           <span aria-hidden="true" className="hidden h-6 w-px bg-border sm:block" />
           <Link href="/" aria-label="Vigía — volver al inicio" className="relative flex size-6 shrink-0 items-center justify-center sm:size-7">
             <Image
@@ -359,9 +374,29 @@ export function LabWorkspace() {
           <Button size="icon" variant="secondary" onClick={handleShare} className="sm:hidden" aria-label="Compartir vista">
             <Link2 className="size-3.5" />
           </Button>
+          <BetaBadge className="hidden sm:inline" />
+          <Link
+            href="/documentacion"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hidden items-center gap-1 rounded-md text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:inline-flex"
+          >
+            Documentación
+            <ArrowUpRight className="size-3.5" aria-hidden="true" />
+          </Link>
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={() => setAboutOpen(true)}
+            aria-label="Acerca de Vigía"
+            className="text-muted-foreground"
+          >
+            <Info className="size-4" />
+          </Button>
           <ThemeToggle />
         </div>
       </header>
+      <AboutDialog open={aboutOpen} onOpenChange={setAboutOpen} />
 
       {/* Single relative canvas: the map fills it completely, every control floats on top as its
           own translucent, blurred card instead of a bordered side column — so the map stays the

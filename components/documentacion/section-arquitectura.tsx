@@ -17,15 +17,15 @@ const LAYERS = [
   },
   {
     title: "Mapas",
-    body: "MapLibre GL, vía react-map-gl, importado dinámicamente con next/dynamic({ ssr: false }) para evitar que el renderizado en servidor choque con las dependencias de window/document del motor de mapas. Cada amenaza combina fuentes GeoJSON, capas de símbolos/círculos, teselas vectoriales y overlays raster o WMS según la forma de su fuente, todo compuesto en un único WebGL canvas.",
+    body: "MapLibre GL, vía react-map-gl, importado dinámicamente con next/dynamic({ ssr: false }) para evitar que el renderizado en servidor choque con las dependencias de window/document del motor de mapas. Un único lienzo con capas combinables (hasta tres a la vez) y vista 3D: cada capa aporta fuentes GeoJSON, capas de símbolos/círculos, teselas vectoriales y overlays raster o WMS según la forma de su fuente, todo compuesto en un único WebGL canvas.",
   },
   {
     title: "Estilos y sistema de diseño",
     body: "Tailwind CSS v4 con tokens de diseño definidos en app/globals.css (escalas de color en oklch por amenaza/categoría), componentes de shadcn/ui sobre primitivas de Base UI, y next-themes para el tema claro/oscuro/sistema.",
   },
   {
-    title: "Ventanas emergentes sin barra de navegador",
-    body: "lib/open-info-popup.ts abre vistas de referencia auxiliares en una ventana emergente sin menú, barra de herramientas ni barra de direcciones, para no interrumpir el mapa en vivo que el usuario tenía abierto. Demografía dejó de ser una ventana aparte: ahora vive como una pestaña más del panel de inicio, con su mapa y su información debajo en el mismo scroll. La documentación, por su parte, abre en una pestaña normal del navegador porque es contenido extenso pensado para desplazarse, imprimirse o guardarse como marcador.",
+    title: "Estado compartible de la vista",
+    body: "El estado del mapa (capas activas, municipio, vista 2D/3D, zoom y centro) se serializa en la URL con los parámetros layers, municipio, is3D, zoom y center, y se guarda además en localStorage (lib/laboratorio/layers.ts). Así \"Compartir vista\" produce un enlace reproducible, y una visita sin enlace ni estado guardado abre con la capa de Riesgo compuesto. La documentación abre en una pestaña normal del navegador porque es contenido extenso pensado para desplazarse, imprimirse o guardarse como marcador.",
   },
   {
     title: "Exportación a PDF",

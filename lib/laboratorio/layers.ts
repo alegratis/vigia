@@ -558,7 +558,7 @@ export interface LabState {
 }
 
 export const DEFAULT_LAB_STATE: LabState = {
-  layers: [],
+  layers: ["riesgo-compuesto"],
   municipio: "Sevilla",
   is3D: false,
   zoom: null,
