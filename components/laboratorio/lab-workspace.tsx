@@ -3,8 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { ArrowUpRight, Info, Link2 } from "lucide-react"
-import { BetaBadge } from "@/components/beta-badge"
+import { Info, Link2 } from "lucide-react"
 import { AboutDialog } from "@/components/laboratorio/about-dialog"
 import { toast } from "sonner"
 import useSWR from "swr"
@@ -275,8 +274,34 @@ export function LabWorkspace() {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background">
-      <header className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-2 sm:gap-4 sm:px-4 sm:py-2.5">
-        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+      <header className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-2 sm:gap-4 sm:px-4 sm:py-2.5 xl:grid xl:grid-cols-[1fr_auto_1fr]">
+        <div className="hidden min-w-0 items-center gap-3 xl:flex">
+          <a
+            href="https://nasalifelines.org"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
+            <Image
+              src="/images/nasa-lifelines-wordmark-darkblue.png"
+              alt="NASA Lifelines"
+              width={5112}
+              height={643}
+              className="block h-5 w-auto dark:hidden"
+            />
+            <Image
+              src="/images/nasa-lifelines-wordmark-white.png"
+              alt="NASA Lifelines"
+              width={5112}
+              height={643}
+              className="hidden h-5 w-auto dark:block"
+            />
+          </a>
+          <span aria-hidden="true" className="h-6 w-px bg-border" />
+          <AlejandroPinoLogo className="h-6" />
+        </div>
+
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3 xl:col-start-2">
           <a
             href="https://www.redlabot.org"
             target="_blank"
@@ -326,32 +351,7 @@ export function LabWorkspace() {
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-          <div className="hidden items-center gap-3 lg:flex">
-            <a
-              href="https://nasalifelines.org"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            >
-              <Image
-                src="/images/nasa-lifelines-wordmark-darkblue.png"
-                alt="NASA Lifelines"
-                width={5112}
-                height={643}
-                className="block h-5 w-auto dark:hidden"
-              />
-              <Image
-                src="/images/nasa-lifelines-wordmark-white.png"
-                alt="NASA Lifelines"
-                width={5112}
-                height={643}
-                className="hidden h-5 w-auto dark:block"
-              />
-            </a>
-            <AlejandroPinoLogo className="h-6" />
-            <span aria-hidden="true" className="h-6 w-px bg-border" />
-          </div>
+        <div className="flex shrink-0 items-center justify-end gap-2 sm:gap-3 xl:col-start-3">
           <Select value={activeMunicipioValue} onValueChange={handleMunicipioChange}>
             <SelectTrigger className="h-8 w-28 text-xs sm:w-40">
               <SelectValue placeholder="Municipio">
@@ -374,16 +374,6 @@ export function LabWorkspace() {
           <Button size="icon" variant="secondary" onClick={handleShare} className="sm:hidden" aria-label="Compartir vista">
             <Link2 className="size-3.5" />
           </Button>
-          <BetaBadge className="hidden sm:inline" />
-          <Link
-            href="/documentacion"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hidden items-center gap-1 rounded-md text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:inline-flex"
-          >
-            Documentación
-            <ArrowUpRight className="size-3.5" aria-hidden="true" />
-          </Link>
           <Button
             size="icon"
             variant="ghost"
