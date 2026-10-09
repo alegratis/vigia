@@ -11,11 +11,12 @@ export function SectionResumen() {
         deslizamiento, inundación e incendio forestal con la población y la infraestructura
         crítica expuestas, combinando índices de amenaza estáticos con pronósticos y monitoreo en
         vivo de fuentes abiertas, y ese cruce se completa con el Índice de Vulnerabilidad Social
-        (IVS) del panel de{" "}
-        <a href="/?categoria=demografia" className="text-primary hover:underline">
+        (IVS) de la capa de{" "}
+        <a href="/?layers=demografia" className="text-primary hover:underline">
           Demografía
         </a>
-        , que mide la condición social previa de la población, no el peligro del lugar.
+        , que mide la condición social previa de la población, no el peligro del lugar. Todo se
+        consulta en un único mapa multicapa que abre directamente al entrar a Vigía.
       </p>
       <p className="text-pretty leading-relaxed text-muted-foreground">
         La aplicación no mantiene una base de datos propia: cada vista es una capa de agregación

@@ -36,7 +36,7 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { cn } from "@/lib/utils"
+import { cn, tokenColor } from "@/lib/utils"
 
 interface ContextPanelProps {
   veredas: LabVeredasFeatureCollection | null
@@ -539,7 +539,7 @@ function LayerLegend({
           <li key={level} className="flex items-center gap-2 text-sm">
             <span
               className="size-2.5 shrink-0 rounded-sm"
-              style={{ backgroundColor: style ? `var(--${style.colorToken})` : undefined }}
+              style={{ backgroundColor: style ? tokenColor(style.colorToken) : undefined }}
               aria-hidden="true"
             />
             <span className="flex-1 truncate text-foreground">{level}</span>

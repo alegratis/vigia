@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import { COMPOUND_LEVEL_STYLES } from "@/lib/riesgo-compuesto/levels"
+import { buildRecommendations } from "@/lib/riesgo-compuesto/recommendations"
 import type { CompoundFeature } from "@/lib/riesgo-compuesto/api-types"
 
 const HAZARD_ICONS: Record<string, LucideIcon> = {
@@ -50,6 +51,8 @@ export function CompoundReportDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const props = feature?.properties
+  const recommendations = props?.actionTier ? buildRecommendations(props.actionTier, props.dominantHazard) : null
+  const dominantLabel = props?.subHazards.find((h) => h.hazard === props.dominantHazard)?.label ?? null
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
   const captureRef = useRef<HTMLDivElement>(null)
@@ -174,6 +177,38 @@ export function CompoundReportDialog({
                     })}
                   </div>
                 </div>
+
+                {recommendations && (
+                  <>
+                    <Separator />
+
+                    <div className="flex flex-col gap-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Qué hacer: {props.actionTier}
+                      </p>
+                      <p className="text-pretty text-sm leading-relaxed text-foreground">
+                        {recommendations.tierSummary}
+                      </p>
+                      <ul className="flex list-disc flex-col gap-1.5 pl-5 text-sm leading-relaxed text-muted-foreground">
+                        {recommendations.general.map((step) => (
+                          <li key={step}>{step}</li>
+                        ))}
+                      </ul>
+                      {recommendations.hazard.length > 0 && dominantLabel && (
+                        <div className="flex flex-col gap-1.5">
+                          <p className="text-sm font-medium text-foreground">
+                            Amenaza dominante ({dominantLabel.toLowerCase()})
+                          </p>
+                          <ul className="flex list-disc flex-col gap-1.5 pl-5 text-sm leading-relaxed text-muted-foreground">
+                            {recommendations.hazard.map((step) => (
+                              <li key={step}>{step}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
 
                 <Separator />
 

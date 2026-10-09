@@ -2,15 +2,13 @@ import Image from "next/image"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { BETA_VERSION } from "@/lib/version"
+import { BetaBadge } from "@/components/beta-badge"
 
 /**
  * Minimal header for the standalone /documentacion page. This route opens
- * in a normal new browser tab (not lib/open-info-popup.ts's chromeless
- * popup) since documentation is long-form, scrollable content the reader
- * may want to print, bookmark, or zoom — so it keeps full browser UI and
- * gets its own lightweight header instead of the app's SiteHeader, whose
- * hazard-category nav links don't apply here.
+ * in a normal new browser tab since documentation is long-form, scrollable
+ * content the reader may want to print, bookmark, or zoom, so it keeps full
+ * browser UI and gets its own lightweight header.
  */
 export function DocHeader() {
   return (
@@ -42,12 +40,7 @@ export function DocHeader() {
         </div>
 
         <div className="flex items-center gap-1">
-          <span
-            className="mr-1 hidden select-none text-[10px] font-medium uppercase tracking-wide text-muted-foreground/50 sm:inline"
-            title="Vigía está en fase beta"
-          >
-            Beta v0.{BETA_VERSION}
-          </span>
+          <BetaBadge className="mr-1 hidden sm:inline" />
           <Link
             href="/"
             className="inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"

@@ -18,74 +18,74 @@ interface GuideStep {
 const STEPS: GuideStep[] = [
   {
     number: 1,
-    title: "Elige una amenaza para vigilar",
+    title: "Elige y combina las capas que quieres vigilar",
     simple:
-      "Cuando abres Vigía, ya estás viendo un mapa. A la derecha hay seis franjas verticales con un ícono cada una: Deslizamientos, Inundaciones, Incendios, Precipitación, Clima y Sismología (más Riesgo compuesto, que junta las cinco amenazas). Clima es un reporte del tiempo, no una amenaza. Toca cualquier franja y el mapa completo cambia a esa vista, no se abre una página nueva, todo pasa en la misma pantalla.",
+      "Cuando abres Vigía, ya estás viendo el mapa con la capa de Riesgo compuesto activa. En el riel lateral están todas las capas: Deslizamientos, Inundaciones, Incendios, Precipitación, Sismología, Riesgo compuesto y, aparte, Clima, Demografía e Hidrantes. Toca una para encenderla o apagarla; puedes tener hasta tres activas a la vez para compararlas en el mismo mapa. Clima es un reporte del tiempo, no una amenaza.",
     technical:
-      "Cada amenaza carga su propio mapa MapLibre GL con capas independientes que se activan y desactivan desde un único panel de control acoplado al borde derecho del mapa (por ejemplo, \"Humedad del suelo (SMAP)\" o \"Fallas geológicas (SGC)\"), agrupadas por Municipios, capas satelitales y capas de referencia oficial. La leyenda de colores activa aparece dentro del mismo panel, de verde (muy bajo) a rojo (muy alto), y el panel se puede colapsar a una franja de íconos para dejar el mapa a pantalla completa.",
+      "Todo ocurre en un único lienzo MapLibre GL. Cada capa se define en lib/laboratorio/layers.ts con sus controles propios (por ejemplo, \"Humedad del suelo (SMAP)\" o \"Fallas geológicas (SGC)\"). Cuando dos capas activas se superponen visualmente aparece un aviso y se puede ajustar la opacidad de cada una. Clima, Demografía e Hidrantes no se combinan con otras capas porque comparten el mapa de una forma incompatible con los modelos de amenaza.",
     image: {
-      src: "/images/docs/panel-principal.png",
-      alt: "Panel principal de Vigía mostrando el mapa de deslizamientos, la leyenda de colores y las franjas de las otras amenazas a la derecha",
-      width: 1364,
-      height: 1149,
+      src: "/images/docs/lab-capas.png",
+      alt: "Vigía con el selector de capas en la parte superior, la capa de Riesgo compuesto activa sobre Sevilla y el panel derecho con la leyenda de niveles",
+      width: 1440,
+      height: 900,
     },
   },
   {
     number: 2,
-    title: "Descubre cuánta gente vive en riesgo",
+    title: "Ajusta la vista y compártela",
     simple:
-      "En la franja de la derecha toca \"Demografía\". Verás cuántas personas viven en Sevilla, Caicedonia, Zarzal y Roldanillo, separadas por año, si viven en el pueblo o en el campo, y si son hombres o mujeres. Debajo del mapa encuentras además el Índice de Vulnerabilidad Social (IVS) por manzana en el casco urbano y, de forma opcional, por municipio en el campo, con su explicación y un gráfico de las viviendas, hogares y personas de cada manzana o vereda que toques en el mapa.",
+      "En la barra superior puedes filtrar por municipio (Sevilla, Caicedonia, Zarzal o Roldanillo) y cambiar entre la vista plana (2D) y la vista con relieve (3D). Cuando tengas el mapa como lo quieres, toca \"Compartir vista\": se copia un enlace que abre Vigía exactamente con las mismas capas, el mismo municipio y la misma zona del mapa.",
     technical:
-      "Los números de población vienen de las proyecciones del DANE (2019–2026). El IVS combina 4 dimensiones del censo, vivienda, servicios públicos, educación y trabajo, con el nivel de amenaza vigente de cada zona; en el casco urbano se calcula manzana por manzana (la resolución más fina que publica el DANE, aunque solo con vivienda y servicios) y en el campo se usa el promedio municipal con las 4 dimensiones, como una capa plana y opcional para no fingir precisión que el dato no tiene. Toda esta vista vive dentro del panel de inicio, en la misma pestaña del mapa, ya no se abre en una ventana aparte.",
+      "El estado de la vista (capas, municipio, 2D/3D, zoom y centro) se refleja en la URL con los parámetros layers, municipio, is3D, zoom y center, y también se guarda en localStorage para recordarlo en la próxima visita. Un enlace compartido tiene prioridad sobre lo guardado.",
     image: {
-      src: "/images/docs/demografia.png",
-      alt: "Panel de demografía mostrando el mapa del Índice de Vulnerabilidad Social por manzana, la explicación del índice y los datos de viviendas, hogares y personas debajo del mapa",
-      width: 1180,
-      height: 980,
+      src: "/images/docs/lab-vista.png",
+      alt: "Vigía en vista 3D con tres capas activas y la barra superior con el filtro de municipio y el botón Compartir vista",
+      width: 1440,
+      height: 900,
     },
   },
   {
     number: 3,
-    title: "Encuentra el hidrante más cercano",
+    title: "Descubre cuánta gente vive en riesgo y dónde está el hidrante más cercano",
     simple:
-      "En la franja de la derecha toca \"Hidrantes\". Usa tu ubicación actual o toca cualquier punto del mapa en el casco urbano de Sevilla y la app resalta el hidrante más cercano, con la distancia y la ruta más corta por calles para llegar a él. Las instituciones educativas, de salud y de gobierno cercanas aparecen marcadas como polígonos con la forma real de cada edificio.",
+      "Activa \"Demografía\" para ver cuántas personas viven en Sevilla, Caicedonia, Zarzal y Roldanillo, separadas por año, por pueblo o campo y por sexo, junto con el Índice de Vulnerabilidad Social (IVS) por manzana en el casco urbano. Activa \"Hidrantes\" y, con tu ubicación o tocando un punto del casco urbano de Sevilla, el mapa resalta el hidrante más cercano con la distancia y la ruta más corta por calles; las instituciones educativas, de salud y de gobierno cercanas aparecen como polígonos con la forma real de cada edificio.",
     technical:
-      "La capa de instituciones es permanente, no se activa ni desactiva, y se dibuja siempre como polígono (nunca como punto ni círculo) para no confundirla visualmente con los hidrantes ni con el radio de cobertura de 100/150 m. La ruta al hidrante más cercano se calcula con OSRM sobre la red vial real.",
+      "Los números de población vienen de las proyecciones del DANE (2019–2026). El IVS combina 4 dimensiones del censo (vivienda, servicios públicos, educación y trabajo) con el nivel de amenaza vigente de cada zona; en el casco urbano se calcula por manzana y en el campo se usa el promedio municipal, como una capa plana y opcional para no fingir una precisión que el dato no tiene. La ruta al hidrante se calcula con OSRM sobre la red vial real y las instituciones se dibujan siempre como polígonos para no confundirlas con los hidrantes ni con el radio de cobertura de 100/150 m.",
     image: {
-      src: "/images/docs/hidrantes.png",
-      alt: "Panel de hidrantes mostrando el hidrante más cercano, la ruta por calles y los polígonos de instituciones educativas, de salud y de gobierno cercanas",
-      width: 1180,
-      height: 980,
+      src: "/images/docs/lab-demografia.png",
+      alt: "Vigía con la capa de Demografía activa mostrando columnas 3D del Índice de Vulnerabilidad Social por manzana en Sevilla y sus indicadores en el panel derecho",
+      width: 1440,
+      height: 900,
     },
   },
   {
     number: 4,
-    title: "Abre el reporte completo de una vereda",
+    title: "Consulta una vereda y conoce la plataforma",
     simple:
-      "Dentro del mapa de \"Riesgo compuesto\", toca cualquier vereda coloreada. Se abre una ventana con el nombre del lugar, el nivel de riesgo (Bajo, Medio, Alto...), qué hacer al respecto (Informar, Prepararse o Actuar) y el detalle de cada una de las cinco amenazas por separado. También tiene su propio botón para exportar ese reporte a PDF.",
+      "Toca cualquier vereda del mapa para ver una ficha con su nombre, el municipio, la población estimada y la infraestructura crítica cercana. Con la capa de \"Riesgo compuesto\" activa, el color de cada vereda indica la amenaza más severa entre deslizamientos, inundaciones e incendios. Si en algún momento quieres un resumen de qué es Vigía y cómo se usa, el botón \"i\" de la barra superior abre la ventana \"Acerca de\", con los créditos y la versión beta.",
     technical:
-      "El nivel de riesgo compuesto es el mayor entre las cinco amenazas normalizadas (la amenaza más alta gobierna, siguiendo la doctrina de la OMM/GDACS), mientras que el puntaje de 0 a 1 es un promedio ponderado al estilo del Índice de Riesgo INFORM. El texto del reporte es una plantilla que se rellena con los mismos números que ya se ven en el mapa, no usa generación de lenguaje ni la puerta de enlace de IA de la app.",
+      "El nivel de riesgo compuesto es el mayor entre las amenazas normalizadas (la amenaza más alta gobierna, siguiendo la doctrina de la OMM/GDACS), mientras que el puntaje de 0 a 1 es un promedio ponderado al estilo del Índice de Riesgo INFORM. La ficha de cada vereda se arma con los mismos datos que ya se ven en el mapa; no usa generación de lenguaje ni la puerta de enlace de IA de la app.",
     image: {
-      src: "/images/docs/riesgo-compuesto-reporte.png",
-      alt: "Reporte de riesgo compuesto para una vereda de Zarzal, con el nivel de riesgo, el desglose por amenaza y el botón Exportar PDF",
-      width: 1364,
-      height: 1149,
+      src: "/images/docs/lab-acerca.png",
+      alt: "Ventana \"Acerca de Vigía\" sobre el mapa, con la explicación de qué es la plataforma, cómo se usa, los créditos y el indicador de versión beta",
+      width: 1440,
+      height: 900,
     },
   },
 ]
 
 const OTHER_TIPS = [
   {
-    title: "Vistas completas por amenaza",
-    body: "Los enlaces del menú superior (Deslizamientos, Inundaciones, Incendios, Precipitación) abren la versión de página completa de cada mapa, con el mismo contenido que el panel de inicio pero con más espacio en pantalla, útil para monitoreo prolongado o pantallas grandes.",
+    title: "Tema claro y oscuro",
+    body: "El ícono de sol/luna, en la esquina superior derecha, alterna entre tema claro, oscuro y el tema del computador. Vigía recuerda cuál elegiste la próxima vez que abras la página.",
   },
   {
-    title: "Tema claro y oscuro",
-    body: "El ícono de sol/luna, en la esquina superior derecha de cualquier página, alterna entre tema claro, oscuro y el tema del computador. Vigía recuerda cuál elegiste la próxima vez que abras la página.",
+    title: "Acerca de Vigía",
+    body: "El botón con la letra \"i\", junto al tema, abre una ventana con una explicación breve de la plataforma, los créditos y la versión beta en curso. Desde ahí también puedes abrir esta documentación.",
   },
   {
     title: "Uso con teclado y lectores de pantalla",
-    body: "Todas las páginas incluyen un enlace \"Saltar al contenido principal\" al presionar Tab por primera vez, roles y etiquetas ARIA en los controles interactivos, y regiones aria-live en los paneles que se actualizan con datos en vivo, para que un lector de pantalla anuncie los cambios sin que el usuario tenga que buscarlos.",
+    body: "Los controles interactivos tienen roles y etiquetas ARIA, se pueden recorrer con el teclado y las ventanas se cierran con Esc. Las regiones que se actualizan con datos en vivo usan aria-live para que un lector de pantalla anuncie los cambios sin que el usuario tenga que buscarlos.",
   },
 ]
 

@@ -3,6 +3,7 @@
 import { ChevronDown, ChevronUp } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
+import { tokenColor } from "@/lib/utils"
 import { WeatherDetailedForecast, WeatherReportCard } from "@/components/clima/weather-report-card"
 import { useSismologiaEventos } from "@/lib/sismologia/use-sismologia"
 import { formatQuakeAge, getLatestSeismicEvents } from "@/lib/sismologia/latest-events"
@@ -304,7 +305,7 @@ function DemografiaSummary({ veredas }: { veredas: LabVeredasFeatureCollection |
               className="w-full rounded-t-sm"
               style={{
                 height: `${Math.max(4, (count / max) * 100)}%`,
-                backgroundColor: style ? `var(--${style.colorToken})` : undefined,
+                backgroundColor: style ? tokenColor(style.colorToken) : undefined,
               }}
               title={`${level}: ${count}`}
             />

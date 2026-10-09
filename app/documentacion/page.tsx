@@ -17,10 +17,9 @@ export const metadata = {
 }
 
 /**
- * Standalone documentation route, deliberately not wired into the main
- * app's SiteHeader/SiteFooter — it's meant to open in a plain new browser
- * tab (see components/site-header.tsx's "Documentación" link) rather than
- * live inside the hazard-workspace chrome, so it keeps full browser UI for
+ * Standalone documentation route, deliberately outside the map workspace —
+ * it's meant to open in a plain new browser tab (see the "Documentación" link
+ * in components/laboratorio/lab-workspace.tsx) so it keeps full browser UI for
  * a long, scrollable, printable reference document.
  */
 export default function DocumentacionPage() {

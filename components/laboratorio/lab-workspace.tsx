@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { Link2 } from "lucide-react"
+import { Info, Link2 } from "lucide-react"
+import { AboutDialog } from "@/components/laboratorio/about-dialog"
 import { toast } from "sonner"
 import useSWR from "swr"
 import { useVeredas } from "@/lib/veredas/use-veredas"
@@ -21,6 +22,7 @@ import {
   LAYER_DEFINITIONS,
   findConflicts,
   isExclusiveLayer,
+  isLayerKey,
   mergeCompoundIntoVeredas,
   mergePrecipitacionIntoVeredas,
   mergeClimaIntoVeredas,
@@ -63,6 +65,7 @@ export function LabWorkspace() {
 
   const [state, setState] = useState<LabState>(DEFAULT_LAB_STATE)
   const [previewLayer, setPreviewLayer] = useState<LayerKey | null>(null)
+  const [aboutOpen, setAboutOpen] = useState(false)
 
   // Each of these four "fill" layers beyond the original three fetches (or derives) its own
   // data lazily — only once it's actually active or rail-previewed — then gets merged onto the
@@ -177,8 +180,13 @@ export function LabWorkspace() {
   // source of truth for a shared link, localStorage is just a same-device convenience fallback.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
+    const legacyLayer = params.get("categoria")
     const fromUrl = params.size > 0 ? parseLabState(params) : null
-    const initial = fromUrl ?? readLabStateFromStorage() ?? DEFAULT_LAB_STATE
+    // `?categoria=<capa>` is the old per-category link format; it maps onto a single active layer.
+    const initial =
+      !params.get("layers") && legacyLayer && isLayerKey(legacyLayer)
+        ? { ...DEFAULT_LAB_STATE, layers: [legacyLayer] }
+        : (fromUrl ?? readLabStateFromStorage() ?? DEFAULT_LAB_STATE)
     setState(initial)
     setHydrated(true)
   }, [])
@@ -260,21 +268,53 @@ export function LabWorkspace() {
   const activeMunicipioValue = state.municipio ?? "__all__"
 
   const headerSubtitle = useMemo(() => {
-    if (state.layers.length === 0) return "Ninguna capa activa · riesgo compuesto"
+    if (state.layers.length === 0) return "Ninguna capa activa"
     return `${state.layers.length} / ${MAX_ACTIVE_LAYERS} capas activas`
   }, [state.layers.length])
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background">
-      <header className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-2 sm:gap-4 sm:px-4 sm:py-2.5">
-        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-          <Link href="/" aria-label="RED LabOT — volver al inicio" className="relative hidden h-6 items-center justify-center sm:flex">
+      <header className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-2 sm:gap-4 sm:px-4 sm:py-2.5 xl:grid xl:grid-cols-[1fr_auto_1fr]">
+        <div className="hidden min-w-0 items-center gap-3 xl:flex">
+          <a
+            href="https://nasalifelines.org"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
+            <Image
+              src="/images/nasa-lifelines-wordmark-darkblue.png"
+              alt="NASA Lifelines"
+              width={5112}
+              height={643}
+              className="block h-5 w-auto dark:hidden"
+            />
+            <Image
+              src="/images/nasa-lifelines-wordmark-white.png"
+              alt="NASA Lifelines"
+              width={5112}
+              height={643}
+              className="hidden h-5 w-auto dark:block"
+            />
+          </a>
+          <span aria-hidden="true" className="h-6 w-px bg-border" />
+          <AlejandroPinoLogo className="h-6" />
+        </div>
+
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3 xl:col-start-2">
+          <a
+            href="https://www.redlabot.org"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="RED LabOT — ir a redlabot.org"
+            className="relative hidden h-9 items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:flex"
+          >
             <Image
               src="/images/redlabot-mark-light.png"
               alt="RED LabOT"
               width={100}
               height={45}
-              className="block h-5 w-auto dark:hidden"
+              className="block h-7.5 w-auto dark:hidden"
               priority
             />
             <Image
@@ -282,12 +322,12 @@ export function LabWorkspace() {
               alt="RED LabOT"
               width={100}
               height={45}
-              className="hidden h-5 w-auto dark:block"
+              className="hidden h-7.5 w-auto dark:block"
               priority
             />
-          </Link>
-          <span aria-hidden="true" className="hidden h-6 w-px bg-border sm:block" />
-          <Link href="/" aria-label="Vigía — volver al inicio" className="relative flex size-6 shrink-0 items-center justify-center sm:size-7">
+          </a>
+          <span aria-hidden="true" className="hidden h-9 w-px bg-border sm:block" />
+          <Link href="/" aria-label="Vigía — volver al inicio" className="relative flex size-9 shrink-0 items-center justify-center sm:size-10.5">
             <Image
               src="/images/vigia-mark-light.png"
               alt="Vigía"
@@ -311,32 +351,7 @@ export function LabWorkspace() {
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-          <div className="hidden items-center gap-3 lg:flex">
-            <a
-              href="https://nasalifelines.org"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            >
-              <Image
-                src="/images/nasa-lifelines-wordmark-darkblue.png"
-                alt="NASA Lifelines"
-                width={5112}
-                height={643}
-                className="block h-5 w-auto dark:hidden"
-              />
-              <Image
-                src="/images/nasa-lifelines-wordmark-white.png"
-                alt="NASA Lifelines"
-                width={5112}
-                height={643}
-                className="hidden h-5 w-auto dark:block"
-              />
-            </a>
-            <AlejandroPinoLogo className="h-6" />
-            <span aria-hidden="true" className="h-6 w-px bg-border" />
-          </div>
+        <div className="flex shrink-0 items-center justify-end gap-2 sm:gap-3 xl:col-start-3">
           <Select value={activeMunicipioValue} onValueChange={handleMunicipioChange}>
             <SelectTrigger className="h-8 w-28 text-xs sm:w-40">
               <SelectValue placeholder="Municipio">
@@ -359,9 +374,19 @@ export function LabWorkspace() {
           <Button size="icon" variant="secondary" onClick={handleShare} className="sm:hidden" aria-label="Compartir vista">
             <Link2 className="size-3.5" />
           </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={() => setAboutOpen(true)}
+            aria-label="Acerca de Vigía"
+            className="text-muted-foreground"
+          >
+            <Info className="size-4" />
+          </Button>
           <ThemeToggle />
         </div>
       </header>
+      <AboutDialog open={aboutOpen} onOpenChange={setAboutOpen} />
 
       {/* Single relative canvas: the map fills it completely, every control floats on top as its
           own translucent, blurred card instead of a bordered side column — so the map stays the
@@ -382,6 +407,7 @@ export function LabWorkspace() {
           hidrantesExperience={hidrantesExperience}
           demografiaExperience={demografiaExperience}
           climaData={climaData ?? null}
+          compoundFeatures={compound?.features ?? null}
             precipitacionData={precipitacionData ?? null}
           precipitacionHistoricoData={precipitacionHistoricoData ?? null}
           flyTarget={flyTarget}
