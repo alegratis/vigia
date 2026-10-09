@@ -78,12 +78,12 @@ export function LabWorkspace() {
   const { veredas: compound } = useCompoundVeredas(needsCompound)
   // Same request the Precipitación map loads by default, so both views paint identical data.
   const { data: precipitacionData } = useSWR<PrecipitacionAmenazaResponse>(
-    needsPrecipitacion ? "/api/precipitacion/amenaza?mode=pronostico&window=7&fuente=power" : null,
+    needsPrecipitacion ? "/api/precipitacion/amenaza?mode=pronostico&window=7&fuente=openmeteo" : null,
     jsonFetcher,
     { revalidateOnFocus: false },
   )
   const { data: precipitacionHistoricoData } = useSWR<PrecipitacionAmenazaResponse>(
-    needsPrecipitacion ? "/api/precipitacion/amenaza?mode=historico&window=7&fuente=power" : null,
+    needsPrecipitacion ? "/api/precipitacion/amenaza?mode=historico&window=7&fuente=openmeteo" : null,
     jsonFetcher,
     { revalidateOnFocus: false },
   )

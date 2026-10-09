@@ -36,7 +36,7 @@ const FEATURES = [
     title: "Precipitación",
     tags: ["Sevilla", "Caicedonia", "Zarzal", "Roldanillo"],
     items: [
-      "Lluvia acumulada de los últimos 7 días con dato válido, por vereda, calculada a partir del punto diario de NASA POWER (reanálisis MERRA-2/GEOS-IT). Es la única capa de amenaza con la misma cobertura en Zarzal y Roldanillo que en Sevilla y Caicedonia.",
+      "Lluvia acumulada de los últimos 7 días con dato válido, por vereda, calculada a partir del punto diario de Open-Meteo (análisis ECMWF IFS/ERA5). Es la única capa de amenaza con la misma cobertura en Zarzal y Roldanillo que en Sevilla y Caicedonia.",
       "Superposición de tasa de precipitación en vivo (NASA GPM IMERG, la misma capa satelital que ofrece el mapa de inundaciones).",
       "Niveles de referencia (Bajo/Moderado/Alto/Muy alto) por umbrales simples de acumulación, no un modelo de amenaza calibrado.",
     ],

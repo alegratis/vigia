@@ -588,7 +588,7 @@ function SismologiaLegend({ subLayerToggles }: { subLayerToggles: Record<string,
       {showFaults && (
         <LegendSection title="Fallas geológicas">
           <li className="flex items-center gap-2 text-xs">
-            <span className="h-0 w-5 shrink-0 border-t-2 border-dashed border-foreground" aria-hidden="true" />
+            <span className="h-0 w-5 shrink-0 border-t-2 border-dashed border-sismologia-falla" aria-hidden="true" />
             <span className="text-foreground">Traza de falla (clic para nombre)</span>
           </li>
         </LegendSection>

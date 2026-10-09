@@ -6,12 +6,12 @@ import "server-only"
  * min). Ground-truth readings, but sparse: only two stations fall near the
  * AOI and there are none inside Sevilla or Caicedonia, so most veredas have
  * no coverage under this source. Kept as an alternative to NASA POWER's
- * uniform-but-coarse 0.5° reanalysis grid (see power-client.ts), not a
+ * uniform-but-coarse 0.5° reanalysis grid (see openmeteo-accumulation-client.ts), not a
  * replacement for it.
  */
 
 const SOCRATA_BASE_URL = "https://www.datos.gov.co/resource/s54a-sgyg.json"
-const REVALIDATE_SECONDS = 10800 // 3h, same cadence as power-client.ts.
+const REVALIDATE_SECONDS = 10800 // 3h, same cadence as openmeteo-accumulation-client.ts.
 
 /** Coverage radius (km): veredas farther than this from every station get no IDEAM value. */
 const MAX_STATION_DISTANCE_KM = 20

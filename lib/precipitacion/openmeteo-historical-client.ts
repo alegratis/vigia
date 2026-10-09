@@ -5,7 +5,7 @@ import { unstable_cache } from "next/cache"
 /**
  * Client for Open-Meteo's Historical Weather API (archive-api.open-meteo.com)
  * — used for the "current year" comparison line on the climatology chart
- * instead of NASA POWER (see power-client.ts).
+ * instead of NASA POWER (see openmeteo-accumulation-client.ts).
  *
  * Why swap sources: NASA POWER's near-real-time layer is GPM IMERG, a
  * satellite retrieval that infers rain from cloud-top brightness/temperature.
@@ -24,7 +24,7 @@ import { unstable_cache } from "next/cache"
 
 const ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive"
 
-// Same rationale as power-client.ts / forecast-client.ts: recent days can still
+// Same rationale as openmeteo-accumulation-client.ts / forecast-client.ts: recent days can still
 // be revised as better observations come in, so keep the TTL modest.
 const REVALIDATE_SECONDS = 3600
 

@@ -21,7 +21,7 @@
  * precipitación map (components/maps/precipitacion-live-map.tsx, its
  * primary raster layer) — this is the real satellite-derived precipitation
  * source, distinct from the vereda-level numeric aggregate in
- * lib/precipitacion/power-client.ts (NASA POWER, reanalysis-based, not
+ * lib/precipitacion/openmeteo-accumulation-client.ts (NASA POWER, reanalysis-based, not
  * IMERG — see that file's header comment).
  */
 

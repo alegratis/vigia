@@ -9,9 +9,9 @@ export type { ForecastWindowDays }
  * Client for Open-Meteo's free daily forecast API (open-meteo.com) — open,
  * CORS-enabled, no API key or signup needed. Queried once per vereda
  * centroid for `precipitation_sum` (mm/day) and `precipitation_probability_max`
- * (%), the same fan-out shape as lib/precipitacion/power-client.ts.
+ * (%), the same fan-out shape as lib/precipitacion/openmeteo-accumulation-client.ts.
  *
- * Unlike NASA POWER (backward-looking reanalysis, see power-client.ts),
+ * Unlike NASA POWER (backward-looking reanalysis, see openmeteo-accumulation-client.ts),
  * this is genuinely forward-looking: Open-Meteo blends multiple national
  * weather-service NWP models (GFS, ECMWF, ICON, etc.) into a single daily
  * forecast, available up to 16 days ahead. Confirmed working via a manual
@@ -20,13 +20,13 @@ export type { ForecastWindowDays }
  * aligned by index.
  *
  * Coordinates are rounded to 2 decimal places (~1.1 km), same rationale as
- * power-client.ts: keeps nearby veredas sharing one cached query without
+ * openmeteo-accumulation-client.ts: keeps nearby veredas sharing one cached query without
  * losing meaningful accuracy at this forecast model's native resolution.
  */
 
 const FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
 
-const REVALIDATE_SECONDS = 10800 // 3h — matches power-client.ts; Open-Meteo's own models update a few times a day.
+const REVALIDATE_SECONDS = 10800 // 3h — matches openmeteo-accumulation-client.ts; Open-Meteo's own models update a few times a day.
 
 export interface PrecipitationForecast {
   /** Sum of `precipitation_sum` (mm) over the requested forecast days. */
@@ -77,7 +77,7 @@ export async function getForecastPrecipitation(
 
 /**
  * Fetches forecasts for many points with a concurrency cap, mirroring
- * getAccumulatedPrecipitationBatch in power-client.ts. Returns results in
+ * getAccumulatedPrecipitationBatch in openmeteo-accumulation-client.ts. Returns results in
  * the same order as `points`, with `null` for any point that failed.
  */
 export async function getForecastPrecipitationBatch(
