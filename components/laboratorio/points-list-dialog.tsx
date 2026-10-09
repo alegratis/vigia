@@ -2,6 +2,7 @@
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { tokenColor } from "@/lib/utils"
 import type { LabPointFeature } from "@/lib/laboratorio/use-lab-points"
 
 interface PointsListDialogProps {
@@ -44,7 +45,7 @@ export function PointsListDialog({ open, onOpenChange, title, points, visibleCou
             >
               <span
                 className="mt-0.5 size-2.5 shrink-0 rounded-full"
-                style={{ backgroundColor: `var(--${point.colorToken})` }}
+                style={{ backgroundColor: tokenColor(point.colorToken) }}
                 aria-hidden="true"
               />
               <span className="flex min-w-0 flex-1 flex-col">
