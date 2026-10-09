@@ -58,6 +58,8 @@ import { MapViewToggleControl } from "@/components/maps/map-view-toggle-control"
 import { VeredaPopupContent, type VeredaPopupHazardKind } from "@/components/maps/vereda-popup-content"
 import { DemografiaPopupContent } from "@/components/maps/demografia-popup-content"
 import { PointsListDialog } from "@/components/laboratorio/points-list-dialog"
+import { CompoundReportDialog } from "@/components/riesgo-compuesto/compound-report-dialog"
+import type { CompoundFeature } from "@/lib/riesgo-compuesto/api-types"
 import { Button } from "@/components/ui/button"
 import { isMunicipioActive } from "@/lib/veredas/municipio-toggles"
 import { boundsForActiveMunicipios } from "@/lib/veredas/municipio-bounds"
@@ -185,6 +187,8 @@ interface LabMapProps {
   demografiaExperience: DemografiaExperience
   /** Current conditions + 7-day forecast per vereda and cabecera, drives the weather markers on the clima layer. */
   climaData: ClimaForecastResponse | null
+  /** Full compound-risk features (narrative, per-hazard breakdown), looked up by `codigoVereda` for the "riesgo compuesto" report. */
+  compoundFeatures: CompoundFeature[] | null
   /** 7-day accumulation and level per vereda, feeds the precipitación tooltip alongside `climaData`. */
   /** 7-day forecast (Open-Meteo): drives the fill color and the popup's level. */
   precipitacionData: PrecipitacionAmenazaResponse | null
@@ -223,11 +227,13 @@ export function LabMap({
   hidrantesExperience,
   demografiaExperience,
   climaData,
+  compoundFeatures,
   precipitacionData,
   precipitacionHistoricoData,
   flyTarget,
 }: LabMapProps) {
   const mapRef = useRef<MapRef>(null)
+  const [reportFeature, setReportFeature] = useState<CompoundFeature | null>(null)
   const [basemap, setBasemap] = useThemeSyncedBasemap()
   const [popupInfo, setPopupInfo] = useState<{ feature: LabVeredaFeature; layer: LayerKey } | null>(null)
   const [climaPopup, setClimaPopup] = useState<{ lon: number; lat: number; props: ClimaVeredaProperties } | null>(null)
@@ -1663,8 +1669,33 @@ export function LabMap({
               }
               colored={POPUP_HAZARD_KINDS.includes(popupInfo.layer as (typeof POPUP_HAZARD_KINDS)[number])}
             />
+            {popupInfo.layer === "riesgo-compuesto" &&
+              (() => {
+                const compound = compoundFeatures?.find(
+                  (f) => f.properties.codigoVereda === popupInfo.feature.properties.codigoVereda,
+                )
+                if (!compound) return null
+                return (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="mt-2 w-full"
+                    onClick={() => setReportFeature(compound)}
+                  >
+                    Ver reporte completo
+                  </Button>
+                )
+              })()}
           </Popup>
         )}
+
+        <CompoundReportDialog
+          feature={reportFeature}
+          onOpenChange={(open) => {
+            if (!open) setReportFeature(null)
+          }}
+        />
 
         {precipitacionPopup && (
           <Popup

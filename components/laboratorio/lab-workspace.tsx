@@ -407,6 +407,7 @@ export function LabWorkspace() {
           hidrantesExperience={hidrantesExperience}
           demografiaExperience={demografiaExperience}
           climaData={climaData ?? null}
+          compoundFeatures={compound?.features ?? null}
             precipitacionData={precipitacionData ?? null}
           precipitacionHistoricoData={precipitacionHistoricoData ?? null}
           flyTarget={flyTarget}
