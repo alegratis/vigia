@@ -54,7 +54,7 @@ export function LayerRail({ activeLayers, onToggle, onHoverLayer }: LayerRailPro
   return (
     <div
       className={cn(
-        "absolute left-0 top-16 z-10 flex items-start transition-transform duration-300 ease-out sm:contents",
+        "absolute left-0 top-1/2 z-10 flex -translate-y-1/2 items-center transition-transform duration-300 ease-out sm:contents",
         mobileOpen ? "translate-x-0" : "-translate-x-[5.25rem]",
       )}
     >
@@ -62,7 +62,7 @@ export function LayerRail({ activeLayers, onToggle, onHoverLayer }: LayerRailPro
         id="layer-rail"
         aria-label="Capas del laboratorio"
         className={cn(
-          "ml-3 flex w-[4.5rem] flex-col gap-1 rounded-xl border border-border/60 bg-card/80 py-2 shadow-lg backdrop-blur-md transition-[visibility] duration-300 sm:absolute sm:left-1/2 sm:top-3 sm:ml-0 sm:w-auto sm:max-w-[min(92vw,44rem)] sm:-translate-x-1/2 sm:flex-row sm:flex-wrap sm:items-stretch sm:justify-center sm:gap-0.5 sm:px-2 sm:visible",
+          "ml-3 flex max-h-[calc(100dvh-24rem)] w-[4.5rem] flex-col gap-1 overflow-y-auto rounded-xl sm:max-h-none sm:overflow-visible border border-border/60 bg-card/80 py-2 shadow-lg backdrop-blur-md transition-[visibility] duration-300 sm:absolute sm:left-1/2 sm:top-3 sm:ml-0 sm:w-auto sm:max-w-[min(92vw,44rem)] sm:-translate-x-1/2 sm:flex-row sm:flex-wrap sm:items-stretch sm:justify-center sm:gap-0.5 sm:px-2 sm:visible",
           !mobileOpen && "invisible",
         )}
       >
@@ -121,13 +121,13 @@ export function LayerRail({ activeLayers, onToggle, onHoverLayer }: LayerRailPro
         aria-expanded={mobileOpen}
         aria-label={mobileOpen ? "Ocultar capas" : "Mostrar capas"}
         onClick={() => setMobileOpen((open) => !open)}
-        className="mt-2 flex h-12 w-6 flex-col items-center justify-center gap-0.5 rounded-r-lg border border-l-0 border-border/60 bg-card/80 text-muted-foreground shadow-lg backdrop-blur-md transition-colors hover:text-foreground sm:hidden"
+        className="flex h-20 w-11 shrink-0 flex-col items-center justify-center gap-1.5 rounded-r-xl border border-l-0 border-primary/70 bg-primary text-primary-foreground shadow-lg transition-colors hover:bg-primary/90 sm:hidden"
       >
-        <Layers className="size-3.5" aria-hidden="true" />
+        <Layers className="size-5" aria-hidden="true" />
         {mobileOpen ? (
-          <ChevronLeft className="size-3.5" aria-hidden="true" />
+          <ChevronLeft className="size-5" aria-hidden="true" />
         ) : (
-          <ChevronRight className="size-3.5" aria-hidden="true" />
+          <ChevronRight className="size-5" aria-hidden="true" />
         )}
       </button>
     </div>
