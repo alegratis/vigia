@@ -39,7 +39,7 @@ import {
 import { LabMap } from "@/components/laboratorio/lab-map"
 import { LayerRail } from "@/components/laboratorio/layer-rail"
 import { ContextPanel } from "@/components/laboratorio/context-panel"
-import { BottomTabs } from "@/components/laboratorio/bottom-tabs"
+import { BottomTabs, DEFAULT_BOTTOM_PANEL_HEIGHT } from "@/components/laboratorio/bottom-tabs"
 import { LayerLimitDialog } from "@/components/laboratorio/layer-limit-dialog"
 import { LayerConflictPopover } from "@/components/laboratorio/layer-conflict-popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -140,6 +140,8 @@ export function LabWorkspace() {
     setFlyTarget((prev) => ({ ...target, nonce: (prev?.nonce ?? 0) + 1 }))
   }, [])
   const [bottomPanelCollapsed, setBottomPanelCollapsed] = useState(true)
+  // Desktop-only: percentage of the map area the expanded bottom panel occupies (user-resizable by dragging).
+  const [bottomPanelHeight, setBottomPanelHeight] = useState(DEFAULT_BOTTOM_PANEL_HEIGHT)
   // Right panel: open by default on desktop, collapsed on mobile (resolved after mount so SSR markup stays stable).
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(true)
   useEffect(() => {
@@ -423,6 +425,7 @@ export function LabWorkspace() {
           subLayerToggles={subLayerToggles}
           onToggleSubLayer={handleToggleSubLayer}
           bottomPanelCollapsed={bottomPanelCollapsed}
+          bottomPanelHeight={bottomPanelHeight}
           collapsed={rightPanelCollapsed}
           onCollapsedChange={setRightPanelCollapsed}
           hidrantesExperience={hidrantesExperience}
@@ -449,6 +452,8 @@ export function LabWorkspace() {
           onFlyTo={handleFlyTo}
           collapsed={bottomPanelCollapsed}
           onCollapsedChange={setBottomPanelCollapsed}
+          height={bottomPanelHeight}
+          onHeightChange={setBottomPanelHeight}
         />
       </div>
 
