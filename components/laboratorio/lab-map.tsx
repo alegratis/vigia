@@ -311,7 +311,7 @@ export function LabMap({
           resolveCssColor(CONFIDENCE_STYLES[k].color),
         ]),
       ) as Record<FireDetection["confidence"], string>,
-      fault: resolveCssColor("var(--foreground)"),
+      fault: resolveCssColor("var(--sismologia-falla)"),
     })
   }, [])
 

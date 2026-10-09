@@ -110,6 +110,7 @@
   --color-sismologia-ligero: var(--sismologia-ligero);
   --color-sismologia-moderado: var(--sismologia-moderado);
   --color-sismologia-fuerte: var(--sismologia-fuerte);
+  --color-sismologia-falla: var(--sismologia-falla);
   --color-riesgo-compuesto-muy-bajo: var(--riesgo-compuesto-muy-bajo);
   --color-riesgo-compuesto-bajo: var(--riesgo-compuesto-bajo);
   --color-riesgo-compuesto-moderado: var(--riesgo-compuesto-moderado);
@@ -229,6 +230,7 @@
   --sismologia-ligero: oklch(0.68 0.14 246);
   --sismologia-moderado: oklch(0.58 0.17 252);
   --sismologia-fuerte: oklch(0.42 0.19 258);
+  --sismologia-falla: oklch(0.56 0.19 48);
 
   /* Sevilla community damage-report severity ramp (Survey123 pilot): warm hue, distinct from the sismología magnitude ramp. */
   --danos-posible: oklch(0.82 0.15 95);
@@ -528,6 +530,7 @@
   --sismologia-ligero: oklch(0.64 0.15 246);
   --sismologia-moderado: oklch(0.56 0.19 252);
   --sismologia-fuerte: oklch(0.48 0.21 258);
+  --sismologia-falla: oklch(0.76 0.17 58);
 
   /* Sevilla community damage-report severity ramp (Survey123 pilot): kept vivid and legible on dark surfaces. */
   --danos-posible: oklch(0.78 0.16 95);
