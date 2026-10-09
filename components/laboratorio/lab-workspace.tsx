@@ -307,14 +307,14 @@ export function LabWorkspace() {
             target="_blank"
             rel="noopener noreferrer"
             aria-label="RED LabOT — ir a redlabot.org"
-            className="relative hidden h-6 items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:flex"
+            className="relative hidden h-9 items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:flex"
           >
             <Image
               src="/images/redlabot-mark-light.png"
               alt="RED LabOT"
               width={100}
               height={45}
-              className="block h-5 w-auto dark:hidden"
+              className="block h-7.5 w-auto dark:hidden"
               priority
             />
             <Image
@@ -322,12 +322,12 @@ export function LabWorkspace() {
               alt="RED LabOT"
               width={100}
               height={45}
-              className="hidden h-5 w-auto dark:block"
+              className="hidden h-7.5 w-auto dark:block"
               priority
             />
           </a>
-          <span aria-hidden="true" className="hidden h-6 w-px bg-border sm:block" />
-          <Link href="/" aria-label="Vigía — volver al inicio" className="relative flex size-6 shrink-0 items-center justify-center sm:size-7">
+          <span aria-hidden="true" className="hidden h-9 w-px bg-border sm:block" />
+          <Link href="/" aria-label="Vigía — volver al inicio" className="relative flex size-9 shrink-0 items-center justify-center sm:size-10.5">
             <Image
               src="/images/vigia-mark-light.png"
               alt="Vigía"
