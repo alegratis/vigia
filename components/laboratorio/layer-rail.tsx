@@ -1,7 +1,19 @@
 "use client"
 
-import { Fragment, type ComponentType } from "react"
-import { Mountain, Droplets, Flame, ShieldAlert, CloudRain, Thermometer, Activity, Users } from "lucide-react"
+import { Fragment, useState, type ComponentType } from "react"
+import {
+  Mountain,
+  Droplets,
+  Flame,
+  ShieldAlert,
+  CloudRain,
+  Thermometer,
+  Activity,
+  Users,
+  Layers,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react"
 import { cn } from "@/lib/utils"
 import { LAYER_DEFINITIONS, LAYER_GROUPS, isExclusiveLayer, type LayerKey } from "@/lib/laboratorio/layers"
 import { HydrantIcon } from "@/components/laboratorio/hydrant-icon"
@@ -30,18 +42,31 @@ interface LayerRailProps {
  * Row of per-layer on/off switches — the only way to activate a hazard
  * layer on the shared canvas. Docked top-center on desktop (out of the way
  * of both the map's own top-left nav controls and the right-side context
- * panel), and collapsed to a narrow left-docked vertical rail on mobile
- * where horizontal space is too tight for 9 side-by-side buttons. Hovering
+ * panel). On mobile it becomes a narrow vertical rail parked off-screen on
+ * the left, with a small tab that slides it into view on demand so it never
+ * covers the map or the zoom/basemap controls docked top-right. Hovering
  * a layer that's currently off fires `onHoverLayer` so the workspace can
  * show a dimmed preview + thumbnail without actually toggling it on.
  */
 export function LayerRail({ activeLayers, onToggle, onHoverLayer }: LayerRailProps) {
+  const [mobileOpen, setMobileOpen] = useState(false)
+
   return (
     <div
-      aria-label="Capas del laboratorio"
-      className="absolute left-3 top-16 z-10 flex w-[4.5rem] flex-col gap-1 rounded-xl border border-border/60 bg-card/80 py-2 shadow-lg backdrop-blur-md sm:left-1/2 sm:top-3 sm:w-auto sm:max-w-[min(92vw,44rem)] sm:-translate-x-1/2 sm:flex-row sm:flex-wrap sm:items-stretch sm:justify-center sm:gap-0.5 sm:px-2"
+      className={cn(
+        "absolute left-0 top-16 z-10 flex items-start transition-transform duration-300 ease-out sm:contents",
+        mobileOpen ? "translate-x-0" : "-translate-x-[5.25rem]",
+      )}
     >
-      {LAYER_GROUPS.map((group, groupIndex) => (
+      <div
+        id="layer-rail"
+        aria-label="Capas del laboratorio"
+        className={cn(
+          "ml-3 flex w-[4.5rem] flex-col gap-1 rounded-xl border border-border/60 bg-card/80 py-2 shadow-lg backdrop-blur-md transition-[visibility] duration-300 sm:absolute sm:left-1/2 sm:top-3 sm:ml-0 sm:w-auto sm:max-w-[min(92vw,44rem)] sm:-translate-x-1/2 sm:flex-row sm:flex-wrap sm:items-stretch sm:justify-center sm:gap-0.5 sm:px-2 sm:visible",
+          !mobileOpen && "invisible",
+        )}
+      >
+        {LAYER_GROUPS.map((group, groupIndex) => (
         <Fragment key={group[0]}>
           {groupIndex > 0 && (
             <span
@@ -89,6 +114,22 @@ export function LayerRail({ activeLayers, onToggle, onHoverLayer }: LayerRailPro
           })}
         </Fragment>
       ))}
+      </div>
+      <button
+        type="button"
+        aria-controls="layer-rail"
+        aria-expanded={mobileOpen}
+        aria-label={mobileOpen ? "Ocultar capas" : "Mostrar capas"}
+        onClick={() => setMobileOpen((open) => !open)}
+        className="mt-2 flex h-12 w-6 flex-col items-center justify-center gap-0.5 rounded-r-lg border border-l-0 border-border/60 bg-card/80 text-muted-foreground shadow-lg backdrop-blur-md transition-colors hover:text-foreground sm:hidden"
+      >
+        <Layers className="size-3.5" aria-hidden="true" />
+        {mobileOpen ? (
+          <ChevronLeft className="size-3.5" aria-hidden="true" />
+        ) : (
+          <ChevronRight className="size-3.5" aria-hidden="true" />
+        )}
+      </button>
     </div>
   )
 }
