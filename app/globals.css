@@ -219,17 +219,19 @@
   --precipitacion-muy-alto: oklch(0.4 0.12 220);
 
   /*
-   * Sismología magnitude ramp: pale violet (micro) to deep magenta (fuerte)
-   * — a hue arc none of the other four hazard ramps occupy (deslizamientos
-   * 25-115, incendios 28-100, inundaciones 235-270, precipitación
-   * 190-220), so all five sub-hazard color dots stay distinguishable when
-   * listed together in the riesgo-compuesto report.
+   * Sismología magnitude ramp: saturated violet (~295°), light to deep.
+   * Blue was tried first but small epicentre dots read as lakes and
+   * lagoons on the basemap's water. Violet sits clear of the water blue
+   * (~235°), the other hazard ramps (deslizamientos 25-115, incendios
+   * 28-100, inundaciones 235-270, precipitación 190-220) and the fault
+   * line orange. Chroma is kept high so even the micro dots stay visible
+   * at their small radius on a light basemap.
    */
-  --sismologia-micro: oklch(0.86 0.06 230);
-  --sismologia-menor: oklch(0.78 0.1 238);
-  --sismologia-ligero: oklch(0.68 0.14 246);
-  --sismologia-moderado: oklch(0.58 0.17 252);
-  --sismologia-fuerte: oklch(0.42 0.19 258);
+  --sismologia-micro: oklch(0.78 0.13 295);
+  --sismologia-menor: oklch(0.69 0.18 295);
+  --sismologia-ligero: oklch(0.6 0.22 296);
+  --sismologia-moderado: oklch(0.5 0.25 298);
+  --sismologia-fuerte: oklch(0.38 0.23 300);
   --sismologia-falla: oklch(0.56 0.19 48);
 
   /* Sevilla community damage-report severity ramp (Survey123 pilot): warm hue, distinct from the sismología magnitude ramp. */
@@ -524,12 +526,12 @@
   --clima-decada-4: oklch(0.72 0.17 70);
   --clima-decada-5: oklch(0.65 0.2 25);
 
-  /* Sismología magnitude ramp: kept vivid and legible on dark surfaces. */
-  --sismologia-micro: oklch(0.8 0.06 230);
-  --sismologia-menor: oklch(0.72 0.1 238);
-  --sismologia-ligero: oklch(0.64 0.15 246);
-  --sismologia-moderado: oklch(0.56 0.19 252);
-  --sismologia-fuerte: oklch(0.48 0.21 258);
+  /* Sismología magnitude ramp: violet (~295°), kept vivid on dark surfaces and clear of the basemap's water blue. */
+  --sismologia-micro: oklch(0.82 0.12 295);
+  --sismologia-menor: oklch(0.73 0.17 295);
+  --sismologia-ligero: oklch(0.65 0.22 296);
+  --sismologia-moderado: oklch(0.57 0.25 298);
+  --sismologia-fuerte: oklch(0.49 0.25 300);
   --sismologia-falla: oklch(0.76 0.17 58);
 
   /* Sevilla community damage-report severity ramp (Survey123 pilot): kept vivid and legible on dark surfaces. */
