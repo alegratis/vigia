@@ -1,5 +1,6 @@
 "use client"
 
+import { useRef, useState } from "react"
 import { ChevronDown, ChevronUp } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
@@ -37,6 +38,19 @@ interface BottomTabsProps {
   onFlyTo: (target: { lon: number; lat: number; zoom: number }) => void
   collapsed: boolean
   onCollapsedChange: (collapsed: boolean) => void
+  /** Desktop-only expanded height, as a percentage of the map area. Mobile always uses a fixed height. */
+  height: number
+  onHeightChange: (height: number) => void
+}
+
+export const DEFAULT_BOTTOM_PANEL_HEIGHT = 42
+const MIN_PANEL_HEIGHT = 20
+const MAX_PANEL_HEIGHT = 85
+const KEYBOARD_STEP = 5
+const DRAG_THRESHOLD_PX = 4
+
+function clampHeight(value: number) {
+  return Math.min(MAX_PANEL_HEIGHT, Math.max(MIN_PANEL_HEIGHT, Math.round(value * 10) / 10))
 }
 
 /** Narrows `VeredaFeature` to the `{ codigoVereda, nombre, municipio }` shape the clima/precipitación charts expect. */
@@ -87,23 +101,119 @@ export function BottomTabs({
   onFlyTo,
   collapsed,
   onCollapsedChange,
+  height,
+  onHeightChange,
 }: BottomTabsProps) {
   const focusLayer = lastActivatedLayer && activeLayers.includes(lastActivatedLayer)
     ? lastActivatedLayer
     : activeLayers[activeLayers.length - 1] ?? null
 
+  const panelRef = useRef<HTMLDivElement>(null)
+  const dragRef = useRef<{ startY: number; startPx: number; containerPx: number; moved: boolean } | null>(null)
+  const [dragging, setDragging] = useState(false)
+
+  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return
+    const panel = panelRef.current
+    const container = panel?.parentElement
+    if (!panel || !container) return
+    event.currentTarget.setPointerCapture(event.pointerId)
+    dragRef.current = {
+      startY: event.clientY,
+      startPx: panel.offsetHeight,
+      containerPx: container.clientHeight,
+      moved: false,
+    }
+  }
+
+  const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current
+    if (!drag) return
+    const delta = drag.startY - event.clientY
+    if (!drag.moved && Math.abs(delta) < DRAG_THRESHOLD_PX) return
+    drag.moved = true
+    setDragging(true)
+    if (collapsed) {
+      if (delta <= 0) return
+      onCollapsedChange(false)
+    }
+    onHeightChange(clampHeight(((drag.startPx + delta) / drag.containerPx) * 100))
+  }
+
+  const endDrag = (toggleIfClick: boolean) => {
+    const drag = dragRef.current
+    dragRef.current = null
+    setDragging(false)
+    if (drag && !drag.moved && toggleIfClick) onCollapsedChange(!collapsed)
+  }
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "ArrowUp") {
+      event.preventDefault()
+      if (collapsed) onCollapsedChange(false)
+      else onHeightChange(clampHeight(height + KEYBOARD_STEP))
+    } else if (event.key === "ArrowDown") {
+      event.preventDefault()
+      if (!collapsed) onHeightChange(clampHeight(height - KEYBOARD_STEP))
+    } else if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault()
+      onCollapsedChange(!collapsed)
+    }
+  }
+
   return (
     <div
-      className={`absolute inset-x-3 bottom-3 z-10 overflow-hidden rounded-xl border border-border/60 bg-card/80 shadow-lg backdrop-blur-md transition-[height] ${collapsed ? "h-11" : "h-[46%] sm:h-[42%]"}`}
+      ref={panelRef}
+      style={{ "--bottom-panel-h": `${height}%` } as React.CSSProperties}
+      className={`absolute inset-x-3 bottom-3 z-10 overflow-hidden rounded-xl border border-border/60 bg-card/80 shadow-lg backdrop-blur-md ${
+        dragging ? "" : "transition-[height]"
+      } ${collapsed ? "h-11" : "h-[46%] sm:h-[var(--bottom-panel-h)]"}`}
     >
-      <div className="flex items-center justify-between border-b border-border/70 px-4 py-1.5">
-        <p className="truncate text-xs font-medium text-muted-foreground">
+      <div className="relative flex h-11 items-center justify-between border-b border-border/70 px-4 sm:h-9">
+        <p className="max-w-[38%] truncate text-xs font-medium text-muted-foreground sm:max-w-none">
           {focusLayer ? `Panel de análisis · ${LAYER_DEFINITIONS[focusLayer].label}` : "Panel de análisis"}
         </p>
+
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => onCollapsedChange(!collapsed)}
+          aria-label={collapsed ? "Expandir panel" : "Colapsar panel"}
+          aria-expanded={!collapsed}
+          className="absolute left-1/2 top-1/2 h-9 w-20 -translate-x-1/2 -translate-y-1/2 rounded-full border border-border bg-muted shadow-sm sm:hidden"
+        >
+          {collapsed ? <ChevronUp className="size-6" aria-hidden="true" /> : <ChevronDown className="size-6" aria-hidden="true" />}
+        </Button>
+
+        <div
+          role="separator"
+          aria-orientation="horizontal"
+          aria-label="Redimensionar panel de análisis. Arrastra o usa las flechas arriba y abajo."
+          aria-valuemin={MIN_PANEL_HEIGHT}
+          aria-valuemax={MAX_PANEL_HEIGHT}
+          aria-valuenow={collapsed ? 0 : Math.round(height)}
+          tabIndex={0}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={() => endDrag(true)}
+          onPointerCancel={() => endDrag(false)}
+          onKeyDown={handleKeyDown}
+          onDoubleClick={() => onHeightChange(DEFAULT_BOTTOM_PANEL_HEIGHT)}
+          title="Arrastra para cambiar el tamaño · doble clic para restablecer"
+          className="group absolute left-1/2 top-0 hidden h-full w-48 -translate-x-1/2 cursor-row-resize touch-none items-center justify-center focus-visible:outline-2 focus-visible:outline-ring sm:flex"
+        >
+          <span
+            aria-hidden="true"
+            className={`h-1.5 w-14 rounded-full bg-muted-foreground/40 transition-colors group-hover:bg-muted-foreground/80 group-focus-visible:bg-muted-foreground/80 ${
+              dragging ? "bg-primary" : ""
+            }`}
+          />
+        </div>
+
         <Button
           size="icon"
           variant="ghost"
-          className="size-6 shrink-0"
+          className="hidden size-6 shrink-0 sm:inline-flex"
           onClick={() => onCollapsedChange(!collapsed)}
           aria-label={collapsed ? "Expandir panel" : "Colapsar panel"}
         >
@@ -112,7 +222,7 @@ export function BottomTabs({
       </div>
 
       {!collapsed && (
-        <div className="h-[calc(100%-2.25rem)] overflow-y-auto p-3 sm:p-4">
+        <div className="h-[calc(100%-2.75rem)] overflow-y-auto p-3 sm:h-[calc(100%-2.25rem)] sm:p-4">
           {!focusLayer ? (
             <p className="text-sm text-muted-foreground">
               Activa una capa en el riel izquierdo para ver sus gráficos, métricas y metodología.

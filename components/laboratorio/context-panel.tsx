@@ -49,6 +49,8 @@ interface ContextPanelProps {
   onToggleSubLayer: (id: string) => void
   /** Whether the bottom analysis panel is collapsed — this panel shrinks to match so the two never overlap. */
   bottomPanelCollapsed: boolean
+  /** Desktop height (% of the map area) of the expanded bottom panel — it is user-resizable. */
+  bottomPanelHeight: number
   collapsed: boolean
   onCollapsedChange: (collapsed: boolean) => void
   /** Selected value per `LayerOption` id — see `resolveOption`. */
@@ -77,6 +79,7 @@ export function ContextPanel({
   subLayerToggles,
   onToggleSubLayer,
   bottomPanelCollapsed,
+  bottomPanelHeight,
   collapsed,
   onCollapsedChange,
   hidrantesExperience,
@@ -131,8 +134,11 @@ export function ContextPanel({
 
   return (
     <div
-      className={`absolute right-3 top-3 z-10 flex w-[min(18rem,calc(100vw-5.5rem))] flex-col overflow-hidden rounded-xl border border-border/60 bg-card/80 shadow-lg backdrop-blur-md transition-[bottom] ${
-        bottomPanelCollapsed ? "bottom-[4.25rem]" : "bottom-[calc(42%+1.5rem)]"
+      style={{ "--bottom-panel-h": `${bottomPanelHeight}%` } as React.CSSProperties}
+      className={`absolute right-3 top-3 z-10 flex w-[min(18rem,calc(100vw-5.5rem))] flex-col overflow-hidden rounded-xl border border-border/60 bg-card/80 shadow-lg backdrop-blur-md ${
+        bottomPanelCollapsed
+          ? "bottom-[4.25rem]"
+          : "bottom-[calc(46%+1.5rem)] sm:bottom-[calc(var(--bottom-panel-h)+1.5rem)]"
       }`}
     >
       <div className="flex shrink-0 items-center justify-end border-b border-border/70 px-2 py-1">
