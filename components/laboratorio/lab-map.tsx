@@ -281,16 +281,7 @@ export function LabMap({
   const { points: osmInfraPoints } = useOsmInfrastructure()
   const osmColors = useOsmCategoryColors()
 
-  // On mobile the layer rail/navigation covers the left edge, so the map controls move to the right.
-  const [isMobile, setIsMobile] = useState(false)
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 639px)")
-    const update = () => setIsMobile(mq.matches)
-    update()
-    mq.addEventListener("change", update)
-    return () => mq.removeEventListener("change", update)
-  }, [])
-  const controlsPosition = isMobile ? "top-right" : "top-left"
+  const controlsPosition = "top-left"
 
   const [viewportBounds, setViewportBounds] = useState<MapBounds | null>(null)
   const [zoom, setZoom] = useState(9)
