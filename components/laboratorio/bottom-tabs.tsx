@@ -8,6 +8,7 @@ import { tokenColor } from "@/lib/utils"
 import { WeatherDetailedForecast, WeatherReportCard } from "@/components/clima/weather-report-card"
 import { useSismologiaEventos } from "@/lib/sismologia/use-sismologia"
 import { formatQuakeAge, getLatestSeismicEvents } from "@/lib/sismologia/latest-events"
+import { MIN_NUMBERED_MAGNITUDE } from "@/lib/sismologia/levels"
 import { formatDateTime } from "@/lib/firms/ui"
 import type { ClimaVeredaProperties } from "@/lib/clima/api-types"
 import { LAYER_DEFINITIONS, type LabVeredasFeatureCollection, type LayerKey } from "@/lib/laboratorio/layers"
@@ -73,7 +74,7 @@ const METHODOLOGY_NOTES: Partial<Record<LayerKey, string>> = {
   "riesgo-compuesto":
     "Combina el nivel más severo entre deslizamientos, inundaciones e incendios por vereda (\"el peor gana\"). Ver lib/riesgo-compuesto — sin cambios en este prototipo.",
   precipitacion:
-    "Precipitación acumulada o pronosticada por vereda (NASA POWER / Open-Meteo). Ver lib/precipitacion/hazard-model.ts — sin cambios en este prototipo.",
+    "Precipitación acumulada o pronosticada por vereda (Open-Meteo / IDEAM). Ver lib/precipitacion/hazard-model.ts — sin cambios en este prototipo.",
   clima: "Temperatura actual y climatología histórica por vereda (Open-Meteo). Ver lib/clima/api-types.ts — sin cambios en este prototipo.",
   demografia:
     "Vista simplificada por vereda: normaliza la población de /api/veredas en 5 niveles. No es el IVS/vulnerabilidad completo de producción (que trabaja a nivel de manzana) — esa profundidad queda fuera de este prototipo.",
@@ -360,7 +361,9 @@ function LatestQuakes({ onFlyTo }: { onFlyTo: (target: { lon: number; lat: numbe
 
   return (
     <section aria-label="Últimos tres sismos" className="rounded-md border border-border p-3">
-      <h3 className="mb-2 text-sm font-medium text-foreground">Últimos tres sismos</h3>
+      <h3 className="mb-2 text-sm font-medium text-foreground">
+        Últimos tres sismos <span className="font-normal text-muted-foreground">(M ≥ {MIN_NUMBERED_MAGNITUDE})</span>
+      </h3>
       {latest.length === 0 ? (
         <p className="text-sm text-muted-foreground">Cargando eventos recientes…</p>
       ) : (

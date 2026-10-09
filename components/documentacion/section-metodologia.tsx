@@ -217,7 +217,7 @@ const COMPOUND_STEPS: Step[] = [
       "Deslizamientos, inundaciones e incendios: se reutiliza directamente el puntaje 0–1 ya calculado por cada modelo propio, nunca se recalcula.",
       "Precipitación (4 niveles: Bajo/Moderado/Alto/Muy alto): sin puntaje continuo publicado, se usa el índice ordinal del nivel sobre el total de niveles como puntaje sustituto, la misma técnica que el modelo de inundación ya usa para traducir la clase de zonificación oficial a un puntaje.",
       "Incendios se resuelve en el mismo centroide de vereda que los otros cuatro directamente desde aggregateVeredas() (lib/veredas/aggregate.ts), que ya calcula el modelo propio de incendios junto con los de deslizamiento e inundación, no hace falta un cruce aparte contra ninguna capa oficial.",
-      "Precipitación reutiliza /api/precipitacion/amenaza en su modo histórico de 7 días con NASA POWER, ya calculado por vereda.",
+      "Precipitación reutiliza /api/precipitacion/amenaza en su modo histórico de 7 días con Open-Meteo, ya calculado por vereda.",
       "Sismología: sin zonificación por vereda publicada, se calcula un puntaje propio de exposición por decaimiento espacial desde los epicentros de USGS (en vivo) y SGC (histórico), ver lib/sismologia/exposure-score.ts.",
     ],
     nota:
@@ -255,7 +255,7 @@ const COMPOUND_STEPS: Step[] = [
 const COMPOUND_CACHES = [
   { fuente: "Deslizamientos e inundaciones", ttl: "reutilizada", motivo: "mismo caché que cada modelo individual (vía aggregateVeredas)" },
   { fuente: "Incendios forestales (cruce por centroide)", ttl: "1 hora", motivo: "mismo caché que la capa AmenazaIncendios original" },
-  { fuente: "Precipitación (NASA POWER, 7 días)", ttl: "3 horas", motivo: "mismo caché que /api/precipitacion/amenaza" },
+  { fuente: "Precipitación (Open-Meteo, 7 días)", ttl: "3 horas", motivo: "mismo caché que /api/precipitacion/amenaza" },
   { fuente: "Sismología (USGS en vivo / SGC histórico)", ttl: "5 min / 1 día", motivo: "mismo caché que /api/sismologia/eventos" },
 ]
 

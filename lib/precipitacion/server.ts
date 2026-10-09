@@ -3,7 +3,7 @@ import "server-only"
 import { centroid } from "@turf/centroid"
 import { multiPolygon } from "@turf/helpers"
 import { getVeredaBoundaries } from "@/lib/veredas/boundaries"
-import { getAccumulatedPrecipitationBatch, type AccumulationWindowDays } from "./power-client"
+import { getAccumulatedPrecipitationBatch, type AccumulationWindowDays } from "./openmeteo-accumulation-client"
 import { getForecastPrecipitationBatch, type ForecastWindowDays } from "./forecast-client"
 import { getIdeamAccumulationBatch } from "./ideam-client"
 import { classifyPrecipitation } from "./levels"
@@ -20,12 +20,13 @@ export interface GetPrecipitacionAmenazaOptions {
  * Builds the vereda-level precipitación GeoJSON for /api/precipitacion/amenaza:
  * reuses the same vereda boundaries fetched for /api/veredas (see
  * lib/veredas/boundaries.ts), computes each vereda's centroid, then queries
- * one of three sources once per centroid — NASA POWER or IDEAM stations for
- * a backward-looking accumulation (see power-client.ts / ideam-client.ts),
- * or Open-Meteo for a forward-looking forecast (see forecast-client.ts) —
- * and classifies the result into a threat level. NASA POWER has no
- * municipio gap (Zarzal gets the same coverage as Sevilla and Caicedonia);
- * IDEAM's 2 nearby stations do not reach Sevilla or Caicedonia at all.
+ * one of three sources once per centroid — Open-Meteo or IDEAM stations for
+ * a backward-looking accumulation (see openmeteo-accumulation-client.ts /
+ * ideam-client.ts), or Open-Meteo for a forward-looking forecast (see
+ * forecast-client.ts) — and classifies the result into a threat level.
+ * Open-Meteo has no municipio gap (Zarzal gets the same coverage as Sevilla
+ * and Caicedonia); IDEAM's 2 nearby stations do not reach Sevilla or
+ * Caicedonia at all.
  */
 export async function getPrecipitacionAmenaza({
   mode,

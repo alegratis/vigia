@@ -3,9 +3,9 @@
 export type PrecipitacionMode = "historico" | "pronostico"
 
 /** Historical-only: which data source backs the accumulation. Ignored (and irrelevant) in "pronostico" mode. */
-export type PrecipitacionFuente = "power" | "ideam"
+export type PrecipitacionFuente = "openmeteo" | "ideam"
 
-/** Historical accumulation window options (days), shared by the UI and lib/precipitacion/power-client.ts. */
+/** Historical accumulation window options (days), shared by the UI and lib/precipitacion/openmeteo-accumulation-client.ts. */
 export const ACCUMULATION_WINDOW_OPTIONS = [7, 14, 30] as const
 export type AccumulationWindowDays = (typeof ACCUMULATION_WINDOW_OPTIONS)[number]
 
@@ -20,7 +20,7 @@ export interface PrecipitacionFeatureProperties {
   esCascoUrbano?: boolean
   /**
    * Historical mode: accumulated rainfall (mm) over the most recent
-   * `windowDays` from NASA POWER (settled reanalysis days) or IDEAM
+   * `windowDays` from Open-Meteo (complete days ending yesterday) or IDEAM
    * (summed 10-min station readings), depending on `fuente`. Forecast
    * mode: summed forecast precipitation (mm) over the next `windowDays`
    * days from Open-Meteo. `null` if the source had no valid data for this
@@ -55,7 +55,7 @@ export interface PrecipitacionAmenazaResponse {
   generatedAt: string
   /** "historico" (backward-looking) or "pronostico" (Open-Meteo, forward-looking). */
   mode: PrecipitacionMode
-  /** Historical-only source used: "power" (NASA POWER) or "ideam" (station network). Always "power" in "pronostico" mode. */
+  /** Historical-only source used: "openmeteo" or "ideam" (station network). Always "openmeteo" in "pronostico" mode. */
   fuente: PrecipitacionFuente
   /** Number of days in the accumulation or forecast window. */
   windowDays: number

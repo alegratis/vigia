@@ -1,6 +1,6 @@
 /**
  * Shared, client-safe metadata for the precipitación threat levels computed
- * in lib/precipitacion/power-client.ts from accumulated rainfall. No
+ * in lib/precipitacion/openmeteo-accumulation-client.ts from accumulated rainfall. No
  * official Colombian standard defines fixed mm thresholds for this
  * (IDEAM's own guidance uses qualitative categories tied to region-specific
  * IDF curves, not a single national scale) — these bands are a simple,
@@ -8,7 +8,7 @@
  * rainfall-intensity bands (light/moderate/heavy/violent, roughly <2.5,
  * 2.5–7.6, 7.6–50 and >50 mm in 24h) scaled to this app's 7-day
  * accumulation window. They are context, not a calibrated flood or
- * landslide hazard model — see lib/precipitacion/power-client.ts.
+ * landslide hazard model — see lib/precipitacion/openmeteo-accumulation-client.ts.
  */
 
 export const PRECIPITATION_LEVELS = ["Bajo", "Moderado", "Alto", "Muy alto"] as const

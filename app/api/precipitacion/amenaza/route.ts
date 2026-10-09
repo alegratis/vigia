@@ -9,9 +9,9 @@ import {
   type PrecipitacionMode,
 } from "@/lib/precipitacion/api-types"
 
-// Fans out one NASA POWER or Open-Meteo request per unique vereda centroid
-// (~55 veredas, concurrency-capped in lib/precipitacion/power-client.ts and
-// lib/precipitacion/forecast-client.ts) — give it more room than the
+// Fans out one Open-Meteo request per unique vereda centroid
+// (~55 veredas, concurrency-capped in lib/precipitacion/openmeteo-accumulation-client.ts
+// and lib/precipitacion/forecast-client.ts) — give it more room than the
 // default 10s/15s route budget, same reasoning as /api/veredas.
 export const maxDuration = 60
 
@@ -26,7 +26,7 @@ export async function GET(request: Request) {
   const windowDays = windowOptions.includes(windowParam) ? windowParam : 7
 
   const fuenteParam = searchParams.get("fuente")
-  const fuente: PrecipitacionFuente = mode === "historico" && fuenteParam === "ideam" ? "ideam" : "power"
+  const fuente: PrecipitacionFuente = mode === "historico" && fuenteParam === "ideam" ? "ideam" : "openmeteo"
 
   try {
     const { windowEnd, veredas } = await getPrecipitacionAmenaza({ mode, windowDays, fuente })

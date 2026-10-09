@@ -67,8 +67,16 @@ export function magnitudeColorToken(magnitude: number): string {
   return SEISMIC_MAGNITUDE_LEVEL_STYLES[magnitudeLevel(magnitude)].colorToken
 }
 
+/** Quakes at or above this magnitude get a numbered "latest quake" marker; smaller ones are drawn as faint, small dots. */
+export const MIN_NUMBERED_MAGNITUDE = 2.5
+
+export function isMinorQuake(magnitude: number): boolean {
+  return magnitude < MIN_NUMBERED_MAGNITUDE
+}
+
 /** Marker radius (px) scaled by magnitude — same clamp-and-scale technique as `fireRadius()` in the incendios map. */
 export function magnitudeRadius(magnitude: number): number {
+  if (isMinorQuake(magnitude)) return Math.min(3.5, Math.max(2, 1.5 + magnitude * 0.8))
   return Math.min(16, Math.max(4, 3 + magnitude * 1.8))
 }
 

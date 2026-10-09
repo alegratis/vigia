@@ -9,7 +9,7 @@ import "server-only"
  *   give the deslizamientos, inundaciones and incendios (own models)
  *   hazard levels/scores, plus every demographics field, per vereda.
  * - `getPrecipitacionAmenaza()` (lib/precipitacion/server.ts), run once
- *   in its existing 7-day/NASA POWER historical mode, resolves
+ *   in its existing 7-day/Open-Meteo historical mode, resolves
  *   precipitación at the same vereda granularity it already supports.
  * - `getSeismicExposureByVereda()` (lib/sismologia/exposure-score.ts)
  *   resolves sismología at the same centroids via distance-decay from
@@ -37,7 +37,7 @@ export async function getRiesgoCompuestoVeredas(): Promise<CompoundFeatureCollec
 
   const [aggregates, precipitacion] = await Promise.all([
     aggregateVeredas(boundaries),
-    getPrecipitacionAmenaza({ mode: "historico", windowDays: 7, fuente: "power" }),
+    getPrecipitacionAmenaza({ mode: "historico", windowDays: 7, fuente: "openmeteo" }),
   ])
 
   const centroids = boundaries.map((b) => {

@@ -33,7 +33,7 @@ interface PrecipitationPopupContentProps {
   municipio: string
   /** 7-day forecast level, total and max POP driving the map fill; null while it loads or when the vereda has no data. */
   precipitacion: PrecipitacionFeatureProperties | null
-  /** Rainfall accumulated over the last 7 days (NASA POWER), shown as a secondary figure; null while it loads. */
+  /** Rainfall accumulated over the last 7 days (Open-Meteo), shown as a secondary figure; null while it loads. */
   historico: PrecipitacionFeatureProperties | null
   /** Current conditions and daily outlook for the same vereda; null while the feed loads. */
   clima: ClimaVeredaProperties | null

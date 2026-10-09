@@ -1,4 +1,5 @@
 import type { SeismicEvent, SismologiaEventosResponse } from "./api-types"
+import { isMinorQuake } from "./levels"
 
 /** Two catalogs reporting the same quake differ by seconds and a few km — treat anything inside these as one event. */
 const DUPLICATE_WINDOW_MS = 3 * 60_000
@@ -15,10 +16,13 @@ function isSameQuake(a: SeismicEvent, b: SeismicEvent): boolean {
 /**
  * The N most recent distinct quakes across the live SGC and USGS feeds, newest first.
  * SGC live is listed first so it wins when both catalogs report the same event.
+ * Only quakes at or above MIN_NUMBERED_MAGNITUDE qualify — smaller ones are still drawn on the map, just not numbered.
  */
 export function getLatestSeismicEvents(data: SismologiaEventosResponse | undefined, count = 3): SeismicEvent[] {
   if (!data) return []
-  const sorted = [...data.sgcLive.events, ...data.usgs.events].sort(
+  const sorted = [...data.sgcLive.events, ...data.usgs.events]
+    .filter((event) => !isMinorQuake(Number(event.magnitude)))
+    .sort(
     (a, b) => new Date(b.time).getTime() - new Date(a.time).getTime(),
   )
   const distinct: SeismicEvent[] = []

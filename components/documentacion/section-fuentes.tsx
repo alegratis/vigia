@@ -192,13 +192,13 @@ const GROUPS: SourceGroup[] = [
         actualizacion: "Cada ~30 minutos",
       },
       {
-        nombre: "Lluvia acumulada por punto (PRECTOTCORR)",
-        publicador: "NASA POWER (LARC)",
+        nombre: "Lluvia acumulada por punto (precipitation_sum)",
+        publicador: "Open-Meteo",
         descripcion:
-          "Precipitación diaria puntual por reanálisis MERRA-2 (datos asentados) o GEOS-IT (últimos días, casi en tiempo real): no es GPM/satelital directo. Consultada una vez por centroide de vereda para el acumulado de 7 días del mapa de precipitación.",
-        url: "https://power.larc.nasa.gov/",
+          "Precipitación diaria puntual por análisis ECMWF IFS HRES (asimila observaciones reales) con reanálisis ERA5 más atrás: no es una lectura satelital directa. Consultada una vez por centroide de vereda para el acumulado de 7 días del mapa de precipitación, sumando días completos hasta ayer.",
+        url: "https://open-meteo.com/en/docs",
         acceso: "API REST (JSON)",
-        licencia: "Datos públicos de la NASA",
+        licencia: "Uso no comercial gratuito, sin clave",
         cobertura: "Global (recortada al área de estudio)",
         actualizacion: "Diaria; la app cachea 3 horas",
       },
@@ -206,7 +206,7 @@ const GROUPS: SourceGroup[] = [
         nombre: "Lluvia acumulada por estación automática",
         publicador: "IDEAM",
         descripcion:
-          "Lecturas de precipitación cada 10 minutos de estaciones automáticas, expuestas en el portal de datos abiertos. Fuente alternativa (junto a NASA POWER) para el modo histórico del mapa de precipitación: más precisa donde hay estación cercana, pero solo 2 estaciones caen dentro de un radio de 20 km del área de estudio (Zarzal y Bugalagrande), sin cobertura en Caicedonia ni buena parte de Sevilla.",
+          "Lecturas de precipitación cada 10 minutos de estaciones automáticas, expuestas en el portal de datos abiertos. Fuente alternativa (junto a Open-Meteo) para el modo histórico del mapa de precipitación: más precisa donde hay estación cercana, pero solo 2 estaciones caen dentro de un radio de 20 km del área de estudio (Zarzal y Bugalagrande), sin cobertura en Caicedonia ni buena parte de Sevilla.",
         url: "https://www.datos.gov.co/resource/s54a-sgyg.json",
         acceso: "API REST (Socrata/JSON)",
         licencia: "Datos abiertos de Colombia (datos.gov.co)",
@@ -217,7 +217,7 @@ const GROUPS: SourceGroup[] = [
         nombre: "Lluvia mensual del año en curso (archivo histórico)",
         publicador: "Open-Meteo",
         descripcion:
-          "Precipitación diaria por análisis ECMWF IFS HRES (últimos ~2 meses, asimila observaciones reales de estaciones y radiosondas) con reanálisis ERA5/ERA5-Land más atrás en el año: no es una lectura satelital directa. Usada para la línea de comparación del año en curso en el histograma de climatología, en lugar de NASA POWER: su capa casi en tiempo real (derivada de GPM IMERG) mostró sobrestimaciones notables de lluvia en este terreno montañoso durante las pruebas.",
+          "Precipitación diaria por análisis ECMWF IFS HRES (últimos ~2 meses, asimila observaciones reales de estaciones y radiosondas) con reanálisis ERA5/ERA5-Land más atrás en el año: no es una lectura satelital directa. Usada para la línea de comparación del año en curso en el histograma de climatología. Se prefiere sobre NASA POWER, cuya capa casi en tiempo real (derivada de GPM IMERG) mostró sobrestimaciones notables de lluvia en este terreno montañoso durante las pruebas.",
         url: "https://open-meteo.com/en/docs/historical-weather-api",
         acceso: "API REST (JSON)",
         licencia: "Uso no comercial gratuito, sin clave",
@@ -362,7 +362,7 @@ const GROUPS: SourceGroup[] = [
         nombre: "Riesgo compuesto por vereda",
         publicador: "Vigía (cálculo propio, siguiendo la doctrina OMM/GDACS y el estilo del Índice de Riesgo INFORM)",
         descripcion:
-          "Combina el puntaje/nivel de deslizamientos, el puntaje/nivel de inundaciones (modelo propio), el nivel de incendios forestales (AmenazaIncendios, cruzado por centroide de vereda), el nivel de precipitación (acumulado de 7 días, NASA POWER) y el puntaje de exposición sísmica (decaimiento espacial desde epicentros USGS/SGC) en un nivel compuesto (el mayor de los cinco, normalizado de 0 a 1) y un puntaje compuesto (promedio ponderado 20%/20%/20%/20%/20%, re-normalizado sobre los que resolvieron), más un reporte narrativo en español generado con plantillas de texto deterministas, nunca con un modelo de lenguaje. Ver la sección \"Metodología\" más abajo para el detalle completo.",
+          "Combina el puntaje/nivel de deslizamientos, el puntaje/nivel de inundaciones (modelo propio), el nivel de incendios forestales (AmenazaIncendios, cruzado por centroide de vereda), el nivel de precipitación (acumulado de 7 días, Open-Meteo) y el puntaje de exposición sísmica (decaimiento espacial desde epicentros USGS/SGC) en un nivel compuesto (el mayor de los cinco, normalizado de 0 a 1) y un puntaje compuesto (promedio ponderado 20%/20%/20%/20%/20%, re-normalizado sobre los que resolvieron), más un reporte narrativo en español generado con plantillas de texto deterministas, nunca con un modelo de lenguaje. Ver la sección \"Metodología\" más abajo para el detalle completo.",
         url: "/documentacion#metodologia",
         acceso: "Cálculo propio, composición de las cinco categorías existentes",
         licencia: "N/A: calculado por la app a partir de sus propios modelos",

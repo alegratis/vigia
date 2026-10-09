@@ -69,6 +69,7 @@ import {
   SEISMIC_MAGNITUDE_LEVELS,
   SEISMIC_MAGNITUDE_LEVEL_STYLES,
   SEISMIC_EXPOSURE_LEVEL_TOKENS,
+  isMinorQuake,
   magnitudeLevel,
   magnitudeRadius,
   seismicExposureLevel,
@@ -192,7 +193,7 @@ interface LabMapProps {
   /** 7-day accumulation and level per vereda, feeds the precipitación tooltip alongside `climaData`. */
   /** 7-day forecast (Open-Meteo): drives the fill color and the popup's level. */
   precipitacionData: PrecipitacionAmenazaResponse | null
-  /** Last-7-days accumulation (NASA POWER): secondary figure in the popup. */
+  /** Last-7-days accumulation (Open-Meteo): secondary figure in the popup. */
   precipitacionHistoricoData: PrecipitacionAmenazaResponse | null
   /** Camera request issued from outside the map (e.g. the bottom panel's latest-quakes list); `nonce` re-triggers the same target. */
   flyTarget: { lon: number; lat: number; zoom: number; nonce: number } | null
@@ -335,8 +336,15 @@ export function LabMap({
         .filter((event) => cutoff === 0 || event.source !== "sgc" || new Date(event.time).getTime() >= cutoff)
         .map((event) => {
           const color = resolved.magnitude[magnitudeLevel(event.magnitude)]
-          const paint =
-            event.source === "sgc-live"
+          const minor = isMinorQuake(Number(event.magnitude))
+          const paint = minor
+            ? {
+                strokeColor: color,
+                strokeWidth: 0.5,
+                fillColor: color,
+                fillOpacity: event.source === "sgc-live" ? 0.4 : event.source === "usgs" ? 0.2 : 0.1,
+              }
+            : event.source === "sgc-live"
               ? { strokeColor: "#ffffff", strokeWidth: 1, fillColor: color, fillOpacity: 0.85 }
               : event.source === "usgs"
                 ? { strokeColor: color, strokeWidth: 2, fillColor: color, fillOpacity: 0.35 }
@@ -344,7 +352,7 @@ export function LabMap({
           return {
             type: "Feature" as const,
             id: event.id,
-            properties: { ...event, __radius: magnitudeRadius(event.magnitude), ...paint },
+            properties: { ...event, __radius: magnitudeRadius(Number(event.magnitude)), __sort: minor ? 0 : 1, ...paint },
             geometry: { type: "Point" as const, coordinates: [event.lon, event.lat] },
           }
         }),
@@ -1234,6 +1242,7 @@ export function LabMap({
             <Layer
               id="lab-seismic-events"
               type="circle"
+              layout={{ "circle-sort-key": ["get", "__sort"] }}
               paint={{
                 "circle-radius": ["get", "__radius"],
                 "circle-color": ["get", "fillColor"],
