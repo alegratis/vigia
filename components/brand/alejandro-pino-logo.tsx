@@ -1,5 +1,7 @@
 import { cn } from "@/lib/utils"
 
+export const PORTFOLIO_URL = "https://sig.alejandro-pino.com"
+
 /**
  * Personal brand mark for Alejandro Pino — technical direction, software
  * development, and GIS systems at RED LabOT.
@@ -55,7 +57,15 @@ export function AlejandroPinoLogo({
   markClassName?: string
 }) {
   return (
-    <div className={cn("inline-flex items-center gap-2.5 text-foreground", className)}>
+    <a
+      href={PORTFOLIO_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={cn(
+        "inline-flex items-center gap-2.5 rounded-md text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        className,
+      )}
+    >
       <AlejandroPinoMark className={cn("h-8 w-8 shrink-0", markClassName)} />
       <div className="flex flex-col items-start leading-none">
         <span className="text-sm font-semibold tracking-wide">ALEJANDRO PINO</span>
@@ -63,6 +73,7 @@ export function AlejandroPinoLogo({
           {"SIG - DESARROLLO"}
         </span>
       </div>
-    </div>
+      <span className="sr-only">(portafolio en sig.alejandro-pino.com, se abre en una pestaña nueva)</span>
+    </a>
   )
 }
