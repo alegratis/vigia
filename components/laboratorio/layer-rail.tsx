@@ -62,10 +62,11 @@ export function LayerRail({ activeLayers, onToggle, onHoverLayer }: LayerRailPro
         id="layer-rail"
         aria-label="Capas del laboratorio"
         className={cn(
-          "ml-3 flex max-h-[calc(100dvh-24rem)] w-[4.5rem] flex-col gap-1 overflow-y-auto rounded-xl sm:max-h-none sm:overflow-visible border border-border/60 bg-card/80 py-2 shadow-lg backdrop-blur-md transition-[visibility] duration-300 sm:absolute sm:left-1/2 sm:top-3 sm:ml-0 sm:w-auto sm:max-w-[min(92vw,44rem)] sm:-translate-x-1/2 sm:flex-row sm:flex-wrap sm:items-stretch sm:justify-center sm:gap-0.5 sm:px-2 sm:visible",
+          "ml-3 flex max-h-[calc(100dvh-24rem)] w-[4.5rem] flex-col gap-1 overflow-y-auto rounded-xl sm:max-h-none sm:overflow-visible border border-border/60 bg-card/80 py-2 shadow-lg backdrop-blur-md transition-[visibility] duration-300 sm:pointer-events-none sm:visible sm:absolute sm:left-16 sm:right-[19.5rem] sm:top-3 sm:ml-0 sm:w-auto sm:flex-row sm:justify-center sm:border-0 sm:bg-transparent sm:py-0 sm:shadow-none sm:backdrop-blur-none sm:@container",
           !mobileOpen && "invisible",
         )}
       >
+        <div className="contents sm:pointer-events-auto sm:flex sm:max-w-full sm:flex-nowrap sm:items-stretch sm:justify-center sm:gap-0.5 sm:rounded-xl sm:border sm:border-border/60 sm:bg-card/80 sm:px-2 sm:py-2 sm:shadow-lg sm:backdrop-blur-md">
         {LAYER_GROUPS.map((group, groupIndex) => (
         <Fragment key={group[0]}>
           {groupIndex > 0 && (
@@ -93,11 +94,12 @@ export function LayerRail({ activeLayers, onToggle, onHoverLayer }: LayerRailPro
                 role="switch"
                 aria-checked={isActive}
                 aria-label={willReplace ? `${def.label} (sustituye la capa activa)` : def.label}
+                title={def.label}
                 onClick={() => onToggle(layer)}
                 onMouseEnter={() => !isActive && onHoverLayer(layer)}
                 onMouseLeave={() => onHoverLayer(null)}
                 className={cn(
-                  "mx-0.5 flex flex-col items-center gap-1 rounded-md px-0.5 py-2 text-center transition-colors sm:mx-0 sm:px-2 sm:py-1.5",
+                  "mx-0.5 flex flex-col items-center gap-1 rounded-md px-0.5 py-2 text-center transition-colors sm:mx-0 sm:shrink-0 sm:px-[clamp(0.25rem,0.9cqw,0.5rem)] sm:py-1.5",
                   isActive
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : willReplace
@@ -106,7 +108,7 @@ export function LayerRail({ activeLayers, onToggle, onHoverLayer }: LayerRailPro
                 )}
               >
                 <Icon className="size-4 shrink-0" aria-hidden="true" />
-                <span className="max-w-full text-balance break-words text-[9px] font-medium leading-tight sm:text-[10px]">
+                <span className="max-w-full text-balance text-[9px] font-medium leading-tight sm:text-[length:min(10px,1.4cqw)] sm:@max-[36rem]:hidden">
                   {def.shortLabel}
                 </span>
               </button>
@@ -114,6 +116,7 @@ export function LayerRail({ activeLayers, onToggle, onHoverLayer }: LayerRailPro
           })}
         </Fragment>
       ))}
+        </div>
       </div>
       <button
         type="button"
