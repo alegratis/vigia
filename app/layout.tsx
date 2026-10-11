@@ -1,7 +1,14 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
+import { IBM_Plex_Sans } from 'next/font/google'
 import { ThemeProvider } from '@/components/theme-provider'
 import './globals.css'
+
+const brand = IBM_Plex_Sans({
+  subsets: ['latin'],
+  weight: ['500', '600'],
+  variable: '--font-brand-plex',
+})
 
 export const metadata: Metadata = {
   title: 'Vigía. Vulnerabilidad social y riesgo compuesto',
@@ -41,7 +48,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="es" className="bg-background" suppressHydrationWarning>
+    <html lang="es" className={`${brand.variable} bg-background`} suppressHydrationWarning>
       <body className="antialiased">
         <ThemeProvider
           attribute="class"

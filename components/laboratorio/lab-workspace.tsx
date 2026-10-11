@@ -12,7 +12,7 @@ import { useCompoundVeredas } from "@/lib/riesgo-compuesto/use-compound-veredas"
 import { useHidrantesExperience } from "@/lib/laboratorio/use-hidrantes-experience"
 import { useDemografiaExperience } from "@/lib/laboratorio/use-demografia-experience"
 import { MUNICIPIOS } from "@/lib/veredas/municipio-toggles"
-import { AlejandroPinoLogo } from "@/components/brand/alejandro-pino-logo"
+import { AlejandroPinoLockup } from "@/components/brand/alejandro-pino-logo"
 import { ThemeToggle } from "@/components/theme-toggle"
 import type { PrecipitacionAmenazaResponse } from "@/lib/precipitacion/api-types"
 import type { ClimaForecastResponse } from "@/lib/clima/api-types"
@@ -300,7 +300,7 @@ export function LabWorkspace() {
             />
           </a>
           <span aria-hidden="true" className="h-6 w-px bg-border" />
-          <AlejandroPinoLogo className="h-6" />
+          <AlejandroPinoLockup className="text-foreground" />
         </div>
 
         <div className="flex min-w-0 items-center gap-2 sm:gap-3 xl:col-start-2">
