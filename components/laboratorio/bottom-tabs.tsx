@@ -5,7 +5,7 @@ import { ChevronDown, ChevronUp } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { tokenColor } from "@/lib/utils"
-import { WeatherDetailedForecast, WeatherReportCard } from "@/components/clima/weather-report-card"
+import { WeatherReportCard } from "@/components/clima/weather-report-card"
 import { useSismologiaEventos } from "@/lib/sismologia/use-sismologia"
 import { formatQuakeAge, getLatestSeismicEvents } from "@/lib/sismologia/latest-events"
 import { MIN_NUMBERED_MAGNITUDE } from "@/lib/sismologia/levels"
@@ -318,9 +318,8 @@ function FocusedLayerPanel({
       const vereda = toSelectedVereda(selectedVereda)
       return (
         <div className="flex flex-col gap-4">
-          <WeatherDetailedForecast vereda={climaVereda} />
+          <WeatherReportCard vereda={climaVereda} />
           <div className="grid items-start gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,24rem),1fr))]">
-            <WeatherReportCard vereda={climaVereda} />
             <ClimaDecadalChart vereda={vereda} />
             <ClimaQuinquenalChart vereda={vereda} />
           </div>
