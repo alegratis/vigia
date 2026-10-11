@@ -3,7 +3,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import { ArrowUpRight } from "lucide-react"
-import { AlejandroPinoLogo } from "@/components/brand/alejandro-pino-logo"
+import { AlejandroPinoLockup } from "@/components/brand/alejandro-pino-logo"
 import { BetaBadge } from "@/components/beta-badge"
 import {
   Dialog,
@@ -111,7 +111,7 @@ export function AboutDialog({ open, onOpenChange }: AboutDialogProps) {
                 className="hidden h-5 w-auto dark:block"
               />
             </a>
-            <AlejandroPinoLogo className="h-6" />
+            <AlejandroPinoLockup className="text-foreground" />
           </div>
           <p>
             Los índices de susceptibilidad son de{" "}
