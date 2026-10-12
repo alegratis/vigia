@@ -225,7 +225,7 @@ export const LAYER_DEFINITIONS: Record<LayerKey, LayerDefinition> = {
     // Inundaciones is the one production map with its own dedicated hydrography + rainfall
     // context overlays (components/maps/geoglows-live-map.tsx) beyond the shared GHSL/WDPA/OSM trio.
     subLayers: [
-      { id: "geoglows-click", label: "Consultar río al hacer clic (GEOGLOWS)", kind: "geoglows-click", defaultOn: true },
+      { id: "geoglows-click", label: "Ríos y caudales en vivo (GEOGLOWS)", kind: "geoglows-click", defaultOn: true },
       { id: "imerg", label: "Precipitación (IMERG)", kind: "imerg" },
       { id: "quebradas", label: "Quebradas y ríos (clic para nombre)", kind: "quebradas" },
       ...CONTEXT_SUB_LAYERS,

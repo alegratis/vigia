@@ -70,81 +70,13 @@ export function buildProxyExportUrl(bounds: LatLngBounds, width: number, height:
   return `/api/geoglows/export?${params.toString()}`
 }
 
-function buildIdentifyUrl(
-  lat: number,
-  lon: number,
-  bounds: LatLngBounds,
-  width: number,
-  height: number,
-): string {
-  const params = new URLSearchParams({
-    geometry: JSON.stringify({ x: lon, y: lat }),
-    geometryType: "esriGeometryPoint",
-    sr: "4326",
-    layers: "all",
-    tolerance: "12",
-    mapExtent: `${bounds.west},${bounds.south},${bounds.east},${bounds.north}`,
-    imageDisplay: `${Math.round(width)},${Math.round(height)},96`,
-    returnGeometry: "false",
-    f: "json",
-  })
-  return `${MAP_SERVER}/identify?${params.toString()}`
-}
-
-export interface ReachInfo {
-  country: string
-  meanFlowCms: number | null
-  returnPeriod: number
-  strahlerOrder: number | null
-  forecastTimestamp: string | null
-}
-
-/** Reach attribute keys as returned by the identify operation (verified against the live service). */
-interface IdentifyAttributes {
-  "River Country Name"?: string
-  "Mean Flow (m³/sec)"?: string
-  "Return Period"?: string
-  "Strahler Stream Order"?: string
-  "Forecast Timestamp"?: string
-}
-
-function parseNumeric(value: string | undefined): number | null {
-  if (!value || value === "Null") return null
-  const n = Number(value)
-  return Number.isFinite(n) ? n : null
-}
-
-/** Queries the reach nearest a map click and returns its forecast attributes, or null if none found. */
-export async function identifyReach(
-  lat: number,
-  lon: number,
-  bounds: LatLngBounds,
-  width: number,
-  height: number,
-): Promise<ReachInfo | null> {
-  const res = await fetch(buildIdentifyUrl(lat, lon, bounds, width, height))
-  if (!res.ok) throw new Error("No se pudo consultar el servicio de GEOGLOWS")
-  const json = await res.json()
-  const result = json?.results?.[0]
-  if (!result) return null
-
-  const attrs = result.attributes as IdentifyAttributes
-  return {
-    country: attrs["River Country Name"] ?? "—",
-    meanFlowCms: parseNumeric(attrs["Mean Flow (m³/sec)"]),
-    returnPeriod: parseNumeric(attrs["Return Period"]) ?? 0,
-    strahlerOrder: parseNumeric(attrs["Strahler Stream Order"]),
-    forecastTimestamp: attrs["Forecast Timestamp"] ?? null,
-  }
-}
-
 /**
  * The service renders 5 fixed return-period categories. Mapped onto our own
  * flood severity palette (lib/flood-ui.ts) so the live GEOGLOWS layer, the
  * station cards and the hydrographs all read as one consistent scale.
  */
 export const RETURN_PERIOD_LEGEND: { value: number; label: string; color: string }[] = [
-  { value: 0, label: "Normal", color: LEVEL_STYLES.normal.color },
+  { value: 0, label: "Normal", color: "var(--inundaciones-moderada)" },
   { value: 2, label: "Supera 2 años", color: LEVEL_STYLES.vigilancia.color },
   { value: 10, label: "Supera 10 años", color: LEVEL_STYLES.alerta.color },
   { value: 25, label: "Supera 25 años", color: LEVEL_STYLES.alerta_alta.color },
