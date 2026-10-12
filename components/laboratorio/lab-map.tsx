@@ -12,7 +12,7 @@ import Map, {
   type MapRef,
   type MapLayerMouseEvent,
 } from "react-map-gl/maplibre"
-import { setWorkerUrl } from "maplibre-gl"
+import { setWorkerUrl, type ExpressionSpecification } from "maplibre-gl"
 import "maplibre-gl/dist/maplibre-gl.css"
 import { toast } from "sonner"
 import { List, MapPin } from "lucide-react"
@@ -49,7 +49,8 @@ import { useOsmInfrastructure } from "@/lib/osm/use-infrastructure"
 import { getOsmCategory } from "@/lib/osm/categories"
 import { useOsmCategoryColors } from "@/lib/osm/use-osm-colors"
 import { SENSITIVE_SITE_STYLES, type SensitiveSiteFeature } from "@/lib/osm/sensitive-sites"
-import { identifyReach, returnPeriodColor, returnPeriodLabel, type ReachInfo } from "@/lib/geoglows/live-map"
+import { RETURN_PERIOD_LEGEND, returnPeriodColor, returnPeriodLabel } from "@/lib/geoglows/live-map"
+import type { GeoglowsReachProperties, GeoglowsReachesResponse } from "@/lib/geoglows/reaches-types"
 import { formatFlow } from "@/lib/flood-ui"
 import type { InundacionesQuebradasResponse } from "@/lib/inundaciones/api-types"
 import type { HidranteFeature } from "@/lib/hidrantes/api-types"
@@ -205,6 +206,12 @@ const quebradasFetcher = async (url: string): Promise<InundacionesQuebradasRespo
   return res.json()
 }
 
+const reachesFetcher = async (url: string): Promise<GeoglowsReachesResponse> => {
+  const res = await fetch(url)
+  if (!res.ok) throw new Error("No se pudo cargar los ríos de GEOGLOWS")
+  return res.json()
+}
+
 /**
  * Single shared `<Map>` rendering up to 3 hazard fills (plus a hover
  * preview) over the same vereda geometry — the core of the laboratorio
@@ -256,7 +263,7 @@ export function LabMap({
     properties: Record<string, unknown>
     barrio: BarrioProperties | null
   } | null>(null)
-  const [reachPopup, setReachPopup] = useState<{ lon: number; lat: number; info: ReachInfo | null } | null>(null)
+  const [reachPopup, setReachPopup] = useState<{ lon: number; lat: number; reach: GeoglowsReachProperties } | null>(null)
 
   // Only the focused layer's own sub-layers can be active — switching away from it (or turning off
   // exclusivity entirely) clears them implicitly since `focusLayer` becomes null/changes.
@@ -278,6 +285,19 @@ export function LabMap({
       features: quebradasData.lines.features.map((feature, i) => ({ ...feature, id: `quebrada-${i}` })),
     }
   }, [quebradasData])
+
+  const { data: reachesData } = useSWR<GeoglowsReachesResponse>(
+    activeSubLayerIds.has("geoglows-click") ? "/api/geoglows/reaches" : null,
+    reachesFetcher,
+    { revalidateOnFocus: false },
+  )
+  const reachesGeoJson = useMemo<GeoJSON.FeatureCollection | null>(() => {
+    if (!reachesData?.reaches) return null
+    return {
+      type: "FeatureCollection",
+      features: reachesData.reaches.features.map((feature) => ({ ...feature, id: feature.properties.comid })),
+    }
+  }, [reachesData])
 
   const { points: osmInfraPoints } = useOsmInfrastructure()
   const osmColors = useOsmCategoryColors()
@@ -904,6 +924,7 @@ export function LabMap({
     if (incendiosFocus && (showModis || showViirs)) ids.push("lab-fires-points")
     ids.push(...[...fillLayers].reverse().map((layer) => `lab-${layer}-fill`))
     if (activeSubLayerIds.has("quebradas")) ids.push("lab-sub-quebradas-hit")
+    if (activeSubLayerIds.has("geoglows-click")) ids.push("lab-sub-geoglows-hit")
     if (focusLayer === "hidrantes") ids.push("lab-hidrantes-points", "lab-sensitive-sites-fill")
     if (activeLayers.includes("demografia")) {
       ids.push(DEMOGRAFIA_LAYER_ID)
@@ -984,7 +1005,22 @@ export function LabMap({
 
       if (feature?.layer?.id === "lab-sub-quebradas-hit") {
         const nombre = (feature.properties?.nombre as string | undefined) ?? "Quebrada / río"
+        setReachPopup(null)
         setQuebradaPopup({ lon: e.lngLat.lng, lat: e.lngLat.lat, nombre })
+        return
+      }
+
+      if (feature?.layer?.id === "lab-sub-geoglows-hit") {
+        setQuebradaPopup(null)
+        setPopupInfo(null)
+        setClimaPopup(null)
+        setPrecipitacionPopup(null)
+        setFeaturePopup(null)
+        setReachPopup({
+          lon: e.lngLat.lng,
+          lat: e.lngLat.lat,
+          reach: feature.properties as unknown as GeoglowsReachProperties,
+        })
         return
       }
 
@@ -1021,32 +1057,12 @@ export function LabMap({
         setQuebradaPopup(null)
         setDemografiaPopup(null)
         setFeaturePopup(null)
+        setReachPopup(null)
 
         if (focusLayer === "hidrantes") {
           hidrantesExperience.setPopupHidrante(null)
           hidrantesExperience.setPopupSite(null)
           hidrantesExperience.setClickedPoint({ lat: e.lngLat.lat, lon: e.lngLat.lng })
-          return
-        }
-
-        if (activeSubLayerIds.has("geoglows-click")) {
-          const map = mapRef.current?.getMap()
-          if (map) {
-            const bounds = map.getBounds()
-            const container = map.getContainer()
-            const { lng, lat } = e.lngLat
-            identifyReach(
-              lat,
-              lng,
-              { north: bounds.getNorth(), south: bounds.getSouth(), east: bounds.getEast(), west: bounds.getWest() },
-              container.clientWidth,
-              container.clientHeight,
-            )
-              .then((info) => setReachPopup({ lon: lng, lat, info }))
-              .catch(() => setReachPopup({ lon: lng, lat, info: null }))
-          }
-        } else {
-          setReachPopup(null)
         }
         return
       }
@@ -1326,6 +1342,72 @@ export function LabMap({
               id="lab-sub-quebradas-hit"
               type="line"
               paint={{ "line-color": "#0ea5e9", "line-width": 14, "line-opacity": 0 }}
+            />
+          </Source>
+        )}
+
+        {reachesGeoJson && (
+          <Source id="lab-sub-geoglows-source" type="geojson" data={reachesGeoJson} promoteId="comid">
+            <Layer
+              id="lab-sub-geoglows-casing"
+              type="line"
+              layout={{ "line-cap": "round", "line-join": "round" }}
+              paint={{
+                "line-color": resolveCssColor("var(--background)"),
+                "line-opacity": 0.7,
+                "line-width": [
+                  "interpolate",
+                  ["linear"],
+                  ["zoom"],
+                  9,
+                  ["+", 1.5, ["*", 0.5, ["get", "streamorder"]]],
+                  15,
+                  ["+", 2.5, ["*", 1.2, ["get", "streamorder"]]],
+                ],
+              }}
+            />
+            <Layer
+              id="lab-sub-geoglows-line"
+              type="line"
+              layout={{ "line-cap": "round", "line-join": "round" }}
+              paint={{
+                "line-color": [
+                  "step",
+                  ["get", "returnperiod"],
+                  ...RETURN_PERIOD_LEGEND.flatMap((l, i) =>
+                    i === 0 ? [resolveCssColor(l.color)] : [l.value, resolveCssColor(l.color)],
+                  ),
+                ] as unknown as ExpressionSpecification,
+                "line-width": [
+                  "interpolate",
+                  ["linear"],
+                  ["zoom"],
+                  9,
+                  ["*", 0.5, ["get", "streamorder"]],
+                  15,
+                  ["*", 1.2, ["get", "streamorder"]],
+                ],
+              }}
+            />
+            {reachPopup && (
+              <Layer
+                id="lab-sub-geoglows-selected"
+                type="line"
+                filter={["==", ["get", "comid"], reachPopup.reach.comid]}
+                layout={{ "line-cap": "round", "line-join": "round" }}
+                paint={{
+                  "line-color": resolveCssColor("var(--foreground)"),
+                  "line-opacity": 0.9,
+                  "line-width": ["interpolate", ["linear"], ["zoom"], 9, 3, 15, 7],
+                }}
+              />
+            )}
+            {/* Invisible, deliberately wide line so a click anywhere near the river lands on it. */}
+            <Layer
+              id="lab-sub-geoglows-hit"
+              type="line"
+              layout={{ "line-cap": "round", "line-join": "round" }}
+              paint={{ "line-color": "#000000", "line-width": 26, "line-opacity": 0 }}
             />
           </Source>
         )}
@@ -1775,19 +1857,24 @@ export function LabMap({
             closeOnClick={false}
             maxWidth="240px"
           >
-            {reachPopup.info ? (
-              <div className="flex flex-col gap-1 p-1 text-sm">
-                <p className="font-semibold" style={{ color: returnPeriodColor(reachPopup.info.returnPeriod) }}>
-                  {returnPeriodLabel(reachPopup.info.returnPeriod)}
-                </p>
-                {reachPopup.info.meanFlowCms != null && (
-                  <p className="text-muted-foreground">Caudal medio: {formatFlow(reachPopup.info.meanFlowCms)}</p>
-                )}
-                <p className="text-xs text-muted-foreground">Fuente: GEOGLOWS</p>
-              </div>
-            ) : (
-              <p className="p-1 text-xs text-muted-foreground">Sin tramo de río en este punto.</p>
-            )}
+            <div className="flex flex-col gap-1 p-1 text-sm">
+              <p className="text-base font-semibold text-foreground">
+                {reachPopup.reach.nombre ?? (reachPopup.reach.streamorder >= 4 ? "Río sin nombre" : "Quebrada sin nombre")}
+              </p>
+              <p className="font-semibold" style={{ color: returnPeriodColor(reachPopup.reach.returnperiod) }}>
+                {returnPeriodLabel(reachPopup.reach.returnperiod)}
+              </p>
+              {reachPopup.reach.meanflow != null && (
+                <p className="text-muted-foreground">Caudal medio: {formatFlow(reachPopup.reach.meanflow)}</p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Orden de Strahler {reachPopup.reach.streamorder} · Tramo {reachPopup.reach.comid}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Fuente: GEOGLOWS
+                {reachPopup.reach.forecastAt ? ` · pronóstico ${formatDateTime(reachPopup.reach.forecastAt)}` : ""}
+              </p>
+            </div>
           </Popup>
         )}
 
