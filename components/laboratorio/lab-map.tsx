@@ -1372,11 +1372,21 @@ export function LabMap({
               layout={{ "line-cap": "round", "line-join": "round" }}
               paint={{
                 "line-color": [
-                  "step",
-                  ["get", "returnperiod"],
-                  ...RETURN_PERIOD_LEGEND.flatMap((l, i) =>
-                    i === 0 ? [resolveCssColor(l.color)] : [l.value, resolveCssColor(l.color)],
-                  ),
+                  "case",
+                  [">=", ["get", "returnperiod"], RETURN_PERIOD_LEGEND[1].value],
+                  [
+                    "step",
+                    ["get", "returnperiod"],
+                    resolveCssColor(RETURN_PERIOD_LEGEND[1].color),
+                    ...RETURN_PERIOD_LEGEND.slice(2).flatMap((l) => [l.value, resolveCssColor(l.color)]),
+                  ],
+                  [
+                    "step",
+                    ["get", "streamorder"],
+                    resolveCssColor("var(--inundaciones-moderada)"),
+                    4,
+                    resolveCssColor("var(--inundaciones-alta)"),
+                  ],
                 ] as unknown as ExpressionSpecification,
                 "line-width": [
                   "interpolate",

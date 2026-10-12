@@ -76,7 +76,7 @@ export function buildProxyExportUrl(bounds: LatLngBounds, width: number, height:
  * station cards and the hydrographs all read as one consistent scale.
  */
 export const RETURN_PERIOD_LEGEND: { value: number; label: string; color: string }[] = [
-  { value: 0, label: "Normal", color: LEVEL_STYLES.normal.color },
+  { value: 0, label: "Normal", color: "var(--inundaciones-moderada)" },
   { value: 2, label: "Supera 2 años", color: LEVEL_STYLES.vigilancia.color },
   { value: 10, label: "Supera 10 años", color: LEVEL_STYLES.alerta.color },
   { value: 25, label: "Supera 25 años", color: LEVEL_STYLES.alerta_alta.color },
