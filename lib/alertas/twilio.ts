@@ -7,17 +7,22 @@ const VERIFY_API = 'https://verify.twilio.com/v2'
 export interface TwilioConfig {
   accountSid: string
   authToken: string
-  messagingServiceSid: string
+  messagingServiceSid?: string
+  fromNumber?: string
   verifyServiceSid: string
 }
 
+// Un Messaging Service no se puede crear en cuentas Trial, por eso se acepta
+// tambien un numero remitente directo (TWILIO_FROM_NUMBER).
 export function getTwilioConfig(): TwilioConfig | null {
   const accountSid = process.env.TWILIO_ACCOUNT_SID
   const authToken = process.env.TWILIO_AUTH_TOKEN
-  const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID
+  const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID || undefined
+  const fromNumber = process.env.TWILIO_FROM_NUMBER || undefined
   const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID
-  if (!accountSid || !authToken || !messagingServiceSid || !verifyServiceSid) return null
-  return { accountSid, authToken, messagingServiceSid, verifyServiceSid }
+  if (!accountSid || !authToken || !verifyServiceSid) return null
+  if (!messagingServiceSid && !fromNumber) return null
+  return { accountSid, authToken, messagingServiceSid, fromNumber, verifyServiceSid }
 }
 
 export function isTwilioConfigured(): boolean {
@@ -62,11 +67,9 @@ export async function sendSms(
   const config = getTwilioConfig()
   if (!config) return { ok: false, error: 'Twilio no configurado' }
 
-  const fields: Record<string, string> = {
-    To: to,
-    MessagingServiceSid: config.messagingServiceSid,
-    Body: body,
-  }
+  const fields: Record<string, string> = { To: to, Body: body }
+  if (config.messagingServiceSid) fields.MessagingServiceSid = config.messagingServiceSid
+  else if (config.fromNumber) fields.From = config.fromNumber
   if (options.statusCallbackUrl) fields.StatusCallback = options.statusCallbackUrl
 
   try {
