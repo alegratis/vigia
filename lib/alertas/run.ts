@@ -8,10 +8,12 @@ import { computeVeredaFloodHazard } from '@/lib/inundaciones/hazard-model'
 import { getAccumulatedPrecipitationBatch } from '@/lib/precipitacion/openmeteo-accumulation-client'
 import { getSismologiaEventos } from '@/lib/sismologia/server'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
+import { dispatchPending } from './dispatch'
 import { evaluateFire, evaluateFloodReach, evaluateLandslide, evaluateQuake } from './evaluate'
 import { getRainForecastBatch } from './rain-hourly'
 import { requiredHitsFor, stepState, type AlertStateRow } from './state'
 import { CONTROLS, QUAKE, STATIC_SUSCEPTIBILITY_MIN } from './thresholds'
+import { isTwilioConfigured } from './twilio'
 import { tierRank, type AlertHazard, type AlertMode, type AlertTier } from './types'
 import {
   loadMonitoring,
@@ -39,6 +41,7 @@ export interface RunSummary {
   subscriptions: number
   candidates: number
   eventsCreated: number
+  sends: number
   errors: string[]
 }
 
@@ -396,6 +399,7 @@ export async function runEvaluation(): Promise<RunSummary> {
     subscriptions: 0,
     candidates: 0,
     eventsCreated: 0,
+    sends: 0,
     errors: [],
   }
   if (requested === 'off') return { ...summary, status: 'skipped_off' }
@@ -420,10 +424,11 @@ export async function runEvaluation(): Promise<RunSummary> {
     .single()
   if (runError || !run) return { ...summary, status: 'error', errors: [runError?.message ?? 'sin ciclo'] }
 
-  // El envío real llega en la etapa 4; hasta entonces "live" se registra pero no envía.
-  const eventMode: 'shadow' | 'live' = requested === 'live' ? 'live' : 'shadow'
-  if (requested === 'live') {
-    summary.errors.push('ALERTS_MODE=live: el envio por Twilio aun no esta implementado; solo se registran eventos')
+  // Sin credenciales de Twilio, "live" se degrada a sombra: se registra pero no se envía.
+  const canSend = requested === 'live' && isTwilioConfigured()
+  const eventMode: 'shadow' | 'live' = canSend ? 'live' : 'shadow'
+  if (requested === 'live' && !canSend) {
+    summary.errors.push('ALERTS_MODE=live pero faltan variables de Twilio: se registra en modo sombra, sin enviar')
   }
 
   try {
@@ -437,6 +442,10 @@ export async function runEvaluation(): Promise<RunSummary> {
     const slowEvents = await applyStateMachine(candidates, eventMode, now)
     const quakeEvents = await evaluateQuakes(monitoring, eventMode, now, summary.errors)
     summary.eventsCreated = await insertEvents([...slowEvents, ...quakeEvents])
+    if (canSend) {
+      const dispatched = await dispatchPending(now, summary.errors)
+      summary.sends = dispatched.sends
+    }
   } catch (e) {
     summary.status = 'error'
     summary.errors.push(e instanceof Error ? e.message : String(e))
@@ -449,7 +458,7 @@ export async function runEvaluation(): Promise<RunSummary> {
       locked_until: new Date().toISOString(),
       hazards_evaluated: SLOW_HAZARDS.concat('sismos'),
       events_created: summary.eventsCreated,
-      sends: 0,
+      sends: summary.sends,
       errors: summary.errors,
     })
     .eq('id', run.id)

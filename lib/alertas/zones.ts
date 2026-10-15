@@ -4,13 +4,9 @@ import { multiPolygon } from '@turf/helpers'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
 import { getVeredaBoundaries } from '@/lib/veredas/boundaries'
 
-/** Códigos DIVIPOLA de los cuatro municipios que cubre Vigía. */
-export const MUNICIPIOS = [
-  { code: '76122', name: 'Caicedonia' },
-  { code: '76736', name: 'Sevilla' },
-  { code: '76895', name: 'Zarzal' },
-  { code: '76622', name: 'Roldanillo' },
-] as const
+import { MUNICIPIOS } from './municipios'
+
+export { MUNICIPIOS }
 
 export function municipioCodeByName(name: string): string | null {
   const target = name.trim().toLowerCase()
