@@ -82,6 +82,8 @@ export interface VeredaFireHazardResult {
   level: FireThreatLevel | null
   /** Final 0–1 composite score, or `null` if every input factor failed for this vereda. */
   score: number | null
+  /** 0–1 terrain/recurrence-only score, before today's Fire Weather Index is blended in. Used by the alert engine as the susceptibility gate. */
+  staticScore: number | null
   slopeDeg: number | null
   roadDistanceKm: number | null
   /** Historical VIIRS detections within the recurrence factor's radius — see fire-history.ts. */
@@ -149,6 +151,7 @@ export async function computeVeredaFireHazard(
     result.set(c.codigoVereda, {
       level: finalScore != null ? levelFromScore(finalScore) : null,
       score: finalScore,
+      staticScore,
       slopeDeg,
       roadDistanceKm,
       historyCount: history?.count ?? null,

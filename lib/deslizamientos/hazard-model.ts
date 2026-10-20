@@ -88,6 +88,8 @@ export interface VeredaHazardResult {
   level: SusceptibilityLevel | null
   /** Final 0–1 composite score, or `null` if every input factor failed for this vereda. */
   score: number | null
+  /** 0–1 terrain-only score (slope, roads, faults, history), before the rainfall trigger is blended in. Used by the alert engine as the susceptibility gate. */
+  staticScore: number | null
   slopeDeg: number | null
   roadDistanceKm: number | null
   /** Distance (km) from this centroid to the nearest mapped geological fault (SGC). */
@@ -167,6 +169,7 @@ export async function computeVeredaHazard(
     result.set(c.codigoVereda, {
       level: finalScore != null ? levelFromScore(finalScore) : null,
       score: finalScore,
+      staticScore,
       slopeDeg,
       roadDistanceKm,
       faultDistanceKm,

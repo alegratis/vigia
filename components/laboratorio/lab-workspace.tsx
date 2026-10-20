@@ -5,6 +5,8 @@ import Image from "next/image"
 import Link from "next/link"
 import { Info, Link2 } from "lucide-react"
 import { AboutDialog } from "@/components/laboratorio/about-dialog"
+import { ActiveAlertsChip } from "@/components/alertas/active-alerts-chip"
+import { AlertBellButton } from "@/components/alertas/alert-bell-button"
 import { toast } from "sonner"
 import useSWR from "swr"
 import { useVeredas } from "@/lib/veredas/use-veredas"
@@ -376,6 +378,7 @@ export function LabWorkspace() {
           <Button size="icon" variant="secondary" onClick={handleShare} className="sm:hidden" aria-label="Compartir vista">
             <Link2 className="size-3.5" />
           </Button>
+          <AlertBellButton />
           <Button
             size="icon"
             variant="ghost"
@@ -414,6 +417,8 @@ export function LabWorkspace() {
           precipitacionHistoricoData={precipitacionHistoricoData ?? null}
           flyTarget={flyTarget}
         />
+
+        <ActiveAlertsChip />
 
         <LayerRail activeLayers={state.layers} onToggle={handleToggleLayer} onHoverLayer={setPreviewLayer} />
 
