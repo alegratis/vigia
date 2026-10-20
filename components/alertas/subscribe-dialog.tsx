@@ -61,7 +61,7 @@ const inputClass =
 
 export function SubscribeDialog({ open, onOpenChange, initialVereda }: SubscribeDialogProps) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange} disablePointerDismissal>
       <DialogContent className="max-h-[90vh] gap-5 overflow-y-auto sm:max-w-lg">
         <SubscribeFlow initialVereda={initialVereda ?? null} onClose={() => onOpenChange(false)} />
       </DialogContent>
