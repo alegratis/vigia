@@ -28,6 +28,15 @@ import { useVeredas } from "@/lib/veredas/use-veredas"
 
 type Step = "config" | "phone" | "code" | "done"
 
+const COUNTRY_OPTIONS = [
+  { dial: "57", label: "Colombia" },
+  { dial: "1", label: "EE. UU. / Canadá" },
+  { dial: "52", label: "México" },
+  { dial: "58", label: "Venezuela" },
+  { dial: "593", label: "Ecuador" },
+  { dial: "34", label: "España" },
+]
+
 interface SubscribeDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -97,7 +106,16 @@ function SubscribeFlow({
   const [phoneMasked, setPhoneMasked] = useState<string | null>(null)
   const [manageToken, setManageToken] = useState<string | null>(null)
 
-  const basePayload = { phone, zones: toRequestZones(zones), hazards, sensitivity, consent }
+  const [dialCode, setDialCode] = useState("57")
+  const typedPlus = phone.trim().startsWith("+")
+  const phoneDigits = phone.replace(/\D/g, "")
+  const nationalDigits =
+    dialCode !== "57" && phoneDigits.startsWith(dialCode) && phoneDigits.length > dialCode.length + 7
+      ? phoneDigits.slice(dialCode.length)
+      : phoneDigits
+  const fullPhone = typedPlus ? phone.trim() : dialCode === "57" ? phone : `+${dialCode}${nationalDigits}`
+
+  const basePayload = { phone: fullPhone, zones: toRequestZones(zones), hazards, sensitivity, consent }
 
   const toggleHazard = (h: AlertHazard) =>
     setHazards((prev) => (prev.includes(h) ? prev.filter((x) => x !== h) : [...prev, h]))
@@ -134,7 +152,7 @@ function SubscribeFlow({
   }
 
   const configValid = zones.length > 0 && hazards.length > 0
-  const phoneValid = phone.replace(/\D/g, "").length >= 10 && consent
+  const phoneValid = (typedPlus ? phoneDigits.length >= 8 : nationalDigits.length >= 10) && consent
 
   return (
     <>
@@ -221,22 +239,36 @@ function SubscribeFlow({
               Número de celular
             </label>
             <div className="flex items-center gap-2">
-              {!phone.trim().startsWith("+") && (
-                <span className="flex h-10 items-center rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground">
-                  +57
-                </span>
+              {!typedPlus && (
+                <select
+                  aria-label="Código de país"
+                  value={dialCode}
+                  onChange={(e) => setDialCode(e.target.value)}
+                  className="h-10 shrink-0 rounded-md border border-input bg-background px-2 text-sm text-foreground"
+                >
+                  {COUNTRY_OPTIONS.map((c) => (
+                    <option key={c.dial} value={c.dial}>
+                      +{c.dial} {c.label}
+                    </option>
+                  ))}
+                </select>
               )}
               <input
                 id="alert-phone"
                 type="tel"
                 inputMode="tel"
                 autoComplete="tel-national"
-                placeholder="300 123 4567"
+                placeholder={dialCode === "57" ? "300 123 4567" : "416 555 0123"}
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 className={inputClass}
               />
             </div>
+            {!typedPlus && dialCode !== "57" && (
+              <p className="text-xs text-muted-foreground">
+                Fuera de Colombia solo se aceptan números autorizados para pruebas.
+              </p>
+            )}
           </div>
 
           <label className="flex cursor-pointer items-start gap-3 text-xs leading-relaxed text-muted-foreground">
