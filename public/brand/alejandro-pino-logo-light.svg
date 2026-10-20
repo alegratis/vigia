@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="185" height="56" viewBox="0 0 185 56">
+  <g transform="translate(12 12)">
+    
+<g transform="scale(0.6666666666666666)" fill="none">
+  <circle cx="24" cy="24" r="19" stroke="#0A0A0A" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="104 16" transform="rotate(-90 24 24)"/>
+  <circle cx="24" cy="5" r="2.5" fill="#0A0A0A"/>
+  <g stroke="#0A0A0A" stroke-width="2.5" stroke-linecap="round">
+    <line x1="24" y1="10" x2="24" y2="14"/>
+    <line x1="24" y1="34" x2="24" y2="38"/>
+    <line x1="10" y1="24" x2="14" y2="24"/>
+    <line x1="34" y1="24" x2="38" y2="24"/>
+  </g>
+  <circle cx="24" cy="24" r="3.5" fill="#0A0A0A"/>
+</g>
+    <text x="40" y="14.75" font-family="IBM Plex Sans" font-weight="600" font-size="14" letter-spacing="0.35" fill="#0A0A0A">ALEJANDRO PINO</text>
+    <text x="40" y="28.25" font-family="IBM Plex Sans" font-weight="500" font-size="10" letter-spacing="2" fill="#0A0A0A" fill-opacity="0.7">SIG - DESARROLLO</text>
+  </g>
+</svg>
