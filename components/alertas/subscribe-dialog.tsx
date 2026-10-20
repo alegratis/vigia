@@ -88,9 +88,12 @@ function SubscribeFlow({
   const { veredas } = useVeredas(true)
   const veredaOptions = useMemo<VeredaOption[]>(
     () =>
-      (veredas?.features ?? [])
-        .filter((f) => !f.properties.esCascoUrbano)
-        .map((f) => ({ code: f.properties.codigoVereda, name: f.properties.nombre, municipio: f.properties.municipio })),
+      (veredas?.features ?? []).map((f) => ({
+        code: f.properties.codigoVereda,
+        name: f.properties.nombre,
+        municipio: f.properties.municipio,
+        urbano: Boolean(f.properties.esCascoUrbano),
+      })),
     [veredas],
   )
 

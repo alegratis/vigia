@@ -9,6 +9,7 @@ export interface VeredaOption {
   code: string
   name: string
   municipio: string
+  urbano?: boolean
 }
 
 interface ZonePickerProps {
@@ -33,6 +34,7 @@ export function ZonePicker({ zones, onChange, veredas }: ZonePickerProps) {
     const selected = new Set(zones.map((z) => z.veredaCode))
     return veredas
       .filter((v) => !selected.has(v.code) && `${v.name} ${v.municipio}`.toLowerCase().includes(q))
+      .sort((a, b) => Number(Boolean(b.urbano)) - Number(Boolean(a.urbano)))
       .slice(0, MAX_RESULTS)
   }, [query, veredas, zones])
 
@@ -79,7 +81,7 @@ export function ZonePicker({ zones, onChange, veredas }: ZonePickerProps) {
 
       <div className="flex flex-col gap-2">
         <label htmlFor="vereda-search" className="text-sm font-medium text-foreground">
-          O una vereda específica
+          O una vereda o casco urbano específico
           <span className="ml-1 font-normal text-muted-foreground">
             ({veredaCount}/{MAX_VEREDAS})
           </span>
@@ -92,7 +94,7 @@ export function ZonePicker({ zones, onChange, veredas }: ZonePickerProps) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             disabled={veredaCount >= MAX_VEREDAS}
-            placeholder={veredas.length === 0 ? "Cargando veredas…" : "Escriba el nombre de la vereda"}
+            placeholder={veredas.length === 0 ? "Cargando veredas…" : "Vereda, o escriba casco urbano"}
             autoComplete="off"
             className="h-10 w-full rounded-md border border-input bg-background pr-3 pl-9 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
           />
