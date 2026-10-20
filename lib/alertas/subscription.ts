@@ -1,7 +1,7 @@
 import 'server-only'
 import { createHash, randomBytes } from 'node:crypto'
 import { getVeredaBoundaries } from '@/lib/veredas/boundaries'
-import { normalizeColombianMobile } from './phone'
+import { normalizeSubscriberPhone } from './phone'
 import { CONTROLS } from './thresholds'
 import { ALERT_HAZARDS, type AlertHazard, type Sensitivity } from './types'
 import { MUNICIPIOS, municipioCodeByName, municipioNameByCode } from './zones'
@@ -29,7 +29,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 export function parsePhone(value: unknown): Parsed<string> {
   if (typeof value !== 'string') return { ok: false, error: 'Ingrese un celular colombiano valido.' }
-  const phone = normalizeColombianMobile(value)
+  const phone = normalizeSubscriberPhone(value)
   return phone ? { ok: true, value: phone } : { ok: false, error: 'Ingrese un celular colombiano valido (10 digitos, empieza por 3).' }
 }
 

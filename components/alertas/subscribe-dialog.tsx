@@ -221,9 +221,11 @@ function SubscribeFlow({
               Número de celular
             </label>
             <div className="flex items-center gap-2">
-              <span className="flex h-10 items-center rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground">
-                +57
-              </span>
+              {!phone.trim().startsWith("+") && (
+                <span className="flex h-10 items-center rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground">
+                  +57
+                </span>
+              )}
               <input
                 id="alert-phone"
                 type="tel"
