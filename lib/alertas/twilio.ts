@@ -18,7 +18,7 @@ export function getTwilioConfig(): TwilioConfig | null {
   const accountSid = process.env.TWILIO_ACCOUNT_SID
   const authToken = process.env.TWILIO_AUTH_TOKEN
   const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID || undefined
-  const fromNumber = process.env.TWILIO_FROM_NUMBER || undefined
+  const fromNumber = process.env.TWILIO_PHONE_NUMBER || process.env.TWILIO_FROM_NUMBER || undefined
   const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID
   if (!accountSid || !authToken || !verifyServiceSid) return null
   if (!messagingServiceSid && !fromNumber) return null
