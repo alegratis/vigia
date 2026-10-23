@@ -198,6 +198,9 @@ interface LabMapProps {
   precipitacionHistoricoData: PrecipitacionAmenazaResponse | null
   /** Camera request issued from outside the map (e.g. the bottom panel's latest-quakes list); `nonce` re-triggers the same target. */
   flyTarget: { lon: number; lat: number; zoom: number; nonce: number } | null
+  /** Quake picked from the right panel's list or by clicking an epicenter: drawn with a highlight ring and its popup. */
+  selectedQuake: SeismicEvent | null
+  onSelectQuake: (quake: SeismicEvent | null, options?: { fly?: boolean }) => void
 }
 
 const quebradasFetcher = async (url: string): Promise<InundacionesQuebradasResponse> => {
@@ -239,6 +242,8 @@ export function LabMap({
   precipitacionData,
   precipitacionHistoricoData,
   flyTarget,
+  selectedQuake,
+  onSelectQuake,
 }: LabMapProps) {
   const mapRef = useRef<MapRef>(null)
   const [reportFeature, setReportFeature] = useState<CompoundFeature | null>(null)
@@ -689,6 +694,10 @@ export function LabMap({
     })
   }, [])
 
+  useEffect(() => {
+    if (selectedQuake) showQuakePopup(selectedQuake)
+  }, [selectedQuake, showQuakePopup])
+
   // Overlapping layers use hatch/dot patterns (per-feature, in the level's own color) instead of
   // transparency, so every layer's color stays legible where they stack. Images are generated lazily
   // via MapLibre's `styleimagemissing` event, which also survives basemap style swaps.
@@ -949,7 +958,9 @@ export function LabMap({
 
       const layerId0 = feature?.layer?.id
       if (feature && layerId0 === "lab-seismic-events") {
-        showQuakePopup(feature.properties as unknown as SeismicEvent)
+        const quake = feature.properties as unknown as SeismicEvent
+        showQuakePopup(quake)
+        onSelectQuake(quake, { fly: false })
         return
       }
       if (feature && layerId0 === "lab-faults-hit") {
@@ -1099,7 +1110,7 @@ export function LabMap({
       setPrecipitacionPopup(null)
       setPopupInfo({ feature: veredaFeature, layer })
     },
-    [veredas, onVeredaSelect, activeSubLayerIds, climaData],
+    [veredas, onVeredaSelect, activeSubLayerIds, climaData, showQuakePopup, onSelectQuake],
   )
 
   return (
@@ -1277,6 +1288,7 @@ export function LabMap({
               onClick={(ev) => {
                 ev.stopPropagation()
                 showQuakePopup(quake)
+                onSelectQuake(quake, { fly: false })
               }}
               aria-label={`Sismo ${i === 0 ? "más reciente" : `reciente ${i + 1}`}: magnitud ${Number(quake.magnitude).toFixed(1)}, ${formatQuakeAge(quake.time)}`}
               className={`relative flex items-center justify-center rounded-full border-2 border-background bg-destructive text-[11px] font-bold text-destructive-foreground shadow-md ${i === 0 ? "size-8" : "size-6 opacity-85"}`}
@@ -1288,6 +1300,16 @@ export function LabMap({
             </button>
           </Marker>
         ))}
+
+        {sismoActive && selectedQuake && (
+          <Marker longitude={selectedQuake.lon} latitude={selectedQuake.lat} anchor="center" style={{ pointerEvents: "none" }}>
+            <span className="relative flex size-12 items-center justify-center" aria-hidden="true">
+              <span className="absolute inset-0 animate-ping rounded-full bg-primary/40 motion-reduce:hidden" />
+              <span className="absolute inset-0 rounded-full border-[3px] border-primary bg-primary/10 shadow-lg" />
+              <span className="size-2 rounded-full bg-primary" />
+            </span>
+          </Marker>
+        )}
 
         {sismoActive && activeSubLayerIds.has("faults") && (
           <Source id="lab-faults-source" type="geojson" data={faultsGeoJson}>
@@ -1892,7 +1914,10 @@ export function LabMap({
           <Popup
             longitude={featurePopup.lon}
             latitude={featurePopup.lat}
-            onClose={() => setFeaturePopup(null)}
+            onClose={() => {
+              setFeaturePopup(null)
+              onSelectQuake(null)
+            }}
             closeOnClick={false}
             maxWidth="260px"
           >

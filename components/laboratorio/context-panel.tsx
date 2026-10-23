@@ -30,6 +30,8 @@ import {
   SEISMIC_MAGNITUDE_LEVELS,
   SEISMIC_MAGNITUDE_LEVEL_STYLES,
 } from "@/lib/sismologia/levels"
+import type { SeismicEvent } from "@/lib/sismologia/api-types"
+import { LatestQuakesList } from "@/components/laboratorio/latest-quakes-list"
 import { LayerConventions, LayerSummary, LegendRow, LegendSection, LEVEL_HINTS } from "@/components/laboratorio/layer-conventions"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -60,6 +62,9 @@ interface ContextPanelProps {
   hidrantesExperience: HidrantesExperience
   /** Indicator-switching state for the demografía layer — see `lab-map.tsx` for the matching rendering. */
   demografiaExperience: DemografiaExperience
+  /** Quake highlighted on the map (from this panel's list or a map click). */
+  selectedQuake: SeismicEvent | null
+  onSelectQuake: (quake: SeismicEvent | null, options?: { fly?: boolean }) => void
 }
 
 /**
@@ -86,6 +91,8 @@ export function ContextPanel({
   demografiaExperience,
   optionValues,
   onOptionChange,
+  selectedQuake,
+  onSelectQuake,
 }: ContextPanelProps) {
   const focusLayer =
     lastActivatedLayer && activeLayers.includes(lastActivatedLayer)
@@ -103,7 +110,11 @@ export function ContextPanel({
       ) : focusLayer === "demografia" ? (
         <DemografiaPanel experience={demografiaExperience} />
       ) : focusLayer === "sismologia" ? (
-        <SismologiaLegend subLayerToggles={subLayerToggles} />
+        <SismologiaLegend
+          subLayerToggles={subLayerToggles}
+          selectedQuake={selectedQuake}
+          onSelectQuake={onSelectQuake}
+        />
       ) : (
         <>
           <LayerLegend veredas={veredas} layer={focusLayer!} activeLayers={activeLayers} />
@@ -558,7 +569,15 @@ function LayerLegend({
   )
 }
 
-function SismologiaLegend({ subLayerToggles }: { subLayerToggles: Record<string, boolean> }) {
+function SismologiaLegend({
+  subLayerToggles,
+  selectedQuake,
+  onSelectQuake,
+}: {
+  subLayerToggles: Record<string, boolean>
+  selectedQuake: SeismicEvent | null
+  onSelectQuake: (quake: SeismicEvent | null, options?: { fly?: boolean }) => void
+}) {
   const showFaults = resolveSubLayerOn("sismologia", "faults", subLayerToggles)
   const showExposure = resolveSubLayerOn("sismologia", "sismo-veredas", subLayerToggles)
   return (
@@ -567,6 +586,7 @@ function SismologiaLegend({ subLayerToggles }: { subLayerToggles: Record<string,
         <p className="font-medium text-foreground">Sismología</p>
         <p className="text-xs text-muted-foreground">El tamaño del círculo crece con la magnitud.</p>
       </div>
+      <LatestQuakesList selectedId={selectedQuake?.id ?? null} onSelect={onSelectQuake} />
       <LegendSection title="Magnitud del sismo">
         {SEISMIC_MAGNITUDE_LEVELS.map((level) => (
           <LegendRow
