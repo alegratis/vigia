@@ -18,6 +18,7 @@ import { AlejandroPinoLockup } from "@/components/brand/alejandro-pino-logo"
 import { ThemeToggle } from "@/components/theme-toggle"
 import type { PrecipitacionAmenazaResponse } from "@/lib/precipitacion/api-types"
 import type { ClimaForecastResponse } from "@/lib/clima/api-types"
+import type { SeismicEvent } from "@/lib/sismologia/api-types"
 import {
   DEFAULT_LAB_STATE,
   MAX_ACTIVE_LAYERS,
@@ -141,6 +142,16 @@ export function LabWorkspace() {
   const handleFlyTo = useCallback((target: { lon: number; lat: number; zoom: number }) => {
     setFlyTarget((prev) => ({ ...target, nonce: (prev?.nonce ?? 0) + 1 }))
   }, [])
+  const [selectedQuake, setSelectedQuake] = useState<SeismicEvent | null>(null)
+  const handleSelectQuake = useCallback(
+    (quake: SeismicEvent | null, options?: { fly?: boolean }) => {
+      setSelectedQuake(quake)
+      if (quake && options?.fly !== false) {
+        handleFlyTo({ lon: quake.lon, lat: quake.lat, zoom: 11 })
+      }
+    },
+    [handleFlyTo],
+  )
   const [bottomPanelCollapsed, setBottomPanelCollapsed] = useState(true)
   // Desktop-only: percentage of the map area the expanded bottom panel occupies (user-resizable by dragging).
   const [bottomPanelHeight, setBottomPanelHeight] = useState(DEFAULT_BOTTOM_PANEL_HEIGHT)
@@ -416,6 +427,8 @@ export function LabWorkspace() {
             precipitacionData={precipitacionData ?? null}
           precipitacionHistoricoData={precipitacionHistoricoData ?? null}
           flyTarget={flyTarget}
+          selectedQuake={selectedQuake}
+          onSelectQuake={handleSelectQuake}
         />
 
         <ActiveAlertsChip />
@@ -437,6 +450,8 @@ export function LabWorkspace() {
           demografiaExperience={demografiaExperience}
           optionValues={optionValues}
           onOptionChange={handleOptionChange}
+          selectedQuake={selectedQuake}
+          onSelectQuake={handleSelectQuake}
         />
 
         <LayerConflictPopover

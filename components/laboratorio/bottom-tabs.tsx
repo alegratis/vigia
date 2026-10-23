@@ -13,6 +13,7 @@ import { formatDateTime } from "@/lib/firms/ui"
 import type { ClimaVeredaProperties } from "@/lib/clima/api-types"
 import { LAYER_DEFINITIONS, type LabVeredasFeatureCollection, type LayerKey } from "@/lib/laboratorio/layers"
 import type { VeredaFeature } from "@/lib/veredas/api-types"
+import { LayerMethodology } from "@/components/laboratorio/layer-methodology"
 import { LiveThreatPopulation } from "@/components/deslizamientos/live-threat-population"
 import { HazardModelPanel } from "@/components/deslizamientos/hazard-model-panel"
 import { MunicipioFloodSummary } from "@/components/inundaciones/municipio-flood-summary"
@@ -62,26 +63,6 @@ function toSelectedVereda(feature: VeredaFeature | null) {
     nombre: feature.properties.nombre,
     municipio: feature.properties.municipio,
   }
-}
-
-const METHODOLOGY_NOTES: Partial<Record<LayerKey, string>> = {
-  deslizamientos:
-    "Modelo propio: pendiente del terreno + proximidad a vías + anomalía de lluvia antecedente sobre su línea base de 3 años, por vereda. Ver lib/deslizamientos/hazard-model.ts — sin cambios en este prototipo.",
-  inundaciones:
-    "Combina la zonificación oficial + proximidad a cuerpos de agua + planitud del terreno. Ver lib/inundaciones/hazard-model.ts — sin cambios en este prototipo.",
-  incendios:
-    "Pendiente y proximidad a vías (reutilizados del modelo de deslizamientos) + recurrencia histórica de focos NASA FIRMS + Índice de Peligro de Incendio (FWI) del día. Ver lib/incendios/hazard-model.ts — sin cambios en este prototipo.",
-  "riesgo-compuesto":
-    "Combina el nivel más severo entre deslizamientos, inundaciones e incendios por vereda (\"el peor gana\"). Ver lib/riesgo-compuesto — sin cambios en este prototipo.",
-  precipitacion:
-    "Precipitación acumulada o pronosticada por vereda (Open-Meteo / IDEAM). Ver lib/precipitacion/hazard-model.ts — sin cambios en este prototipo.",
-  clima: "Temperatura actual y climatología histórica por vereda (Open-Meteo). Ver lib/clima/api-types.ts — sin cambios en este prototipo.",
-  demografia:
-    "Vista simplificada por vereda: normaliza la población de /api/veredas en 5 niveles. No es el IVS/vulnerabilidad completo de producción (que trabaja a nivel de manzana) — esa profundidad queda fuera de este prototipo.",
-  sismologia:
-    "Eventos sísmicos recientes combinados del Servicio Geológico Colombiano y USGS, sin restricción geográfica — los epicentros pueden caer fuera de cualquier municipio del área de estudio. Ver lib/sismologia — sin cambios en este prototipo.",
-  hidrantes:
-    "Inventario estático de fuentes hídricas del casco urbano de Sevilla. Solo se muestran los primeros puntos cercanos al centro; el resto está en \"ver todas\". Sin modelo de amenaza asociado.",
 }
 
 /**
@@ -247,12 +228,7 @@ export function BottomTabs({
               </TabsContent>
 
               <TabsContent value="metodologia" className="pt-3">
-                <div className="max-w-3xl rounded-md border border-border p-3 text-sm">
-                  <p className="font-medium text-foreground">{LAYER_DEFINITIONS[focusLayer].label}</p>
-                  <p className="text-muted-foreground">
-                    {METHODOLOGY_NOTES[focusLayer] ?? "Sin nota de metodología para esta capa."}
-                  </p>
-                </div>
+                <LayerMethodology layer={focusLayer} />
               </TabsContent>
             </Tabs>
           )}
