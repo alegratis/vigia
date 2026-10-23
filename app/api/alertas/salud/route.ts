@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { getAlertModeSetting } from '@/lib/admin/settings'
 import { CONTROLS } from '@/lib/alertas/thresholds'
 import { isTwilioConfigured } from '@/lib/alertas/twilio'
 import { getSupabaseAdmin } from '@/lib/supabase/admin'
@@ -24,7 +25,7 @@ export async function GET() {
       ok: !stale,
       lastRunAt,
       ageMinutes,
-      mode: process.env.ALERTS_MODE ?? 'off',
+      mode: (await getAlertModeSetting()).mode,
       twilioConfigured: isTwilioConfigured(),
     },
     { status: stale ? 503 : 200 },
