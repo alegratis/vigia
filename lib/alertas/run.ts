@@ -1,4 +1,5 @@
 import 'server-only'
+import { getAlertMode } from '@/lib/admin/settings'
 import { computeRainfallTriggerBatch } from '@/lib/deslizamientos/rainfall-trigger'
 import { computeVeredaHazard } from '@/lib/deslizamientos/hazard-model'
 import { assessReach } from '@/lib/geoglows/service'
@@ -47,11 +48,6 @@ export interface RunSummary {
 
 const LOCK_MINUTES = 10
 const SLOW_HAZARDS: AlertHazard[] = ['deslizamientos', 'inundaciones', 'incendios']
-
-export function getAlertMode(): AlertMode {
-  const raw = (process.env.ALERTS_MODE ?? 'shadow').toLowerCase()
-  return raw === 'off' || raw === 'live' ? raw : 'shadow'
-}
 
 function maxTier(a: AlertTier | null, b: AlertTier | null): AlertTier | null {
   return tierRank(a) >= tierRank(b) ? a : b
@@ -391,7 +387,7 @@ async function applyStateMachine(
  * Una fuente que falla no cambia el estado de sus zonas (falla cerrada).
  */
 export async function runEvaluation(): Promise<RunSummary> {
-  const requested = getAlertMode()
+  const requested = await getAlertMode()
   const summary: RunSummary = {
     status: 'ok',
     mode: requested,
@@ -428,7 +424,7 @@ export async function runEvaluation(): Promise<RunSummary> {
   const canSend = requested === 'live' && isTwilioConfigured()
   const eventMode: 'shadow' | 'live' = canSend ? 'live' : 'shadow'
   if (requested === 'live' && !canSend) {
-    summary.errors.push('ALERTS_MODE=live pero faltan variables de Twilio: se registra en modo sombra, sin enviar')
+    summary.errors.push('El modo en vivo está activo pero faltan variables de Twilio: se registra en modo sombra, sin enviar')
   }
 
   try {

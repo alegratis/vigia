@@ -2,7 +2,7 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { ArrowUpRight } from "lucide-react"
+import { ArrowUpRight, Settings } from "lucide-react"
 import { AlejandroPinoLockup } from "@/components/brand/alejandro-pino-logo"
 import { BetaBadge } from "@/components/beta-badge"
 import {
@@ -123,7 +123,18 @@ export function AboutDialog({ open, onOpenChange }: AboutDialogProps) {
         </section>
 
         <DialogFooter className="items-center sm:justify-between">
+          <div className="flex items-center gap-2">
+          <Link
+            href="/admin"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Administración (se abre en una pestaña nueva)"
+            className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <Settings className="size-4" aria-hidden="true" />
+          </Link>
           <BetaBadge />
+        </div>
           <Link
             href="/documentacion"
             target="_blank"
