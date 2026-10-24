@@ -15,6 +15,12 @@ export const metadata: Metadata = {
   description:
     'Plataforma de código abierto para la transformación de condiciones de vulnerabilidad social frente a amenazas naturales, conectada a un backend QGIS.',
   generator: 'v0.app',
+  applicationName: 'Vigía',
+  appleWebApp: {
+    capable: true,
+    title: 'Vigía',
+    statusBarStyle: 'default',
+  },
   icons: {
     icon: [
       {
