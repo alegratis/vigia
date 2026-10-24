@@ -5,7 +5,7 @@ import { isMinorQuake } from "./levels"
 const DUPLICATE_WINDOW_MS = 3 * 60_000
 const DUPLICATE_DEGREES = 0.6
 
-function isSameQuake(a: SeismicEvent, b: SeismicEvent): boolean {
+export function isSameQuake(a: SeismicEvent, b: SeismicEvent): boolean {
   return (
     Math.abs(new Date(a.time).getTime() - new Date(b.time).getTime()) <= DUPLICATE_WINDOW_MS &&
     Math.abs(a.lat - b.lat) <= DUPLICATE_DEGREES &&

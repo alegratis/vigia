@@ -8,6 +8,7 @@ import { SectionFuentes } from "@/components/documentacion/section-fuentes"
 import { SectionMetodologia } from "@/components/documentacion/section-metodologia"
 import { SectionMarcoTeorico } from "@/components/documentacion/section-marco-teorico"
 import { SectionArquitectura } from "@/components/documentacion/section-arquitectura"
+import { SectionApi } from "@/components/documentacion/section-api"
 import { SectionLicencias } from "@/components/documentacion/section-licencias"
 
 export const metadata = {
@@ -45,6 +46,7 @@ export default function DocumentacionPage() {
             <SectionMetodologia />
             <SectionMarcoTeorico />
             <SectionArquitectura />
+            <SectionApi />
             <SectionLicencias />
           </div>
         </div>

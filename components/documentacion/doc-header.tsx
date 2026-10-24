@@ -10,7 +10,17 @@ import { BetaBadge } from "@/components/beta-badge"
  * content the reader may want to print, bookmark, or zoom, so it keeps full
  * browser UI and gets its own lightweight header.
  */
-export function DocHeader() {
+interface DocHeaderProps {
+  subtitle?: string
+  backHref?: string
+  backLabel?: string
+}
+
+export function DocHeader({
+  subtitle = "Documentación",
+  backHref = "/",
+  backLabel = "Volver a Vigía",
+}: DocHeaderProps) {
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
@@ -35,18 +45,19 @@ export function DocHeader() {
           </span>
           <div className="flex flex-col leading-tight">
             <span className="text-sm font-semibold tracking-tight">Vigía</span>
-            <span className="text-xs text-muted-foreground">Documentación</span>
+            <span className="text-xs text-muted-foreground">{subtitle}</span>
           </div>
         </div>
 
         <div className="flex items-center gap-1">
           <BetaBadge className="mr-1 hidden sm:inline" />
           <Link
-            href="/"
+            href={backHref}
             className="inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             <ArrowLeft className="size-4" aria-hidden="true" />
-            <span className="hidden sm:inline">Volver a Vigía</span>
+            <span className="hidden sm:inline">{backLabel}</span>
+            <span className="sr-only sm:hidden">{backLabel}</span>
           </Link>
           <ThemeToggle />
         </div>
