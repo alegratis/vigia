@@ -14,7 +14,7 @@ export default async function AdminLoginPage() {
   if (await isAdminSession()) redirect('/admin')
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-sm flex-col justify-center gap-8 px-4 py-10">
+    <main className="mx-auto flex min-h-dvh w-full max-w-sm flex-col justify-center gap-8 px-4 py-10">
       <header className="flex flex-col gap-4">
         <Link
           href="/"

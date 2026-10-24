@@ -24,7 +24,7 @@ export const metadata = {
  */
 export default function DocumentacionPage() {
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-dvh flex-col">
       <DocHeader />
       <main id="main-content" tabIndex={-1} className="flex-1 focus-visible:outline-none">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-4 py-10 sm:px-6 sm:py-12">

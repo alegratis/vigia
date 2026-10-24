@@ -229,7 +229,7 @@ export function LabWorkspace() {
           return { ...prev, layers: prev.layers.filter((l) => l !== layer) }
         }
 
-        // Clima, demografía, and hidrantes never share the canvas with
+        // Clima, demograf��a, and hidrantes never share the canvas with
         // another layer — activating one replaces whatever is active,
         // and activating anything else drops one of these if it's active.
         if (isExclusiveLayer(layer)) {
@@ -288,7 +288,7 @@ export function LabWorkspace() {
   }, [state.layers.length])
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-background">
+    <div className="flex h-dvh flex-col overflow-hidden bg-background">
       <header className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-2 sm:gap-4 sm:px-4 sm:py-2.5 xl:grid xl:grid-cols-[1fr_auto_1fr]">
         <div className="hidden min-w-0 items-center gap-3 xl:flex">
           <a
