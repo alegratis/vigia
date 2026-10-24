@@ -70,7 +70,7 @@ export function buildOpenApiSpec(origin: string) {
       "/api/v1/riesgo": {
         get: {
           summary: "Riesgo compuesto de todas las veredas",
-          description: "Con `formato=geojson`, `data` es una FeatureCollection lista para MapLibre, Leaflet o QGIS.",
+          description: "Con `formato=geojson`, `data` es una FeatureCollection que puede pasarse directamente como fuente GeoJSON a MapLibre o Leaflet; para un SIG como QGIS, extraiga primero `data` del sobre.",
           parameters: [
             { name: "municipio", in: "query", schema: { type: "string" } },
             { name: "accion", in: "query", schema: { type: "string", enum: ["informar", "prepararse", "actuar"] }, description: "Devuelve las veredas con esa acción o una más grave." },

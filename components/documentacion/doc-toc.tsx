@@ -1,4 +1,9 @@
-const SECTIONS = [
+interface TocSection {
+  id: string
+  label: string
+}
+
+const DEFAULT_SECTIONS: TocSection[] = [
   { id: "resumen", label: "Resumen" },
   { id: "uso", label: "Guía de uso" },
   { id: "funcionalidades", label: "Funcionalidades" },
@@ -6,6 +11,7 @@ const SECTIONS = [
   { id: "metodologia", label: "Metodología del modelo de amenaza" },
   { id: "marco-teorico", label: "Marco teórico" },
   { id: "arquitectura", label: "Arquitectura" },
+  { id: "api", label: "API pública" },
   { id: "licencias", label: "Licencias de código abierto" },
 ]
 
@@ -14,12 +20,12 @@ const SECTIONS = [
  * fragment navigation, since this is a static reference document rather
  * than an app view that needs to track scroll state.
  */
-export function DocToc() {
+export function DocToc({ sections = DEFAULT_SECTIONS }: { sections?: TocSection[] }) {
   return (
     <nav aria-label="Tabla de contenido" className="lg:sticky lg:top-24">
       <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">En esta página</p>
       <ul className="flex flex-col gap-1 border-l border-border pl-3 text-sm">
-        {SECTIONS.map((section) => (
+        {sections.map((section) => (
           <li key={section.id}>
             <a
               href={`#${section.id}`}
