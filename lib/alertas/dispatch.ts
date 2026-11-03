@@ -5,7 +5,7 @@ import { CONTROLS } from './thresholds'
 import { sendSms } from './twilio'
 import { tierRank, type AlertHazard, type AlertTier, type Sensitivity } from './types'
 
-interface EventRecord {
+export interface EventRecord {
   id: string
   hazard: AlertHazard
   scope_key: string
@@ -15,7 +15,7 @@ interface EventRecord {
   evidence: Record<string, unknown>
 }
 
-interface SubscriberRecord {
+export interface SubscriberRecord {
   id: string
   phone_e164: string
   sensitivity: Sensitivity
@@ -24,7 +24,7 @@ interface SubscriberRecord {
   paused_until: string | null
 }
 
-interface SubscriptionRecord {
+export interface SubscriptionRecord {
   subscriber_id: string
   municipio_code: string
   municipio_name: string
@@ -67,11 +67,11 @@ function dailyGlobalCap(): number {
   return Number.isFinite(n) && n > 0 ? n : 200
 }
 
-function zoneLabel(sub: SubscriptionRecord): string {
+export function zoneLabel(sub: SubscriptionRecord): string {
   return sub.vereda_name ? `${sub.vereda_name} (${sub.municipio_name})` : sub.municipio_name
 }
 
-function matches(event: EventRecord, sub: SubscriptionRecord): boolean {
+export function matches(event: EventRecord, sub: SubscriptionRecord): boolean {
   if (!sub.hazards.includes(event.hazard)) return false
   if (sub.vereda_code) return event.scope_key === sub.vereda_code
   return event.scope_key === `mun:${sub.municipio_code}`
@@ -209,7 +209,7 @@ export async function dispatchPending(now: Date, errors: string[]): Promise<Disp
     if (sent.ok) {
       await db
         .from('alert_deliveries')
-        .update({ twilio_sid: sent.sid, status: 'sent', sent_at: new Date().toISOString() })
+        .update({ twilio_sid: sent.sid, status: 'sent', sent_at: new Date().toISOString(), body: message.body })
         .in('id', ids)
       result.sends++
       allSent.add(sent.sid ?? ids[0])
@@ -219,7 +219,7 @@ export async function dispatchPending(now: Date, errors: string[]): Promise<Disp
     } else {
       await db
         .from('alert_deliveries')
-        .update({ status: 'failed', error_code: sent.errorCode ?? null })
+        .update({ status: 'failed', error_code: sent.errorCode ?? null, body: message.body })
         .in('id', ids)
       result.failures++
       errors.push(`sms: fallo ${sent.errorCode ?? 'desconocido'}`)
