@@ -1,10 +1,11 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { ArrowLeft, TriangleAlert } from 'lucide-react'
+import { ArrowLeft, ListChecks, TriangleAlert } from 'lucide-react'
 import { AlertModeControl } from '@/components/admin/alert-mode-control'
 import { LogoutButton, RunCycleButton } from '@/components/admin/admin-session-actions'
 import { Badge } from '@/components/ui/badge'
+import { buttonVariants } from '@/components/ui/button'
 import { isAdminSession } from '@/lib/admin/session'
 import { getAlertStatus, type AlertStatus } from '@/lib/admin/status'
 
@@ -115,7 +116,13 @@ export default async function AdminPage() {
           <Stat label="SMS enviados" value={String(status.deliveriesTotal)} hint="Total histórico" />
         </dl>
 
-        <RunCycleButton />
+        <div className="flex flex-wrap items-start gap-3">
+          <RunCycleButton />
+          <Link href="/admin/alertas" className={buttonVariants({ variant: 'outline' })}>
+            <ListChecks aria-hidden="true" />
+            Historial de alertas y entregas
+          </Link>
+        </div>
       </section>
     </main>
   )
