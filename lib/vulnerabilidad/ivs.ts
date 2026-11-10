@@ -1,5 +1,7 @@
 import "server-only"
 
+import { withSnapshot } from "@/lib/upstream/resilient"
+
 /**
  * Step 1 of the vulnerability-index methodology (see v0_plans/grand-method.md,
  * Part A) — Índice de Vulnerabilidad Social (IVS). Four real dimensions,
@@ -164,7 +166,11 @@ export interface UrbanMunicipioIvs {
  * block-level distribution behind each municipio's average, not just the
  * average itself.
  */
-export async function getUrbanIvsByMunicipio(): Promise<UrbanMunicipioIvs[]> {
+export function getUrbanIvsByMunicipio(): Promise<UrbanMunicipioIvs[]> {
+  return withSnapshot("dane:ivs-urbano", loadUrbanIvsByMunicipio, { ttlSeconds: 2_592_000, timeoutMs: 40_000 })
+}
+
+async function loadUrbanIvsByMunicipio(): Promise<UrbanMunicipioIvs[]> {
   const { features } = await getPobrezaMultidimensional()
 
   const ipmValues = features.map((f) => f.properties.ipm)
@@ -246,7 +252,11 @@ async function fetchComponent(service: keyof typeof IVS_COMPONENTS): Promise<Map
  * all of Colombia — the "normalize to 0-1" step is scoped to the
  * comparison set this app actually maps).
  */
-export async function getSocialVulnerabilityIndex(): Promise<MunicipioIvs[]> {
+export function getSocialVulnerabilityIndex(): Promise<MunicipioIvs[]> {
+  return withSnapshot("dane:ivs-municipal", loadSocialVulnerabilityIndex, { ttlSeconds: 2_592_000, timeoutMs: 40_000 })
+}
+
+async function loadSocialVulnerabilityIndex(): Promise<MunicipioIvs[]> {
   const services = Object.keys(IVS_COMPONENTS) as (keyof typeof IVS_COMPONENTS)[]
   const componentMaps = await Promise.all(services.map(fetchComponent))
 

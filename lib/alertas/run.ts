@@ -431,6 +431,11 @@ export async function runEvaluation(): Promise<RunSummary> {
     const monitoring = await loadMonitoring()
     summary.unitsEvaluated = monitoring.units.length
     summary.subscriptions = monitoring.subscriptions
+    if (monitoring.unresolvedVeredas.length > 0) {
+      summary.errors.push(
+        `Sin límites para ${monitoring.unresolvedVeredas.join(', ')}: esas zonas no se evalúan y sus suscriptores no recibirán alertas hasta que la fuente de límites responda`,
+      )
+    }
 
     const candidates = await evaluateSlowHazards(monitoring, summary.errors)
     summary.candidates = candidates.length

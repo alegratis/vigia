@@ -37,6 +37,7 @@
  */
 
 import { matchManzanasToBarrios } from "@/lib/barrios/boundaries"
+import { withSnapshot } from "@/lib/upstream/resilient"
 
 const BASE_URL = "https://geoportal.dane.gov.co/mparcgis/rest/services"
 const IPM_LAYER_URL = `${BASE_URL}/POBREZA_MULTIDIMENSIONAL/Serv_MGN2020_Integrado_IPM/FeatureServer/325`
@@ -89,7 +90,14 @@ export interface PobrezaFeatureCollection {
  * Paginated: ~2,174 manzanas across the 4 municipios exceeds the service's
  * 2,000-record page size (same shape as `getViviendasHogaresPersonas`).
  */
-export async function getPobrezaMultidimensional(): Promise<PobrezaFeatureCollection> {
+export function getPobrezaMultidimensional(): Promise<PobrezaFeatureCollection> {
+  return withSnapshot("dane:pobreza-multidimensional", loadPobrezaMultidimensional, {
+    ttlSeconds: REVALIDATE_SECONDS,
+    timeoutMs: 40_000,
+  })
+}
+
+async function loadPobrezaMultidimensional(): Promise<PobrezaFeatureCollection> {
   const pageSize = 2000
   const features: PobrezaFeature[] = []
   let offset = 0
@@ -217,7 +225,14 @@ async function fetchManzanaCensusCounts(): Promise<Map<string, CensusCounts>> {
  * module docstring for why this join is safe (identical codes, identical
  * per-municipio counts).
  */
-export async function getViviendasHogaresPersonas(): Promise<ManzanaFeatureCollection> {
+export function getViviendasHogaresPersonas(): Promise<ManzanaFeatureCollection> {
+  return withSnapshot("dane:viviendas-hogares-personas", loadViviendasHogaresPersonas, {
+    ttlSeconds: REVALIDATE_SECONDS,
+    timeoutMs: 40_000,
+  })
+}
+
+async function loadViviendasHogaresPersonas(): Promise<ManzanaFeatureCollection> {
   const [pobreza, censusByCode] = await Promise.all([getPobrezaMultidimensional(), fetchManzanaCensusCounts()])
 
   const features: ManzanaFeature[] = pobreza.features.map((f) => {

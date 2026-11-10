@@ -42,6 +42,8 @@ export interface Monitoring {
   municipioCentroids: Record<string, { lat: number; lon: number }>
   /** Total de suscripciones activas consideradas. */
   subscriptions: number
+  /** Veredas con suscriptores cuyos límites no se pudieron cargar: no se evalúan y nadie las recibe. */
+  unresolvedVeredas: string[]
 }
 
 interface SubscriptionRow {
@@ -122,5 +124,6 @@ export async function loadMonitoring(): Promise<Monitoring> {
     veredaScopes: [...veredaScopes],
     municipioCentroids,
     subscriptions,
+    unresolvedVeredas: [...veredaScopes].filter((code) => !all.some((u) => u.veredaCode === code)),
   }
 }

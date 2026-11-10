@@ -1,6 +1,9 @@
 import "server-only"
 
 import { arcgisToGeoJSON } from "@terraformer/arcgis"
+import { MUNICIPIOS } from "@/lib/alertas/municipios"
+import { withSnapshot } from "@/lib/upstream/resilient"
+import cascosUrbanosRespaldo from "./data/cascos-urbanos.json"
 import { normalizeVeredaNombre } from "./name-corrections"
 
 /**
@@ -31,8 +34,28 @@ import { normalizeVeredaNombre } from "./name-corrections"
  */
 
 const VEREDAS_QUERY_URL = "https://ags.esri.co/arcgis/rest/services/DatosAbiertos/VEREDAS_2016/MapServer/0/query"
-const ZONA_URBANA_QUERY_URL =
-  "https://portalgis.dane.gov.co/mparcgis/rest/services/Hosted/Serv_ZonaUrbana_MGN_2025/FeatureServer/1/query"
+
+/**
+ * Zona urbana del MGN, en orden de preferencia. El servicio oficial del DANE
+ * suele ser inalcanzable desde fuera de Colombia (incluida la infraestructura
+ * de Vercel), así que se prueba primero el espejo de ArcGIS Online con el mismo
+ * dato de 2025 simplificado, luego el DANE y, por último, el MGN 2024 completo.
+ * Las tres capas comparten los campos mpio_cdpmp, clas_ccdgo y zu_cnmbre.
+ */
+const ZONA_URBANA_SOURCES = [
+  {
+    id: "arcgis-online-2025",
+    url: "https://services7.arcgis.com/oJtolNh5k8HxCVtB/arcgis/rest/services/MGN2025_Zona_Urbana_simplificado/FeatureServer/0/query",
+  },
+  {
+    id: "dane-portalgis-2025",
+    url: "https://portalgis.dane.gov.co/mparcgis/rest/services/Hosted/Serv_ZonaUrbana_MGN_2025/FeatureServer/1/query",
+  },
+  {
+    id: "arcgis-online-2024",
+    url: "https://services.arcgis.com/deQSb0Gn7gDPf3uV/arcgis/rest/services/MGN2024_URB_ZONA_URBANA/FeatureServer/0/query",
+  },
+] as const
 
 /** DIVIPOLA municipio codes for the study area: Caicedonia, Sevilla, Zarzal, Roldanillo. */
 const MUNICIPIO_CODES = ["76122", "76736", "76895", "76622"]
@@ -75,7 +98,7 @@ interface EsriFeature {
   geometry?: { rings: number[][][] }
 }
 
-async function queryArcgis(url: string, where: string, outFields: string): Promise<EsriFeature[]> {
+async function queryArcgis(url: string, where: string, outFields: string, timeoutMs: number): Promise<EsriFeature[]> {
   const params = new URLSearchParams({
     where,
     outFields,
@@ -83,7 +106,9 @@ async function queryArcgis(url: string, where: string, outFields: string): Promi
     outSR: "4326",
     f: "json",
   })
-  const res = await fetch(`${url}?${params}`, { next: { revalidate: REVALIDATE_SECONDS } })
+  // `no-store`: la respuesta rural pesa más de 2 MB y Next no la puede guardar en su
+  // caché de fetch; el caché real lo hace withSnapshot (memoria + Supabase).
+  const res = await fetch(`${url}?${params}`, { cache: "no-store", signal: AbortSignal.timeout(timeoutMs) })
   if (!res.ok) throw new Error(`ArcGIS query failed (${res.status}): ${url}`)
   const data = await res.json()
   if (data.error) throw new Error(`ArcGIS query error: ${data.error.message ?? JSON.stringify(data.error)}`)
@@ -92,7 +117,7 @@ async function queryArcgis(url: string, where: string, outFields: string): Promi
 
 async function fetchVeredasRurales(): Promise<VeredaBoundary[]> {
   const where = `DPTOMPIO IN (${MUNICIPIO_CODES.map((c) => `'${c}'`).join(",")})`
-  const features = await queryArcgis(VEREDAS_QUERY_URL, where, "NOMBRE_VER,NOMB_MPIO,CODIGO_VER,DPTOMPIO")
+  const features = await queryArcgis(VEREDAS_QUERY_URL, where, "NOMBRE_VER,NOMB_MPIO,CODIGO_VER,DPTOMPIO", 20_000)
 
   return features
     .filter((f) => f.geometry)
@@ -116,31 +141,56 @@ async function fetchCascosUrbanos(): Promise<VeredaBoundary[]> {
   // and filter to class 1 ("Cabecera municipal", as opposed to 2 "Centro
   // Poblado") client-side.
   const where = `mpio_cdpmp IN (${MUNICIPIO_CODES.map((c) => `'${c}'`).join(",")})`
-  const features = await queryArcgis(
-    ZONA_URBANA_QUERY_URL,
-    where,
-    "mpio_cnmbre,mpio_cdpmp,zu_cnmbre,clas_ccdgo",
-  )
+  const failures: string[] = []
 
-  return features
-    .filter((f) => f.geometry && f.attributes.clas_ccdgo === "1")
-    .map((f) => ({
-      codigoVereda: `${f.attributes.mpio_cdpmp}-urbano`,
-      nombre: "Casco Urbano",
-      municipio: toTitleCase(f.attributes.mpio_cnmbre ?? ""),
-      esCascoUrbano: true,
-      polygons: toPolygons(
-        (arcgisToGeoJSON({ geometry: f.geometry!, attributes: f.attributes }) as { geometry: { type: string; coordinates: unknown } })
-          .geometry,
-      ),
-    }))
+  for (const source of ZONA_URBANA_SOURCES) {
+    try {
+      const features = await queryArcgis(source.url, where, "mpio_cdpmp,zu_cnmbre,clas_ccdgo", 7_000)
+      const cascos = features
+        .filter((f) => f.geometry && String(f.attributes.clas_ccdgo) === "1")
+        .map((f) => ({
+          codigoVereda: `${f.attributes.mpio_cdpmp}-urbano`,
+          nombre: "Casco Urbano",
+          municipio: MUNICIPIOS.find((m) => m.code === f.attributes.mpio_cdpmp)?.name ?? "",
+          esCascoUrbano: true,
+          polygons: toPolygons(
+            (arcgisToGeoJSON({ geometry: f.geometry!, attributes: f.attributes }) as { geometry: { type: string; coordinates: unknown } })
+              .geometry,
+          ),
+        }))
+      // Una fuente que devuelve menos de las cuatro cabeceras está incompleta: se descarta.
+      if (cascos.length < MUNICIPIO_CODES.length) {
+        throw new Error(`solo ${cascos.length} de ${MUNICIPIO_CODES.length} cabeceras`)
+      }
+      return cascos
+    } catch (error) {
+      failures.push(`${source.id}: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+  throw new Error(`Ninguna fuente de zona urbana respondió (${failures.join("; ")})`)
 }
+
+export const VEREDAS_RURALES_KEY = "veredas:rurales"
+export const CASCOS_URBANOS_KEY = "veredas:cascos-urbanos"
 
 /**
  * Fetches every rural vereda plus one "Casco Urbano" pseudo-vereda per
  * municipio for the study area.
+ *
+ * Las dos fuentes son independientes y cada una guarda su última versión buena
+ * (withSnapshot). Los cascos urbanos tienen tres fuentes en vivo y, si todas
+ * fallan y no hay copia guardada, usan el archivo estático versionado en
+ * ./data/cascos-urbanos.json (MGN 2025): nunca desaparecen del mapa. En ese caso
+ * el estado queda como "down" en el endpoint de salud.
  */
 export async function getVeredaBoundaries(): Promise<VeredaBoundary[]> {
-  const [veredas, cascosUrbanos] = await Promise.all([fetchVeredasRurales(), fetchCascosUrbanos()])
+  const [veredas, cascosUrbanos] = await Promise.all([
+    withSnapshot(VEREDAS_RURALES_KEY, fetchVeredasRurales, { ttlSeconds: REVALIDATE_SECONDS }),
+    withSnapshot(CASCOS_URBANOS_KEY, fetchCascosUrbanos, {
+      ttlSeconds: REVALIDATE_SECONDS,
+      timeoutMs: 24_000,
+      fallback: cascosUrbanosRespaldo as unknown as VeredaBoundary[],
+    }),
+  ])
   return [...veredas, ...cascosUrbanos]
 }

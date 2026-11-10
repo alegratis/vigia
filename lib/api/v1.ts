@@ -1,5 +1,6 @@
 import "server-only"
 import { NextResponse } from "next/server"
+import { getDegradedSources } from "@/lib/upstream/resilient"
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -21,16 +22,28 @@ interface OkOptions {
   meta?: Record<string, unknown>
 }
 
+/** Una respuesta incompleta no debe quedar fijada en el CDN durante horas. */
+const DEGRADED_CACHE_SECONDS = 60
+
 export function ok<T>(data: T, { cacheSeconds, meta }: OkOptions) {
+  // La API v1 se apoya solo en los límites de veredas; el resto de fuentes degradadas no la afecta.
+  const degraded = getDegradedSources(["veredas:"]).map((s) => ({ fuente: s.key, estado: s.state }))
+  const effectiveCache = degraded.length > 0 ? Math.min(cacheSeconds, DEGRADED_CACHE_SECONDS) : cacheSeconds
+
   return NextResponse.json(
     {
       data,
-      meta: { generadoEn: new Date().toISOString(), atribucion: API_ATTRIBUTION, ...meta },
+      meta: {
+        generadoEn: new Date().toISOString(),
+        atribucion: API_ATTRIBUTION,
+        ...(degraded.length > 0 ? { fuentesDegradadas: degraded } : {}),
+        ...meta,
+      },
     },
     {
       headers: {
         ...CORS_HEADERS,
-        "Cache-Control": `public, s-maxage=${cacheSeconds}, stale-while-revalidate=${cacheSeconds * 5}`,
+        "Cache-Control": `public, s-maxage=${effectiveCache}, stale-while-revalidate=${effectiveCache * 5}`,
       },
     },
   )
