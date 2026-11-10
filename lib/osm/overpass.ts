@@ -16,8 +16,9 @@ import "server-only"
  */
 
 import { withSnapshot } from "@/lib/upstream/resilient"
-import { classifyOsmTags, type OsmCategoryKey } from "./categories"
 import type { OsmPoint } from "./api-types"
+import infraestructuraRespaldo from "./data/infraestructura.json"
+import { elementsToPoints, type OverpassElement } from "./points"
 
 /**
  * Overpass's main instance occasionally resets the TLS connection under
@@ -98,17 +99,6 @@ function buildQuery(): string {
     );
     out center tags;
   `.trim()
-}
-
-interface OverpassElement {
-  type: "node" | "way" | "relation"
-  id: number
-  lat?: number
-  lon?: number
-  center?: { lat: number; lon: number }
-  /** Present when the query uses `out geom` on a way — its full vertex list, e.g. for road-proximity.ts. */
-  geometry?: Array<{ lat: number; lon: number }>
-  tags?: Record<string, string>
 }
 
 export interface OverpassResponse {
@@ -202,28 +192,18 @@ export async function queryOverpass(query: string): Promise<OverpassResponse> {
  * dropped.
  */
 export function getInfrastructurePoints(): Promise<OsmPoint[]> {
-  return withSnapshot("osm:infraestructura", loadInfrastructurePoints, { ttlSeconds: 21_600, timeoutMs: 25_000 })
+  // La infraestructura cambia despacio y Overpass bloquea buena parte de la infraestructura de nube:
+  // se sirve la copia guardada y Overpass solo se usa para renovarla en segundo plano. Si no hay copia
+  // en Supabase, se usa el extracto de Geofabrik versionado en ./data/infraestructura.json.
+  return withSnapshot("osm:infraestructura", loadInfrastructurePoints, {
+    ttlSeconds: 21_600,
+    timeoutMs: 25_000,
+    preferStored: true,
+    fallback: infraestructuraRespaldo as unknown as OsmPoint[],
+  })
 }
 
 async function loadInfrastructurePoints(): Promise<OsmPoint[]> {
   const json = await queryOverpass(buildQuery())
-
-  const points: OsmPoint[] = []
-  for (const el of json.elements) {
-    const tags = el.tags
-    if (!tags) continue
-    const category: OsmCategoryKey | null = classifyOsmTags(tags)
-    if (!category) continue
-    const lat = el.lat ?? el.center?.lat
-    const lon = el.lon ?? el.center?.lon
-    if (lat == null || lon == null) continue
-    points.push({
-      id: `${el.type}/${el.id}`,
-      lat,
-      lon,
-      category,
-      name: tags.name ?? null,
-    })
-  }
-  return points
+  return elementsToPoints(json.elements)
 }

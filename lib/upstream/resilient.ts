@@ -17,6 +17,12 @@ export interface SnapshotOptions<T> {
   timeoutMs?: number
   /** Valor a devolver si la fuente falla y no hay ninguna versión guardada. Sin él, se relanza el error. */
   fallback?: T
+  /**
+   * Para datos que cambian despacio: si hay una copia (memoria o Supabase), de cualquier edad, se sirve
+   * al instante y la fuente se consulta en segundo plano para renovarla. Así una fuente inalcanzable
+   * nunca retrasa una petición. Solo espera a la fuente cuando no existe ninguna copia.
+   */
+  preferStored?: boolean
 }
 
 const DEFAULT_TTL_SECONDS = 900
@@ -176,12 +182,32 @@ export async function withSnapshot<T>(key: string, load: () => Promise<T>, optio
     return cached.value as T
   }
 
+  if (options.preferStored) {
+    const stored = cached ? (cached.value as T) : await readSnapshot<T>(key)
+    if (stored !== null && stored !== undefined) {
+      if (!cached) memory.set(key, { value: stored, at: 0 })
+      refreshInBackground(key, load, options)
+      return stored
+    }
+  }
+
+  return start(key, load, options)
+}
+
+function start<T>(key: string, load: () => Promise<T>, options: SnapshotOptions<T>): Promise<T> {
   const pending = inflight.get(key)
   if (pending) return pending as Promise<T>
 
   const run = resolveSource(key, load, options).finally(() => inflight.delete(key))
   inflight.set(key, run)
   return run
+}
+
+function refreshInBackground<T>(key: string, load: () => Promise<T>, options: SnapshotOptions<T>): void {
+  if (inflight.has(key) || (failedUntil.get(key) ?? 0) > Date.now()) return
+  background(async () => {
+    await start(key, load, options)
+  })
 }
 
 /**

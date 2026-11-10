@@ -12,6 +12,7 @@ import "server-only"
  */
 
 import { queryOverpass, AOI_BBOX } from "@/lib/osm/overpass"
+import { withSnapshot } from "@/lib/upstream/resilient"
 
 const ROAD_QUERY = `
   [out:json][timeout:25];
@@ -19,15 +20,44 @@ const ROAD_QUERY = `
   out geom;
 `.trim()
 
+type RoadVertex = { lat: number; lon: number }
+
 /**
- * Fetches every road-way vertex in the AOI (not just endpoints) — the
- * shared Overpass client already caches this for 6 hours.
+ * Un vértice por celda de ~110 m. El modelo solo usa un radio de influencia de 1 km, así que el
+ * error es irrelevante y la copia guardada baja de decenas de MB a ~1 MB. El mismo aligerado se
+ * aplica en scripts/osm/extract-infrastructure.py, que carga esta copia desde el extracto de Geofabrik.
  */
-export async function getRoadVertices(): Promise<Array<{ lat: number; lon: number }>> {
+const ROAD_CELL_DEGREES = 0.001
+
+async function loadRoadVertices(): Promise<Array<[number, number]>> {
   const json = await queryOverpass(ROAD_QUERY)
-  const vertices: Array<{ lat: number; lon: number }> = []
+  const cells = new Map<string, [number, number]>()
   for (const el of json.elements) {
-    if (el.geometry) vertices.push(...el.geometry)
+    for (const v of el.geometry ?? []) {
+      const key = `${Math.round(v.lat / ROAD_CELL_DEGREES)}:${Math.round(v.lon / ROAD_CELL_DEGREES)}`
+      if (!cells.has(key)) cells.set(key, [Math.round(v.lat * 1e5) / 1e5, Math.round(v.lon * 1e5) / 1e5])
+    }
+  }
+  return [...cells.values()]
+}
+
+const expanded = new WeakMap<object, RoadVertex[]>()
+
+/**
+ * Road-way vertices in the AOI. Overpass bloquea buena parte de la infraestructura de nube, y sin
+ * esta capa el modelo calcularía la susceptibilidad sin el factor de vías, sin avisar. Por eso se
+ * sirve la copia guardada (Supabase) y Overpass solo la renueva en segundo plano.
+ */
+export async function getRoadVertices(): Promise<RoadVertex[]> {
+  const stored = await withSnapshot("osm:vias", loadRoadVertices, {
+    ttlSeconds: 21_600,
+    timeoutMs: 30_000,
+    preferStored: true,
+  })
+  let vertices = expanded.get(stored)
+  if (!vertices) {
+    vertices = stored.map(([lat, lon]) => ({ lat, lon }))
+    expanded.set(stored, vertices)
   }
   return vertices
 }

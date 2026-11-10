@@ -1,0 +1,58 @@
+# Plantilla: para activarla, copiar este archivo a .github/workflows/refresh-osm.yml y añadir en el
+# repositorio los secretos SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY (Settings > Secrets and variables > Actions).
+# Sin los secretos, el flujo termina con un aviso y no cambia nada.
+name: Renovar datos de OpenStreetMap
+
+# Overpass bloquea buena parte de la infraestructura de nube, así que la infraestructura y la red
+# vial se renuevan desde el extracto de Colombia de Geofabrik y se guardan en Supabase.
+on:
+  schedule:
+    - cron: "0 6 1 * *"
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - name: Comprobar secretos
+        id: secrets
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "::warning::Faltan los secretos SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY del repositorio; no se renueva nada."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.secrets.outputs.ready == 'true'
+
+      - uses: actions/setup-python@v5
+        if: steps.secrets.outputs.ready == 'true'
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        if: steps.secrets.outputs.ready == 'true'
+        with:
+          node-version: 22
+
+      - name: Instalar el lector de OSM
+        if: steps.secrets.outputs.ready == 'true'
+        run: pip install osmium
+
+      - name: Descargar el extracto de Colombia
+        if: steps.secrets.outputs.ready == 'true'
+        run: curl --fail --location --retry 3 --output colombia.osm.pbf https://download.geofabrik.de/south-america/colombia-latest.osm.pbf
+
+      - name: Extraer infraestructura y red vial
+        if: steps.secrets.outputs.ready == 'true'
+        run: python scripts/osm/extract-infrastructure.py colombia.osm.pbf infraestructura.json vias.json
+
+      - name: Guardar en Supabase
+        if: steps.secrets.outputs.ready == 'true'
+        run: npx --yes tsx scripts/osm/seed-infrastructure.mts infraestructura.json vias.json
