@@ -50,6 +50,7 @@ export const UPSTREAM_SOURCES: UpstreamSource[] = [
     afecta: 'Infraestructura por categoría',
     url: 'https://overpass-api.de/api/status',
     snapshotKey: 'osm:infraestructura',
+    optional: true,
   },
   {
     id: 'sgc-vivo',
