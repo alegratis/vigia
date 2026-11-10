@@ -8,6 +8,8 @@ export interface UpstreamSource {
   url: string
   /** Clave de withSnapshot que guarda su última versión buena, si la tiene. */
   snapshotKey?: string
+  /** Tiene alternativa en vivo o archivo estático: su caída no cambia el indicador ni genera aviso. */
+  optional?: boolean
 }
 
 const USER_AGENT = 'Mozilla/5.0 (compatible; VIGIA-RiskDashboard/1.0; +https://vigia.vercel.app)'
@@ -33,6 +35,7 @@ export const UPSTREAM_SOURCES: UpstreamSource[] = [
     nombre: 'DANE, zona urbana (portalgis)',
     afecta: 'Casco Urbano de cada municipio (alternativa oficial)',
     url: 'https://portalgis.dane.gov.co/mparcgis/rest/services/Hosted/Serv_ZonaUrbana_MGN_2025/FeatureServer/1?f=json',
+    optional: true,
   },
   {
     id: 'dane-geoportal',

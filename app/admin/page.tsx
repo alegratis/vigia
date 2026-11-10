@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { ArrowLeft, ListChecks, TriangleAlert } from 'lucide-react'
 import { AlertModeControl } from '@/components/admin/alert-mode-control'
 import { LogoutButton, RunCycleButton } from '@/components/admin/admin-session-actions'
+import { ServiceStatusPanel } from '@/components/admin/service-status-panel'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
 import { isAdminSession } from '@/lib/admin/session'
@@ -124,6 +125,8 @@ export default async function AdminPage() {
           </Link>
         </div>
       </section>
+
+      <ServiceStatusPanel />
     </main>
   )
 }

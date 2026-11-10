@@ -18,6 +18,8 @@
   --color-chart-4: var(--chart-4);
   --color-chart-3: var(--chart-3);
   --color-chart-2: var(--chart-2);
+  --color-status-ok: var(--status-ok);
+  --color-status-warn: var(--status-warn);
   --color-chart-1: var(--chart-1);
   --color-ring: var(--ring);
   --color-input: var(--input);
@@ -161,6 +163,8 @@
   --ring: oklch(0.52 0.09 215);
   --chart-1: oklch(0.52 0.09 215);
   --chart-2: oklch(0.62 0.13 145);
+  --status-ok: oklch(0.62 0.16 150);
+  --status-warn: oklch(0.7 0.15 75);
   --chart-3: oklch(0.75 0.14 85);
   --chart-4: oklch(0.66 0.17 45);
   --chart-5: oklch(0.577 0.245 27.325);
@@ -450,6 +454,8 @@
   --ring: oklch(0.68 0.11 210);
   --chart-1: oklch(0.68 0.11 210);
   --chart-2: oklch(0.7 0.14 150);
+  --status-ok: oklch(0.76 0.18 150);
+  --status-warn: oklch(0.8 0.15 80);
   --chart-3: oklch(0.8 0.15 85);
   --chart-4: oklch(0.7 0.17 45);
   --chart-5: oklch(0.704 0.191 22.216);
@@ -739,5 +745,31 @@
   *:hover::-webkit-scrollbar-thumb {
     background-color: var(--muted-foreground);
     background-clip: content-box;
+  }
+}
+
+/* Indicador de estado: punto con brillo suave que "respira". El color sale de currentColor. */
+@keyframes status-breathe {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0 color-mix(in oklch, currentColor 0%, transparent),
+      0 0 6px 1px color-mix(in oklch, currentColor 50%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 0 3px color-mix(in oklch, currentColor 14%, transparent),
+      0 0 10px 2px color-mix(in oklch, currentColor 38%, transparent);
+  }
+}
+
+.status-glow {
+  animation: status-breathe 3.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-glow {
+    animation: none;
+    box-shadow: 0 0 8px 1px color-mix(in oklch, currentColor 45%, transparent);
   }
 }
