@@ -82,9 +82,10 @@ function nextRow(component: CheckedComponent, previous: HealthRow | undefined, n
     last_ok_at: component.ok ? now : (previous?.last_ok_at ?? null),
     last_checked_at: now,
     last_error: component.ok ? null : component.error,
-    // Una caída nueva siempre puede avisar de nuevo; mientras dure la misma, solo se avisa una vez.
-    alerted_at: component.ok || changed ? null : (previous?.alerted_at ?? null),
-    alert_error: component.ok || changed ? null : (previous?.alert_error ?? null),
+    // Una caída nueva reinicia el aviso; mientras dure la misma solo se avisa una vez. Al recuperarse
+    // se conserva alerted_at: en una fila "ok" significa "falta enviar el SMS de recuperado".
+    alerted_at: changed && !component.ok ? null : (previous?.alerted_at ?? null),
+    alert_error: changed && !component.ok ? null : (previous?.alert_error ?? null),
   }
 }
 
@@ -102,9 +103,29 @@ export function buildOutageMessage(labels: string[]): string {
   return toGsm7(body)
 }
 
+export function buildRecoveryMessage(labels: string[], downtimeHours: number | null): string {
+  const lasted = downtimeHours === null ? '' : ` (estuvo caido ${Math.max(1, Math.round(downtimeHours))} h)`
+  const detailed = `VIGIA SISTEMA: recuperado${lasted}: ${labels.join(', ')}.`
+  const body =
+    toGsm7(detailed).length <= SMS_LIMIT ? detailed : `VIGIA SISTEMA: ${labels.length} servicios recuperados${lasted}.`
+  return toGsm7(body)
+}
+
 export function getAlertPhone(): string | null {
   const phone = process.env.STATUS_ALERT_PHONE?.trim()
   return phone && /^\+\d{8,15}$/.test(phone) ? phone : null
+}
+
+const PHONE_ERROR = 'STATUS_ALERT_PHONE no está configurado o no tiene formato internacional (+57...)'
+
+async function notify(message: string): Promise<{ ok: boolean; error: string | null }> {
+  const phone = getAlertPhone()
+  if (!phone) return { ok: false, error: PHONE_ERROR }
+  const sent = await sendSms(phone, message)
+  return {
+    ok: sent.ok,
+    error: sent.ok ? null : `${sent.errorCode ?? 'error'}: ${sent.error ?? 'no se pudo enviar'}`.slice(0, 200),
+  }
 }
 
 export interface HealthCheckSummary {
@@ -113,6 +134,8 @@ export interface HealthCheckSummary {
   overdue: string[]
   notified: boolean
   alertError: string | null
+  recovered: string[]
+  recoveryNotified: boolean
 }
 
 export async function runHealthCheck(): Promise<HealthCheckSummary> {
@@ -134,17 +157,34 @@ export async function runHealthCheck(): Promise<HealthCheckSummary> {
   let notified = false
   let alertError: string | null = null
   if (overdue.length > 0) {
-    const phone = getAlertPhone()
-    if (!phone) {
-      alertError = 'STATUS_ALERT_PHONE no está configurado o no tiene formato internacional (+57...)'
-    } else {
-      const sent = await sendSms(phone, buildOutageMessage(overdue.map((row) => row.label)))
-      notified = sent.ok
-      alertError = sent.ok ? null : `${sent.errorCode ?? 'error'}: ${sent.error ?? 'no se pudo enviar'}`.slice(0, 200)
-    }
+    const result = await notify(buildOutageMessage(overdue.map((row) => row.label)))
+    notified = result.ok
+    alertError = result.error
     for (const row of overdue) {
       row.alerted_at = notified ? nowIso : null
       row.alert_error = alertError
+    }
+  }
+
+  // Solo se avisa de la recuperación de caídas de las que ya se avisó. Si el SMS falla, alerted_at
+  // se conserva y se reintenta en la siguiente comprobación.
+  const recovered = rows.filter((row) => row.state === 'ok' && !row.optional && row.alerted_at)
+  let recoveryNotified = false
+  if (recovered.length > 0) {
+    const downtimes = recovered
+      .map((row) => previousById.get(row.component_id))
+      .filter((previous): previous is HealthRow => previous?.state === 'down')
+      .map((previous) => outageHours(previous, now.getTime()))
+    const result = await notify(
+      buildRecoveryMessage(
+        recovered.map((row) => row.label),
+        downtimes.length > 0 ? Math.max(...downtimes) : null,
+      ),
+    )
+    recoveryNotified = result.ok
+    for (const row of recovered) {
+      row.alerted_at = result.ok ? null : row.alerted_at
+      row.alert_error = result.error
     }
   }
 
@@ -157,6 +197,8 @@ export async function runHealthCheck(): Promise<HealthCheckSummary> {
     overdue: overdue.map((row) => row.label),
     notified,
     alertError,
+    recovered: recovered.map((row) => row.label),
+    recoveryNotified,
   }
 }
 

@@ -21,7 +21,13 @@ function maskPhone(phone: string): string {
 }
 
 function RowDetail({ row }: { row: HealthRow }) {
-  if (row.state === 'ok') return <span className="text-muted-foreground">Operativo</span>
+  if (row.state === 'ok') {
+    return (
+      <span className="text-muted-foreground">
+        {row.alerted_at ? 'Operativo · aviso de recuperación pendiente' : 'Operativo'}
+      </span>
+    )
+  }
   const notice = row.alerted_at
     ? 'SMS enviado'
     : row.alert_error
