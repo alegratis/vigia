@@ -15,6 +15,7 @@ import "server-only"
  * Docs: https://wiki.openstreetmap.org/wiki/Overpass_API
  */
 
+import { withSnapshot } from "@/lib/upstream/resilient"
 import { classifyOsmTags, type OsmCategoryKey } from "./categories"
 import type { OsmPoint } from "./api-types"
 
@@ -200,7 +201,11 @@ export async function queryOverpass(query: string): Promise<OverpassResponse> {
  * for a point count). Elements matching none of the five categories are
  * dropped.
  */
-export async function getInfrastructurePoints(): Promise<OsmPoint[]> {
+export function getInfrastructurePoints(): Promise<OsmPoint[]> {
+  return withSnapshot("osm:infraestructura", loadInfrastructurePoints, { ttlSeconds: 21_600, timeoutMs: 25_000 })
+}
+
+async function loadInfrastructurePoints(): Promise<OsmPoint[]> {
   const json = await queryOverpass(buildQuery())
 
   const points: OsmPoint[] = []
