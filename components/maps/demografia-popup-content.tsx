@@ -1,5 +1,6 @@
 import { MANZANA_FIELD_LABEL, type DemografiaIndicator, type ManzanaField } from "@/lib/laboratorio/use-demografia-experience"
 import type { BarrioProperties } from "@/lib/barrios/api-types"
+import { ipmForVereda } from "@/lib/demografia/ipm-municipal"
 
 interface DemografiaPopupContentProps {
   indicator: DemografiaIndicator
@@ -44,11 +45,14 @@ export function DemografiaPopupContent({ indicator, properties, barrio }: Demogr
 
   if (properties.__kind === "barrio") {
     const props = properties as unknown as BarrioProperties
+    const cabecera = indicator === "ipm-municipal" ? ipmForVereda(props.municipio, true) : null
     return (
       <div className="flex w-56 flex-col gap-1 text-sm">
         <p className="font-medium text-foreground">
           {props.nombre} <span className="text-muted-foreground">({props.municipio})</span>
         </p>
+        {cabecera && <Row label="IPM de la cabecera">{`${cabecera.ipm.toFixed(1)}%`}</Row>}
+        {cabecera && <Row label="IPM del municipio">{`${cabecera.ipmMunicipal.toFixed(1)}%`}</Row>}
         <BarrioHazardRows barrio={props} />
         <Explainer>Límite de barrio del Dashboard SIRD Sevilla (post-sismo), referencia únicamente.</Explainer>
       </div>
@@ -78,6 +82,39 @@ export function DemografiaPopupContent({ indicator, properties, barrio }: Demogr
         </p>
         {barrio && <BarrioHazardRows barrio={barrio} />}
         <Explainer>{IVS_WHAT}</Explainer>
+      </div>
+    )
+  }
+
+  if (indicator === "ipm-municipal") {
+    const esCasco = properties.esCascoUrbano === true
+    const ipm = properties.ipm as number | undefined
+    const detail = municipio ? ipmForVereda(municipio, esCasco) : null
+    return (
+      <div className="flex w-64 flex-col gap-1 text-sm">
+        <p className="font-medium text-foreground">
+          {(properties.nombre as string | undefined) ?? "Zona"}
+          {municipio ? <span className="font-normal text-muted-foreground"> ({municipio})</span> : null}
+        </p>
+        <Row label={esCasco ? "IPM de la cabecera" : "IPM de centros poblados y rural disperso"}>
+          <span style={{ color: properties.__color as string }}>{ipm != null ? `${ipm.toFixed(1)}%` : "Sin dato"}</span>
+        </Row>
+        {detail && <Row label="IPM del municipio">{`${detail.ipmMunicipal.toFixed(1)}%`}</Row>}
+        {detail && detail.privaciones.length > 0 && (
+          <div className="flex flex-col gap-0.5 border-t border-border pt-1.5">
+            <p className="text-xs font-medium text-muted-foreground">Mayores privaciones en esta zona</p>
+            {detail.privaciones.map((p) => (
+              <p key={p.nombre} className="flex justify-between gap-2 text-xs">
+                <span className="text-foreground">{p.nombre}</span>
+                <span className="shrink-0 font-medium text-foreground">{`${p.valor.toFixed(1)}%`}</span>
+              </p>
+            ))}
+          </div>
+        )}
+        <Explainer>
+          Medida de pobreza multidimensional municipal (DANE, Censo 2018). El valor corresponde al municipio y a su
+          zona, no a cada vereda por separado.
+        </Explainer>
       </div>
     )
   }

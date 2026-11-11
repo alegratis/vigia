@@ -410,6 +410,7 @@ function HidrantesPanel({ experience }: { experience: HidrantesExperience }) {
 const INDICATOR_OPTIONS: { value: DemografiaIndicator; label: string }[] = [
   { value: "vulnerabilidad", label: "Vulnerabilidad compuesta" },
   { value: "pobreza", label: "Pobreza multidimensional" },
+  { value: "ipm-municipal", label: "IPM municipal (Censo 2018)" },
   { value: "manzanas", label: "Manzanas" },
 ]
 
@@ -470,12 +471,23 @@ function DemografiaPanel({ experience }: { experience: DemografiaExperience }) {
         </span>
       </label>
 
-      {isLoading && <p className="text-xs text-muted-foreground">Cargando datos del geoportal…</p>}
-      {error && (
-        <p className="flex items-center gap-1.5 text-xs text-destructive">
-          <TriangleAlert className="size-3.5 shrink-0" aria-hidden="true" />
-          No se pudo cargar este indicador.
+      {isLoading && (
+        <p className="text-xs text-muted-foreground">
+          {indicator === "ipm-municipal" ? "Cargando veredas…" : "Cargando datos del geoportal…"}
         </p>
+      )}
+      {error && (
+        <div className="flex flex-col items-start gap-1.5">
+          <p className="flex items-center gap-1.5 text-xs text-destructive">
+            <TriangleAlert className="size-3.5 shrink-0" aria-hidden="true" />
+            No se pudo cargar este indicador.
+          </p>
+          {indicator !== "ipm-municipal" && (
+            <Button type="button" size="sm" variant="outline" onClick={() => setIndicator("ipm-municipal")}>
+              Ver el IPM municipal
+            </Button>
+          )}
+        </div>
       )}
 
       <div>
@@ -502,6 +514,12 @@ function DemografiaPanel({ experience }: { experience: DemografiaExperience }) {
                 </li>
               ))}
         </ul>
+        {indicator === "ipm-municipal" && (
+          <p className="mt-2 text-xs leading-snug text-muted-foreground">
+            Cada vereda toma el IPM de su municipio y zona: el de la cabecera en los cascos urbanos y el de centros
+            poblados y rural disperso en el resto (DANE, Censo 2018).
+          </p>
+        )}
       </div>
     </div>
   )
