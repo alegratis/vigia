@@ -1,0 +1,351 @@
+{
+ "fuente": "DANE, Medida de pobreza multidimensional municipal de fuente censal, Censo Nacional de Población y Vivienda 2018",
+ "fuenteUrl": "https://www.dane.gov.co/files/investigaciones/condiciones_vida/pobreza/2018/informacion-censal/anexo-censal-pobreza-municipal-2018.xlsx",
+ "anio": 2018,
+ "municipios": {
+  "76736": {
+   "codigo": "76736",
+   "municipio": "Sevilla",
+   "ipm": {
+    "total": 27.4,
+    "cabeceras": 23.8,
+    "rural": 39.8
+   },
+   "privaciones": {
+    "Analfabetismo": {
+     "total": 14.6,
+     "cabeceras": 12.9,
+     "rural": 20.1
+    },
+    "Bajo logro educativo": {
+     "total": 67.0,
+     "cabeceras": 61.7,
+     "rural": 83.9
+    },
+    "Barreras a servicios para cuidado de la primera infancia": {
+     "total": 1.1,
+     "cabeceras": 0.9,
+     "rural": 1.8
+    },
+    "Barreras de acceso a servicios de salud": {
+     "total": 2.8,
+     "cabeceras": 3.2,
+     "rural": 1.6
+    },
+    "Tasa de dependencia": {
+     "total": 31.9,
+     "cabeceras": 34.6,
+     "rural": 23.0
+    },
+    "Hacinamiento crítico": {
+     "total": 5.7,
+     "cabeceras": 6.5,
+     "rural": 3.1
+    },
+    "Inadecuada eliminación de excretas": {
+     "total": 5.7,
+     "cabeceras": 2.0,
+     "rural": 17.4
+    },
+    "Inasistencia escolar": {
+     "total": 3.3,
+     "cabeceras": 3.0,
+     "rural": 4.1
+    },
+    "Material inadecuado de paredes exteriores": {
+     "total": 5.0,
+     "cabeceras": 4.2,
+     "rural": 7.7
+    },
+    "Material inadecuado de pisos": {
+     "total": 1.0,
+     "cabeceras": 0.9,
+     "rural": 1.6
+    },
+    "Rezago escolar": {
+     "total": 14.2,
+     "cabeceras": 14.0,
+     "rural": 15.1
+    },
+    "Sin acceso a fuente de agua mejorada": {
+     "total": 9.7,
+     "cabeceras": 1.3,
+     "rural": 36.6
+    },
+    "Sin aseguramiento en salud": {
+     "total": 12.1,
+     "cabeceras": 11.7,
+     "rural": 13.5
+    },
+    "Trabajo infantil": {
+     "total": 1.0,
+     "cabeceras": 0.7,
+     "rural": 1.9
+    },
+    "Trabajo informal": {
+     "total": 88.9,
+     "cabeceras": 88.2,
+     "rural": 91.4
+    }
+   }
+  },
+  "76122": {
+   "codigo": "76122",
+   "municipio": "Caicedonia",
+   "ipm": {
+    "total": 24.6,
+    "cabeceras": 19.9,
+    "rural": 46.9
+   },
+   "privaciones": {
+    "Analfabetismo": {
+     "total": 14.7,
+     "cabeceras": 13.5,
+     "rural": 19.7
+    },
+    "Bajo logro educativo": {
+     "total": 64.0,
+     "cabeceras": 60.2,
+     "rural": 81.2
+    },
+    "Barreras a servicios para cuidado de la primera infancia": {
+     "total": 1.1,
+     "cabeceras": 0.9,
+     "rural": 2.1
+    },
+    "Barreras de acceso a servicios de salud": {
+     "total": 7.5,
+     "cabeceras": 5.8,
+     "rural": 15.3
+    },
+    "Tasa de dependencia": {
+     "total": 29.3,
+     "cabeceras": 29.2,
+     "rural": 29.6
+    },
+    "Hacinamiento crítico": {
+     "total": 5.7,
+     "cabeceras": 6.1,
+     "rural": 4.0
+    },
+    "Inadecuada eliminación de excretas": {
+     "total": 5.3,
+     "cabeceras": 2.6,
+     "rural": 17.5
+    },
+    "Inasistencia escolar": {
+     "total": 2.8,
+     "cabeceras": 2.5,
+     "rural": 4.6
+    },
+    "Material inadecuado de paredes exteriores": {
+     "total": 2.6,
+     "cabeceras": 1.7,
+     "rural": 6.6
+    },
+    "Material inadecuado de pisos": {
+     "total": 0.6,
+     "cabeceras": 0.4,
+     "rural": 1.5
+    },
+    "Rezago escolar": {
+     "total": 11.9,
+     "cabeceras": 11.0,
+     "rural": 16.3
+    },
+    "Sin acceso a fuente de agua mejorada": {
+     "total": 6.8,
+     "cabeceras": 1.9,
+     "rural": 29.0
+    },
+    "Sin aseguramiento en salud": {
+     "total": 13.3,
+     "cabeceras": 12.9,
+     "rural": 15.0
+    },
+    "Trabajo infantil": {
+     "total": 1.2,
+     "cabeceras": 1.0,
+     "rural": 2.6
+    },
+    "Trabajo informal": {
+     "total": 86.4,
+     "cabeceras": 85.6,
+     "rural": 89.8
+    }
+   }
+  },
+  "76895": {
+   "codigo": "76895",
+   "municipio": "Zarzal",
+   "ipm": {
+    "total": 17.2,
+    "cabeceras": 15.8,
+    "rural": 21.5
+   },
+   "privaciones": {
+    "Analfabetismo": {
+     "total": 10.8,
+     "cabeceras": 9.8,
+     "rural": 13.6
+    },
+    "Bajo logro educativo": {
+     "total": 47.5,
+     "cabeceras": 45.1,
+     "rural": 54.9
+    },
+    "Barreras a servicios para cuidado de la primera infancia": {
+     "total": 1.1,
+     "cabeceras": 1.1,
+     "rural": 1.2
+    },
+    "Barreras de acceso a servicios de salud": {
+     "total": 4.0,
+     "cabeceras": 4.1,
+     "rural": 3.7
+    },
+    "Tasa de dependencia": {
+     "total": 28.3,
+     "cabeceras": 28.5,
+     "rural": 27.9
+    },
+    "Hacinamiento crítico": {
+     "total": 5.2,
+     "cabeceras": 6.0,
+     "rural": 3.0
+    },
+    "Inadecuada eliminación de excretas": {
+     "total": 1.5,
+     "cabeceras": 0.6,
+     "rural": 4.2
+    },
+    "Inasistencia escolar": {
+     "total": 2.3,
+     "cabeceras": 1.8,
+     "rural": 3.8
+    },
+    "Material inadecuado de paredes exteriores": {
+     "total": 1.5,
+     "cabeceras": 0.9,
+     "rural": 3.5
+    },
+    "Material inadecuado de pisos": {
+     "total": 0.7,
+     "cabeceras": 0.3,
+     "rural": 2.1
+    },
+    "Rezago escolar": {
+     "total": 14.1,
+     "cabeceras": 13.8,
+     "rural": 14.9
+    },
+    "Sin acceso a fuente de agua mejorada": {
+     "total": 1.8,
+     "cabeceras": 0.6,
+     "rural": 5.6
+    },
+    "Sin aseguramiento en salud": {
+     "total": 11.8,
+     "cabeceras": 12.0,
+     "rural": 11.4
+    },
+    "Trabajo infantil": {
+     "total": 0.6,
+     "cabeceras": 0.6,
+     "rural": 0.5
+    },
+    "Trabajo informal": {
+     "total": 76.8,
+     "cabeceras": 77.0,
+     "rural": 76.0
+    }
+   }
+  },
+  "76622": {
+   "codigo": "76622",
+   "municipio": "Roldanillo",
+   "ipm": {
+    "total": 16.5,
+    "cabeceras": 13.0,
+    "rural": 27.0
+   },
+   "privaciones": {
+    "Analfabetismo": {
+     "total": 9.1,
+     "cabeceras": 7.7,
+     "rural": 13.6
+    },
+    "Bajo logro educativo": {
+     "total": 51.1,
+     "cabeceras": 44.5,
+     "rural": 72.0
+    },
+    "Barreras a servicios para cuidado de la primera infancia": {
+     "total": 1.0,
+     "cabeceras": 1.0,
+     "rural": 0.9
+    },
+    "Barreras de acceso a servicios de salud": {
+     "total": 3.7,
+     "cabeceras": 3.1,
+     "rural": 5.7
+    },
+    "Tasa de dependencia": {
+     "total": 26.9,
+     "cabeceras": 26.3,
+     "rural": 28.5
+    },
+    "Hacinamiento crítico": {
+     "total": 4.1,
+     "cabeceras": 4.7,
+     "rural": 2.2
+    },
+    "Inadecuada eliminación de excretas": {
+     "total": 3.6,
+     "cabeceras": 1.5,
+     "rural": 10.1
+    },
+    "Inasistencia escolar": {
+     "total": 2.4,
+     "cabeceras": 2.0,
+     "rural": 3.7
+    },
+    "Material inadecuado de paredes exteriores": {
+     "total": 0.7,
+     "cabeceras": 0.4,
+     "rural": 1.7
+    },
+    "Material inadecuado de pisos": {
+     "total": 1.1,
+     "cabeceras": 0.3,
+     "rural": 3.6
+    },
+    "Rezago escolar": {
+     "total": 13.0,
+     "cabeceras": 12.3,
+     "rural": 15.1
+    },
+    "Sin acceso a fuente de agua mejorada": {
+     "total": 4.0,
+     "cabeceras": 0.6,
+     "rural": 14.9
+    },
+    "Sin aseguramiento en salud": {
+     "total": 12.3,
+     "cabeceras": 12.9,
+     "rural": 10.6
+    },
+    "Trabajo infantil": {
+     "total": 0.8,
+     "cabeceras": 0.5,
+     "rural": 1.5
+    },
+    "Trabajo informal": {
+     "total": 83.3,
+     "cabeceras": 81.8,
+     "rural": 88.1
+    }
+   }
+  }
+ }
+}

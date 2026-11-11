@@ -17,11 +17,13 @@
  * indicator-switch buttons and legend.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import booleanPointInPolygon from "@turf/boolean-point-in-polygon"
 import { useBarrios } from "@/lib/barrios/use-barrios"
 import type { BarrioFeature, BarrioProperties } from "@/lib/barrios/api-types"
+import { ipmForVereda } from "@/lib/demografia/ipm-municipal"
 import { useDemografiaGeoportal } from "@/lib/demografia/use-geoportal"
+import { useVeredas } from "@/lib/veredas/use-veredas"
 import { useVulnerabilidad } from "@/lib/vulnerabilidad/use-vulnerabilidad"
 import { resolveCssColor } from "@/lib/resolve-css-color"
 import {
@@ -33,7 +35,7 @@ import {
 } from "@/lib/demografia/indicator-levels"
 import { VULNERABILITY_LEVELS, VULNERABILITY_LEVEL_STYLES } from "@/lib/vulnerabilidad/levels"
 
-export type DemografiaIndicator = "vulnerabilidad" | "pobreza" | "manzanas"
+export type DemografiaIndicator = "vulnerabilidad" | "pobreza" | "manzanas" | "ipm-municipal"
 export type ManzanaField = "viviendas" | "hogares" | "personas"
 
 export const MANZANA_FIELD_LABEL: Record<ManzanaField, string> = {
@@ -55,13 +57,30 @@ export const BARRIOS_LINE_LAYER_ID = "lab-barrios-line"
  * actually focused — same lazy-fetch convention as `useHidrantesExperience`.
  */
 export function useDemografiaExperience(enabled: boolean) {
-  const [indicator, setIndicator] = useState<DemografiaIndicator>("vulnerabilidad")
+  const [indicator, setIndicatorState] = useState<DemografiaIndicator>("vulnerabilidad")
   const [manzanaField, setManzanaField] = useState<ManzanaField>("personas")
 
-  const { data, error: geoportalError } = useDemografiaGeoportal(enabled && indicator !== "vulnerabilidad")
+  const userPickedIndicator = useRef(false)
+  const setIndicator = useCallback((next: DemografiaIndicator) => {
+    userPickedIndicator.current = true
+    setIndicatorState(next)
+  }, [])
+
+  const { data, error: geoportalError } = useDemografiaGeoportal(
+    enabled && (indicator === "pobreza" || indicator === "manzanas"),
+  )
   const { data: vulnerabilidadData, error: vulnerabilidadError } = useVulnerabilidad(
     enabled && indicator === "vulnerabilidad",
   )
+  const { veredas, error: veredasError } = useVeredas(enabled && indicator === "ipm-municipal")
+
+  // Si el indicador por defecto no carga y nadie eligió otro, se pasa al IPM municipal, que no depende
+  // de las manzanas del geoportal, en lugar de dejar la pestaña con un error.
+  useEffect(() => {
+    if (enabled && !userPickedIndicator.current && indicator === "vulnerabilidad" && vulnerabilidadError) {
+      setIndicatorState("ipm-municipal")
+    }
+  }, [enabled, indicator, vulnerabilidadError])
 
   // Sevilla's only published barrio layer (SIRD dashboard). Fetched whenever demografía is focused,
   // even with the outlines hidden, because every popup resolves "which barrio is this?" from it.
@@ -165,13 +184,54 @@ export function useDemografiaExperience(enabled: boolean) {
     }
   }, [vulnerabilidadData, vulnColors])
 
+  // Cada vereda toma el IPM de su municipio y zona (cabecera para el casco urbano, rural para el resto):
+  // el dato censal más fino que existe sin las manzanas del geoportal.
+  const ipmMunicipalGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
+    if (!veredas || !levelColors) return { type: "FeatureCollection", features: [] }
+    const rows = veredas.features.flatMap((feature) => {
+      const value = ipmForVereda(feature.properties.municipio, feature.properties.esCascoUrbano === true)
+      return value ? [{ feature, value }] : []
+    })
+    const values = rows.map((row) => row.value.ipm)
+    const min = Math.min(...values, 0)
+    const max = Math.max(...values, 1)
+    return {
+      type: "FeatureCollection",
+      features: rows.map(({ feature, value }, i) => {
+        const n = normalize(value.ipm, min, max)
+        return {
+          type: "Feature",
+          id: i,
+          properties: {
+            codigoVereda: feature.properties.codigoVereda,
+            nombre: feature.properties.nombre,
+            municipio: feature.properties.municipio,
+            esCascoUrbano: feature.properties.esCascoUrbano === true,
+            ipm: value.ipm,
+            ipmMunicipal: value.ipmMunicipal,
+            __kind: "ipm-municipal",
+            __height: indicatorHeight(n),
+            __color: levelColors[indicatorLevel(n)],
+          },
+          geometry: feature.geometry,
+        }
+      }),
+    }
+  }, [veredas, levelColors])
+
   const activeGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
     if (indicator === "pobreza") return pobrezaGeoJson
     if (indicator === "manzanas") return manzanasGeoJson
+    if (indicator === "ipm-municipal") return ipmMunicipalGeoJson
     return vulnerabilidadManzanasGeoJson
-  }, [indicator, pobrezaGeoJson, manzanasGeoJson, vulnerabilidadManzanasGeoJson])
+  }, [indicator, pobrezaGeoJson, manzanasGeoJson, ipmMunicipalGeoJson, vulnerabilidadManzanasGeoJson])
 
-  const isLoading = indicator === "vulnerabilidad" ? enabled && !vulnerabilidadData && !vulnerabilidadError : enabled && !data && !geoportalError
+  const isLoading =
+    indicator === "vulnerabilidad"
+      ? enabled && !vulnerabilidadData && !vulnerabilidadError
+      : indicator === "ipm-municipal"
+        ? enabled && !veredas && !veredasError
+        : enabled && !data && !geoportalError
 
   return {
     indicator,
@@ -189,7 +249,7 @@ export function useDemografiaExperience(enabled: boolean) {
     levelColors,
     vulnColors,
     isLoading,
-    error: geoportalError ?? vulnerabilidadError ?? null,
+    error: geoportalError ?? vulnerabilidadError ?? veredasError ?? null,
   }
 }
 
