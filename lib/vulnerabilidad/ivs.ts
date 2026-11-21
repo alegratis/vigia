@@ -1,7 +1,5 @@
 import "server-only"
 
-import { withSnapshot } from "@/lib/upstream/resilient"
-
 /**
  * Step 1 of the vulnerability-index methodology (see v0_plans/grand-method.md,
  * Part A) — Índice de Vulnerabilidad Social (IVS). Four real dimensions,
@@ -48,61 +46,45 @@ import { withSnapshot } from "@/lib/upstream/resilient"
  *   lib/vulnerabilidad/combined-score.ts), which is an honest data
  *   limitation, not a design choice.
  *
- * DANE publishes the walls/floors/overcrowding/services variables as
- * ready-made municipio-level "déficit habitacional cualitativo" component
- * indicators, and the inasistencia escolar / dependencia económica
- * variables as "condiciones de vida" component indicators — confirmed
- * live against production, one `MapServer` per component, all sharing the
- * same layer id (`4`) and municipio-code/name fields as the other
- * `INDICADORES_COND_DE_VIDA` services this app already queries:
+ * The ten municipio-level components come from two official DANE annexes on
+ * the 2018 census, extracted once by `scripts/dane/extract-ivs-componentes.py`
+ * into `data/ivs-componentes-2018.json` (no runtime call to DANE):
  *
- * - `CompParedesExteriores` → `PC_N_pared` (% hogares con paredes inadecuadas)
- * - `CompMaterialPisos` → `PC_N_pisos` (% hogares con pisos inadecuados)
- * - `CompHacinMitigable` → `PC_N_defhacimiti` (% hogares en hacinamiento mitigable)
- * - `CompHacinNoMitigable` → `PC_N_defhaci` (% hogares en hacinamiento no mitigable)
- * - `CompAcueducto` → `PC_N_agua` (% hogares sin acueducto adecuado)
- * - `CompAlcantarillado` → `PC_N_alcantarillado` (% hogares sin alcantarillado adecuado)
- * - `CompEnergia` → `PC_N_energia` (% hogares sin energía adecuada)
- * - `CompRecBasura` → `PC_N_basura` (% hogares sin recolección de basuras adecuada)
- * - `ComponenteInasistenciaEscolar` → `NBIC_Total_PP_Comp_Inasistencia` (% hogares con inasistencia escolar)
- * - `ComponenteDependenciaEconomica` → `NBIC_Total_PP_Comp_dependencia_economica` (% hogares con alta dependencia económica)
+ * - Déficit habitacional (2020 methodology), households with each deficiency
+ *   divided by the municipio's total households: `CompParedesExteriores`,
+ *   `CompMaterialPisos`, `CompHacinMitigable`, `CompHacinNoMitigable`,
+ *   `CompAcueducto` (agua para cocinar), `CompAlcantarillado`, `CompEnergia`,
+ *   `CompRecBasura`.
+ * - NBI, share of people in the component: `ComponenteInasistenciaEscolar`,
+ *   `ComponenteDependenciaEconomica`.
  */
 
 import { STUDY_MUNICIPIO_CODES, getPobrezaMultidimensional } from "@/lib/demografia/dane-geoportal"
+import ivsComponentesFile from "./data/ivs-componentes-2018.json"
 
-const BASE_URL = "https://geoportal.dane.gov.co/mparcgis/rest/services/INDICADORES_COND_DE_VIDA"
+const IVS_COMPONENTS = [
+  "CompParedesExteriores",
+  "CompMaterialPisos",
+  "CompHacinMitigable",
+  "CompHacinNoMitigable",
+  "CompAcueducto",
+  "CompAlcantarillado",
+  "CompEnergia",
+  "CompRecBasura",
+  "ComponenteInasistenciaEscolar",
+  "ComponenteDependenciaEconomica",
+] as const
 
-/** Service name suffix → the % field this app reads from its layer 4. */
-const IVS_COMPONENTS = {
-  CompParedesExteriores: "PC_N_pared",
-  CompMaterialPisos: "PC_N_pisos",
-  CompHacinMitigable: "PC_N_defhacimiti",
-  CompHacinNoMitigable: "PC_N_defhaci",
-  CompAcueducto: "PC_N_agua",
-  CompAlcantarillado: "PC_N_alcantarillado",
-  CompEnergia: "PC_N_energia",
-  CompRecBasura: "PC_N_basura",
-  ComponenteInasistenciaEscolar: "NBIC_Total_PP_Comp_Inasistencia",
-  ComponenteDependenciaEconomica: "NBIC_Total_PP_Comp_dependencia_economica",
-} as const
+type IvsComponent = (typeof IVS_COMPONENTS)[number]
 
-/** Service names, grouped by service path prefix — the school-attendance and economic-dependency components live under a different `Serv_Mpios_NBI_*` service family than the 8 déficit habitacional ones. */
-const SERVICE_PATH: Record<keyof typeof IVS_COMPONENTS, string> = {
-  CompParedesExteriores: "Serv_Mpios_DeficitHab_CompParedesExteriores_2018",
-  CompMaterialPisos: "Serv_Mpios_DeficitHab_CompMaterialPisos_2018",
-  CompHacinMitigable: "Serv_Mpios_DeficitHab_CompHacinMitigable_2018",
-  CompHacinNoMitigable: "Serv_Mpios_DeficitHab_CompHacinNoMitigable_2018",
-  CompAcueducto: "Serv_Mpios_DeficitHab_CompAcueducto_2018",
-  CompAlcantarillado: "Serv_Mpios_DeficitHab_CompAlcantarillado_2018",
-  CompEnergia: "Serv_Mpios_DeficitHab_CompEnergia_2018",
-  CompRecBasura: "Serv_Mpios_DeficitHab_CompRecBasura_2018",
-  ComponenteInasistenciaEscolar: "Serv_Mpios_NBI_ComponenteInasistenciaEscolar_Total_2018",
-  ComponenteDependenciaEconomica: "Serv_Mpios_NBI_ComponenteDependenciaEconomica_Total_2018",
-}
+const IVS_COMPONENTS_BY_MUNICIPIO = ivsComponentesFile.municipios as unknown as Record<
+  string,
+  { municipio: string; componentes: Record<IvsComponent, number> }
+>
 
 /** Vivienda (0.25) + Servicios (0.25) + Educación (0.20) + Trabajo (0.15) = 0.85 of the full instructions' weighting — Salud is excluded (no DANE 2018 data at this resolution), so these 4 are renormalized to sum to 1. */
-const VIVIENDA_COMPONENTS = ["CompParedesExteriores", "CompMaterialPisos", "CompHacinMitigable", "CompHacinNoMitigable"] as const
-const SERVICIOS_COMPONENTS = ["CompAcueducto", "CompAlcantarillado", "CompEnergia", "CompRecBasura"] as const
+const VIVIENDA_COMPONENTS = ["CompParedesExteriores", "CompMaterialPisos", "CompHacinMitigable", "CompHacinNoMitigable"] as const satisfies readonly IvsComponent[]
+const SERVICIOS_COMPONENTS = ["CompAcueducto", "CompAlcantarillado", "CompEnergia", "CompRecBasura"] as const satisfies readonly IvsComponent[]
 
 const DIMENSION_WEIGHTS = {
   vivienda: 0.25,
@@ -112,13 +94,6 @@ const DIMENSION_WEIGHTS = {
 } as const
 const WEIGHT_SUM = Object.values(DIMENSION_WEIGHTS).reduce((a, b) => a + b, 0) // 0.85 — Salud excluded
 
-// Static reference data (2018 déficit habitacional / condiciones de vida) — same long-cache convention as dane-geoportal.ts.
-const REVALIDATE_SECONDS = 2_592_000 // 30 days
-
-const CODES_IN_LIST = Object.values(STUDY_MUNICIPIO_CODES)
-  .map((code) => `'${code}'`)
-  .join(",")
-
 export interface MunicipioIvs {
   municipio: string
   codigoMunicipio: string
@@ -127,7 +102,7 @@ export interface MunicipioIvs {
   /** Min-max normalized IVS across the 4 study municipios (0–1, higher = more socially vulnerable). */
   ivs: number
   /** The 10 raw component percentages behind the 4 dimensions, for the rural-vereda breakdown chart — this municipio's finest available granularity. */
-  components: Record<keyof typeof IVS_COMPONENTS, number>
+  components: Record<IvsComponent, number>
 }
 
 export interface ManzanaIvs {
@@ -166,11 +141,7 @@ export interface UrbanMunicipioIvs {
  * block-level distribution behind each municipio's average, not just the
  * average itself.
  */
-export function getUrbanIvsByMunicipio(): Promise<UrbanMunicipioIvs[]> {
-  return withSnapshot("dane:ivs-urbano", loadUrbanIvsByMunicipio, { ttlSeconds: 2_592_000, timeoutMs: 40_000 })
-}
-
-async function loadUrbanIvsByMunicipio(): Promise<UrbanMunicipioIvs[]> {
+export async function getUrbanIvsByMunicipio(): Promise<UrbanMunicipioIvs[]> {
   const { features } = await getPobrezaMultidimensional()
 
   const ipmValues = features.map((f) => f.properties.ipm)
@@ -219,31 +190,6 @@ async function loadUrbanIvsByMunicipio(): Promise<UrbanMunicipioIvs[]> {
   }))
 }
 
-async function fetchComponent(service: keyof typeof IVS_COMPONENTS): Promise<Map<string, { nombre: string; pct: number }>> {
-  const field = IVS_COMPONENTS[service]
-  const params = new URLSearchParams({
-    where: `MPIO_CCDGO IN (${CODES_IN_LIST})`,
-    outFields: `MPIO_CCDGO,MPIO_CNMBR,${field}`,
-    f: "json",
-  })
-  const res = await fetch(`${BASE_URL}/${SERVICE_PATH[service]}/MapServer/4/query?${params}`, {
-    next: { revalidate: REVALIDATE_SECONDS },
-  })
-  if (!res.ok) {
-    throw new Error(`DANE condiciones de vida query failed for ${service} (${res.status})`)
-  }
-  const raw = (await res.json()) as { features: { attributes: Record<string, unknown> }[] }
-  const byMunicipio = new Map<string, { nombre: string; pct: number }>()
-  for (const f of raw.features) {
-    const codigo = String(f.attributes.MPIO_CCDGO ?? "")
-    byMunicipio.set(codigo, {
-      nombre: String(f.attributes.MPIO_CNMBR ?? ""),
-      pct: Number(f.attributes[field] ?? 0),
-    })
-  }
-  return byMunicipio
-}
-
 /**
  * Índice de Vulnerabilidad Social per study municipio — weighted average
  * of 4 real dimensions (Vivienda 0.25, Servicios 0.25, Educación 0.20,
@@ -252,26 +198,16 @@ async function fetchComponent(service: keyof typeof IVS_COMPONENTS): Promise<Map
  * all of Colombia — the "normalize to 0-1" step is scoped to the
  * comparison set this app actually maps).
  */
-export function getSocialVulnerabilityIndex(): Promise<MunicipioIvs[]> {
-  return withSnapshot("dane:ivs-municipal", loadSocialVulnerabilityIndex, { ttlSeconds: 2_592_000, timeoutMs: 40_000 })
-}
-
-async function loadSocialVulnerabilityIndex(): Promise<MunicipioIvs[]> {
-  const services = Object.keys(IVS_COMPONENTS) as (keyof typeof IVS_COMPONENTS)[]
-  const componentMaps = await Promise.all(services.map(fetchComponent))
-
+export async function getSocialVulnerabilityIndex(): Promise<MunicipioIvs[]> {
   const codes = Object.values(STUDY_MUNICIPIO_CODES)
   const rows = codes.map((codigo) => {
-    let nombre = ""
-    const components = {} as Record<keyof typeof IVS_COMPONENTS, number>
-    services.forEach((service, i) => {
-      const entry = componentMaps[i].get(codigo)
-      components[service] = entry?.pct ?? 0
-      if (entry) nombre = entry.nombre
-    })
+    const entry = IVS_COMPONENTS_BY_MUNICIPIO[codigo]
+    const nombre = entry?.municipio ?? ""
+    const components = Object.fromEntries(
+      IVS_COMPONENTS.map((component) => [component, entry?.componentes[component] ?? 0]),
+    ) as Record<IvsComponent, number>
 
-    const avg = (keys: readonly (keyof typeof IVS_COMPONENTS)[]) =>
-      keys.reduce((sum, k) => sum + components[k], 0) / keys.length
+    const avg = (keys: readonly IvsComponent[]) => keys.reduce((sum, k) => sum + components[k], 0) / keys.length
 
     const vivienda = avg(VIVIENDA_COMPONENTS)
     const servicios = avg(SERVICIOS_COMPONENTS)

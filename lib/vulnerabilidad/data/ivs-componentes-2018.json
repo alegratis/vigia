@@ -1,0 +1,71 @@
+{
+ "fuente": "DANE, Déficit habitacional (metodología 2020) y Necesidades Básicas Insatisfechas, Censo Nacional de Población y Vivienda 2018",
+ "fuenteUrl": "https://www.dane.gov.co/index.php/estadisticas-por-tema/demografia-y-poblacion/deficit-habitacional",
+ "anio": 2018,
+ "municipios": {
+  "76736": {
+   "municipio": "Sevilla",
+   "componentes": {
+    "CompParedesExteriores": 6.5357,
+    "CompMaterialPisos": 0.9326,
+    "CompHacinMitigable": 9.5398,
+    "CompHacinNoMitigable": 0.5122,
+    "CompAcueducto": 9.3411,
+    "CompAlcantarillado": 6.5128,
+    "CompEnergia": 1.4065,
+    "CompRecBasura": 4.7546,
+    "ComponenteInasistenciaEscolar": 1.5895,
+    "ComponenteDependenciaEconomica": 5.3239
+   },
+   "hogares": 13082
+  },
+  "76122": {
+   "municipio": "Caicedonia",
+   "componentes": {
+    "CompParedesExteriores": 2.9014,
+    "CompMaterialPisos": 0.572,
+    "CompHacinMitigable": 9.2762,
+    "CompHacinNoMitigable": 0.416,
+    "CompAcueducto": 6.822,
+    "CompAlcantarillado": 6.4268,
+    "CompEnergia": 1.2271,
+    "CompRecBasura": 4.9293,
+    "ComponenteInasistenciaEscolar": 1.0141,
+    "ComponenteDependenciaEconomica": 4.2936
+   },
+   "hogares": 9616
+  },
+  "76895": {
+   "municipio": "Zarzal",
+   "componentes": {
+    "CompParedesExteriores": 1.5966,
+    "CompMaterialPisos": 0.7155,
+    "CompHacinMitigable": 9.3689,
+    "CompHacinNoMitigable": 0.5121,
+    "CompAcueducto": 1.815,
+    "CompAlcantarillado": 1.9732,
+    "CompEnergia": 1.1673,
+    "CompRecBasura": 19.7168,
+    "ComponenteInasistenciaEscolar": 0.9085,
+    "ComponenteDependenciaEconomica": 3.8071
+   },
+   "hogares": 13278
+  },
+  "76622": {
+   "municipio": "Roldanillo",
+   "componentes": {
+    "CompParedesExteriores": 1.1409,
+    "CompMaterialPisos": 1.1219,
+    "CompHacinMitigable": 8.5377,
+    "CompHacinNoMitigable": 0.2852,
+    "CompAcueducto": 3.86,
+    "CompAlcantarillado": 4.402,
+    "CompEnergia": 0.4944,
+    "CompRecBasura": 13.0348,
+    "ComponenteInasistenciaEscolar": 1.0297,
+    "ComponenteDependenciaEconomica": 3.4418
+   },
+   "hogares": 10518
+  }
+ }
+}
