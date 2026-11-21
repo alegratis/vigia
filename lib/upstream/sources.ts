@@ -38,13 +38,6 @@ export const UPSTREAM_SOURCES: UpstreamSource[] = [
     optional: true,
   },
   {
-    id: 'dane-geoportal',
-    nombre: 'DANE, geoportal',
-    afecta: 'Demografía, pobreza multidimensional y vulnerabilidad social',
-    url: 'https://geoportal.dane.gov.co/mparcgis/rest/services?f=json',
-    snapshotKey: 'dane:pobreza-multidimensional',
-  },
-  {
     id: 'overpass',
     nombre: 'OpenStreetMap, Overpass',
     afecta: 'Infraestructura por categoría',

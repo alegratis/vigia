@@ -10,8 +10,8 @@ import type {
 } from "@/lib/vulnerabilidad/api-types"
 
 const SOURCE =
-  "DANE (IPM 2018 a nivel manzana en cascos urbanos; déficit habitacional 2018 a nivel municipio en veredas rurales) combinado con el modelo de riesgo compuesto de esta app"
-const SOURCE_URL = "https://geoportal.dane.gov.co/"
+  "DANE (IPM 2018 a nivel manzana en cascos urbanos; déficit habitacional y NBI 2018 a nivel municipio en veredas rurales) combinado con el modelo de riesgo compuesto de esta app"
+const SOURCE_URL = "https://www.dane.gov.co/files/geoportal-provisional/index.html"
 
 /**
  * Joins per-vereda riesgo-compuesto results with IVS — vereda → municipio

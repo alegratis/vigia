@@ -5,8 +5,8 @@ import type {
   DemografiaGeoportalErrorResponse,
 } from "@/lib/demografia/geoportal-api-types"
 
-const SOURCE = "DANE — Geoportal (IPM 2018 y Censo Nacional de Población y Vivienda 2018)"
-const SOURCE_URL = "https://geoportal.dane.gov.co/"
+const SOURCE = "DANE, Censo Nacional de Población y Vivienda 2018 (IPM y vulnerabilidad por manzana)"
+const SOURCE_URL = "https://www.dane.gov.co/files/geoportal-provisional/index.html"
 
 export async function GET() {
   try {
